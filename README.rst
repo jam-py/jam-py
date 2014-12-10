@@ -1,9 +1,13 @@
 Jam.py is an event-driven framework for developing database applications: 
+
 - Web client-server database applications. The Server side uses Python 
 and Web.py library, the client side - JavaScript, JQuery and Bootstrap.
+
 - Local desktop applications that use Python, Web.py and PyGTK.
+
 - Desktop client-server applications: The Server side uses Python and 
 Web.py library, the client side - Python and PyGTK.
+
 The don't repeat yourself (DRY) principle underlying the framework allows 
 a developer to focus on programming business logic and not waste time on 
 routine work of programming interface and server details. That allows to 
