@@ -10,7 +10,7 @@ Web.py library, the client side - Python and PyGTK.
 
 The don't repeat yourself (DRY) principle underlying the framework allows 
 a developer to focus on programming business logic and not waste time on 
-routine work of programming interface and server details. That allows to 
+a routine work of programming interface and server details. That allows to 
 create feature rich, complex and robust applications. 
 
 Thanks for checking it out.
