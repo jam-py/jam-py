@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="__$_lang_$__">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/css/bootstrap.css" rel="stylesheet">
+    <link href="/css/bootstrap-responsive.css" rel="stylesheet">
+    <link href="/css/bootstrap-modal.css" rel="stylesheet">
+    <link href="/css/datepicker.css" rel="stylesheet">
+    <link href="/css/jam.css" rel="stylesheet">
+  </head>
+
+  <body>
+    <iframe src="dummy.html" name="dummy" style="display: none"></iframe>
+    <div class="container">
+        <div class="row-fluid">
+            <div class="span2">
+                <h3 id="title" class="muted"></h3>
+            </div>
+            <div class="span10" style="margin-top: 20px; text-align:right;">
+                <span id="user-info"></span>
+                <a href="#" id="log-out" style="display: none">__$_log_out_$__</a>
+            </div>
+        </div>
+        <div id="taskmenu">
+            <div class="tabled">
+                <ul id="menu" class="nav nav-tabs" style="margin-bottom: 10px;">
+                </ul>
+                <ul id="submenu" class="nav nav-pills" style="margin-bottom: 0;">
+                </ul>
+            </div>
+        </div>
+        <div id="content">
+        </div>
+    </div>
+
+    <div class="templates" style="display: none">
+
+        <div class="catalogs-view">
+            <div class="modal-body">
+                <div class="view-title">
+                    <div class="row-fluid">
+                        <div id="title-left" class="span8">
+                        </div>
+                        <div id="title-right" class="span4">
+                            <form class="form-inline pull-right" style="margin: 6px 0px;">
+                                <label  class="control-label" for="input-find" style="margin: 0px 10px;">Search</label>
+                                <input id="input-find" type="text" class="input-medium search-query">
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="view-table">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="delete-btn" class="btn item-btn-with-hint pull-left" type="button"><i class="icon-trash"></i> __$_delete_$__<small class="muted">&nbsp;[Ctrl+Del]</small></button>
+                <button id="select-btn" class="btn item-btn-with-hint pull-right" type="button"><i class="icon-tags"></i> __$_select_$__<small class="muted">&nbsp;[Enter]</small></button>
+                <button id="new-btn" class="btn item-btn-with-hint pull-right" type="button"><i class="icon-plus"></i> __$_new_$__<small class="muted">&nbsp;[Ctrl+Ins]</small></button>
+                <button id="edit-btn" class="btn item-btn pull-right" type="button"><i class="icon-edit"></i> __$_edit_$__</button>
+                <div id="report-btn" class="btn-group dropup pull-right">
+                    <a class="btn item-btn dropdown-toggle" data-toggle="dropdown" href="#">
+                        <i class="icon-print"></i> Reports
+                        <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu bottom-up">
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="journals-view tables-view">
+            <div class="modal-body">
+                <div class="view-title">
+                    <div class="row-fluid">
+                        <div id="title-left" class="span8"></div>
+                        <div id="title-right" class="span4"></div>
+                    </div>
+                </div>
+                <div class="view-table">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="delete-btn" class="btn item-btn-with-hint pull-left" type="button"><i class="icon-trash"></i> __$_delete_$__<small class="muted">&nbsp;[Ctrl+Del]</small></button>
+                <button id="new-btn" class="btn item-btn-with-hint pull-right" type="button"><i class="icon-plus"></i> __$_new_$__<small class="muted">&nbsp;[Ctrl+Ins]</small></button>
+                <button id="edit-btn" class="btn item-btn pull-right" type="button"><i class="icon-edit"></i> __$_edit_$__</button>
+                <button id="filter-btn" class="btn item-btn pull-right" type="button"><i class="icon-filter"></i> __$_filter_$__</button>
+                <div id="report-btn" class="btn-group dropup pull-right">
+                    <a class="btn item-btn dropdown-toggle" data-toggle="dropdown" href="#">
+                        <i class="icon-print"></i> __$_reports_$__
+                        <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu bottom-up">
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="journals-edit catalogs-edit">
+            <div class="modal-body">
+                <div class="edit-body">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancel-btn" class="btn item-btn-with-hint pull-right"><i class="icon-remove"></i> __$_cancel_$__<small class="muted">&nbsp;[Esc]</small></button>
+                <button type="button" id="ok-btn" class="btn item-btn-with-hint pull-right"><i class="icon-ok"></i> __$_ok_$__<small class="muted">&nbsp;[Ctrl+Enter]</small></button>
+            </div>
+        </div>
+
+        <div class="reports-params">
+            <div class="modal-body">
+                <div class="edit-body">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancel-btn" class="btn item-btn pull-right"><i class="icon-remove"></i> __$_close_$__</button>
+                <button type="button" id="ok-btn" class="btn item-btn pull-right"><i class="icon-print"></i> __$_print_$__</button>
+            </div>
+        </div>
+
+        <div class="journals-filter">
+            <div class="modal-body">
+                <div class="edit-body">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancel-btn" class="btn item-btn pull-right"><i class="icon-remove"></i> __$_close_$__</button>
+                <button type="button" id="ok-btn" class="btn item-btn pull-right"><i class="icon-filter"></i> __$_apply_$__</button>
+            </div>
+        </div>
+
+        <form id="login-form" target="dummy" class="form-horizontal" data-caption="__$_log_in_$__" style="margin: 10px 0 0; padding: 0px">
+            <div class="control-group">
+                <label class="control-label" for="inputLoging">__$_login_$__</label>
+                <div class="controls">
+                    <input type="text" id="inputLoging" name="username" tabindex="1" placeholder="логин">
+                </div>
+            </div>
+            <div class="control-group">
+                <label class="control-label" for="inputPassword">__$_password_$__</label>
+                <div class="controls">
+                    <input type="password" id="inputPassword" name="password" tabindex="2" placeholder="пароль">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <input type="submit" class="btn item-btn pull-right" id="login-btn" value="OK" tabindex="3">
+            </div>
+        </form>
+
+    </div>
+
+    <script src="/js/jquery-2.1.1.js"></script>
+    <script src="/js/bootstrap.js"></script>
+    <script src="/js/bootstrap-modal.js"></script>
+    <script src="/js/bootstrap-modalmanager.js"></script>
+    <script src="/js/bootstrap-datepicker.js"></script>
+    <script src="/js/md5-min.js"></script>
+    <script src="/js/jam.js"></script>
+    <script src="/js/events.js"></script>
+
+    <script>
+    $(document).ready(function(){
+        task.load()
+      });
+    </script>
+
+  </body>
+</html>
