@@ -116,7 +116,7 @@ class Server(object):
     def update_users(self):
         now = common.now()
         for key in self.users.keys():
-            if common.hour_diff(now - self.users[key][3]) > 12:
+            if common.hour_diff(now - self.users[key][2]) > 12:
                 self.logout(key)
         self.last_users_update = common.now()
 

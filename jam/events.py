@@ -15,6 +15,7 @@ task_client_events = \
         'on_after_show_edit_form': 'item',
         'on_after_show_filter_form': 'item',
         'on_after_show_params_form': 'item',
+        'on_view_form_close_query': 'item',
         'on_edit_form_close_query': 'item',
         'on_params_form_close_query': 'report',
         'on_view_keypressed': 'item, event',
@@ -29,6 +30,7 @@ group_client_events = \
         'on_after_show_view_form': 'item',
         'on_after_show_edit_form': 'item',
         'on_after_show_filter_form': 'item',
+        'on_view_form_close_query': 'item',
         'on_edit_form_close_query': 'item',
         'on_view_keypressed': 'item, event',
         'on_edit_keypressed': 'item, event'
@@ -50,6 +52,7 @@ detail_client_events = \
         'on_after_show_view_form': 'item',
         'on_after_show_edit_form': 'item',
         'on_after_show_filter_form': 'item',
+        'on_view_form_close_query': 'item',
         'on_edit_form_close_query': 'item',
         'on_view_keypressed': 'item, event',
         'on_edit_keypressed': 'item, event',

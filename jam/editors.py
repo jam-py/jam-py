@@ -536,7 +536,7 @@ class Editor(object):
             parent_text = model.get_value(parent_iter, 0)
         if self.info_index in (common.TAB_EVENTS, common.TAB_FUNCS):
             start = self.textbuffer.get_start_iter()
-            found = start.forward_search(self.func_literal + text, 0, None)
+            found = start.forward_search(self.func_literal + text + '(', 0, None)
             if not found:
                 found = start.forward_search(text, 0, None)
             if found:

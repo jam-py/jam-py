@@ -904,41 +904,45 @@
             if (this.log_changes()) {
                 if (this.item.master) {
                     record_log = this.item.master.change_log.find_record_log();
-                    details = record_log['details'];
-                    detail = details[this.item.ID];
-                    if (this.isEmptyObj(detail)) {
-                        len = this.item.fields.length;
-                        for (i = 0; i < len; i++) {
-                            if (!this.item.fields[i].master_field) {
-                                fields.push(this.item.fields[i].field_name);
+                    if (record_log) {
+                        details = record_log['details'];
+                        detail = details[this.item.ID];
+                        if (this.isEmptyObj(detail)) {
+                            len = this.item.fields.length;
+                            for (i = 0; i < len; i++) {
+                                if (!this.item.fields[i].master_field) {
+                                    fields.push(this.item.fields[i].field_name);
+                                }
                             }
+                            detail = {
+                                'logs': {},
+                                'records': this.item._records,
+                                'fields': fields,
+                                'expanded': this.item.expanded
+                            };
+                            details[this.item.ID] = detail;
                         }
-                        detail = {
-                            'logs': {},
-                            'records': this.item._records,
-                            'fields': fields,
-                            'expanded': this.item.expanded
-                        };
-                        details[this.item.ID] = detail;
+                        this.logs = detail['logs'];
+                        this.records = detail['records'];
+                        this.fields = detail['fields'];
+                        this.expanded = detail['expanded'];
                     }
-                    this.logs = detail['logs'];
-                    this.records = detail['records'];
-                    this.fields = detail['fields'];
-                    this.expanded = detail['expanded'];
                 }
-                change_id = this.item.get_rec_change_id();
-                if (!change_id) {
-                    change_id = this.get_change_id()
-                    this.item.set_rec_change_id(change_id);
-                }
-                result = this.logs[change_id]
-                if (this.isEmptyObj(result)) {
-                    result = {
-                        'unmodified_record': null,
-                        'record': this.cur_record(),
-                        'details': {}
+                if (this.item.record_count()) {
+                    change_id = this.item.get_rec_change_id();
+                    if (!change_id) {
+                        change_id = this.get_change_id()
+                        this.item.set_rec_change_id(change_id);
                     }
-                    this.logs[change_id] = result;
+                    result = this.logs[change_id]
+                    if (this.isEmptyObj(result)) {
+                        result = {
+                            'unmodified_record': null,
+                            'record': this.cur_record(),
+                            'details': {}
+                        }
+                        this.logs[change_id] = result;
+                    }
                 }
                 return result;
             }
@@ -1085,6 +1089,29 @@
             }
         },
 
+        //~ for key, record_log in data.iteritems():
+            //~ if self._change_id < int(key):
+                //~ self._change_id = int(key)
+            //~ record = record_log['record']
+            //~ new_records.append([int(key), record])
+            //~ details = {}
+            //~ self.logs[key] = {
+                //~ 'unmodified_record': record_log['unmodified_record'],
+                //~ 'record': record,
+                //~ 'details': details
+            //~ }
+            //~ for detail_id, detail in record_log['details'].iteritems():
+                //~ detail_item = self.item.item_by_ID(int(detail_id))
+                //~ detail_item.change_log.set_changes(detail)
+                //~ details[detail_id] = {
+                    //~ 'logs': detail_item.change_log.logs,
+                    //~ 'records': detail_item.change_log.records,
+                    //~ 'fields': detail_item.change_log.fields,
+                    //~ 'expanded': detail_item.change_log.expanded
+                //~ }
+        //~ new_records.sort(key=lambda x: x[0])
+        //~ self.records = [rec for key, rec in new_records]
+
         set_changes: function(changes) {
             var data = changes['data'],
                 record_log,
@@ -1099,8 +1126,8 @@
             this.expanded = changes['expanded']
             this._change_id = 0
             for (var key in data) {
-                if (changes.hasOwnProperty(key)) {
-                    record_log = changes[key];
+                if (data.hasOwnProperty(key)) {
+                    record_log = data[key];
                     if (this._change_id < parseInt(key, 10)) {
                         this._change_id = parseInt(key, 10)
                     }
@@ -1323,7 +1350,8 @@
         prepare: function() {
             var i,
                 len = this.item.fields.length;
-            this.clear();
+            this.records = [];
+            this.logs = {};
             this.fields = [];
             for (i = 0; i < len; i++) {
                 if (!this.item.fields[i].master_field) {
@@ -1331,40 +1359,7 @@
                 }
             }
             this.expanded = this.item.expanded;
-        },
-
-        clear: function() {
-            //~ var record_log,
-                //~ detail_id,
-                //~ detail,
-                //~ details,
-                //~ detail_item,
-                //~ info;
-            //~ for (var key in this.logs) {
-                //~ if (this.logs.hasOwnProperty(key)) {
-                    //~ record_log = this.logs[key];
-                    //~ details = record_log['details'];
-                    //~ info = this.item.get_rec_info(undefined, record_log['record'])
-                    //~ info[consts.REC_STATUS] = consts.RECORD_UNCHANGED
-                    //~ info[consts.REC_CHANGE_ID] = null;
-                    //~ for (var detail_id in details) {
-                        //~ if (details.hasOwnProperty(detail_id)) {
-                            //~ detail = details[detail_id];
-                            //~ detail_item = this.item.item_by_ID(parseInt(detail_id, 10));
-                            //~ detail_item.change_log.logs = detail['logs'];
-                            //~ detail_item.change_log.clear();
-                        //~ }
-                    //~ }
-                //~ }
-            //~ }
-            var i,
-                len = this.item.details.length;
-            this.records = [];
-            this.logs = {};
-            for (i = 0; i < len; i++) {
-                this.item.details[i].change_log.clear();
-            }
-        },
+        }
     };
 
 
@@ -2160,7 +2155,9 @@
             if (this.master) {
                 if (!this.disabled && this.master.record_count() > 0) {
                     params.__owner_id = this.master.ID;
-                    params.__owner_rec_id = this.master.id.get_value();
+                    if (this.master.id) {
+                        params.__owner_rec_id = this.master.id.get_value();
+                    }
                     if (this.master.is_new()) {
                         records = [];
                     } else {
@@ -2648,12 +2645,15 @@
                         }
                         result = true
                     }
+                    else {
+                        throw this.item_name + ' post method: record is not valid';
+                    }
                 } else {
                     this.cancel();
                     //                this.set_state(consts.STATE_BROWSE);
                 }
             } else {
-                throw this.item_name + ': dataset is not in edit or insert mode';
+                throw this.item_name + ' post method: dataset is not in edit or insert mode';
             }
             return result
         },
@@ -2744,14 +2744,11 @@
                 len,
                 field,
                 result;
-            if (!changes) {
-                changes = this.change_log.get_changes();
+            if (changes === undefined) {
+                changes = {}
+                this.change_log.get_changes(changes);
             }
-            result = this.copy({
-                filters: false,
-                details: true,
-                handlers: false
-            });
+            result = this.copy({filters: false, details: true, handlers: false});
             result.expanded = false;
             result.is_delta = true;
             len = result.details.length;
@@ -2762,25 +2759,10 @@
             result.details_active = true;
             result.change_log.set_changes(changes);
             result._records = result.change_log.records;
-            //~ len = result.fields.length;
-            //~ for (i = 0; i < len; i++) {
-                //~ if (this[field.field_name] !== undefined) {
-                    //~ delete this[field.field_name];
-                //~ }
-            //~ }
-            //~ result.fields = [];
-            //~ len = result.change_log.fields.length;
-            //~ for (i = 0; i < len; i++) {
-                //~ field = result._field_by_name(field_name);
-                //~ result.fields.push(field);
-                //~ if (result[field.field_name] === undefined)  {
-                    //~ result[field.field_name] = field;
-                //~ }
-            //~ }
             result.bind_fields(result.change_log.expanded)
-            result.set_state(common.STATE_BROWSE);
-            result._active = true;
+            result.set_state(consts.STATE_BROWSE);
             result._cur_row = null;
+            result._active = true;
             result.first();
             return result;
         },
@@ -3326,13 +3308,7 @@
                 if (this.get_modified()) {
                     if (this.is_changing()) {
                         if (this.post()) {
-                            try {
-                                this.apply(params)
-                            } catch (e) {
-                                this.edit();
-                                this.warning(e + '');
-                                return
-                            }
+                            this.apply(params)
                             this.close_edit_form();
                             return true;
                         }
@@ -3426,7 +3402,7 @@
 
         close_view_form: function() {
             this.close_form('view_form', function() {
-                this.close();
+//                this.close();
                 $(window).off("keyup" + this.item_name);
             });
         },
@@ -3467,25 +3443,17 @@
             this.show_edit_form('edit_form', {
                 container: container,
                 beforeShow: function() {
-                    if (this.task.on_before_show_edit_form) {
-                        this.task.on_before_show_edit_form.call(this, this);
+                    if (self.task.on_before_show_edit_form) {
+                        self.task.on_before_show_edit_form.call(self, self);
                     }
-                    if (this.owner.on_before_show_edit_form && !this.master) {
-                        this.owner.on_before_show_edit_form.call(this, this);
+                    if (self.owner.on_before_show_edit_form && !self.master) {
+                        self.owner.on_before_show_edit_form.call(self, self);
                     }
-                    if (this.on_before_show_edit_form) {
-                        this.on_before_show_edit_form.call(this, this);
+                    if (self.on_before_show_edit_form) {
+                        self.on_before_show_edit_form.call(self, self);
                     }
                 },
                 onShown: function() {
-                    //~ if (this.details_active) {
-                        //~ this.eachDetail(function(d) {
-                            //~ d.update_controls();
-                        //~ });
-                    //~ }
-                    //~ else {
-                        //~ this.open_details();
-                    //~ }
                     if (self.task.on_after_show_edit_form) {
                         self.task.on_after_show_edit_form.call(self, self);
                     }
@@ -3549,16 +3517,44 @@
             this.show_edit_form('filter_form', {
                 container: container,
                 beforeShow: function() {
-                    if (this.task.on_before_show_filter_form) {
-                        this.task.on_before_show_filter_form.call(this, this);
+                    if (self.task.on_before_show_filter_form) {
+                        self.task.on_before_show_filter_form.call(self, self);
                     }
-                    if (this.owner.on_before_show_filter_form) {
-                        this.owner.on_before_show_filter_form.call(this, this);
+                    if (self.owner.on_before_show_filter_form) {
+                        self.owner.on_before_show_filter_form.call(self, self);
                     }
-                    if (this.on_before_show_filter_form) {
-                        this.on_before_show_filter_form.call(this, this);
+                    if (self.on_before_show_filter_form) {
+                        self.on_before_show_filter_form.call(self, self);
                     }
-                }
+                },
+                onShown: function() {
+                    if (self.task.on_after_show_filter_form) {
+                        self.task.on_after_show_filter_form.call(self, self);
+                    }
+                    if (self.owner.on_after_show_filter_form && !self.master) {
+                        self.owner.on_after_show_filter_form.call(self, self);
+                    }
+                    if (self.on_after_show_filter_form) {
+                        self.on_after_show_filter_form.call(self, self);
+                    }
+                },
+                onHide: function(e) {
+                    var mess,
+                        canClose;
+                    if (self.on_filter_form_close_query) {
+                        canClose = self.on_filter_form_close_query.call(self, self);
+                    }
+                    if (canClose === undefined && self.owner.on_filter_form_close_query) {
+                        canClose = self.owner.on_filter_form_close_query.call(self, self);
+                    }
+                    if (canClose === undefined && self.task.on_filter_form_close_query) {
+                        canClose = self.task.on_filter_form_close_query.call(self, self);
+                    }
+                    if (canClose === false) {
+                        e.preventDefault();
+                    }
+                },
+
             })
         },
 
@@ -3655,6 +3651,7 @@
             default_options = {
                 fields: [],
                 col_count: 1,
+                label_on_top: false,
                 row_count: undefined,
                 tabindex: undefined
             };
@@ -3694,7 +3691,9 @@
             container.empty();
 
             form = $("<form></form>").appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
-            form.addClass("form-horizontal");
+            if (!this.options.label_on_top) {
+                form.addClass("form-horizontal");
+            }
             len = fields.length;
             for (col = 0; col < this.options.col_count; col++) {
                 cols.push($("<div></div>").addClass("span" + 12 / this.options.col_count).appendTo(form));
@@ -3708,7 +3707,8 @@
                 this.options.row_count = Math.ceil(len / this.options.col_count);
             }
             for (i = 0; i < len; i++) {
-                new DBEntry(fields[i], i + tabindex, cols[Math.floor(i / this.options.row_count)]);
+                new DBEntry(fields[i], i + tabindex, cols[Math.floor(i / this.options.row_count)],
+                    this.options.label_on_top);
             }
         },
 
@@ -3723,6 +3723,7 @@
             default_options = {
                     filters: [],
                     col_count: 1,
+                    label_on_top: false,
                     tabindex: undefined
                 },
 
@@ -3742,7 +3743,9 @@
             }
             container.empty();
             form = $("<form></form>").appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
-            form.addClass("form-horizontal");
+            if (!this.options.label_on_top) {
+                form.addClass("form-horizontal");
+            }
             len = filters.length;
             for (col = 0; col < this.options.col_count; col++) {
                 cols.push($("<div></div>").addClass("span" + 12 / this.options.col_count).appendTo(form));
@@ -3753,7 +3756,8 @@
                 this.filter_form.tabindex += len;
             }
             for (i = 0; i < len; i++) {
-                new DBEntry(filters[i].field, i + 1, cols[Math.floor(i % this.options.col_count)], filters[i].filter_caption);
+                new DBEntry(filters[i].field, i + 1, cols[Math.floor(i % this.options.col_count)],
+                    this.options.label_on_top, filters[i].filter_caption);
             }
         },
 
@@ -4126,6 +4130,7 @@
             default_options = {
                     params: [],
                     col_count: 1,
+                    label_on_top: false,
                     tabindex: undefined
                 },
 
@@ -4155,7 +4160,9 @@
             }
             container.empty();
             form = $("<form></form>").appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
-            form.addClass("form-horizontal");
+            if (!this.options.label_on_top) {
+                form.addClass("form-horizontal");
+            }
             len = params.length;
             for (col = 0; col < this.options.col_count; col++) {
                 cols.push($("<div></div>").addClass("span" + 12 / this.options.col_count).appendTo(form));
@@ -4166,7 +4173,7 @@
                 this.params_form.tabindex += len;
             }
             for (i = 0; i < len; i++) {
-                new DBEntry(params[i], i + tabindex, cols[Math.floor(i % this.options.col_count)])
+                new DBEntry(params[i], i + tabindex, cols[Math.floor(i % this.options.col_count)], this.options.label_on_top)
             }
         }
     });
@@ -4420,6 +4427,9 @@
                 result = '';
                 error = this.field_caption + ": " + this.type_error();
                 this.do_on_error(error);
+            }
+            if (typeof result !== 'string') {
+                result = ''
             }
             return result;
         },
@@ -4854,7 +4864,8 @@
         },
 
         system_field: function() {
-            if (this.field_name === 'id' || this.field_name === 'owner_id') {
+            if (this.field_name === 'id' || this.field_name === 'deleted'
+                || this.field_name === 'owner_id' || this.field_name === 'owner_rec_id') {
                 return true;
             }
         },
@@ -5958,20 +5969,26 @@
                 $td,
                 $row = this.itemRow();
             if ($row && !this.editing && this.selectedField && this.item.record_count()) {
-                try {
-                    if (!this.item.is_changing()) {
-                        this.item.edit();
-                    }
-                } catch (e) {
-                    return
+                if (!this.item.is_changing()) {
+                    this.item.edit();
                 }
+                //~ try {
+                    //~ if (!this.item.is_changing()) {
+                        //~ this.item.edit();
+                    //~ }
+                //~ } catch (e) {
+                    //~ return
+                //~ }
                 this.editMode = true;
                 this.editor = new DBGridEntry(this, this.selectedField);
                 this.editor.$controlGroup.find('.controls, .input-prepend, .input-append, input').css('margin-bottom', 0);
                 this.editor.$controlGroup.css('margin-bottom', 0);
+
                 $div = $row.find('div.' + this.editor.field.field_name);
                 $div.hide();
                 $td = $row.find('td.' + this.editor.field.field_name);
+
+                this.editor.$input.css('font-size', $td.css('font-size'));
 
                 width = $td.outerWidth();
                 this.editor.paddingLeft = $td.css("padding-left");
@@ -6298,7 +6315,7 @@
                 } else if (this.options.dblclick_edit) {
                     this.item.edit_record();
                 }
-            } else if (!this.editMode && !mouseClicked) {
+            } else if (!this.editMode && !mouseClicked && this.options.editable) {
                 this.showEditor();
             }
         },
@@ -6946,7 +6963,7 @@
     DBAbstractEntry.prototype = {
         constructor: DBAbstractEntry,
 
-        createEntry: function(field, tabIndex, container, label) {
+        createEntry: function(field, tabIndex, container) {
             var self = this,
                 align,
                 height,
@@ -6960,7 +6977,6 @@
             if (!field) {
                 return;
             }
-            this.$controlGroup = $('<div class="control-group"></div>');
             if (this.label) {
                 $label = $('<label class="control-label"></label>').attr("for", field.field_name).text(this.label);
             }
@@ -6996,6 +7012,7 @@
                 }
                 self.mouseIsDown = false;
             });
+
             this.$input.keydown($.proxy(this.keydown, this));
             this.$input.keyup($.proxy(this.keyup, this));
             this.$input.keypress($.proxy(this.keypress, this));
@@ -7060,6 +7077,12 @@
                 }
                 align = field.data_type === consts.BOOLEAN ? 'center' : alignValue[field.alignment];
                 this.$input.css("text-align", align);
+            }
+            if (this.label_on_top) {
+                this.$controlGroup = $('<div class="input-container"></div>');
+            }
+            else {
+                this.$controlGroup = $('<div class="control-group input-container"></div>');
             }
             if (this.label) {
                 this.$controlGroup.append($label);
@@ -7282,14 +7305,18 @@
 
         updateState: function(value) {
             if (value) {
-                this.$controlGroup.removeClass('error');
+                if (this.$controlGroup) {
+                    this.$controlGroup.removeClass('error');
+                }
                 this.errorValue = undefined;
                 this.error = undefined;
                 this.$input.removeAttr("title");
                 this.hideError();
             } else {
                 this.showError();
-                this.$controlGroup.addClass('error');
+                if (this.$controlGroup) {
+                    this.$controlGroup.addClass('error');
+                }
                 this.$input.attr("title", this.error);
                 this.$input.tooltip({
                         'placement': 'bottom'
@@ -7343,17 +7370,18 @@
     DBEntry.prototype = new DBAbstractEntry();
     DBEntry.prototype.constructor = DBEntry;
 
-    function DBEntry(field, index, container, label) {
+    function DBEntry(field, index, container, label_on_top, label) {
         DBAbstractEntry.call(this, field);
         if (this.field.owner && this.field.owner.edit_form &&
             this.field.owner.edit_form.hasClass("modal")) {
             this.$edit_form = this.field.owner.edit_form;
         }
         this.label = label;
+        this.label_on_top = label_on_top
         if (!this.label) {
             this.label = this.field.field_caption;
         }
-        this.createEntry(field, index, container, label);
+        this.createEntry(field, index, container);
     }
 
     $.extend(DBEntry.prototype, {

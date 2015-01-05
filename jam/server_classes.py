@@ -695,6 +695,17 @@ class ServerReport(Report, ServerAbstractItem):
                 self.zip_file.close()
 #            os.remove(self.content_name)
 
+    def cur_to_str(self, value):
+        return common.cur_to_str(value)
+
+    def date_to_str(self, value):
+        return common.date_to_str(value)
+
+    def datetime_to_str(self, value):
+        return common.datetime_to_str(value)
+
+
+
 delta_result = None
 
 def execute_sql(db_type, db_database, db_user, db_password,
@@ -704,7 +715,7 @@ def execute_sql(db_type, db_database, db_user, db_password,
     def execute_command(cursor, command, params=None):
         try:
             #~ print ''
-            #~ print command#, params
+            #~ print command, params
 
             result = None
             if params:
@@ -778,7 +789,7 @@ def execute_sql(db_type, db_database, db_user, db_password,
                         raise Exception, 'server_classes execute_list: invalid argument - command: %s' % command
             return res
 
-    def execute(connection, exception_type):
+    def execute(connection):
         global delta_result
         result = None
         error = None
@@ -805,7 +816,6 @@ def execute_sql(db_type, db_database, db_user, db_password,
             if delta_result:
                 result = delta_result
         except Exception, x:
-#        except exception_type, x:
             try:
                 if connection:
                     connection.rollback()
@@ -823,23 +833,29 @@ def execute_sql(db_type, db_database, db_user, db_password,
     if not db_host:
         db_host = 'localhost'
     if db_type == common.POSTGRESQL:
-        import psycopg2
         if connection is None:
+            import psycopg2
             connection = psycopg2.connect(database=db_database, user=db_user, password=db_password, host=db_host, port=db_port)
-        return execute(connection, psycopg2.DatabaseError)
+        return execute(connection)
+    elif db_type == common.MYSQL:
+        if connection is None:
+            import MySQLdb
+            connection = MySQLdb.connect(host=db_host, user=db_user, passwd=db_password, db=db_database)
+            cursor = connection.cursor()
+            cursor.execute("SET SESSION SQL_MODE=ANSI_QUOTES;")
+        return execute(connection)
     elif db_type == common.FIREBIRD:
-        import fdb
         if connection is None:
+            import fdb
             connection = fdb.connect(host=db_host, database=db_database, user=db_user, password=db_password, charset=db_encoding)
-        return execute(connection, fdb.DatabaseError)
+        return execute(connection)
     elif db_type == common.SQLITE:
-        import sqlite3
         if connection is None:
+            import sqlite3
             connection = sqlite3.connect(db_database)
             cursor = connection.cursor()
             cursor.execute("PRAGMA foreign_keys = ON")
-
-        return execute(connection, sqlite3.Error)
+        return execute(connection)
 
 def process_request(name, queue, db_type, db_database, db_user, db_password, db_host, db_port, db_encoding):
     con = None
@@ -937,16 +953,16 @@ class AbstractServerTask(Task, ServerAbstractItem):
         if not error:
             return result_set
 
-    def execute_select(self, command):
-        result, error = self.execute(command, result_set='ALL', commit=False)
+    def execute_select(self, command, params=None):
+        result, error = self.execute(command, params, result_set='ALL', commit=False)
         if error:
             raise Exception, error
         else:
             return result
 
 
-    def execute_select_one(self, command):
-        result, error = self.execute(command, result_set='ONE', commit=False)
+    def execute_select_one(self, command, params=None):
+        result, error = self.execute(command, params, result_set='ONE', commit=False)
         if error:
             raise Exception, error
         else:
@@ -1146,14 +1162,19 @@ class ServerDetail(ServerAbstractItem, Detail, ServerDataset):
         return {'success': True, 'id': None, 'message': '', 'detail_ids': None}
 
     def where_clause(self, query, db_type):
-        result = super(ServerDetail, self).where_clause(query, db_type)
-        clause = '"%s"."OWNER_ID"=%s AND "%s"."OWNER_REC_ID"=%s' % \
-        (self.table_name.upper(), str(query['__owner_id']), self.table_name.upper(), str(query['__owner_rec_id']))
-        if result:
-            result += ' AND ' + clause
+        owner_id = query['__owner_id']
+        owner_rec_id = query['__owner_rec_id']
+        if type(owner_id) == int and type(owner_rec_id) == int:
+            result = super(ServerDetail, self).where_clause(query, db_type)
+            clause = '"%s"."OWNER_ID"=%s AND "%s"."OWNER_REC_ID"=%s' % \
+            (self.table_name.upper(), str(owner_id), self.table_name.upper(), str(owner_rec_id))
+            if result:
+                result += ' AND ' + clause
+            else:
+                result = ' WHERE ' + clause
+            return self.set_case(db_type, result)
         else:
-            result = ' WHERE ' + clause
-        return self.set_case(db_type, result)
+            raise Exception, 'Invalid request parameter'
 
     def get_filters(self):
         return self.prototype.filters

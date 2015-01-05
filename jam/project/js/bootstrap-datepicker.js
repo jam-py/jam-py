@@ -31,6 +31,7 @@
                                 click: $.proxy(this.click, this)//,
                                 //mousedown: $.proxy(this.mousedown, this)
                             });
+        this.picker.css('background-color', $('body').css('background-color'));
         this.isInput = this.element.is('input');
 //        this.component = this.element.is('.date') ? this.element.find('.add-on') : false;
         this.component = false;

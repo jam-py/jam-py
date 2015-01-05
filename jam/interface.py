@@ -611,12 +611,7 @@ class ItemInterface(object):
             if self.modified:
                 if self.is_changing():
                     if self.post():
-                        try:
-                            self.apply()
-                        except Exception, e:
-                            self.edit();
-                            self.warning(e)
-                            return
+                        self.apply()
                         self.close_edit_form()
                         return True
             else:
@@ -2213,6 +2208,7 @@ def select_language():
     for lang in LANGUAGE:
         combobox.append_text(lang)
     combobox.set_active(0)
+    dialog.grab_focus()
     table.attach(combobox, 1, 2, 0, 1)
 
     dialog.show_all()

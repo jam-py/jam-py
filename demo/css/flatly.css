@@ -1,0 +1,27 @@
+.input-button {
+    padding: 3px 4px;
+}
+
+.table tbody tr.selected > td {
+    background-color: #e5e5e5;
+}
+
+.table tbody tr.selected-focused > td {
+    background-color: #cef5ed;
+}
+
+.table tbody tr td.selected {
+    background-color: #e5e5e5;
+}
+
+.table tbody tr td.selected-focused {
+    background-color: #cef5ed;
+}
+
+.table tbody td.field-selected {
+    background-color: #cacaca;
+}
+
+.table tbody td.field-selected-focused {
+    background-color: #82f5dd;
+}

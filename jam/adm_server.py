@@ -646,10 +646,15 @@ def server_check_connection(task, db_type, database, user,
             if db_type == common.POSTGRESQL:
                 import psycopg2
                 connection = psycopg2.connect(database=database, user=user, password=password, host=host, port=port)
+            if db_type == common.MYSQL:
+                import MySQLdb
+                connection = MySQLdb.connect(db=database, user=user, passwd=password, host=host)
             elif db_type == common.FIREBIRD:
                 import fdb
                 connection = fdb.connect(host=host, database=database, user=user, password=password, charset=encoding)
             elif db_type == common.SQLITE:
+                if database == '':
+                    database = None
                 import sqlite3
                 connection = sqlite3.connect(database)
             if connection:
@@ -1070,9 +1075,9 @@ def server_find_in_task(task, task_id, search_text, case_sencitive, whole_words)
         search = header + '\n' + search
         return search + '\n'
 
-    items = task.sys_items.copy()
+    items = task.sys_items.copy(handlers=False)
     items.filters.task_id.value = task_id
-    items.open()
+    items.open(fields=['id', 'f_client_module', 'f_web_client_module', 'f_server_module'])
     return find_in_type('Search result in client:', common.CLIENT_MODULE) + \
         find_in_type('Search result in webclient:', common.WEB_CLIENT_MODULE) + \
         find_in_type('Search result in server:', common.SERVER_MODULE)
@@ -1176,8 +1181,9 @@ def server_update_events_code(task, task_id):
     def process_events(code, ID, script):
         if code:
             script += '\nfunction Events%s() { // %s \n\n' % (ID, get_item_module_name(ID))
-            for line in code.splitlines():
-                script += '\t%s\n' % line
+            code = '\t' + code.replace('\n', '\n\t')
+            code = code.replace('    ', '\t')
+            script += code
             events = find_events(code)
             if len(events):
                 script += '\n'
@@ -1187,12 +1193,16 @@ def server_update_events_code(task, task_id):
             script += 'window.task_events.events%s = new Events%s();\n' % (ID, ID)
         return script
 
-    it = sys_items.copy()
+    it = sys_items.copy(handlers=False)
     it.filters.task_id.value = task_id
-    it.open()
+    it.open(fields=['id', 'f_name', 'f_web_client_module'])
     script = '(function(window, undefined) {\n"use strict";\nvar $ = window.$;\n\nfunction TaskEvents() {};\n\nwindow.task_events = new TaskEvents();\n'
     for it in it:
-        script = process_events(it.f_web_client_module.value, it.id.value, script)
+        code = it.f_web_client_module.value
+        if code:
+            code = code.strip()
+            if code:
+                script = process_events(code, it.id.value, script)
     script += '\n})( window )'
     with open(os.path.join(os.getcwd().decode('utf-8'), 'js','events.js'), 'w') as f:
         f.write(script)

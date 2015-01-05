@@ -5,23 +5,27 @@
     <title></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/img/j.png" type="image/png"></link>
+<!--
     <link href="/css/bootstrap.css" rel="stylesheet">
+-->
+    <link href="/css/bootstrap_flatly.css" rel="stylesheet">
     <link href="/css/bootstrap-responsive.css" rel="stylesheet">
     <link href="/css/bootstrap-modal.css" rel="stylesheet">
     <link href="/css/datepicker.css" rel="stylesheet">
     <link href="/css/jam.css" rel="stylesheet">
+    <link href="/css/flatly.css" rel="stylesheet">
   </head>
 
   <body>
     <iframe src="dummy.html" name="dummy" style="display: none"></iframe>
     <div class="container">
         <div class="row-fluid">
-            <div class="span2">
+            <div class="span6">
                 <h3 id="title" class="muted"></h3>
             </div>
-            <div class="span10" style="margin-top: 20px; text-align:right;">
+            <div class="span6" style="margin-top: 20px; text-align:right;">
                 <span id="user-info"></span>
-                <a href="#" id="log-out" style="display: none">Log out</a>
+                <a href="#" id="log-out" style="display: none">&nbsp;&nbsp;&nbsp;Log out</a>
             </div>
         </div>
         <div id="taskmenu" style="display: none">
@@ -147,6 +151,7 @@
                     <option>pdf</option>
                     <option>ods</option>
                     <option>xls</option>
+                    <option>html</option>
                 </select>
                 <button type="button" id="cancel-btn" class="btn item-btn pull-right"><i class="icon-remove"></i> Close</button>
                 <button type="button" id="ok-btn" class="btn item-btn pull-right"><i class="icon-print"></i> Print</button>

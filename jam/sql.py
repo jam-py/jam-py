@@ -27,6 +27,23 @@ class SQL(object):
                 return 'INTEGER'
             elif data_type == common.BLOB:
                 return 'BYTEA'
+        elif db_type == common.MYSQL:
+            if data_type == common.INTEGER:
+                return 'INT'
+            elif data_type == common.TEXT:
+                return 'VARCHAR'
+            elif data_type == common.FLOAT:
+                return 'DOUBLE'
+            elif data_type == common.CURRENCY:
+                return 'DOUBLE'
+            elif data_type == common.DATE:
+                return 'DATE'
+            elif data_type == common.DATETIME:
+                return 'DATETIME'
+            elif data_type == common.BOOLEAN:
+                return 'INT'
+            elif data_type == common.BLOB:
+                return 'BLOB'
         elif db_type == common.FIREBIRD:
             if data_type == common.INTEGER:
                 return 'INTEGER'
@@ -65,18 +82,28 @@ class SQL(object):
     def set_case(self, db_type, string):
         if db_type == common.POSTGRESQL:
             return string.lower()
+        elif db_type == common.MYSQL:
+            return string.upper()
         elif db_type == common.FIREBIRD:
             return string.upper()
         elif db_type == common.SQLITE:
             return string.upper()
 
-    def val_literal(self, db_type):
+    def param_literal(self, db_type):
         if db_type == common.POSTGRESQL:
+            return '%s'
+        elif db_type == common.MYSQL:
             return '%s'
         elif db_type == common.FIREBIRD:
             return '?'
         elif db_type == common.SQLITE:
             return '?'
+
+    def quotes(self, db_type):
+        if db_type == common.MYSQL:
+            return '`'
+        else:
+            return '"'
 
     def get_gen_name(self, db_type=None):
         if db_type == common.POSTGRESQL:
@@ -114,24 +141,25 @@ class SQL(object):
         for field in self.fields:
             if not (field.calculated or field.master_field):
                 fields += '"%s", ' % field.field_name
-                values +=  '%s, ' % self.val_literal(db_type)
+                values +=  '%s, ' % self.param_literal(db_type)
                 row.append(field.raw_value)
         fields = fields[:-2]
         values = values[:-2]
-        sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % (self.table_name, fields, values)
-        return self.set_case(db_type, sql), row
+        sql = self.set_case(db_type, 'INSERT INTO "%s" (%s) VALUES ' % (self.table_name, fields)) + '(' + values + ')'
+        return sql, row
 
     def update_sql(self, db_type):
         row = []
-        sql = 'UPDATE "%s" SET ' % self.table_name
+        command = self.set_case(db_type, 'UPDATE "%s" SET ' % self.table_name)
+        fields = ''
         for field in self.fields:
             if not (field.calculated or field.master_field):
-                sql += '"%s"=%s, ' % (field.field_name, self.val_literal(db_type))
+                fields += '"%s"=%s, ' % (self.set_case(db_type, field.field_name), self.param_literal(db_type))
                 value = field.get_raw_value()
                 if field.field_name.lower() == 'deleted':
                     value = 0
                 row.append(value)
-        sql = sql[:-2]
+        fields = fields[:-2]
         id_field_name = 'id'
         if self.id_field_name:
             id_field_name = self.id_field_name
@@ -139,8 +167,8 @@ class SQL(object):
         else:
             id_field_name = 'id'
             id_value = self.id.value
-        sql += ' WHERE %s = %s' % (id_field_name, id_value)
-        return self.set_case(db_type, sql), row
+        where = self.set_case(db_type, ' WHERE %s = %s' % (id_field_name, id_value))
+        return command + fields + where, row
 
     def delete_sql(self, db_type):
         soft_delete = self.soft_delete
@@ -261,7 +289,7 @@ class SQL(object):
                     result = '(' + result
                     if db_type == common.SQLITE:
                         result += ' OUTER LEFT JOIN "%s" AS "%s"' % (field.lookup_item.table_name, self.ref_table_alias(field))
-                    elif db_type in [common.FIREBIRD, common.POSTGRESQL]:
+                    elif db_type in [common.POSTGRESQL, common.MYSQL, common.FIREBIRD]:
                         result += ' LEFT OUTER JOIN  "%s" AS "%s"' % (field.lookup_item.table_name, self.ref_table_alias(field))
                     result += ' ON "%s"."%s"' % (self.table_name, field.field_name)
                     result += ' = "%s"."%s")'  % (self.ref_table_alias(field), id_field_name)
@@ -269,7 +297,7 @@ class SQL(object):
 
     def where_clause(self, query, db_type=None):
 
-        def get_sign(filter_type, value=None):
+        def get_filter_sign(filter_type, value=None):
             result = common.FILTER_SIGN[filter_type]
             if filter_type == common.FILTER_ISNULL:
                 if value:
@@ -294,11 +322,14 @@ class SQL(object):
                     result = value.strftime('%Y-%m-%d %H:%M')
                 result = "cast('" + result + "' AS TIMESTAMP)"
                 return result
-            elif data_type == common.INTEGER:# and not field.lookup_item:
+            elif data_type == common.INTEGER:
                 if type(value) == int or value.isdigit():
                     return str(value)
                 else:
-                    return value
+                    if filter_type and filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
+                        return value
+                    else:
+                        return "'" + value + "'"
             elif data_type == common.BOOLEAN:
                 if value:
                     return '1'
@@ -309,6 +340,9 @@ class SQL(object):
                     return value
                 else:
                     return "'" + value + "'"
+            elif data_type in (common.FLOAT, common.CURRENCY):
+                value = float(value)
+                return str(value)
             else:
                 return value
 
@@ -322,69 +356,67 @@ class SQL(object):
                 result += ch
             return result
 
-        def get_condition(field_name, filter_type, value, cond_field_name=None):
-            esc_char = " "
+        def get_condition(field_name, filter_type, value):
             field = self._field_by_name(field_name)
-            if not cond_field_name:
-                cond_field_name = '"%s"."%s"' % (self.table_name, field_name)
+            esc_char = ' '
+            cond_field_name = self.set_case(db_type, '"%s"."%s"' % (self.table_name, field_name))
             if type(value) == str:
                 value = value.decode('utf-8')
-            filter_sign = get_sign(filter_type, value)
+            filter_sign = get_filter_sign(filter_type, value)
             cond_string = '%s %s %s'
-            if filter_type == common.FILTER_SEARCH:
-                if field.lookup_item:
-                    cond_field_name = '"%s"."%s"' % (self.ref_table_alias(field), field.lookup_field)
-                values = value.split()
-                parts = []
-                for val in values:
-                    parts.append(get_condition(field_name, common.FILTER_CONTAINS, escape_search(val, esc_char), cond_field_name) + " ESCAPE '" + esc_char + "'")
-                return (' AND '.join(parts))
-            elif filter_type in (common.FILTER_IN, common.FILTER_NOT_IN):
+            if filter_type in (common.FILTER_IN, common.FILTER_NOT_IN):
                 lst = '('
                 for it in value:
                     lst += convert_field_value(field, it) + ', '
-                lst = lst[:-2] + ')'
-                value = lst
+                value = lst[:-2] + ')'
             elif filter_type == common.FILTER_ISNULL:
                 value = ''
             else:
                 value = convert_field_value(field, value, filter_type)
                 if filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
+                    value = escape_search(value, esc_char)
+                    if field.lookup_item:
+                        cond_field_name = self.set_case(db_type, '"%s"."%s"' % (self.ref_table_alias(field), field.lookup_field))
                     if filter_type == common.FILTER_CONTAINS:
                         value = '%' + value + '%'
                     elif filter_type == common.FILTER_STARTWITH:
                         value = value + '%'
                     elif filter_type == common.FILTER_ENDWITH:
                         value = '%' + value
-                    if db_type in [common.SQLITE, common.POSTGRESQL]:
-                        cond_string = '%s %s %s'
-                        value = " '" + value + "'"
-                    elif db_type == common.FIREBIRD:
+                    if db_type == common.FIREBIRD:
                         cond_string = 'UPPER(%s) %s %s'
-                        value = " '" + value.upper() + "'"
-            cond_field_name = self.set_case(db_type, cond_field_name)
-            result = cond_string % (cond_field_name, filter_sign, value)
+                        value = value.upper()
+                    value = "'" + value + "' ESCAPE '" + esc_char + "'"
+            sql = cond_string % (cond_field_name, filter_sign, value)
             if field.data_type == common.BOOLEAN and value == '0':
                 if filter_sign == '=':
-                    result = '(' + result + ' OR %s IS NULL)' % cond_field_name
+                    sql = '(' + sql + ' OR %s IS NULL)' % cond_field_name
                 elif filter_sign == '<>':
-                    result = '(' + result + ' AND %s IS NOT NULL)' % cond_field_name
+                    sql = '(' + sql + ' AND %s IS NOT NULL)' % cond_field_name
                 else:
                     raise Exception, 'sql.py where_clause method: boolen field condition may give ambiguious results.'
-            return result
+            return sql
 
         if db_type is None:
             db_type = self.task.db_type
-        filters = query['__filters']
         result = ''
         conditions = []
+        filters = query['__filters']
+        deleted_in_filters = False
         if filters:
             for (field_name, filter_type, value) in filters:
-                conditions.append(get_condition(field_name, filter_type, value))
-        if self._field_by_name('deleted'):
-            conditions.append(self.set_case(db_type, '"%s"."%s"=0' % (self.table_name, 'deleted')))
-        for cond in conditions:
-            result += cond + ' AND '
+                if field_name == 'deleted':
+                    deleted_in_filters = True
+                if filter_type == common.FILTER_SEARCH:
+                    values = value.split()
+                    for val in values:
+                        conditions.append(get_condition(field_name, common.FILTER_CONTAINS, val))
+                else:
+                    conditions.append(get_condition(field_name, filter_type, value))
+        if not deleted_in_filters:
+            conditions.append(self.set_case(db_type, '"%s"."deleted"=0' % self.table_name))
+        for sql in conditions:
+            result += sql + ' AND '
         result = result[:-5]
         if result:
             result = ' WHERE ' + result
@@ -419,7 +451,7 @@ class SQL(object):
             db_type = self.task.db_type
         if (db_type == common.SQLITE) and query['__limit']:
             result = ' LIMIT %d, %d' % (query['__loaded'], query['__limit'])
-        elif (db_type == common.POSTGRESQL) and query['__limit']:
+        elif (db_type == common.POSTGRESQL or db_type == common.MYSQL) and query['__limit']:
             result = ' LIMIT %d OFFSET %d' % (query['__limit'], query['__loaded'])
         else:
             result = ''
@@ -435,6 +467,7 @@ class SQL(object):
         return self.set_case(db_type, result)
 
     def get_select_statement(self, query, db_type=None):
+
         if db_type is None:
             db_type = self.task.db_type
         field_list = query['__fields']
@@ -442,7 +475,7 @@ class SQL(object):
             fields = [self._field_by_name(field_name) for field_name in field_list]
         else:
             fields = self._fields
-        return 'SELECT ' + \
+        sql = 'SELECT ' + \
             self.limit_clause_start(query, db_type) + \
             self.fields_clause(query, fields, db_type) + \
             ' FROM ' + \
@@ -450,6 +483,7 @@ class SQL(object):
             self.where_clause(query, db_type) + \
             self.order_clause(query, db_type) + \
             self.limit_clause_end(query, db_type)
+        return sql
 
     def get_record_count_query(self, query, db_type=None):
         if db_type is None:
@@ -459,8 +493,9 @@ class SQL(object):
         if filters:
             for (field_name, filter_type, value) in filters:
                 fields.append(self._field_by_name(field_name))
-        return 'SELECT COUNT(*) FROM %s %s' % (self.from_clause(query, fields, db_type),
+        sql = 'SELECT COUNT(*) FROM %s %s' % (self.from_clause(query, fields, db_type),
             self.where_clause(query, db_type));
+        return sql
 
     def create_table_sql(self, db_type, table_name, fields=None, foreign_fields=None):
         if not fields:
@@ -492,6 +527,18 @@ class SQL(object):
             sql += ')\n'
             result.append(sql)
             result.append('ALTER SEQUENCE "%s" OWNED BY "%s"."ID"' % (seq_name, table_name))
+        elif db_type == common.MYSQL:
+            sql = 'CREATE TABLE `%s`\n(\n' % table_name
+            for field in fields:
+                sql += '`%s` %s' % (field['field_name'], self.data_type_name(db_type, field['data_type']))
+                if field['size'] != 0 and field['data_type'] == common.TEXT:
+                    sql += '(%d)' % field['size']
+                if field['field_name'].upper() == u'ID':
+                    sql += ' NOT NULL AUTO_INCREMENT'
+                sql +=  ',\n'
+            sql += "PRIMARY KEY(`ID`)"
+            sql += ')\n'
+            result.append(sql)
         elif db_type == common.FIREBIRD:
             sql = 'CREATE TABLE "%s"\n(\n' % table_name
             for field in fields:

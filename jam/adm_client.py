@@ -1218,12 +1218,18 @@ task.sys_roles.on_before_show_view_form = sys_roles_show_view_form
 
 def tasks_field_changed(field, lookup_item):
     if field == field.owner.f_db_type:
-#        field.owner.f_alias.read_only = field.value == SQLITE
+        if field.owner.is_changing():
+            field.owner.f_alias.value = None
+            field.owner.f_login.value = None
+            field.owner.f_password.value = None
+            field.owner.f_encoding.value = None
+            field.owner.f_host.value = None
+            field.owner.f_port.value = None
         field.owner.f_login.read_only = field.value == SQLITE
         field.owner.f_password.read_only = field.value == SQLITE
-        field.owner.f_encoding.read_only = field.value in (SQLITE, POSTGRESQL)
+        field.owner.f_encoding.read_only = field.value in (SQLITE, POSTGRESQL, MYSQL)
         field.owner.f_host.read_only = field.value == SQLITE
-        field.owner.f_port.read_only = field.value in (SQLITE, FIREBIRD)
+        field.owner.f_port.read_only = field.value in (SQLITE, FIREBIRD, MYSQL)
 task.sys_tasks.on_field_changed = tasks_field_changed
 
 def tasks_before_post(item):

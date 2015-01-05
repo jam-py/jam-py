@@ -608,36 +608,39 @@ class ChangeLog(object):
             return self.item.log_changes;
 
     def find_record_log(self):
+        result = None
         if self.log_changes():
             if self.item.master:
                 record_log = self.item.master.change_log.find_record_log()
-                details = record_log['details']
-                detail = details.get(str(self.item.ID))
-                if not detail:
-                    detail = {
-                        'logs': {},
-                        'records': self.item._records,
-                        'fields': [field.field_name for field in self.item.fields if not field.master_field],
-                        'expanded': self.item.expanded
+                if record_log:
+                    details = record_log['details']
+                    detail = details.get(str(self.item.ID))
+                    if not detail:
+                        detail = {
+                            'logs': {},
+                            'records': self.item._records,
+                            'fields': [field.field_name for field in self.item.fields if not field.master_field],
+                            'expanded': self.item.expanded
+                        }
+                        details[str(self.item.ID)] = detail
+                    self.logs = detail['logs']
+                    self.records = detail['records']
+                    self.fields = detail['fields']
+                    self.expanded = detail['expanded']
+            if self.item.record_count():
+                change_id = self.item.rec_change_id
+                if not change_id:
+                    change_id = self.get_change_id()
+                    self.item.rec_change_id = change_id;
+                result = self.logs.get(change_id)
+                if not result:
+                    result = {
+                        'unmodified_record': None,
+                        'record': self.cur_record(),
+                        'details': {}
                     }
-                    details[str(self.item.ID)] = detail
-                self.logs = detail['logs']
-                self.records = detail['records']
-                self.fields = detail['fields']
-                self.expanded = detail['expanded']
-            change_id = self.item.rec_change_id
-            if not change_id:
-                change_id = self.get_change_id()
-                self.item.rec_change_id = change_id;
-            result = self.logs.get(change_id)
-            if not result:
-                result = {
-                    'unmodified_record': None,
-                    'record': self.cur_record(),
-                    'details': {}
-                }
-                self.logs[change_id] = result
-            return result
+                    self.logs[change_id] = result
+                return result
 
     def get_detail_log(self, detail_ID):
         if self.log_changes():
@@ -855,23 +858,11 @@ class ChangeLog(object):
 
 
     def prepare(self):
+#        self.find_record_log();
+        self.records = [];
+        self.logs = {};
         self.fields = [field.field_name for field in self.item.fields if not field.master_field]
         self.expanded = self.item.expanded
-        self.clear()
-
-    def clear(self):
-        #~ for key, record_log in self.logs.iteritems():
-            #~ info = self.item.get_rec_info(record=record_log['record'])
-            #~ info[common.REC_STATUS] = common.RECORD_UNCHANGED
-            #~ info[common.REC_CHANGE_ID] = None
-            #~ for detail_id, detail in record_log['details'].iteritems():
-                #~ detail_item = self.item.item_by_ID(int(detail_id))
-                #~ detail_item.change_log.logs = detail['logs']
-                #~ detail_item.change_log.clear()
-        self.records = []
-        self.logs = {}
-        for detail in self.item.details:
-            detail.change_log.clear()
 
     def update(self, updates):
         if updates:
@@ -1420,7 +1411,13 @@ class AbstractDataSet(object):
             if hasattr(self, field.field_name):
                 delattr(self, field.field_name)
         if fields:
-            self.fields = [self._field_by_name(field_name) for field_name in fields]
+            self.fields = []
+            for field_name in fields:
+                field = self._field_by_name(field_name)
+                if field:
+                    self.fields.append(field)
+                else:
+                    raise Exception, '%s - do_before_open method error: there is no field with field_name: %s' % (self.item_name, field_name)
             params['__fields'] = fields
         else:
             self.fields = list(self._fields)
@@ -1792,7 +1789,13 @@ class AbstractDataSet(object):
             filter.value = values[i]
 
     def search(self, field_name, text):
-        self.open({'__search': (field_name, text)})
+        searchText = text.strip()
+        params = {};
+        if len(searchText):
+            params['__search'] = [field_name, searchText]
+            self.open(params=params)
+        else:
+            self.open()
 
     def set_filters(self, **filters):
         self.clear_filters()
