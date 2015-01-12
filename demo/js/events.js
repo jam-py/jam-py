@@ -71,7 +71,7 @@ function Events5() { // demo
 		$("#menu").append($('<li></li>').append($('<a href="#">About</a>').click(function(e) {
 			e.preventDefault();
 			task.information($(
-				'<h3>Jam.py</h3>' +
+				'<a href="http://jam-py.com/" target="_blank"><h3>Jam.py</h3></a>' +
 				'<h3>Demo application</h3>' +
 				' with <a href="http://chinookdatabase.codeplex.com/" target="_blank">Chinook Database</a>' +
 				'<p>by Andrew Yushev</p>' +
