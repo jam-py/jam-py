@@ -4556,7 +4556,7 @@
                     this.set_lookup_data(lookup_value);
                     if (this.owner) {
                         this.owner.eachField(function(field, i) {
-                            if (self === field.master_field) {
+                            if (self === field.master_field && slave_field_values !== undefined) {
                                 field.set_lookup_data(slave_field_values[field.field_name]);
                                 field.update_controls();
                             }
@@ -4666,6 +4666,9 @@
                         }
                         break;
                 }
+            }
+            else {
+                value = this.get_value();
             }
             return value;
         },
@@ -6445,7 +6448,7 @@
         },
 
         get_field_text: function(field) {
-            return field.data_type === consts.BOOLEAN ? field.get_value() ? '×' : '' :
+            return field.get_lookup_data_type() === consts.BOOLEAN ? field.get_lookup_value() ? '×' : '' :
                 field.get_display_text();
         },
 
@@ -6978,9 +6981,11 @@
                 return;
             }
             if (this.label) {
-                $label = $('<label class="control-label"></label>').attr("for", field.field_name).text(this.label);
+                $label = $('<label class="control-label"></label>')
+                    .attr("for", field.field_name).text(this.label).
+                    addClass(field.field_name);
             }
-            if (field.data_type === consts.BOOLEAN) {
+            if (field.get_lookup_data_type() === consts.BOOLEAN) {
                 $input = $('<input>')
                     .attr("id", field.field_name)
                     .attr("type", "checkbox")
@@ -7124,8 +7129,8 @@
                         this.$input.prop('disabled', true);
                     }
                 }
-                if (this.field.data_type === consts.BOOLEAN) {
-                    if (this.field.get_value()) {
+                if (this.field.get_lookup_data_type() === consts.BOOLEAN) {
+                    if (this.field.get_lookup_value()) {
                         this.$input.attr("checked", "checked");
                     } else {
                         this.$input.removeAttr("checked", "checked");
