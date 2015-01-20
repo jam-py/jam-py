@@ -1444,9 +1444,6 @@
             get: function() {
                 return this.get_modified();
             },
-            set: function(new_value) {
-                this.set_modified(new_value);
-            }
         });
         Object.defineProperty(this, "filtered", {
             get: function() {
@@ -1624,14 +1621,14 @@
                 fields = this.fields;
             }
             len = fields.length;
-            result = fields[name];
-            if (result === undefined) {
-                for (; i < len; i++) {
-                    if (fields[i].field_name === name) {
-                        return fields[i];
-                    }
+//            result = fields[name];
+//            if (result === undefined) {
+            for (; i < len; i++) {
+                if (fields[i].field_name === name) {
+                    return fields[i];
                 }
             }
+//            }
             return result;
         },
 
@@ -3144,29 +3141,17 @@
             }
         },
 
-        rec_inserted: function(value) {
-            if (value) {
-                this.set_record_status(consts.RECORD_INSERTED);
-            } else {
-                return this.get_record_status() === consts.RECORD_INSERTED;
-            }
+        rec_inserted: function() {
+            return this.get_record_status() === consts.RECORD_INSERTED;
         },
 
         rec_deleted: function() {
-            if (value) {
-                this.set_record_status(consts.RECORD_DELETED);
-            } else {
-                return this.get_record_status() === consts.RECORD_DELETED;
-            }
+            return this.get_record_status() === consts.RECORD_DELETED;
         },
 
         rec_modified: function() {
-            if (value) {
-                this.set_record_status(consts.RECORD_MODIFIED);
-            } else {
-                return this.get_record_status() === consts.RECORD_MODIFIED ||
-                    this.get_record_status() === consts.RECORD_DETAILS_MODIFIED;
-            }
+            return this.get_record_status() === consts.RECORD_MODIFIED ||
+                this.get_record_status() === consts.RECORD_DETAILS_MODIFIED;
         }
 
     });
@@ -4577,6 +4562,9 @@
 
         set_value: function(value, lookup_value, slave_field_values, lookup_item) {
             var error;
+            if (this.owner && ((this.field_name === 'id' && this.value) || this.field_name === 'deleted') && (self.value !== value)) {
+                throw this.owner.item_name + ': can not change value of the system field - ' + this.field_name;
+            }
             this.new_value = null;
             if (value !== null) {
                 this.new_value = value;
@@ -6554,7 +6542,7 @@
         keypress: function(e) {
             var self = this,
                 multi_sel,
-                code = (e.keyCode ? e.keyCode : e.which);
+                code = e.which;
             if (code > 32 && this.options.editable && this.options.keypress_edit && !this.editMode) {
                 if (this.selectedField && this.selectedField.valid_char_code(code)) {
                     this.showEditor();
@@ -7101,6 +7089,24 @@
             this.$input.bind('destroyed', function() {
                 self.field.controls.splice(self.field.controls.indexOf(self), 1);
             });
+
+            this.$input.tooltip({
+                    'placement': 'bottom',
+                    'title': ''
+                })
+                .on('hide', function(e) {
+                    e.stopPropagation()
+                })
+                .on('hidden', function(e) {
+                    e.stopPropagation()
+                })
+                .on('show', function(e) {
+                    e.stopPropagation()
+                })
+                .on('shown', function(e) {
+                    e.stopPropagation()
+                });
+
             this.update();
         },
 
@@ -7198,15 +7204,11 @@
         },
 
         keypress: function(e) {
-            var code = (e.keyCode ? e.keyCode : e.which),
-                ch = String.fromCharCode(code),
-                isDigit = code >= 48 && code <= 57,
-                decPoint = ch === '.' || ch === settings.DECIMAL_POINT || ch === settings.MON_DECIMAL_POINT,
-                sign = ch === '+' || ch === '-';
+            var code = e.which;
             if (this.field.lookup_item) {
                 e.preventDefault();
             }
-            if (!this.field.valid_char_code(code)) {
+            if (code && !this.field.valid_char_code(code)) {
                 e.preventDefault();
             }
         },
@@ -7315,29 +7317,19 @@
                 }
                 this.errorValue = undefined;
                 this.error = undefined;
-                this.$input.removeAttr("title");
+                this.$input.tooltip('hide')
+                  .attr('data-original-title', '')
+                  .tooltip('fixTitle');
                 this.hideError();
             } else {
                 this.showError();
                 if (this.$controlGroup) {
                     this.$controlGroup.addClass('error');
                 }
-                this.$input.attr("title", this.error);
-                this.$input.tooltip({
-                        'placement': 'bottom'
-                    })
-                    .on('hide', function(e) {
-                        e.stopPropagation()
-                    })
-                    .on('hidden', function(e) {
-                        e.stopPropagation()
-                    })
-                    .on('show', function(e) {
-                        e.stopPropagation()
-                    })
-                    .on('shown', function(e) {
-                        e.stopPropagation()
-                    });
+                this.$input.tooltip('hide')
+                  .attr('data-original-title', this.error)
+                  .tooltip('fixTitle')
+                  .tooltip('show');
             }
         },
 

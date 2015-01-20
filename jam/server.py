@@ -141,16 +141,16 @@ class Server(object):
         #~ print ''
         #~ print 'process_request: ', request, user_uuid, task_id, item_id, params, web
 
-        is_admin = task_id == 0
         user_info = {}
-        if self.under_maintenance:
-            return {'status': common.UNDER_MAINTAINANCE, 'data': None}
-        if request == 'login':
-            return {'status': common.RESPONSE, 'data': self.login(params[0], params[1], is_admin, env)}
+        is_admin = task_id == 0
         if is_admin:
             task = self.admin
         else:
             task = self.get_task()
+        if self.under_maintenance:
+            return {'status': common.UNDER_MAINTAINANCE, 'data': None}
+        if request == 'login':
+            return {'status': common.RESPONSE, 'data': self.login(params[0], params[1], is_admin, env)}
         if self.admin.safe_mode:
             now = common.now()
             if common.hour_diff(now - self.last_users_update) > 1:

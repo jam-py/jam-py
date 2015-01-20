@@ -747,9 +747,15 @@ def execute_sql(db_type, db_database, db_user, db_password,
                 (command, params, info), details = sql
                 if info:
                     rec_id = info['id']
-                    if not rec_id and info['next_id_sql']:
-                        rec_id = get_next_id(cursor, info['next_id_sql'])
-                        params[info['id_index']] = rec_id
+                    if rec_id:
+                        if info['change_id_sql'] and info['next_id_sql']:
+                            next_id = get_next_id(cursor, info['next_id_sql'])
+                            if next_id < rec_id:
+                                cursor.execute(info['change_id_sql'])
+                    else:
+                        if info['next_id_sql']:
+                            rec_id = get_next_id(cursor, info['next_id_sql'])
+                            params[info['id_index']] = rec_id
                     if info['status'] == common.RECORD_INSERTED and info['owner_rec_id_index']:
                         params[info['owner_rec_id_index']] = master_rec_id
                     if command:

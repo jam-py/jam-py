@@ -121,6 +121,16 @@ class SQL(object):
             result = 'SELECT NEXT VALUE FOR "%s" FROM RDB$DATABASE' % self.get_gen_name(db_type)
         return result
 
+    def change_id_sql(self, value, db_type):
+        result = None
+        if db_type is None:
+            db_type = self.task.db_type
+        if db_type == common.POSTGRESQL:
+            result = 'ALTER SEQUENCE %s RESTART WITH %d' % (self.get_gen_name(db_type), value)
+        elif db_type == common.FIREBIRD:
+            result = 'ALTER SEQUENCE %s RESTART WITH %d' % (self.get_gen_name(db_type), value);
+        return result
+
     def get_next_id(self, db_type=None):
         if self.on_get_next_id:
             return self.on_get_next_id(self)
@@ -183,6 +193,8 @@ class SQL(object):
     def apply_sql(self, priv=None, db_type=None):
 
         def get_sql(item, db_type):
+            next_id_sql = ''
+            change_id_sql = ''
             if item.master:
                 item._records[item.rec_no][item.owner_id.bind_index] = item.owner.ID
                 item._records[item.rec_no][item.owner_rec_id.bind_index] = item.owner.id.value
@@ -191,6 +203,8 @@ class SQL(object):
                     if priv and not priv['can_create']:
                         raise Exception, self.task.lang['cant_create'] % self.item_caption
                 sql, param = item.insert_sql(db_type)
+                if item.id.value:
+                    change_id_sql = item.change_id_sql(item.id.value, db_type)
             elif item.record_status == common.RECORD_MODIFIED:
                 if not item.master:
                     if priv and not priv['can_edit']:
@@ -210,15 +224,15 @@ class SQL(object):
                 owner_rec_id_index = item.fields.index(item.owner_rec_id)
             else:
                 owner_rec_id_index = 0
-            next_id_sql = ''
             id_index = item.fields.index(item.id)
-            if not item.id.value:
-                next_id_sql = item.next_id_sql(db_type)
+#            if not item.id.value:
+            next_id_sql = item.next_id_sql(db_type)
             info = {'ID': item.ID,
                 'status': item.record_status,
                 'id': item.id.value,
                 'id_index': id_index,
                 'next_id_sql': next_id_sql,
+                'change_id_sql': change_id_sql,
                 'log_id': item.get_rec_info()[common.REC_CHANGE_ID],
                 'owner_rec_id_index': owner_rec_id_index}
             return sql, param, info
@@ -405,14 +419,15 @@ class SQL(object):
         deleted_in_filters = False
         if filters:
             for (field_name, filter_type, value) in filters:
-                if field_name == 'deleted':
-                    deleted_in_filters = True
-                if filter_type == common.FILTER_SEARCH:
-                    values = value.split()
-                    for val in values:
-                        conditions.append(get_condition(field_name, common.FILTER_CONTAINS, val))
-                else:
-                    conditions.append(get_condition(field_name, filter_type, value))
+                if not value is None:
+                    if field_name == 'deleted':
+                        deleted_in_filters = True
+                    if filter_type == common.FILTER_SEARCH:
+                        values = value.split()
+                        for val in values:
+                            conditions.append(get_condition(field_name, common.FILTER_CONTAINS, val))
+                    else:
+                        conditions.append(get_condition(field_name, filter_type, value))
         if not deleted_in_filters:
             conditions.append(self.set_case(db_type, '"%s"."deleted"=0' % self.table_name))
         for sql in conditions:

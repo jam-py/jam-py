@@ -278,6 +278,8 @@ class DBField(object):
                 return self.owner.on_before_field_changed(self, new_value, new_lookup_value)
 
     def set_value(self, value, lookup_value=None, slave_field_values=None, lookup_item=None):
+        if self.owner and ((self.field_name == 'id' and self.value) or self.field_name == 'deleted') and (self.value != value):
+            raise DatasetException, u'%s: can not change value of the system field - %s' % (self.owner.item_name, self.field_name)
         self.new_value = None
         if not value is None:
             self.new_value = value
@@ -1582,23 +1584,14 @@ class AbstractDataSet(object):
                     self.do_after_scroll()
                     self.do_after_append()
 
-    def rec_inserted(self, value=None):
-        if value:
-            self.record_status = common.RECORD_INSERTED
-        else:
-            return self.record_status == common.RECORD_INSERTED
+    def rec_inserted(self):
+        return self.record_status == common.RECORD_INSERTED
 
-    def rec_deleted(self, value=None):
-        if value:
-            self.record_status = common.RECORD_DELETED
-        else:
-            return self.record_status == common.RECORD_DELETED
+    def rec_deleted(self):
+        return self.record_status == common.RECORD_DELETED
 
-    def rec_modified(self, value=None):
-        if value:
-            self.record_status = common.RECORD_MODIFIED
-        else:
-            return self.record_status in (common.RECORD_MODIFIED, common.RECORD_DETAILS_MODIFIED)
+    def rec_modified(self):
+        return self.record_status in (common.RECORD_MODIFIED, common.RECORD_DETAILS_MODIFIED)
 
     def is_changing(self):
         return (self.item_state == common.STATE_INSERT) or (self.item_state == common.STATE_EDIT)
