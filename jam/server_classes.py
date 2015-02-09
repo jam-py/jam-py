@@ -13,6 +13,7 @@ from xml.dom.minidom import parseString
 from xml.sax.saxutils import escape
 import datetime, time
 import traceback
+import inspect
 
 import common
 from items import *
@@ -284,7 +285,7 @@ class ServerDataset(Dataset, SQL):
                 rows = self.task.execute_select(sql)
                 result = rows[0][0]
             except Exception, e:
-                error_mes = str(e)
+                error_mes = e.message
         return result, error_mes
 
     def select_records(self, params, user_info=None, enviroment=None):
@@ -297,7 +298,7 @@ class ServerDataset(Dataset, SQL):
             try:
                 rows = self.task.execute_select(sql)
             except Exception, e:
-                error_mes = str(e)
+                error_mes = e.message
         return rows, error_mes
 
     def apply_changes(self, data, privileges, user_info=None, enviroment=None):
@@ -313,7 +314,7 @@ class ServerDataset(Dataset, SQL):
                 sql = delta.apply_sql(privileges)
                 result, error = self.task.execute(sql)
         except Exception, e:
-            error = str(e)
+            error = e.message
             if not error:
                 error = '%s: apply_changes error' % self.item_name
             print traceback.format_exc()
@@ -629,43 +630,48 @@ class ServerReport(Report, ServerAbstractItem):
                 if type(value) in (str, unicode):
                     d[key] = escape(value)
             try:
-                start = 0
+                cell_start = 0
+                cell_start_tag = '<table:table-cell'
+                cell_type_tag = 'office:value-type="string"'
+                calcext_type_tag = 'calcext:value-type="string"'
                 start_tag = '<text:p>'
                 end_tag = '</text:p>'
                 while True:
-                    start = text.find(start_tag, start)
-                    if start == -1:
+                    cell_start = text.find(cell_start_tag, cell_start)
+                    if cell_start == -1:
                         break
                     else:
-                        end = text.find(end_tag, start + len(start_tag))
-                        if end == -1:
-                            break
-                        else:
-                            text_start = start+len(start_tag)
-                            text_end = end
-                            cell_text = text[text_start:text_end]
-                            cell_start = 0
-                            while True:
-                                cell_start = cell_text.find('%(', cell_start)
-                                if cell_start == -1:
-                                    break
-                                else:
-                                    end = cell_text.find(')s', cell_start + 2)
-                                    if end == -1:
-                                        break
-                                    else:
+                        start = text.find(start_tag, cell_start)
+                        if start != -1:
+                            end = text.find(end_tag, start + len(start_tag))
+                            if end != -1:
+                                text_start = start+len(start_tag)
+                                text_end = end
+                                cell_text = text[text_start:text_end]
+                                cell_text_start = cell_text.find('%(', 0)
+                                if cell_text_start != -1:
+                                    end = cell_text.find(')s', cell_text_start + 2)
+                                    if end != -1:
                                         end += 2
-                                        val = cell_text[cell_start:end]
+                                        val = cell_text[cell_text_start:end]
                                         key = val[2:-2]
-                                        if not d.get(key) is None:
+                                        value = d.get(key)
+                                        if not value is None:
                                             val = val % d
+                                            if type(value) == float:
+                                                val = val.replace('.', common.DECIMAL_POINT)
                                         else:
                                             if not key in d.keys():
                                                 print 'Report: "%s" band: "%s" key "%s" not found in the dictionary' % (self.item_name, band, key)
-                                        cell_text = cell_text[:cell_start] + val + cell_text[end:]
-                                cell_start += 1
-                            text = text[:text_start] + cell_text + text[text_end:]
-                            start += 1
+                                        cell_text = cell_text[:cell_text_start] + val + cell_text[end:]
+                                        text = text[:text_start] + cell_text + text[text_end:]
+                                        if type(value) in (int, float):
+                                            start_text = text[cell_start:start]
+                                            office_value = str(value)
+                                            start_text = start_text.replace(cell_type_tag, 'office:value-type="float" office:value="%s"' % office_value)
+                                            start_text = start_text.replace(calcext_type_tag, 'calcext:value-type="float"')
+                                            text = text[:cell_start] + start_text + text[start:]
+                        cell_start += 1
                 if update_band_text:
                     text = update_band_text(text)
             except Exception, e:
@@ -996,12 +1002,11 @@ class AbstractServerTask(Task, ServerAbstractItem):
             except Exception, e:
                 print e
             exec comp_code in item_module.__dict__
-            for key, value in item_module.__dict__.items():
-                if key[0:3] == 'on_':
-                    if key in item.__dict__.keys():
-                        item.__dict__[key] = item_module.__dict__[key]
-                elif key[0:7] == 'server_':
-                    item.register(item_module.__dict__[key])
+            funcs = inspect.getmembers(item_module, inspect.isfunction)
+            item._events = []
+            for func_name, func in funcs:
+                item._events.append((func_name, func))
+                setattr(item, func_name, func)
         del code
 
     def login(self, params):

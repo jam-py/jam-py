@@ -278,7 +278,7 @@ class DBField(object):
                 return self.owner.on_before_field_changed(self, new_value, new_lookup_value)
 
     def set_value(self, value, lookup_value=None, slave_field_values=None, lookup_item=None):
-        if self.owner and ((self.field_name == 'id' and self.value) or self.field_name == 'deleted') and (self.value != value):
+        if ((self.field_name == 'id' and self.value) or self.field_name == 'deleted') and self.owner and not self.filter and (self.value != value):
             raise DatasetException, u'%s: can not change value of the system field - %s' % (self.owner.item_name, self.field_name)
         self.new_value = None
         if not value is None:
@@ -288,7 +288,8 @@ class DBField(object):
             elif self.data_type in (common.FLOAT, common.CURRENCY):
                 self.new_value = float(value)
             elif self.data_type == common.INTEGER:
-                self.new_value = int(value)
+                if not (self.filter and self.filter.filter_type == common.FILTER_IN):
+                    self.new_value = int(value)
         if self.raw_value != self.new_value:
             if self.do_before_changed(self.new_value, lookup_value) != False:
                 try:
@@ -519,9 +520,6 @@ FILTER_INFO = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, \
     FILTER_TYPE, FILTER_DATA_TYPE, FILTER_VISIBLE = range(6)
 
 class DBFilter(object):
-    def __init__(self):
-        self.in_list = None
-        self.in_range = None
 
     def get_info(self):
         result = [None for i in range(len(FILTER_INFO))]
@@ -542,20 +540,10 @@ class DBFilter(object):
         self.visible = info[FILTER_VISIBLE]
 
     def set_value(self, value):
-        if self.filter_type == common.FILTER_IN:
-            self.in_list = value
-        elif self.filter_type == common.FILTER_RANGE:
-            self.in_range = value
-        else:
-            self.field.value = value
+        self.field.value = value
 
     def get_value(self):
-        if self.filter_type == common.FILTER_IN:
-            return self.in_list
-        elif self.filter_type == common.FILTER_RANGE:
-            return self.in_range
-        else:
-            return self.field.raw_value
+        return self.field.raw_value
 
     value = property (get_value, set_value)
 
@@ -995,10 +983,10 @@ class AbstractDataSet(object):
                     if fltr.field.lookup_item:
                         result._filter_row.append(None)
                         fltr.field.lookup_index = len(result._filter_row) - 1
+        result._events = self._events
         if handlers:
-            for key, value in self.__dict__.items():
-                if key[0:3] == 'on_':
-                    result.__dict__[key] = self.__dict__[key]
+            for func_name, func in result._events:
+                setattr(result, func_name, func)
         return result
 
     def clone(self, keep_filtered=True):
@@ -1698,27 +1686,28 @@ class AbstractDataSet(object):
 
     def post(self):
         result = False
-        if self.item_state in (common.STATE_INSERT, common.STATE_EDIT):
-            if self.modified:
-                for detail in self.details:
-                    if detail.is_changing():
-                        detail.post()
-                if self.do_before_post() != False:
-                    if self.check_record_valid():
-                        self.change_log.log_change()
-                        self.modified = False
-                        if self.master:
-                            self.master.modified = True
-                        self.item_state = common.STATE_BROWSE
-                        if not self.valid_record():
-                            self.update_controls(common.UPDATE_DELETE)
-                            self.search_record(self.rec_no, 0)
-                        self.do_after_post()
-                        result = True
-            else:
-                self.cancel()
-        else:
+        if not self.is_changing():
             raise DatasetException, u'%s: dataset is not in edit or insert mode' % self.item_name
+        if self.modified:
+            if self.check_record_valid():
+                if self.do_before_post() != False:
+                    for detail in self.details:
+                        if detail.is_changing():
+                            if not detail.post():
+                                return result
+                    self.change_log.log_change()
+                    self.modified = False
+                    if self.master:
+                        self.master.modified = True
+                    self.item_state = common.STATE_BROWSE
+                    if not self.valid_record():
+                        self.update_controls(common.UPDATE_DELETE)
+                        self.search_record(self.rec_no, 0)
+                    self.do_after_post()
+                    result = True
+        else:
+            self.cancel()
+            result = True
         return result
 
     def check_record_valid(self):

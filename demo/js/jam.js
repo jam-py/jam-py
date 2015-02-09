@@ -203,9 +203,11 @@
                 len = this.items.length,
                 events = window.task_events['events' + this.ID.toString()];
 
+            this._events = [];
             for (var event in events) {
                 if (events.hasOwnProperty(event)) {
                     this[event] = events[event];
+                    this._events.push([event, events[event]]);
                 }
             }
             for (; i < len; i++) {
@@ -543,15 +545,11 @@
         },
 
         warning: function(mess, callback) {
-            this.message(mess, {
-                "OK": undefined
-            });
+            this.message(mess, {"OK": callback});
         },
 
-        information: function(mess, width) {
-            this.message(mess, {
-                "OK": undefined
-            }, width);
+        information: function(mess, callback, width) {
+            this.message(mess, {"OK": callback}, width);
         },
 
         show_message: function(mess) {
@@ -1749,6 +1747,13 @@
                     }
                 });
             }
+            result._events = this._events;
+            if (options.handlers) {
+                len = this._events.length;
+                for (i = 0; i < len; i++) {
+                    result[this._events[0]] = this._events[1];
+                }
+            }
             if (options.handlers) {
                 for (var name in this) {
                     if (this.hasOwnProperty(name)) {
@@ -1816,6 +1821,7 @@
                 result.filtered = this.filtered;
             }
             result._active = true;
+            result.set_state(consts.STATE_BROWSE);
             result.first();
             return result;
         },
@@ -1972,6 +1978,9 @@
                         throw this.item_name + ': set_where method arument error - ' + field_arg;
                     }
                     if (value !== null) {
+                        if (field.data_type === consts.DATETIME) {
+                            value = field.format_date_to_string(value, '%Y-%m-%d %H:%M:%S')
+                        }
                         result.push([field_name, filter_type, value])
                     }
                 }
@@ -2615,18 +2624,23 @@
                 on_before_result,
                 result = false,
                 request;
-            if (this.is_changing()) {
-                len = this.details.length;
-                for (i = 0; i < len; i++) {
-                    if (this.details[i].is_changing()) {
-                        this.details[i].post();
+            if (!this.is_changing()) {
+                throw this.item_name + ' post method: dataset is not in edit or insert mode';
+            }
+            if (this.get_modified()) {
+                if (this.check_record_valid()) {
+                    if (this.on_before_post) {
+                        on_before_result = this.on_before_post.call(this, this);
                     }
-                }
-                if (this.on_before_post) {
-                    on_before_result = this.on_before_post.call(this, this);
-                }
-                if (on_before_result !== false && this.get_modified()) {
-                    if (this.check_record_valid()) {
+                    if (on_before_result !== false) {
+                        len = this.details.length;
+                        for (i = 0; i < len; i++) {
+                            if (this.details[i].is_changing()) {
+                                if (!this.details[i].post()) {
+                                    return result;
+                                }
+                            }
+                        }
                         this.change_log.log_change();
                         this.set_modified(false);
                         if (this.master) {
@@ -2642,15 +2656,10 @@
                         }
                         result = true
                     }
-                    else {
-                        throw this.item_name + ' post method: record is not valid';
-                    }
-                } else {
-                    this.cancel();
-                    //                this.set_state(consts.STATE_BROWSE);
                 }
             } else {
-                throw this.item_name + ' post method: dataset is not in edit or insert mode';
+                this.cancel();
+                result = true;
             }
             return result
         },
@@ -3652,7 +3661,7 @@
                 for (i = 0; i < len; i++) {
                     field = this.field_by_name(this.options.fields[i])
                     if (this.options.fields[i] && !field) {
-                        console.log(this.item_name + ' create_entries: there is not field ' + this.options.fields[i])
+                        throw  this.item_name + ' create_entries: there is not a field with field_name - "' + this.options.fields[i] + '"';
                     }
                     fields.push(field);
                 }
@@ -4492,7 +4501,6 @@
             return result;
         },
 
-
         get_value: function() {
             var value = this.get_raw_value();
             if (value === null) {
@@ -4562,7 +4570,7 @@
 
         set_value: function(value, lookup_value, slave_field_values, lookup_item) {
             var error;
-            if (this.owner && ((this.field_name === 'id' && this.value) || this.field_name === 'deleted') && (self.value !== value)) {
+            if (((this.field_name === 'id' && this.value) || this.field_name === 'deleted') && this.owner && !this.filter && (self.value !== value)) {
                 throw this.owner.item_name + ': can not change value of the system field - ' + this.field_name;
             }
             this.new_value = null;
@@ -7090,6 +7098,13 @@
                 self.field.controls.splice(self.field.controls.indexOf(self), 1);
             });
 
+            this.$input.on('mouseenter', function() {
+                var $this = $(this);
+                if (self.error) {
+                    $this.tooltip('show');
+                }
+            });
+
             this.$input.tooltip({
                     'placement': 'bottom',
                     'title': ''
@@ -7328,8 +7343,7 @@
                 }
                 this.$input.tooltip('hide')
                   .attr('data-original-title', this.error)
-                  .tooltip('fixTitle')
-                  .tooltip('show');
+                  .tooltip('fixTitle');
             }
         },
 
@@ -7407,14 +7421,6 @@
             }
         }
     };
-
-    //~ var orgShow = $.fn.show;
-    //~ $.fn.show = function()
-    //~ {
-        //~ $(this).trigger('beforeShow');
-        //~ orgShow.apply(this, arguments);
-        //~ return this;
-    //~ }
 
     window.task = new Task();
     $.ajaxSetup({

@@ -112,7 +112,7 @@ def get_alignment(data_type, item=None, value_list=None):
     return result
 
 def float_to_str(val):
-    return str(val)
+    return str(val).replace('.', DECIMAL_POINT)
 
 def str_to_float(val):
     val = val.replace(DECIMAL_POINT, '.')

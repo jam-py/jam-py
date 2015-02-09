@@ -650,7 +650,7 @@ class Editor(object):
                 if line:
                     error += ' - line %s' % line
             except:
-                error = str(e)
+                error = e.message
         except Exception, e:
             try:
                 line = e.args[1][1]
@@ -662,7 +662,7 @@ class Editor(object):
                 else:
                     error = e.args[0]
             except:
-                error = str(e)
+                error = e.message
         if error:
             self.show_status(error, True)
             try:

@@ -76,7 +76,6 @@ function Events5() { // demo
 				' with <a href="http://chinookdatabase.codeplex.com/" target="_blank">Chinook Database</a>' +
 				'<p>by Andrew Yushev</p>' +
 				'<p>2014</p>')
-				, 400
 			)
 		})));
 	
@@ -337,7 +336,9 @@ function Events5() { // demo
 		},
 		100);
 	}
+	this.viewItem = viewItem;
 	this.on_before_show_main_form = on_before_show_main_form;
+	this.create_print_btns = create_print_btns;
 	this.on_before_show_view_form = on_before_show_view_form;
 	this.on_after_show_view_form = on_after_show_view_form;
 	this.on_before_show_edit_form = on_before_show_edit_form;
@@ -347,6 +348,9 @@ function Events5() { // demo
 	this.on_before_show_params_form = on_before_show_params_form;
 	this.on_view_keypressed = on_view_keypressed;
 	this.on_edit_keypressed = on_edit_keypressed;
+	this.resize_view_grid = resize_view_grid;
+	this.resize_edit_grid = resize_edit_grid;
+	this.resize = resize;
 }
 
 window.task_events.events5 = new Events5();
@@ -479,8 +483,8 @@ function Events16() { // demo.journals.invoices
 		now.setDate(now.getDate() - 365);
 		item.filters.invoicedate1.value = now;
 		item.calculating = false;
-		item.calculate = calculate;
-		item.calc_total = calc_total;
+	//	item.calculate = calculate;
+	//	item.calc_total = calc_total;
 	}
 	
 	function on_get_field_text(field) {
@@ -557,6 +561,8 @@ function Events16() { // demo.journals.invoices
 	this.on_before_show_view_form = on_before_show_view_form;
 	this.on_get_field_text = on_get_field_text;
 	this.on_field_changed = on_field_changed;
+	this.calc_total = calc_total;
+	this.calculate = calculate;
 	this.on_edit_keypressed = on_edit_keypressed;
 }
 

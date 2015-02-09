@@ -46,7 +46,7 @@ class Api:
                 r['result'] = None
         except Exception, e:
             print traceback.format_exc()
-            r['error'] = str(e)
+            r['error'] = e.message
 
         if sender_type == '0': #python client
             web.header('Content-encoding', 'deflate')

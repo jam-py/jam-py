@@ -8,6 +8,8 @@ import zipfile
 import shutil
 import traceback
 
+from third_party.jsparser import parse, SyntaxError_
+
 import common
 from server_classes import *
 import lang.langs as langs
@@ -662,7 +664,7 @@ def server_check_connection(task, db_type, database, user,
         except Exception, e:
             print e
             result = False
-            error = str(e)
+            error = e.message
     return result, error
 task.register(server_check_connection)
 
@@ -989,7 +991,7 @@ def server_import_task(task, task_id, data):
             delta = get_delta('sys_privileges')
             adm_sql.append(delta.apply_sql())
         except Exception, e:
-            error = '%s: %s' % (str(e), traceback.format_exc())
+            error = '%s: %s' % (e.message, traceback.format_exc())
 
         if not error:
             task.server.under_maintenance = True
@@ -1001,7 +1003,7 @@ def server_import_task(task, task_id, data):
                     result, error = task.execute(adm_sql)
                     copy_files(dir)
             except Exception, e:
-                error = '%s: %s' % (str(e), traceback.format_exc())
+                error = '%s: %s' % (e.message, traceback.format_exc())
             finally:
                 task.server.under_maintenance = False
     finally:
@@ -1161,21 +1163,12 @@ task.register(server_store_report_module)
 def server_update_events_code(task, task_id):
 
     def find_events(code):
-        code = common.remove_comments(code.strip(), common.WEB_CLIENT_MODULE, '//')
         result = []
-        pos = 0
-        while True:
-            pos = code.find('function', pos)
-            if (pos != -1):
-                if code[pos + len('function'):].lstrip()[:3] == 'on_':
-                    start = code.find('on_', pos)
-                    if start != -1:
-                        end = code.find('(', start)
-                        if end != -1:
-                            result.append(code[start:end])
-                pos += 1
-            else:
-                break
+        code = code.replace('.delete(', '["delete"](')
+        n = parse(code)
+        for key in n:
+            if key.type == 'FUNCTION':
+                result.append(key.name)
         return result
 
     def process_events(code, ID, script):
@@ -1593,6 +1586,6 @@ def privileges_table_get_select(item, query, user_info, enviroment):
     try:
         rows = task.execute_select(result_sql)
     except Exception, e:
-        error_mes = str(e)
+        error_mes = e.message
     return rows, error_mes
 role_privileges.on_select = privileges_table_get_select

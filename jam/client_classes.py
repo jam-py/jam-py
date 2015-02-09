@@ -4,8 +4,7 @@ import sys, os
 os.environ['LIBOVERLAY_SCROLLBAR'] = '0'
 
 import hashlib
-import logging
-import gobject
+import inspect
 
 import interface
 import common
@@ -349,10 +348,11 @@ class AbstractClientTask(Task, interface.TaskInterface):
             code = code.encode()
             comp_code = compile(code, item.module_name, "exec")
             exec comp_code in item_module.__dict__
-            for key, value in item_module.__dict__.items():
-                if key[0:3] == 'on_':
-                    if key in item.__dict__.keys():
-                        item.__dict__[key] = item_module.__dict__[key]
+            funcs = inspect.getmembers(item_module, inspect.isfunction)
+            item._events = []
+            for func_name, func in funcs:
+                item._events.append((func_name, func))
+                setattr(item, func_name, func)
         del code
 
     def __getattr__(self, name):

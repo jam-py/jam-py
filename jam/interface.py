@@ -555,11 +555,11 @@ class ItemInterface(object):
                                 self.change_log.remove_record_log();
                                 self.update_controls(common.UPDATE_RESTORE)
                                 self.do_after_scroll()
-                                error = str(e).upper()
+                                error = e.message.upper()
                                 if (error.find('FOREIGN KEY') != -1 and (error.find('VIOLATION') != -1 or error.find('FAILED'))):
                                     self.warning(self.task.lang['cant_delete_used_record'])
                                 else:
-                                    self.warning(str(e))
+                                    self.warning(e.message)
 
                 else:
                     self.warning(u'Record is not selected.')
@@ -576,7 +576,7 @@ class ItemInterface(object):
             try:
                 self.check_record_valid()
             except Exception, e:
-                self.show_invalid_mess(str(e))
+                self.show_invalid_mess(e.message)
                 print traceback.format_exc()
                 return False
 
@@ -585,7 +585,7 @@ class ItemInterface(object):
                     self.post()
                     self.close_edit_form()
                 except Exception, e:
-                    self.show_invalid_mess(str(e))
+                    self.show_invalid_mess(e.message)
                     print traceback.format_exc()
             else:
                 self.cancel()
@@ -604,7 +604,7 @@ class ItemInterface(object):
             try:
                 self.check_record_valid()
             except Exception, e:
-                self.show_invalid_mess(str(e))
+                self.show_invalid_mess(e.message)
                 print traceback.format_exc()
                 return False
 
@@ -819,7 +819,7 @@ class ReportInterface(object):
                     self.on_after_print_report(self)
                 return True
         except Exception, e:
-            self.show_invalid_mess(str(e))
+            self.show_invalid_mess(e.message)
             print traceback.format_exc()
 
     def close_form(self, widget):
@@ -1171,7 +1171,7 @@ class DBEntry(gtk.HBox):
                     if self.field.on_entry_clear_click:
                         self.field.on_entry_clear_click(widget, self.field)
                     else:
-                        self.field.clear_value()
+                        self.field.set_value(None)
                 else:
                     if (self.sel_from_view_form and self.sel_from_dropdown_box) or self.sel_from_dropdown_box:
                         if self.field.on_entry_drop_down_click:
@@ -1180,6 +1180,7 @@ class DBEntry(gtk.HBox):
                             self.field.select_from_dropdown_box(widget)
                     elif self.sel_from_view_form:
                         self.button_clicked(widget)
+
     def combobox_changed(self, widget):
         text = self.combobox.get_active_text()
         try:
@@ -1211,9 +1212,8 @@ class DBEntry(gtk.HBox):
                         try:
                             self.entry.grab_focus()
                             self.entry.select_region(0, -1)
-                            self.field.show_invalid_mess(str(e))
+                            self.field.show_invalid_mess(e.message)
                             self.field.show_error_mark(True)
-#                            self.field.owner.show_invalid_mess(str(e))
                         finally:
                             self.invalid_text = False
                         result = False
@@ -1420,7 +1420,7 @@ class DBGrid(gtk.ScrolledWindow):
                     else:
                         model[iter][self.get_field_index(field)] = escape(field.display_text)
             except Exception, e:
-                print 'refresh_field', field.field_name, self.get_field_index(field), str(e)
+                print 'refresh_field', field.field_name, self.get_field_index(field), e.message
 
     def update_field(self, field):
         if self.dataset.controls_enabled():

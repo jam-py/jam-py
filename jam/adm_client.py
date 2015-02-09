@@ -1301,7 +1301,7 @@ def sys_indices_show_view_form(item):
                 try:
                     item.apply()
                 except Exception, e:
-                    item.warning(str(e))
+                    item.warning(e.message)
             else:
                 item.read_only = False
                 item.cancel()

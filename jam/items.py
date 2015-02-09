@@ -16,6 +16,7 @@ class AbstractItem(object):
         self.items = []
         self.ID = None
         self.client_code = None
+        self._events = []
         if owner:
             if not owner.find(name):
                 owner.items.append(self)
