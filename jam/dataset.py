@@ -41,6 +41,7 @@ class DBField(object):
         self.filter = None
         self.owner = None
         self.new_value = None
+        self.on_get_field_text_called = False
 
     def copy(self, owner):
         result = self.__class__(owner, self.get_info())
@@ -136,7 +137,7 @@ class DBField(object):
     def get_text(self):
         result = ''
         try:
-            result = self.get_raw_value()
+            result = self.get_value()
             if not result is None:
                 if self.data_type == common.INTEGER:
                     result = str(result)
@@ -217,27 +218,15 @@ class DBField(object):
         return datetime.datetime.strptime(value, '%Y-%m-%d').date()
 
     def get_raw_value(self):
-        value = self.get_data()
         try:
-            if not value is None:
-                if self.data_type in (common.TEXT, ):
-                    if not isinstance(value, unicode):
-                        value = value.decode('utf-8')
-                if self.data_type == common.DATE:
-                    if isinstance(value, unicode):
-                        value = self.convert_date(value)
-                    return value
-                elif self.data_type == common.DATETIME:
-                    if isinstance(value, unicode):
-                        value = self.convert_date_time(value)
-                    return value
-                elif self.data_type == common.BOOLEAN:
-                    if value:
-                        return True
-                    else:
-                        return False
-                else:
-                    return value
+            value = self.get_data()
+            if self.data_type == common.DATE:
+                if isinstance(value, unicode):
+                    value = self.convert_date(value)
+            elif self.data_type == common.DATETIME:
+                if isinstance(value, unicode):
+                    value = self.convert_date_time(value)
+            return value
         except Exception, e:
             print traceback.format_exc()
             self.do_on_error(self.type_error() % (''), e)
@@ -246,14 +235,27 @@ class DBField(object):
 
     def get_value(self):
         value = self.get_raw_value()
-        if value == None:
-            if self.data_type == common.BOOLEAN:
-                value = False
-            elif self.data_type in (common.FLOAT, common.INTEGER, common.CURRENCY):
-                value = 0
-            elif self.data_type == common.TEXT:
-                return ''
-        return value
+        try:
+            if value == None:
+                if self.data_type == common.BOOLEAN:
+                    value = False
+                elif self.data_type in (common.FLOAT, common.INTEGER, common.CURRENCY):
+                    value = 0
+                elif self.data_type == common.TEXT:
+                    value = ''
+            else:
+                if self.data_type in (common.TEXT, ):
+                    if not isinstance(value, unicode):
+                        value = value.decode('utf-8')
+                elif self.data_type == common.BOOLEAN:
+                    if value:
+                        value = True
+                    else:
+                        value = False
+            return value
+        except Exception, e:
+            print traceback.format_exc()
+            self.do_on_error(self.type_error() % (''), e)
 
     def do_on_change_lookup_field(self, lookup_value=None, slave_field_values=None):
         if self.lookup_item:
@@ -278,13 +280,17 @@ class DBField(object):
                 return self.owner.on_before_field_changed(self, new_value, new_lookup_value)
 
     def set_value(self, value, lookup_value=None, slave_field_values=None, lookup_item=None):
-        if ((self.field_name == 'id' and self.value) or self.field_name == 'deleted') and self.owner and not self.filter and (self.value != value):
+        if ((self.field_name == 'id' and self.value) or self.field_name == 'deleted') and \
+            self.owner and not self.filter and (self.value != value):
             raise DatasetException, u'%s: can not change value of the system field - %s' % (self.owner.item_name, self.field_name)
         self.new_value = None
         if not value is None:
             self.new_value = value
             if self.data_type == common.BOOLEAN:
-                self.new_value = bool(value)
+                if bool(value):
+                    self.new_value = 1
+                else:
+                    self.new_value = 0
             elif self.data_type in (common.FLOAT, common.CURRENCY):
                 self.new_value = float(value)
             elif self.data_type == common.INTEGER:
@@ -399,9 +405,14 @@ class DBField(object):
                 result = self.text
         if self.owner and not self.filter:
             if self.owner.on_get_field_text:
-                res = self.owner.on_get_field_text(self)
-                if not res is None:
-                    result = res
+                if not self.on_get_field_text_called:
+                    self.on_get_field_text_called = True
+                    try:
+                        res = self.owner.on_get_field_text(self)
+                        if not res is None:
+                            result = res
+                    finally:
+                        self.on_get_field_text_called = False
         return result
 
     display_text = property(get_display_text)
@@ -1388,15 +1399,7 @@ class AbstractDataSet(object):
     def set_order_by(self, *fields):
         self._order_by_list = self.get_order_by_list(fields)
 
-    def do_before_open(self, expanded, fields, where, order_by, open_empty, params):
-        result = None
-        params['__expanded'] = expanded
-        params['__fields'] = []
-        params['__filters'] = []
-        filters = []
-
-        if self.on_before_open:
-             result = self.on_before_open(self, params)
+    def update_fields(self, fields):
         for field in self.fields:
             if hasattr(self, field.field_name):
                 delattr(self, field.field_name)
@@ -1408,12 +1411,26 @@ class AbstractDataSet(object):
                     self.fields.append(field)
                 else:
                     raise Exception, '%s - do_before_open method error: there is no field with field_name: %s' % (self.item_name, field_name)
-            params['__fields'] = fields
         else:
             self.fields = list(self._fields)
         for field in self.fields:
             if not hasattr(self, field.field_name):
                 setattr(self, field.field_name, field)
+
+    def do_before_open(self, expanded, fields, where, order_by, open_empty, params):
+        result = None
+        params['__expanded'] = expanded
+        params['__fields'] = []
+        params['__filters'] = []
+        filters = []
+
+        if self.on_before_open:
+             result = self.on_before_open(self, params)
+
+        self.update_fields(fields)
+        if fields:
+            params['__fields'] = fields
+
         if result != False and not open_empty:
             if where:
                 filters = self.get_where_list(where)
@@ -1869,6 +1886,7 @@ class MasterDataSet(AbstractDataSet):
         result.details_active = True
         result.change_log.set_changes(changes)
         result._records = result.change_log.records
+        result.update_fields(result.change_log.fields)
         result.bind_fields(result.change_log.expanded)
         result.item_state = common.STATE_BROWSE
         result._cur_row = None

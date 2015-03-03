@@ -411,6 +411,14 @@ class SQL(object):
                     raise Exception, 'sql.py where_clause method: boolen field condition may give ambiguious results.'
             return sql
 
+        def valid_filter(filter_type, value):
+            if value is None:
+                return False
+            if filter_type in [common.FILTER_IN, common.FILTER_NOT_IN]:
+                if type(value) in [tuple, list] and len(value) == 0:
+                    return False
+            return True
+
         if db_type is None:
             db_type = self.task.db_type
         result = ''
@@ -419,7 +427,7 @@ class SQL(object):
         deleted_in_filters = False
         if filters:
             for (field_name, filter_type, value) in filters:
-                if not value is None:
+                if valid_filter(filter_type, value):
                     if field_name == 'deleted':
                         deleted_in_filters = True
                     if filter_type == common.FILTER_SEARCH:

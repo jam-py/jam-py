@@ -432,7 +432,14 @@ function Events7() { // demo.journals
 			}
 		}
 	}
+	
+	function on_after_show_view_form(item) {
+		if (item.view_grid) {
+			item.view_grid.focus();
+		}
+	}
 	this.on_before_show_view_form = on_before_show_view_form;
+	this.on_after_show_view_form = on_after_show_view_form;
 }
 
 window.task_events.events7 = new Events7();

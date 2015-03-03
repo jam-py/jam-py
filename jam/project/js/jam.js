@@ -3328,6 +3328,11 @@
             }
         },
 
+        view_modal: function() {
+            this.is_lookup_item = true;
+            this.view();
+        },
+
         view: function() {
             var self = this,
                 container,
@@ -3397,7 +3402,7 @@
         close_view_form: function() {
             this.close_form('view_form', function() {
 //                this.close();
-                $(window).off("keyup" + this.item_name);
+//                $(window).off("keyup" + this.item_name);
             });
         },
 
@@ -3483,7 +3488,7 @@
 
         close_edit_form: function() {
             this.close_form('edit_form', function() {
-                $(window).off("keyup" + this.item_name);
+//                $(window).off("keyup" + this.item_name);
             });
         },
 
@@ -3857,24 +3862,24 @@
 
         refresh_record: function(callback) {
             var self = this,
+                fields = [],
                 copy = this.copy({
                     filters: false,
                     details: false,
                     handlers: false
                 });
             if (this.id.value !== null) {
-                copy.set_where({
-                    'id': this.id.value
-                });
-                copy.open(function() {
-                    if (copy.record_count() === 1) {
-                        self._records[self.rec_no] = copy._records[0].slice(0);
-                    }
+                self.eachField(function(field) {
+                    fields.push(field.field_name)
+                })
+                copy.open({fields: fields, where: {id: this.id.value}})
+                if (copy.record_count() === 1) {
+                    self._records[self.rec_no] = copy._records[0].slice(0);
                     self.update_controls(consts.UPDATE_CANCEL);
                     if (callback) {
                         callback.call(this);
                     }
-                });
+                }
             }
         }
     });
@@ -4096,13 +4101,23 @@
                     param_values.push(this.params[i].get_raw_value());
                 }
                 this.send_request('print_report', [param_values, host, this.extension], function(url) {
-                    var ext;
+                    var ext,
+                        timeOut,
+                        win;
                     if (url) {
                         ext = url.split('.').pop();
                         if (ext === 'ods') {
                             window.open(url, "_self");
                         } else {
-                            window.open(url, "_blank")
+                            win = window.open(url, "_blank")
+                            if (self.send_to_printer) {
+                                win.addEventListener('load', function() {win.print(false);});
+                                timeOut = setTimeout(function() {
+                                        win.close();
+                                    },
+                                    100
+                                );
+                            }
                         }
                     }
                     if (callback) {
@@ -4757,9 +4772,17 @@
                 }
             }
             if (this.owner && this.owner.on_get_field_text) {
-                res = this.owner.on_get_field_text.call(this.owner, this);
-                if (res !== undefined) {
-                    result = res;
+                if (!this.on_get_field_text_called) {
+                    this.on_get_field_text_called = true;
+                    try {
+                        res = this.owner.on_get_field_text.call(this.owner, this);
+                        if (res !== undefined) {
+                            result = res;
+                        }
+                    }
+                    finally {
+                        this.on_get_field_text_called = false;
+                    }
                 }
             }
             return result;
@@ -5464,6 +5487,27 @@
             this.initSelectedField();
         },
 
+        initKeyboardEvents: function() {
+            var self = this,
+                timeOut;
+            clearTimeout(timeOut);
+            timeOut = setTimeout(function() {
+                    self.$table.on('keydown', function(e) {
+                        self.keydown(e);
+                    });
+
+                    self.$table.on('keyup', function(e) {
+                        self.keyup(e);
+                    });
+
+                    self.$table.on('keypress', function(e) {
+                        self.keypress(e);
+                    });
+                },
+                400
+            );
+        },
+
         createTable: function() {
             var self = this,
                 $doc = $(document),
@@ -5578,17 +5622,18 @@
 
             this.$table.attr("tabindex", this.options.tabindex);
 
-            this.$table.on('keydown', function(e) {
-                self.keydown(e);
-            });
-
-            this.$table.on('keyup', function(e) {
-                self.keyup(e);
-            });
-
-            this.$table.on('keypress', function(e) {
-                self.keypress(e);
-            });
+            this.initKeyboardEvents();
+            //~ this.$table.on('keydown', function(e) {
+                //~ self.keydown(e);
+            //~ });
+//~
+            //~ this.$table.on('keyup', function(e) {
+                //~ self.keyup(e);
+            //~ });
+//~
+            //~ this.$table.on('keypress', function(e) {
+                //~ self.keypress(e);
+            //~ });
 
             this.$element.on('mousemove.grid-title', 'table.outer-table thead tr:first th', function(e) {
                 var $this = $(this),
@@ -5949,9 +5994,10 @@
                 } finally {
                     this.editing = false;
                 }
-                if (this.$table.modalCanFocus()) {
-                    this.$table.focus();
-                }
+                this.focus();
+                //~ if (this.$table.modalCanFocus()) {
+                    //~ this.$table.focus();
+                //~ }
             }
         },
 
@@ -6336,7 +6382,8 @@
             }
             this.item.set_rec_no(rec);
             if (!this.editing && !this.is_focused()) {
-                this.$table.focus();
+//                this.$table.focus();
+                this.focus();
             }
             if (e.type === "dblclick") {
                 this.do_on_edit(true);
@@ -6516,7 +6563,7 @@
             var self = this,
                 multi_sel,
                 code = (e.keyCode ? e.keyCode : e.which);
-            if (!e.ctrlKey && !e.shiftKey) {
+            if (e.target === this.$table.get(0) && !e.ctrlKey && !e.shiftKey) {
                 switch (code) {
                     case 13:
                         this.do_on_edit(false);
@@ -6564,7 +6611,7 @@
             if (!this.item.auto_loading || this.loading) {
                 return;
             }
-            if (value < this.pageCount) {
+            if (value < this.pageCount || value === 0) {
                 this.page = value;
                 this.loading = true;
                 this.item.open({
@@ -6577,6 +6624,10 @@
                     self.updatePageInfo();
                 });
             }
+        },
+
+        reload: function(callback) {
+            this.setPageNumber(this.page, callback);
         },
 
         updatePageInfo: function() {
@@ -6794,6 +6845,9 @@
                 clone = this.item.clone(),
                 container = $('<div>');
 
+            //~ if (!this.item.controls_enabled()) {
+                //~ return
+            //~ }
             is_focused = this.is_focused();
             if (this.options.editable && this.editMode && this.editor) {
                 if (!is_focused) {
@@ -6922,7 +6976,8 @@
 
             this.syncronize();
             if (is_focused) {
-                this.$table.focus();
+//                this.$table.focus();
+                this.focus();
             }
             if (this.options.editable && this.editMode && this.editor) {
                 this.showEditor();
@@ -6945,7 +7000,11 @@
         },
 
         focus: function() {
-            this.$table.focus();
+            if (!this.is_focused()) {
+                if (this.$table.modalCanFocus()) {
+                    this.$table.focus();
+                }
+            }
         }
     };
 

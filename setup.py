@@ -5,7 +5,7 @@ cur_dir = os.getcwd()
 
 setup(
     name='jam.py',
-    version='1.0.4',
+    version='1.0.5',
     url='http://jam-py.com/',
     author='Andrew Yushev',
     author_email='yushevaa@gmail.com',

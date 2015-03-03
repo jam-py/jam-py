@@ -480,9 +480,21 @@
     $.fn.modalCanFocus = function () {
         var result = true,
             $modal = this.closest('.modal'),
-            modal = $modal.data('modal');
-        if (modal && modal.manager) {
-            result = modal.zPos === modal.manager.getMaxzPos();
+            modal = $modal.data('modal'),
+            manager;
+        if (modal) {
+            if (modal.manager) {
+                result = modal.zPos === modal.manager.getMaxzPos();
+            }
+        }
+        else {
+            manager = $.fn.modal.defaults.manager;
+            manager = typeof manager === 'function' ? manager.call(this) : manager;
+            manager = manager.appendModal ?
+                manager : $(manager).modalmanager().data('modalmanager');
+            if (manager) {
+                result = manager.getMaxzPos() === 0;
+            }
         }
         return result;
     }
