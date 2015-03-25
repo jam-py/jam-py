@@ -4,11 +4,14 @@
 import sys, os
 sys.db_multiprocessing = True
 
-import web
 import cPickle
 import json
 import traceback
-from random import randint
+try:
+    import web
+except:
+    import jam.third_party.web as web
+
 import common
 
 urls = (
@@ -80,6 +83,8 @@ class Index:
                 if d in ['css', 'js', 'img']:
                     content_type = content_types[path_list[0]]
                     file_name = os.path.join(*path_list)
+                    if path_list[1] == 'events.js' and not os.path.exists(file_name):
+                        web.build_events()
         else:
             file_name = 'index.html'
         if file_name and os.path.isfile(file_name):
@@ -90,8 +95,9 @@ class Index:
         else:
             return ''
 
-def run(get_request):
+def run(get_request, build_events):
     me = common.SingleInstance()
     web.get_request = get_request
+    web.build_events = build_events
     app.run()
 

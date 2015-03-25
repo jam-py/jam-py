@@ -10,6 +10,9 @@ function Events5() { // demo
 
 	function viewItem(item) {
 		var content;
+		if (item.task.cur_item) {
+			item.task.cur_item.close_view_form();
+		}
 		if (item.item_type === "report") {
 			item.print_report();
 		}
@@ -239,6 +242,7 @@ function Events5() { // demo
 	}
 	
 	function on_edit_form_close_query(item) {
+		var result = true;
 		if (item.is_changing()) {
 			if (item.modified) {
 				item.yesNoCancel(task.language.save_changes,
@@ -249,13 +253,13 @@ function Events5() { // demo
 						item.cancel_edit();
 					}
 				);
-				return false;
+				result = false;
 			}
 			else {
 				item.cancel();
-				return true;
 			}
 		}
+		return result
 	}
 	
 	function on_before_show_filter_form(item) {
@@ -271,7 +275,7 @@ function Events5() { // demo
 		item.params_form.find("#ok-btn").attr("tabindex", 100).on('click.task', function() {item.process_report()});
 	}
 	
-	function on_view_keypressed(item, event) {
+	function on_view_keyup(item, event) {
 		if (event.keyCode === 45 && event.ctrlKey === true){
 			event.preventDefault();
 			item.insert_record();
@@ -282,7 +286,7 @@ function Events5() { // demo
 		}
 	}
 	
-	function on_edit_keypressed(item, event) {
+	function on_edit_keyup(item, event) {
 		if (event.keyCode === 13 && event.ctrlKey === true){
 			event.preventDefault();
 			item.edit_form.find("#ok-btn").focus();
@@ -346,8 +350,8 @@ function Events5() { // demo
 	this.on_edit_form_close_query = on_edit_form_close_query;
 	this.on_before_show_filter_form = on_before_show_filter_form;
 	this.on_before_show_params_form = on_before_show_params_form;
-	this.on_view_keypressed = on_view_keypressed;
-	this.on_edit_keypressed = on_edit_keypressed;
+	this.on_view_keyup = on_view_keyup;
+	this.on_edit_keyup = on_edit_keyup;
 	this.resize_view_grid = resize_view_grid;
 	this.resize_edit_grid = resize_edit_grid;
 	this.resize = resize;
@@ -554,7 +558,7 @@ function Events16() { // demo.journals.invoices
 		}
 	}
 	
-	function on_edit_keypressed(item, event) {
+	function on_edit_keyup(item, event) {
 		if (event.keyCode === 45 && event.ctrlKey === true){
 			event.preventDefault();
 			item.invoice_table.append_record();
@@ -570,7 +574,7 @@ function Events16() { // demo.journals.invoices
 	this.on_field_changed = on_field_changed;
 	this.calc_total = calc_total;
 	this.calculate = calculate;
-	this.on_edit_keypressed = on_edit_keypressed;
+	this.on_edit_keyup = on_edit_keyup;
 }
 
 window.task_events.events16 = new Events16();

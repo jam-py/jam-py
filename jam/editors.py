@@ -231,7 +231,7 @@ class EditorBuffer(UndoableBuffer):
             first = None
             i = 0
             for ch in text:
-                if ch.isdigit() and prev_ch in ('', ' ', '-', '+', '(', '/', '=', '\t', '\n', '['):
+                if ch.isdigit() and prev_ch in ('', ' ', '-', '+', '(', '/', '=', '\t', '\n', '[', ']'):
                     first = i
                 elif not (first is None) and is_digit(prev_ch) and not is_digit(ch):
                     highlight_digits(first, i)
@@ -1377,10 +1377,13 @@ class JavascriptEditor(Editor):
         return self.field.value
 
     def save_text(self, text):
-        self.field.value = unicode(text)
-        self.item.post()
-        self.item.apply()
-        self.item.task.server_update_events_code(self.item.task_id.value)
+        if self.item.task.server_remove_events_code():
+            self.field.value = unicode(text)
+            self.item.post()
+            self.item.apply()
+        else:
+            self.item.warning(u'Events code js file modification error.')
+#        self.item.task.server_update_events_code(self.item.task_id.value)
 
 
 

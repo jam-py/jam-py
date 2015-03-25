@@ -151,8 +151,10 @@ class ItemInterface(object):
         self.on_before_show_edit_form = None
         self.on_before_show_view_form = None
         self.on_before_show_filter_form = None
-        self.on_edit_keypressed = None
-        self.on_view_keypressed = None
+        self.on_edit_keyup = None
+        self.on_edit_keydown = None
+        self.on_view_keyup = None
+        self.on_view_keydown = None
         self.on_after_show_edit_form = None
         self.on_after_show_view_form = None
         self.on_after_show_filter_form = None
@@ -213,7 +215,8 @@ class ItemInterface(object):
         if self.on_before_show_view_form:
             self.on_before_show_view_form(self)
         if self.view_form and self.view_form.window:
-            self.view_form.window.connect("key-press-event", self.view_keypressed)
+            self.view_form.window.connect("key-press-event", self.view_keydown)
+            self.view_form.window.connect("key-release-event", self.view_keyup)
             self.view_form.window.connect('delete-event', self.check_view)
         self.view_form.show()
         if self.task.on_after_show_view_form:
@@ -230,18 +233,21 @@ class ItemInterface(object):
         if self.on_destroy_view_form:
             self.on_destroy_view_form(self)
 
-    def view_keypressed(self, widget, event):
-        if self.task.on_view_keypressed:
-            self.task.on_view_keypressed(self, event)
-        if self.owner.on_view_keypressed:
-            self.owner.on_view_keypressed(self, event)
-        if self.on_view_keypressed:
-            self.on_view_keypressed(self, event)
-        #~ elif event.keyval == gtk.keysyms.Insert:
-            #~ self.insert_record(widget)
-        #~ elif event.keyval == gtk.keysyms.Delete:
-            #~ if event.state & gtk.gdk.CONTROL_MASK:
-                #~ self.delete_record(widget)
+    def view_keydown(self, widget, event):
+        if self.task.on_view_keydown:
+            self.task.on_view_keydown(self, event)
+        if self.owner.on_view_keydown:
+            self.owner.on_view_keydown(self, event)
+        if self.on_view_keydown:
+            self.on_view_keydown(self, event)
+
+    def view_keyup(self, widget, event):
+        if self.task.on_view_keyup:
+            self.task.on_view_keyup(self, event)
+        if self.owner.on_view_keyup:
+            self.owner.on_view_keyup(self, event)
+        if self.on_view_keyup:
+            self.on_view_keyup(self, event)
 
     def check_view(self, widget = None, event = None):
         if self.view_form and self.view_form.window:
@@ -257,7 +263,7 @@ class ItemInterface(object):
             self.view_form = None
 
     def close_edit_form(self):
-        if self.edit_form.window:
+        if self.edit_form and self.edit_form.window:
             self.edit_form.window.destroy()
             self.edit_form = None
 
@@ -305,8 +311,10 @@ class ItemInterface(object):
             can_close = self.owner.on_edit_form_close_query(self)
         if can_close is None and self.task.on_edit_form_close_query:
             can_close = self.task.on_edit_form_close_query(self)
+        print 111111, can_close
         if can_close == False:
             return True
+        print 222222, 'closed'
         self.edit_form = None
 
     def create_grid(self, container, fields=None, dblclick_edit=True, headers=True, lines=False,
@@ -458,7 +466,8 @@ class ItemInterface(object):
     def create_edit_form(self, parent):
         self.edit_form = ItemWindow(self, self.edit_ui, parent)
         self.edit_form.window.connect('delete-event', self.check_edit)
-        self.edit_form.window.connect("key-press-event", self.edit_keypressed)
+        self.edit_form.window.connect("key-press-event", self.edit_keydown)
+        self.edit_form.window.connect("key-release-event", self.edit_keyup)
         if self.task.on_before_show_edit_form:
             self.task.on_before_show_edit_form(self)
         if self.owner.on_before_show_edit_form:
@@ -485,9 +494,27 @@ class ItemInterface(object):
         if self.on_destroy_edit_form:
             self.on_destroy_edit_form(self)
 
-    def edit_keypressed(self, widget, event):
+    def edit_keydown(self, widget, event):
+        #~ if event.keyval == gtk.keysyms.Escape:
+            #~ if self.edit_form.window:
+                #~ focused = self.edit_form.window.get_focus()
+                #~ if isinstance(focused, gtk.Entry):
+                    #~ parent = focused.get_parent()
+                    #~ if isinstance(parent, DBEntry):
+                        #~ if parent.modified():
+                            #~ parent.cancel_edit()
+                            #~ return True
+            #~ self.check_edit(widget, event)
+        if self.task.on_edit_keydown:
+            self.task.on_edit_keydown(self, event)
+        if self.owner.on_edit_keydown:
+            self.owner.on_edit_keydown(self, event)
+        if self.on_edit_keydown:
+            self.on_edit_keydown(self, event)
+
+    def edit_keyup(self, widget, event):
         if event.keyval == gtk.keysyms.Escape:
-            if self.edit_form.window:
+            if self.edit_form and self.edit_form.window:
                 focused = self.edit_form.window.get_focus()
                 if isinstance(focused, gtk.Entry):
                     parent = focused.get_parent()
@@ -496,12 +523,12 @@ class ItemInterface(object):
                             parent.cancel_edit()
                             return True
             self.check_edit(widget, event)
-        if self.task.on_edit_keypressed:
-            self.task.on_edit_keypressed(self, event)
-        if self.owner.on_edit_keypressed:
-            self.owner.on_edit_keypressed(self, event)
-        if self.on_edit_keypressed:
-            self.on_edit_keypressed(self, event)
+        if self.task.on_edit_keyup:
+            self.task.on_edit_keyup(self, event)
+        if self.owner.on_edit_keyup:
+            self.owner.on_edit_keyup(self, event)
+        if self.on_edit_keyup:
+            self.on_edit_keyup(self, event)
 
     def grid_selected(self):
         for control in self.controls:
@@ -604,8 +631,8 @@ class ItemInterface(object):
             try:
                 self.check_record_valid()
             except Exception, e:
+                print e.message
                 self.show_invalid_mess(e.message)
-                print traceback.format_exc()
                 return False
 
             if self.modified:
@@ -761,7 +788,8 @@ class ReportInterface(object):
 
     def create_params_form(self, widget):
         self.params_form = ItemWindow(self, self.edit_ui, widget)
-        self.params_form.window.connect("key-press-event", self.edit_keypressed)
+        self.params_form.window.connect("key-press-event", self.edit_keydown)
+        self.params_form.window.connect("key-release-event", self.edit_keyup)
         if self.task.on_before_show_params_form:
             self.task.on_before_show_params_form(self)
         if self.owner.on_before_show_params_form:
@@ -778,7 +806,12 @@ class ReportInterface(object):
         if self.on_destroy_params_form:
             self.on_destroy_params_form(self)
 
-    def edit_keypressed(self, widget, event):
+    def edit_keydown(self, widget, event):
+        pass
+        #~ if event.keyval == gtk.keysyms.Escape:
+            #~ self.close_form(widget)
+
+    def edit_keyup(self, widget, event):
         if event.keyval == gtk.keysyms.Escape:
             self.close_form(widget)
 

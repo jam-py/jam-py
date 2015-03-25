@@ -10,6 +10,9 @@ from threading import Lock
 def get_request(env, request, user_id, task_id, item_id, params=None, web=False):
     return server.process_request(env, request, user_id, task_id, item_id, params, web)
 
+def build_events():
+    adm_server.server_update_events_code()
+
 class Server(object):
     def __init__(self):
         self.admin = adm_server.task
@@ -26,10 +29,7 @@ class Server(object):
             while True:
                 if self.task_lock.acquire(False):
                     try:
-                        self.task = adm_server.create_task()
-                        self.task.server = self
-                        self.task.admin = self.admin
-                        self.admin.task = self.task
+                        self.task = adm_server.create_task(self)
                     finally:
                         self.task_lock.release()
                 else:

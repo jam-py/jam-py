@@ -1,0 +1,6 @@
+Tests of python code are located in python folder.
+To start them run run.py script.
+To run one of test pass its python file pattern as parameter.
+
+To run javascript test first start the server, then in browser
+address bar, type 127.0.0.1:8080.

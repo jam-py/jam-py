@@ -307,7 +307,7 @@
                 fade = ''
             }
             $form = $(
-                '<div class="modal hide ' + fade + ' normal-modal-border" tabindex="-1" data-backdrop="static">' +
+                '<div class="modal hide ' + fade + ' normal-modal-border" tabindex="-1" data-backdrop="static" data-item="' + this.item_name + '">' +
                 '<div class="modal-header">' +
                 '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' + closeCaption + ' ×</button>' +
                 '<h4 class="modal-title">' + options.title + '</h4>' +
@@ -384,9 +384,14 @@
                         });
 
                         this[formName].on("hide", function(e) {
+                            var canClose = true;
                             e.stopPropagation();
                             if (options.onHide) {
-                                options.onHide.call(self, e);
+                                canClose = options.onHide.call(self, e);
+                            }
+                            if (canClose === false) {
+                                e.preventDefault();
+                                self[formName].data('closing', false)
                             }
                         });
 
@@ -421,11 +426,12 @@
             }
         },
 
-        close_form: function(formName, onHidden) {
+        close_form: function(formName) {
             var self = this,
                 keySuffix = formName + '.' + this.item_name,
                 timeOut;
             if (this[formName]) {
+                this[formName].data('closing', true);
                 if (this[formName].isModal) {
                     clearTimeout(timeOut);
                     timeOut = setTimeout(function() {
@@ -437,9 +443,6 @@
                         100
                     );
                 } else {
-                    if (onHidden) {
-                        onHidden.call(this);
-                    }
                     $(window).off("keydown." + keySuffix);
                     $(window).off("keyup." + keySuffix);
                     this[formName].remove();
@@ -455,26 +458,31 @@
                 if (keyup) {
                     keyup.call(self, e);
                 }
-                var datepicker = self[form_name].find('.datepicker'),
+                var datepicker,
                     code = (e.keyCode ? e.keyCode : e.which);
-                if (datepicker.length && datepicker.is(':visible') && code === 27 && !e.ctrlKey && !e.shiftKey) {
-                    e.stopImmediatePropagation();
-                    e.preventDefault();
-                    datepicker.hide();
+                if (self[form_name]) {
+                    datepicker = self[form_name].find('.datepicker')
+                    if (datepicker.length && datepicker.is(':visible') && code === 27 && !e.ctrlKey && !e.shiftKey) {
+                        e.stopImmediatePropagation();
+                        e.preventDefault();
+                        datepicker.hide();
+                    }
                 }
             }
             this.create_form(form_name, options);
         },
 
-        message: function(mess, buttons, width) {
+        message: function(mess, buttons, width, margin) {
             var tab = 1,
                 self = this,
                 key,
-                margin = 0,
                 $element,
                 $button = $('<button type="button" class="btn item-btn">OK</button>'),
                 timeOut;
 
+            if (margin === undefined) {
+                margin = 0;
+            }
             if (!width) {
                 width = 400;
                 margin = 20;
@@ -513,7 +521,8 @@
             $element.on("click", ".btn", function(e) {
                 var button;
                 e.preventDefault();
-                e.stopPropagation();
+//                e.stopPropagation();
+                e.stopImmediatePropagation();
                 for (var key in buttons) {
                     if (buttons.hasOwnProperty(key)) {
                         if ($(e.target).attr("id") === key) {
@@ -565,7 +574,7 @@
             buttons[language.yes] = yesCallback;
             buttons[language.no] = noCallback;
             buttons[language.cancel] = cancelCallback;
-            this.message(mess, buttons);
+            this.message(mess, buttons, 500, 20);
         },
 
         emptyFunc: function() {},
@@ -674,8 +683,9 @@
             }
         },
 
-        load: function() {
+        load: function(callback) {
             var logingInfo,
+                self = this,
                 info;
             if (!this.user_id) {
                 this.user_id = this.readCookie('user_id');
@@ -684,30 +694,33 @@
                 var templates;
                 settings = info.settings;
                 language = info.language;
-                this.settings = info.settings;
-                this.language = info.language;
-                this.user_info = info.user_info;
-                this.user_privileges = info.privileges;
-                this.consts = consts;
-                this.safe_mode = this.settings.SAFE_MODE;
-                this.ID = info.task[0];
-                this.item_name = info.task[1];
-                this.item_caption = info.task[2];
-                this.visible = info.task[3];
-                this.item_type = "";
+                self.settings = info.settings;
+                self.language = info.language;
+                self.user_info = info.user_info;
+                self.user_privileges = info.privileges;
+                self.consts = consts;
+                self.safe_mode = self.settings.SAFE_MODE;
+                self.ID = info.task[0];
+                self.item_name = info.task[1];
+                self.item_caption = info.task[2];
+                self.visible = info.task[3];
+                self.item_type = "";
                 if (info.task[4]) {
-                    this.item_type = this.types[info.task[4] - 1];
+                    self.item_type = self.types[info.task[4] - 1];
                 }
-                this.task = this;
-                this.init(info.task);
-                this.bindItems();
-                this.bindEvents();
-                this.templates = $("<div></div>");
+                self.task = self;
+                self.init(info.task);
+                self.bindItems();
+                self.bindEvents();
+                self.templates = $("<div></div>");
                 templates = $(".templates");
-                this.templates = templates.clone();
+                self.templates = templates.clone();
                 templates.remove();
-                if (this.on_before_show_main_form) {
-                    this.on_before_show_main_form.call(this, this);
+                if (self.on_before_show_main_form) {
+                    self.on_before_show_main_form.call(self, self);
+                }
+                if (callback) {
+                    callback.call(self);
                 }
             });
         },
@@ -2857,6 +2870,12 @@
             }
         },
 
+        clear_filters: function() {
+            this.eachFilter(function(filter) {
+                filter.value = null;
+            })
+        },
+
         set_state: function(value) {
             if (this._state !== value) {
                 this._state = value;
@@ -3316,17 +3335,30 @@
             }
         },
 
-        do_on_view_keypressed: function(e) {
-            if (this.task.on_view_keypressed) {
-                this.task.on_view_keypressed.call(this, this, e);
+        do_on_view_keyup: function(e) {
+            if (this.task.on_view_keyup) {
+                this.task.on_view_keyup.call(this, this, e);
             }
-            if (this.owner.on_view_keypressed) {
-                this.owner.on_view_keypressed.call(this, this, e);
+            if (this.owner.on_view_keyup) {
+                this.owner.on_view_keyup.call(this, this, e);
             }
-            if (this.on_view_keypressed) {
-                this.on_view_keypressed.call(this, this, e);
+            if (this.on_view_keyup) {
+                this.on_view_keyup.call(this, this, e);
             }
         },
+
+        do_on_view_keydown: function(e) {
+            if (this.task.on_view_keydown) {
+                this.task.on_view_keydown.call(this, this, e);
+            }
+            if (this.owner.on_view_keydown) {
+                this.owner.on_view_keydown.call(this, this, e);
+            }
+            if (this.on_view_keydown) {
+                this.on_view_keydown.call(this, this, e);
+            }
+        },
+
 
         view_modal: function() {
             this.is_lookup_item = true;
@@ -3388,33 +3420,41 @@
                     if (canClose === undefined && self.task.on_view_form_close_query) {
                         canClose = self.task.on_view_form_close_query.call(self, self);
                     }
-                    if (canClose === false) {
-                        e.preventDefault();
-                    }
+                    return canClose;
                 },
                 onHidden: function() {
                     this.close();
                 },
-                onKeyUp: this.do_on_view_keypressed
+                onKeyUp: this.do_on_view_keyup,
+                onKeyDown: this.do_on_view_keydown
             })
         },
 
         close_view_form: function() {
-            this.close_form('view_form', function() {
-//                this.close();
-//                $(window).off("keyup" + this.item_name);
-            });
+            this.close_form('view_form');
         },
 
-        do_on_edit_keypressed: function(e) {
-            if (this.task.on_edit_keypressed) {
-                this.task.on_edit_keypressed.call(this, this, e);
+        do_on_edit_keyup: function(e) {
+            if (this.task.on_edit_keyup) {
+                this.task.on_edit_keyup.call(this, this, e);
             }
-            if (this.owner.on_edit_keypressed) {
-                this.owner.on_edit_keypressed.call(this, this, e);
+            if (this.owner.on_edit_keyup) {
+                this.owner.on_edit_keyup.call(this, this, e);
             }
-            if (this.on_edit_keypressed) {
-                this.on_edit_keypressed.call(this, this, e);
+            if (this.on_edit_keyup) {
+                this.on_edit_keyup.call(this, this, e);
+            }
+        },
+
+        do_on_edit_keydown: function(e) {
+            if (this.task.on_edit_keydown) {
+                this.task.on_edit_keydown.call(this, this, e);
+            }
+            if (this.owner.on_edit_keydown) {
+                this.owner.on_edit_keydown.call(this, this, e);
+            }
+            if (this.on_edit_keydown) {
+                this.on_edit_keydown.call(this, this, e);
             }
         },
 
@@ -3478,18 +3518,15 @@
                     if (canClose === undefined && self.task.on_edit_form_close_query) {
                         canClose = self.task.on_edit_form_close_query.call(self, self);
                     }
-                    if (canClose === false) {
-                        e.preventDefault();
-                    }
+                    return canClose;
                 },
-                onKeyUp: this.do_on_edit_keypressed
+                onKeyUp: this.do_on_edit_keyup,
+                onKeyDown: this.do_on_edit_keydown
             })
         },
 
         close_edit_form: function() {
-            this.close_form('edit_form', function() {
-//                $(window).off("keyup" + this.item_name);
-            });
+            this.close_form('edit_form');
         },
 
         create_filter_form: function() {
@@ -3549,9 +3586,7 @@
                     if (canClose === undefined && self.task.on_filter_form_close_query) {
                         canClose = self.task.on_filter_form_close_query.call(self, self);
                     }
-                    if (canClose === false) {
-                        e.preventDefault();
-                    }
+                    return canClose;
                 },
 
             })
@@ -4027,9 +4062,7 @@
                     if (canClose === undefined && self.task.on_params_form_close_query) {
                         canClose = self.task.on_params_form_close_query.call(self, self);
                     }
-                    if (canClose === false) {
-                        e.preventDefault();
-                    }
+                    return canClose;
                 },
             })
         },
@@ -5311,8 +5344,8 @@
             return this.field.get_raw_value();
         },
 
-        set_value: function(value) {
-            this.field.set_value(value);
+        set_value: function(value, lookup_value) {
+            this.field.set_value(value, lookup_value);
         }
     };
 
@@ -6208,10 +6241,21 @@
             this.refresh();
         },
 
+        form_closing: function() {
+            var $modal = this.$element.closest('.modal');
+            if ($modal) {
+                return $modal.data('closing')
+            }
+            return false;
+        },
+
         update: function(state) {
             var recNo,
                 self = this,
                 row;
+            if (this.form_closing()) {
+                return;
+            }
             switch (state) {
                 case consts.UPDATE_OPEN:
                     this.initRows();
@@ -6845,9 +6889,6 @@
                 clone = this.item.clone(),
                 container = $('<div>');
 
-            //~ if (!this.item.controls_enabled()) {
-                //~ return
-            //~ }
             is_focused = this.is_focused();
             if (this.options.editable && this.editMode && this.editor) {
                 if (!is_focused) {
@@ -7181,11 +7222,19 @@
                     e.stopPropagation()
                 });
 
+            this.$modalForm = this.$input.closest('.modal');
             this.update();
         },
 
+        form_closing: function() {
+            if (this.$modalForm) {
+                return this.$modalForm.data('closing')
+            }
+            return false;
+        },
+
         update: function() {
-            if (!this.removed) {
+            if (!this.removed && !this.form_closing()) {
                 if (this.read_only !== this.field.get_read_only()) {
                     this.read_only = this.field.get_read_only();
                     if (this.$firstBtn) {

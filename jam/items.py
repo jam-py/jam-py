@@ -53,7 +53,7 @@ class AbstractItem(object):
         self.item_caption = info[ITEM_CAPTION]
         self.visible = info[ITEM_VISIBLE]
         self.item_type_id = info[ITEM_TYPE]
-        self.item_type = common.ITEM_TYPES[self.item_type_id - 1]
+#        self.item_type = common.ITEM_TYPES[self.item_type_id - 1]
         self.client_code = info[ITEM_CLIENT_CODE]
 
     def get_info(self, web=None):
@@ -81,6 +81,8 @@ class AbstractItem(object):
         self.bind_item()
         for item in self.items:
             item.bind_items()
+        self.item_type = common.ITEM_TYPES[self.item_type_id - 1]
+
 
     def get_module_name(self):
         result = self.owner.get_module_name() + '.' + self.item_name

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Jam.py tests</title>
+    <link rel="stylesheet" href="css/qunit-1.17.1.css">
+</head>
+<body>
+    <div id="qunit"></div>
+    <div id="qunit-fixture"></div>
+    <script src="js/jquery-2.1.1.js"></script>
+    <script src="js/qunit-1.17.1.js"></script>
+    <script src="js/jam.js"></script>
+    <script src="js/events.js"></script>
+    <script src="js/tests.js"></script>
+    <script>
+        $(document).ready(function(){
+            $(".qunit-filter").hide()
+            task.load(function() {
+                test_dataset();
+            });
+        });
+        $(window).load(function(){
+            $(".qunit-filter").hide();
+        });
+    </script>
+</body>
+</html>

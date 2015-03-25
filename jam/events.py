@@ -18,8 +18,10 @@ task_client_events = \
         'on_view_form_close_query': 'item',
         'on_edit_form_close_query': 'item',
         'on_params_form_close_query': 'report',
-        'on_view_keypressed': 'item, event',
-        'on_edit_keypressed': 'item, event'
+        'on_view_keyup': 'item, event',
+        'on_view_keydown': 'item, event',
+        'on_edit_keyup': 'item, event',
+        'on_edit_keydown': 'item, event'
     }
 
 group_client_events = \
@@ -32,8 +34,10 @@ group_client_events = \
         'on_after_show_filter_form': 'item',
         'on_view_form_close_query': 'item',
         'on_edit_form_close_query': 'item',
-        'on_view_keypressed': 'item, event',
-        'on_edit_keypressed': 'item, event'
+        'on_view_keyup': 'item, event',
+        'on_view_keydown': 'item, event',
+        'on_edit_keyup': 'item, event',
+        'on_edit_keydown': 'item, event'
     }
 
 reports_client_events = \
@@ -54,8 +58,10 @@ detail_client_events = \
         'on_after_show_filter_form': 'item',
         'on_view_form_close_query': 'item',
         'on_edit_form_close_query': 'item',
-        'on_view_keypressed': 'item, event',
-        'on_edit_keypressed': 'item, event',
+        'on_view_keyup': 'item, event',
+        'on_view_keydown': 'item, event',
+        'on_edit_keyup': 'item, event',
+        'on_edit_keydown': 'item, event',
         'on_before_append': 'item',
         'on_after_append': 'item',
         'on_before_edit': 'item',

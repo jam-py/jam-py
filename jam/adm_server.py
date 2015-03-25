@@ -402,7 +402,7 @@ def get_tasks(id=None):
         result.append({'id': copy.id.value, 'caption': copy.f_name.value})
     return result
 
-def create_task():
+def create_task(server):
     it = sys_items.copy()
     it.filters.type_id.value = [common.TASK_TYPE]
     it.open()
@@ -414,7 +414,7 @@ def create_task():
         it_task.f_login.value, it_task.f_password.value, it_task.f_host.value,
         it_task.f_port.value, it_task.f_encoding.value, task.task_con_pool_size)
     result.ID = it.id.value
-    load_task(result)
+    load_task(result, server)
     return result
 
 ###############################################################################
@@ -424,9 +424,9 @@ def create_task():
 def reload_task():
     if common.SETTINGS['DEBUGGING']:
         if task.server.task:
-            load_task(task.server.task)
+            load_task(task.server.task, task.server)
 
-def load_task(target):
+def load_task(target, server):
 
     def create_fields(item, parent_id):
         for rec in sys_fields:
@@ -627,9 +627,15 @@ def load_task(target):
     process_reports()
     target.bind_items()
     target.compile_all()
+    target.language = task.language
+
+    target.server = server
+    target.admin = server.admin
+    target.admin.task = target
+
     if target.on_created:
         target.on_created(target)
-    target.language = task.language
+
 #
 ###############################################################################
 #                                 task                                        #
@@ -761,6 +767,10 @@ def server_export_task(task, task_id):
         zip_file = zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED)
         zip_file.write(task_file)
         zip_file.write('index.html')
+        zip_file.write('server.py')
+        zip_file.write('admin.py')
+        zip_file.write('client.py')
+        zip_file.write('main.py')
         common.zip_dir('jam', zip_file, exclude_ext=['.pyc'])
         common.zip_dir('js', zip_file)
         common.zip_dir('css', zip_file)
@@ -769,8 +779,6 @@ def server_export_task(task, task_id):
         common.zip_dir('reports', zip_file)
         if os.path.exists('utils'):
             common.zip_dir('utils', zip_file, exclude_ext=['.pyc'])
-        #~ if os.path.exists('web'):
-            #~ common.zip_dir('web', zip_file, exclude_ext=['.pyc'])
         zip_file.close()
         with open(file_name, 'r') as f:
             result = f.read()
@@ -933,8 +941,8 @@ def server_import_task(task, task_id, data):
     if db_type == common.SQLITE:
         return 'Import operation is not allowed for SQLITE database'
 
+    dir = copy_tmp_files(data)
     try:
-        dir = copy_tmp_files(data)
         try:
             new_dict, old_dict = get_items(dir)
 
@@ -1138,8 +1146,11 @@ def server_print_code(task, task_id, url):
     for i in range(3):
         code += result[i]
 
+    path = os.path.join(os.getcwd(), 'static', 'reports')
+    if not os.path.exists(path):
+        os.makedirs(path)
     file_name = 'code.txt'
-    code_file_name = os.path.join(os.getcwd(), 'static', 'reports', file_name)
+    code_file_name = os.path.join(path, file_name)
     with open(code_file_name, "w") as f:
         f.write(code)
     if url:
@@ -1160,7 +1171,18 @@ def server_store_report_module(task, text, module_name):
         f.write(text)
 task.register(server_store_report_module)
 
-def server_update_events_code(task, task_id):
+def server_remove_events_code(task):
+    file_name = os.path.join(os.getcwd().decode('utf-8'), 'js','events.js')
+    try:
+        os.remove(os.path.join(os.getcwd().decode('utf-8'), 'js','events.js'));
+    except:
+        pass
+    if os.path.exists(file_name):
+        return False
+    return True
+task.register(server_remove_events_code)
+
+def server_update_events_code(task=None, task_id=None):
 
     def find_events(code):
         result = []
@@ -1186,9 +1208,15 @@ def server_update_events_code(task, task_id):
             script += 'window.task_events.events%s = new Events%s();\n' % (ID, ID)
         return script
 
+    print 11111111
     it = sys_items.copy(handlers=False)
+    if task_id is None:
+        it.set_where(type_id=common.TASK_TYPE)
+        it.open()
+        task_id = it.task_id.value
     it.filters.task_id.value = task_id
     it.open(fields=['id', 'f_name', 'f_web_client_module'])
+    print 22222222
     script = '(function(window, undefined) {\n"use strict";\nvar $ = window.$;\n\nfunction TaskEvents() {};\n\nwindow.task_events = new TaskEvents();\n'
     for it in it:
         code = it.f_web_client_module.value
@@ -1197,6 +1225,7 @@ def server_update_events_code(task, task_id):
             if code:
                 script = process_events(code, it.id.value, script)
     script += '\n})( window )'
+    print 3333333
     with open(os.path.join(os.getcwd().decode('utf-8'), 'js','events.js'), 'w') as f:
         f.write(script)
 task.register(server_update_events_code)

@@ -307,7 +307,7 @@
                 fade = ''
             }
             $form = $(
-                '<div class="modal hide ' + fade + ' normal-modal-border" tabindex="-1" data-backdrop="static" data-item="' + this.item_name + '">' +
+                '<div class="modal hide ' + fade + ' normal-modal-border" tabindex="-1" data-backdrop="static">' +
                 '<div class="modal-header">' +
                 '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' + closeCaption + ' ×</button>' +
                 '<h4 class="modal-title">' + options.title + '</h4>' +
@@ -384,14 +384,9 @@
                         });
 
                         this[formName].on("hide", function(e) {
-                            var canClose = true;
                             e.stopPropagation();
                             if (options.onHide) {
-                                canClose = options.onHide.call(self, e);
-                            }
-                            if (canClose === false) {
-                                e.preventDefault();
-                                self[formName].data('closing', false)
+                                options.onHide.call(self, e);
                             }
                         });
 
@@ -426,12 +421,11 @@
             }
         },
 
-        close_form: function(formName) {
+        close_form: function(formName, onHidden) {
             var self = this,
                 keySuffix = formName + '.' + this.item_name,
                 timeOut;
             if (this[formName]) {
-                this[formName].data('closing', true);
                 if (this[formName].isModal) {
                     clearTimeout(timeOut);
                     timeOut = setTimeout(function() {
@@ -443,6 +437,9 @@
                         100
                     );
                 } else {
+                    if (onHidden) {
+                        onHidden.call(this);
+                    }
                     $(window).off("keydown." + keySuffix);
                     $(window).off("keyup." + keySuffix);
                     this[formName].remove();
@@ -458,15 +455,12 @@
                 if (keyup) {
                     keyup.call(self, e);
                 }
-                var datepicker,
+                var datepicker = self[form_name].find('.datepicker'),
                     code = (e.keyCode ? e.keyCode : e.which);
-                if (self[form_name]) {
-                    datepicker = self[form_name].find('.datepicker')
-                    if (datepicker.length && datepicker.is(':visible') && code === 27 && !e.ctrlKey && !e.shiftKey) {
-                        e.stopImmediatePropagation();
-                        e.preventDefault();
-                        datepicker.hide();
-                    }
+                if (datepicker.length && datepicker.is(':visible') && code === 27 && !e.ctrlKey && !e.shiftKey) {
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                    datepicker.hide();
                 }
             }
             this.create_form(form_name, options);
@@ -521,8 +515,7 @@
             $element.on("click", ".btn", function(e) {
                 var button;
                 e.preventDefault();
-//                e.stopPropagation();
-                e.stopImmediatePropagation();
+                e.stopPropagation();
                 for (var key in buttons) {
                     if (buttons.hasOwnProperty(key)) {
                         if ($(e.target).attr("id") === key) {
@@ -3420,7 +3413,9 @@
                     if (canClose === undefined && self.task.on_view_form_close_query) {
                         canClose = self.task.on_view_form_close_query.call(self, self);
                     }
-                    return canClose;
+                    if (canClose === false) {
+                        e.preventDefault();
+                    }
                 },
                 onHidden: function() {
                     this.close();
@@ -3431,7 +3426,10 @@
         },
 
         close_view_form: function() {
-            this.close_form('view_form');
+            this.close_form('view_form', function() {
+//                this.close();
+//                $(window).off("keyup" + this.item_name);
+            });
         },
 
         do_on_edit_keyup: function(e) {
@@ -3518,7 +3516,9 @@
                     if (canClose === undefined && self.task.on_edit_form_close_query) {
                         canClose = self.task.on_edit_form_close_query.call(self, self);
                     }
-                    return canClose;
+                    if (canClose === false) {
+                        e.preventDefault();
+                    }
                 },
                 onKeyUp: this.do_on_edit_keyup,
                 onKeyDown: this.do_on_edit_keydown
@@ -3526,7 +3526,9 @@
         },
 
         close_edit_form: function() {
-            this.close_form('edit_form');
+            this.close_form('edit_form', function() {
+//                $(window).off("keyup" + this.item_name);
+            });
         },
 
         create_filter_form: function() {
@@ -3586,7 +3588,9 @@
                     if (canClose === undefined && self.task.on_filter_form_close_query) {
                         canClose = self.task.on_filter_form_close_query.call(self, self);
                     }
-                    return canClose;
+                    if (canClose === false) {
+                        e.preventDefault();
+                    }
                 },
 
             })
@@ -4062,7 +4066,9 @@
                     if (canClose === undefined && self.task.on_params_form_close_query) {
                         canClose = self.task.on_params_form_close_query.call(self, self);
                     }
-                    return canClose;
+                    if (canClose === false) {
+                        e.preventDefault();
+                    }
                 },
             })
         },
@@ -6241,21 +6247,10 @@
             this.refresh();
         },
 
-        form_closing: function() {
-            var $modal = this.$element.closest('.modal');
-            if ($modal) {
-                return $modal.data('closing')
-            }
-            return false;
-        },
-
         update: function(state) {
             var recNo,
                 self = this,
                 row;
-            if (this.form_closing()) {
-                return;
-            }
             switch (state) {
                 case consts.UPDATE_OPEN:
                     this.initRows();
@@ -6889,6 +6884,9 @@
                 clone = this.item.clone(),
                 container = $('<div>');
 
+            //~ if (!this.item.controls_enabled()) {
+                //~ return
+            //~ }
             is_focused = this.is_focused();
             if (this.options.editable && this.editMode && this.editor) {
                 if (!is_focused) {
@@ -7222,19 +7220,11 @@
                     e.stopPropagation()
                 });
 
-            this.$modalForm = this.$input.closest('.modal');
             this.update();
         },
 
-        form_closing: function() {
-            if (this.$modalForm) {
-                return this.$modalForm.data('closing')
-            }
-            return false;
-        },
-
         update: function() {
-            if (!this.removed && !this.form_closing()) {
+            if (!this.removed) {
                 if (this.read_only !== this.field.get_read_only()) {
                     this.read_only = this.field.get_read_only();
                     if (this.$firstBtn) {

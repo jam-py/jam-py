@@ -563,17 +563,23 @@ def on_task_after_show_edit_form(item):
 task.on_after_show_edit_form = on_task_after_show_edit_form
 
 def edit_form_close_query(item):
+    result = True
     if item.modified:
         res = item.yes_no_cancel(item.task.lang['save_changes'])
         if res == 1:
+            print 11111111111
             if not item.apply_record():
-                return True
+                print 777777777
+                result = False
         elif res == 0:
+            print 22222222222222
             item.cancel_edit()
         else:
-            return True
+            print 3333333333333
+            result = False
     else:
         item.cancel_edit()
+    return result
 task.on_edit_form_close_query = edit_form_close_query
 
 def create_task(widget, it):

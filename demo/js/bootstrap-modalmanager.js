@@ -147,7 +147,8 @@
         },
 
         destroyModal: function (modal) {
-
+            var self = this,
+                timeout;
             modal.destroy();
             var hasOpenModal = this.hasOpenModal();
 
@@ -159,7 +160,11 @@
 
             this.removeContainer(modal);
 
-            this.restoreFocus();
+
+            timeout = setTimeout(function () {
+                    self.restoreFocus();
+                }, 100
+            );
         },
 
         hasOpenModal: function () {

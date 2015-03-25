@@ -316,8 +316,10 @@ class AbstractClientTask(Task, interface.TaskInterface):
         self.on_after_show_edit_form = None
         self.on_after_show_filter_form = None
         self.on_after_show_params_form = None
-        self.on_edit_keypressed = None
-        self.on_view_keypressed = None
+        self.on_edit_keyup = None
+        self.on_edit_keydown = None
+        self.on_view_keyup = None
+        self.on_view_keydown = None
         self.on_edit_form_close_query = None
         self.on_view_form_close_query = None
         self.work_dir = os.getcwd()
@@ -528,8 +530,10 @@ class ClientGroup(Group):
         self.on_after_show_filter_form = None
         self.on_edit_form_close_query = None
         self.on_view_form_close_query = None
-        self.on_edit_keypressed = None
-        self.on_view_keypressed = None
+        self.on_edit_keyup = None
+        self.on_edit_keydown = None
+        self.on_view_keyup = None
+        self.on_view_keydown = None
 
     def __getattr__(self, name):
         if self.find(name):
@@ -574,7 +578,8 @@ class ClientDetail(Detail, ClientDataset):
     def create_edit_form(self, parent):
         self.edit_form = interface.ItemWindow(self, self.edit_ui, parent)
         self.edit_form.window.connect('delete-event', self.check_edit)
-        self.edit_form.window.connect("key-press-event", self.edit_keypressed)
+        self.edit_form.window.connect("key-press-event", self.edit_keydown)
+        self.edit_form.window.connect("key-release-event", self.edit_keyup)
         if self.task.on_before_show_edit_form:
             self.task.on_before_show_edit_form(self)
         if self.on_before_show_edit_form:

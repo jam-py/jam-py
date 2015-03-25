@@ -477,6 +477,10 @@
     /* CAN FOCUS
     * ============== */
 
+    $.fn.modalForm = function() {
+        return this.closest('.modal');
+    }
+
     $.fn.modalCanFocus = function () {
         var result = true,
             $modal = this.closest('.modal'),

@@ -959,7 +959,6 @@ class AbstractServerTask(Task, ServerAbstractItem):
             self.connection = result[0]
             return result[1]
 
-
     def callproc(self, command, params=None):
         result_set, error = self.execute(command, params, call_proc=True)
         if not error:
