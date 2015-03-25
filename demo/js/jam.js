@@ -3668,9 +3668,13 @@
         },
 
         create_grid: function(container, options) {
-            var grid = new DBGrid(this, container, options);
-            return grid;
+            return new DBGrid(this, container, options);
         },
+
+        create_tree: function(container, parent_field, text_field, options) {
+            return new DBTree(this, container, parent_field, text_field, options);
+        },
+
 
         create_entries: function(container, options) {
             var default_options,
@@ -5365,6 +5369,21 @@
         this.param_lookup_value = null;
         if (this.owner[this.param_name] === undefined) {
             this.owner[this.param_name] = this;
+        }
+    }
+
+    /**********************************************************************/
+    /*                            DBTree class                            */
+    /**********************************************************************/
+
+    function DBTree(item, container, parent_field, text_field, options) {
+        this.init(item, container, parent_field, text_field, options);
+    }
+
+    DBTree.prototype = {
+        constructor: DBTree,
+
+        init: function(item, container, parent_field, text_field, options) {
         }
     }
 
