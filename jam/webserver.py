@@ -74,17 +74,24 @@ class Api:
 class Index:
     def GET(self, name):
         content_types = {'js': 'application/javascript', 'css': 'text/css', 'img': 'image/png'}
-        path_list = name.split('/')
+        path_list = os.path.split(name)
         file_name = name
         content_type = 'text/html'
         if name:
             if len(path_list) == 2:
                 d, f = path_list
+                b, e = os.path.splitext(f)
                 if d in ['css', 'js', 'img']:
                     content_type = content_types[path_list[0]]
                     file_name = os.path.join(*path_list)
                     if path_list[1] == 'events.js' and not os.path.exists(file_name):
                         web.build_events()
+                print e, b
+                if e == '.js' and b in ['jam', 'events'] and not common.SETTINGS['DEBUGGING']:
+                    min_file_name = os.path.join(d, '_' + b + '.min' + e)
+                    if not os.path.exists(min_file_name) or os.path.getmtime(min_file_name) < os.path.getmtime(file_name):
+                        web.minify(file_name, min_file_name)
+                    file_name = min_file_name
         else:
             file_name = 'index.html'
         if file_name and os.path.isfile(file_name):
@@ -95,9 +102,10 @@ class Index:
         else:
             return ''
 
-def run(get_request, build_events):
+def run(get_request, build_events, minify):
     me = common.SingleInstance()
     web.get_request = get_request
     web.build_events = build_events
+    web.minify = minify
     app.run()
 

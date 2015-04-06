@@ -325,3 +325,37 @@ h4.title {
   font-size: 12px;
 }
 
+.treeview {
+   outline: none;
+}
+
+.treeview li div {
+    white-space: nowrap;
+}
+
+.treeview li div {
+    cursor: default;
+}
+
+.treeview li.parent div span.tree-bullet {
+    font-family: "Courier New", Courier, monospace;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.treeview li.selected > div span.tree-text {
+    background-color: #e5e5e5;
+}
+
+.treeview li.selected-focused > div span.tree-text {
+    background-color: #d9edf7;
+}
+
+.treeview li div span.tree-text {
+    cursor: default;
+    padding: 4px ;
+}
+
+.treeview ul:first-child {
+    margin-left: 0px;
+}

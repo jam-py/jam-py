@@ -201,7 +201,7 @@
         bindEvents: function() {
             var i = 0,
                 len = this.items.length,
-                events = window.task_events['events' + this.ID.toString()];
+                events = window.task_events['events' + this.ID];
 
             this._events = [];
             for (var event in events) {
@@ -3246,7 +3246,7 @@
                 if (this.record_count() > 0) {
                     //            if ((this.get_state() === consts.STATE_BROWSE) && (this.record_count() > 0)) {
                     this.question(language.delete_record, function() {
-                        self.delete();
+                        self["delete"]();
                         try {
                             self.apply();
                         } catch (e) {
@@ -3668,9 +3668,13 @@
         },
 
         create_grid: function(container, options) {
-            var grid = new DBGrid(this, container, options);
-            return grid;
+            return new DBGrid(this, container, options);
         },
+
+        create_tree: function(container, parent_field, text_field, parent_of_root_value, options) {
+            return new DBTree(this, container, parent_field, text_field, parent_of_root_value, options);
+        },
+
 
         create_entries: function(container, options) {
             var default_options,
@@ -5366,6 +5370,380 @@
         if (this.owner[this.param_name] === undefined) {
             this.owner[this.param_name] = this;
         }
+    }
+
+    /**********************************************************************/
+    /*                            DBTree class                            */
+    /**********************************************************************/
+
+    function DBTree(item, container, parent_field, text_field, parent_of_root_value, options) {
+        this.init(item, container, parent_field, text_field, parent_of_root_value, options);
+    }
+
+    DBTree.prototype = {
+        constructor: DBTree,
+
+        init: function(item, container, options) {
+            var self = this,
+                default_options = {
+                id_field: undefined,
+                parent_field: undefined,
+                text_field: undefined,
+                parent_of_root_value: undefined,
+                text_tree: undefined,
+                on_click: undefined,
+                on_dbl_click: undefined
+            };
+            this.id = item.task.controlId++;
+            this.item = item;
+            this.$container = container;
+            this.options = $.extend({}, default_options, options);
+            this.$element = $('<div class="treeview DBTree" tabindex="0" style="overflow-x:auto; overflow-y:auto;" ></div>')
+            this.$element.tabindex = 0;
+            this.item.controls.push(this);
+            this.$element.bind('destroyed', function() {
+                self.item.controls.splice(self.item.controls.indexOf(self), 1);
+            });
+            this.$element.appendTo(this.$container);
+            this.$element.on('focus blur', function(e) {
+                self.select_node(self.selected_node);
+            });
+            this.$element.on('keyup', function(e) {
+                self.keyup(e);
+            })
+            this.$element.on('keydown', function(e) {
+                self.keydown(e);
+            })
+            if (item.get_active() && this.$container.width()) {
+                this.build();
+            }
+        },
+
+        form_closing: function() {
+            var $modal = this.$element.closest('.modal');
+            if ($modal) {
+                return $modal.data('closing')
+            }
+            return false;
+        },
+
+        height: function(value) {
+            if (value) {
+                this.$element.height(value);
+            }
+            else {
+                return this.$element.height();
+            }
+        },
+
+        is_focused: function() {
+            return this.$element.get(0) === document.activeElement;
+        },
+
+        update: function(state) {
+            var recNo,
+                self = this,
+                row;
+            if (this.form_closing()) {
+                return;
+            }
+            switch (state) {
+                case consts.UPDATE_OPEN:
+                    this.build();
+                    break;
+                case consts.UPDATE_CANCEL:
+                    this.changed();
+                    break;
+                case consts.UPDATE_APPEND:
+                    this.changed();
+                    break;
+                case consts.UPDATE_INSERT:
+                    this.changed();
+                    break;
+                case consts.UPDATE_DELETE:
+                    this.changed();
+                    break;
+                case consts.UPDATE_SCROLLED:
+                    this.syncronize();
+                    break;
+                case consts.UPDATE_CONTROLS:
+                    this.syncronize();
+                    break;
+                case consts.UPDATE_CLOSE:
+                    this.$element.empty();
+                    break;
+                case consts.UPDATE_REFRESH:
+                    this.build();
+                    break;
+            }
+        },
+
+        keydown: function(e) {
+            var self = this,
+                $li,
+                code = (e.keyCode ? e.keyCode : e.which);
+            if (this.selected_node && !e.ctrlKey && !e.shiftKey) {
+                switch (code) {
+                    case 13: //return
+                        e.preventDefault();
+                        this.toggle_expanded(this.selected_node);
+                        break;
+                    case 38: //up
+                        e.preventDefault();
+                        $li = this.selected_node.prev();
+                        if ($li.length) {
+                            this.select_node($li);
+                        }
+                        else {
+                            $li = this.selected_node.parent().parent()
+                            if ($li.length && $li.prop("tagName") === "LI") {
+                                this.select_node($li);
+                            }
+                        }
+                        break;
+                        break;
+                    case 40: //down
+                        e.preventDefault();
+                        if (this.selected_node.hasClass('parent') && !this.selected_node.hasClass('collapsed')) {
+                            $li = this.selected_node.find('ul:first li:first')
+                            if ($li.length) {
+                                this.select_node($li);
+                            }
+                        }
+                        else {
+                            $li = this.selected_node.next();
+                            if ($li.length) {
+                                this.select_node($li);
+                            }
+                            else {
+                                $li = this.selected_node.find('ul:first li:first')
+                                if ($li.length) {
+                                    this.select_node($li);
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
+        },
+
+        keyup: function(e) {
+            var self = this,
+                code = (e.keyCode ? e.keyCode : e.which);
+            if (!e.ctrlKey && !e.shiftKey) {
+                switch (code) {
+                    case 13:
+                        break;
+                    case 38:
+                        break;
+                    case 40:
+                        break;
+                }
+            }
+        },
+
+        build_child_nodes: function(tree, nodes) {
+            var i = 0,
+                len = nodes.length,
+                node,
+                id,
+                text,
+                rec,
+                bullet,
+                parent_class,
+                collapsed_class,
+                li,
+                ul,
+                info,
+                children,
+                child_len;
+            for (i = 0; i < len; i++) {
+                node = nodes[i];
+                id = node.id;
+                text = node.text;
+                rec = node.rec;
+                bullet = '&nbsp',
+                parent_class = "",
+                collapsed_class = "",
+                children = this.child_nodes[id + ''];
+                if (children && children.length) {
+                    bullet = '+';
+                    parent_class = ' parent';
+                    collapsed_class = 'collapsed';
+                }
+                li = '<li class="' + collapsed_class + parent_class +'" style="list-style: none" data-rec="' + rec + '">' +
+                    '<div><span class="tree-bullet">' + bullet + '</span>' +
+                    '&nbsp&nbsp<span class="tree-text">' +  text + '<span></div>';
+                tree += li;
+                if (children && children.length) {
+                    tree += '<ul style="display: none">';
+                    tree = this.build_child_nodes(tree, children);
+                    tree += '</ul>';
+                }tree += '</li>';
+                tree += '</li>';
+            }
+            return tree
+        },
+
+        collect_nodes: function(clone) {
+            var id_field = clone[this.options.id_field],
+                parent_field = clone[this.options.parent_field],
+                text_field = clone[this.options.text_field],
+                array;
+            this.child_nodes = {};
+            clone.first();
+            while (!clone.eof()) {
+                array = this.child_nodes[parent_field.value + ''];
+                if (array === undefined) {
+                    array = []
+                    this.child_nodes[parent_field.value + ''] = array;
+                }
+                array.push({'id': id_field.value, 'text': text_field.display_text,
+                    'rec': clone.rec_no});
+                clone.next();
+            }
+        },
+
+        build: function() {
+            var self = this,
+                clone = this.item.clone(),
+                tree = '<ul>',
+                i,
+                len,
+                rec,
+                info,
+                $li,
+                $lis,
+                nodes;
+            this.collect_nodes(clone);
+            this.$element.empty();
+            nodes = this.child_nodes[this.options.parent_of_root_value + ''];
+            if (nodes.length) {
+                tree = this.build_child_nodes(tree, nodes);
+            }
+            tree += '</ul>'
+            this.$element.append($(tree));
+            $lis = this.$element.find('li');
+            len = $lis.length;
+            for (i = 0; i < len; i++) {
+                $li = $lis.eq(i);
+                rec = $li.data('rec');
+                clone.set_rec_no(rec);
+                this.item._cur_row = rec;
+                $li.data("record", clone._records[rec]);
+                info = clone.rec_controls_info();
+                info[this.id] = $li.get();
+                if (this.options.node_callback) {
+                    this.options.node_callback($li, this.item);
+                }
+            }
+            this.select_node($lis.eq(0));
+
+            this.$element.on('click', 'li.parent > div span.tree-bullet', function(e) {
+                var $span = $(this),
+                    $li = $span.parent().parent(),
+                    $ul;
+                    self.toggle_expanded($li);
+            });
+            this.$element.on('click', 'li > div span.tree-text', function(e) {
+                var $li = $(this).parent().parent();
+                self.select_node($li);
+            });
+        },
+
+        toggle_expanded: function($li) {
+            var $span = $li.find('div:first span.tree-bullet'),
+                $ul;
+            if ($li.hasClass('parent')) {
+                $ul = $li.find('ul:first'),
+                $li.toggleClass('collapsed');
+                if ($li.hasClass('collapsed')) {
+                    $span.text('+');
+                }
+                else {
+                    $span.text('-');
+                }
+                $ul.slideToggle(0);
+            }
+        },
+
+        expand: function($li) {
+            if ($li.hasClass('parent') && $li.hasClass('collapsed')) {
+                this.toggle_expanded($li);
+            }
+            $li = $li.parent().parent()
+            if ($li.prop("tagName") === "LI") {
+                this.expand($li);
+            }
+        },
+
+        collapse: function($li) {
+            if ($li.hasClass('parent') && !$li.hasClass('collapsed')) {
+                this.toggle_expanded($li);
+            }
+        },
+
+        select_node: function($li) {
+            var self = this,
+                $parent,
+                rec;
+            if (this.selected_node) {
+                this.selected_node.removeClass('selected selected-focused');
+            }
+            if ($li && (!this.selected_node || $li.get(0) !== this.selected_node.get(0))) {
+                this.selected_node = $li;
+                rec = this.item._records.indexOf($li.data("record"));
+                if (rec !== this.item.rec_no) {
+                    this.item.set_rec_no(rec);
+                }
+                $parent = this.selected_node.parent().parent()
+                if ($parent.prop("tagName") === "LI") {
+                    this.expand($parent);
+                }
+            }
+            if (this.is_focused()) {
+                this.selected_node.addClass('selected-focused');
+            }
+            else {
+                this.selected_node.addClass('selected');
+            }
+            this.update_selected_node(this.selected_node);
+        },
+
+        update_selected_node: function($li) {
+            var containerTop,
+                containerBottom,
+                elemTop,
+                elemBottom;
+            if ($li.length) {
+                containerTop = this.$element.scrollTop();
+                containerBottom = containerTop + this.$element.height();
+                elemTop = $li.get(0).offsetTop;
+                elemBottom = elemTop + $li.height();
+                if (elemTop < containerTop) {
+                    this.$element.scrollTop(elemTop);
+                } else if (elemBottom > containerBottom) {
+                    this.$element.scrollTop(elemBottom - this.$element.height());
+                }
+            }
+        },
+
+        syncronize: function() {
+            var info,
+                $li;
+            if (this.item.record_count()) {
+                try {
+                    info = this.item.rec_controls_info(),
+                    $li = $(info[this.id]);
+                    this.select_node($li);
+                } catch (e) {
+                    console.log(e);
+                }
+            }
+        },
+
+        changed: function() {
+        },
     }
 
     /**********************************************************************/

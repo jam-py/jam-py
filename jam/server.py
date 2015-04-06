@@ -11,7 +11,10 @@ def get_request(env, request, user_id, task_id, item_id, params=None, web=False)
     return server.process_request(env, request, user_id, task_id, item_id, params, web)
 
 def build_events():
-    adm_server.server_update_events_code()
+    adm_server.update_events_code()
+
+def minify(file_name, min_file_name):
+    adm_server.minify(file_name, min_file_name)
 
 class Server(object):
     def __init__(self):

@@ -7,5 +7,5 @@ if __name__ == '__main__':
     reload(sys)
     sys.setdefaultencoding('utf-8')
     import jam.webserver
-    from jam.server import get_request, build_events
-    jam.webserver.run(get_request, build_events)
+    from jam.server import get_request, build_events, minify
+    jam.webserver.run(get_request, build_events, minify)

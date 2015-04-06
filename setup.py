@@ -5,14 +5,16 @@ cur_dir = os.getcwd()
 
 setup(
     name='jam.py',
-    version='1.0.7',
+    version='1.0.8',
     url='http://jam-py.com/',
     author='Andrew Yushev',
     author_email='yushevaa@gmail.com',
     description=('Jam.py is the fastest way to create a web/desktop database application.'),
     license='BSD',
     packages=['jam', 'jam.lang', 'jam.third_party', 'jam.third_party.web',
-        'jam.third_party.web.contrib', 'jam.third_party.web.wsgiserver'],
+        'jam.third_party.web.contrib', 'jam.third_party.web.wsgiserver',
+        'jam.third_party.slimit', 'jam.third_party.slimit.ply',
+        'jam.third_party.slimit.visitors'],
 #    install_requires = ['PyGTK >= 2.24.0'],
     package_data={'jam': ['ui/*.ui',
         'project/*.*', 'project/js/*.js', 'project/css/*.css',

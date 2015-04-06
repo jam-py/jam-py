@@ -203,7 +203,7 @@ class SQL(object):
                     if priv and not priv['can_create']:
                         raise Exception, self.task.lang['cant_create'] % self.item_caption
                 sql, param = item.insert_sql(db_type)
-                if item.id.value:
+                if item.id.value and item.id.value > 0:
                     change_id_sql = item.change_id_sql(item.id.value, db_type)
             elif item.record_status == common.RECORD_MODIFIED:
                 if not item.master:

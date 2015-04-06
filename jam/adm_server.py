@@ -292,6 +292,9 @@ init_item(sys_indices, 10, 'id')
 init_item(sys_params, 11)
 init_item(sys_report_params, 12, 'f_index')
 
+sys_catalogs.ID = 101
+sys_tables.ID = 102
+
 def execute(task_id, sql, params=None):
 
     def db_info():
@@ -803,6 +806,7 @@ def server_import_task(task, task_id, data):
         try:
             common.unzip_dir(dir, zip_file_name)
         finally:
+            os.remove(os.path.join(dir, 'js', 'events.js'))
             if os.path.exists(zip_file_name):
                 os.remove(zip_file_name)
         return dir
@@ -814,12 +818,12 @@ def server_import_task(task, task_id, data):
     def copy_files(dir):
         from distutils import dir_util
         dir_util.copy_tree(dir, os.getcwd())
+        os.remove(os.path.join(os.getcwd(), 'js', 'events.js'))
 
     def refresh_old_item(item):
         item = item.copy()
         item.open()
         old_dict[item.item_name] = item
-
 
     def get_items(dir):
         file_name = os.path.join(dir, 'task.dat')
@@ -842,14 +846,20 @@ def server_import_task(task, task_id, data):
         os.remove(file_name)
         return new_items, old_items
 
+    def can_copy_field(field):
+        if field.owner.item_name == 'sys_params':
+            if field.field_name in ['f_safe_mode', 'f_debugging']:
+                return False
+        return True
+
     def copy_record(old, new):
         for i, field in enumerate(old.fields):
             try:
-                old.fields[i].value = new.fields[i].raw_value
+                if can_copy_field(old.fields[i]):
+                    old.fields[i].value = new.fields[i].raw_value
             except Exception, e:
                 print 'server_import_task copy_record error:', new.item_name, new.id.value, new.fields[i].field_name, new.fields[i].raw_value
                 raise
-
 
     def compare_items(old, new, owner_id=None):
         result = {}
@@ -1182,7 +1192,7 @@ def server_remove_events_code(task):
     return True
 task.register(server_remove_events_code)
 
-def server_update_events_code(task=None, task_id=None):
+def update_events_code():
 
     def find_events(code):
         result = []
@@ -1208,15 +1218,12 @@ def server_update_events_code(task=None, task_id=None):
             script += 'window.task_events.events%s = new Events%s();\n' % (ID, ID)
         return script
 
-    print 11111111
     it = sys_items.copy(handlers=False)
-    if task_id is None:
-        it.set_where(type_id=common.TASK_TYPE)
-        it.open()
-        task_id = it.task_id.value
+    it.set_where(type_id=common.TASK_TYPE)
+    it.open()
+    task_id = it.task_id.value
     it.filters.task_id.value = task_id
     it.open(fields=['id', 'f_name', 'f_web_client_module'])
-    print 22222222
     script = '(function(window, undefined) {\n"use strict";\nvar $ = window.$;\n\nfunction TaskEvents() {};\n\nwindow.task_events = new TaskEvents();\n'
     for it in it:
         code = it.f_web_client_module.value
@@ -1225,10 +1232,22 @@ def server_update_events_code(task=None, task_id=None):
             if code:
                 script = process_events(code, it.id.value, script)
     script += '\n})( window )'
-    print 3333333
     with open(os.path.join(os.getcwd().decode('utf-8'), 'js','events.js'), 'w') as f:
         f.write(script)
-task.register(server_update_events_code)
+
+def minify(file_name, min_file_name):
+    import jam
+    folder = os.path.join(os.path.dirname(jam.__file__), 'third_party')
+    if folder not in sys.path:
+        sys.path.append(folder)
+    from slimit import minify
+
+    with open(file_name, 'r') as f:
+        text = f.read()
+    text = text.replace('.delete(', '["delete"](')
+    new_text = minify(text, mangle=True, mangle_toplevel=True)
+    with open(min_file_name, 'w') as f:
+        f.write(new_text)
 
 def server_get_info(task, item_id):
     items = sys_items.copy()

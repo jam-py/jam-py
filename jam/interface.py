@@ -311,10 +311,8 @@ class ItemInterface(object):
             can_close = self.owner.on_edit_form_close_query(self)
         if can_close is None and self.task.on_edit_form_close_query:
             can_close = self.task.on_edit_form_close_query(self)
-        print 111111, can_close
         if can_close == False:
             return True
-        print 222222, 'closed'
         self.edit_form = None
 
     def create_grid(self, container, fields=None, dblclick_edit=True, headers=True, lines=False,
