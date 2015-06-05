@@ -76,10 +76,12 @@ dictionary = \
     'filters':                          u'Фильтры',
     'order':                            u'Порядок',
     'indices':                          u'Индексы',
+    'foreign_keys':                     u'Foreign keys',
     'select_all':                       u'Выбрать все',
     'unselect_all':                     u'Отменить все',
     'project_params':                   u'Параметры проекта',
     'project_locale':                   u'Локализация',
+    'reserved_word':                    u'Имя является зарезервированным словом',
 #editor
     'case_sensitive':                   u'С учетом регистра',
     'whole_words':                      u'Совпадение всего слова',

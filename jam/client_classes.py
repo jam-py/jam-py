@@ -223,6 +223,8 @@ class ClientDataset(Dataset, interface.ItemInterface):
     def do_apply(self, params=None):
         result = True
         if not self.master and self.log_changes:
+            if self.item_state != common.STATE_BROWSE:
+                raise Exception, u'Item: %s is not in browse state. Apply requires browse state.'
             changes = {}
             self.change_log.get_changes(changes)
             if changes['data']:

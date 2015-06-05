@@ -2,14 +2,14 @@
 "use strict";
 var $ = window.$;
 
-function TaskEvents() {};
+function TaskEvents() {}
 
 window.task_events = new TaskEvents();
 
 function Events5() { // demo 
 
 	function viewItem(item) {
-		var content;
+		var content; 
 		if (item.task.cur_item) {
 			item.task.cur_item.close_view_form();
 		}
@@ -36,41 +36,46 @@ function Events5() { // demo
 			.click(function(e) {
 				e.preventDefault();
 				task.logout();
-			})
+			});
 		}
 	
 		groups = [task.journals, task.reports, task.catalogs];
+	
 		$("#taskmenu").show();
 		for (var i = 0; i < groups.length; i++) {
 			$("#menu").append($('<li></li>').append(
-				$('<a href="#"></a>')
-				.text(groups[i].item_caption)
-				.data('group', groups[i])
-				.click(function(e) {
-					var item,
-						submenu = $("#submenu").empty(),
-						group = $(this).data('group');
-					$("#menu li" ).removeClass('active');
+					$('<a href="#"></a>').text(groups[i].item_caption).data('group', groups[i])
+				)
+			);
+		}
+		$('#menu').on('click', 'a', (function(e) {
+				var submenu = $("#submenu"),
+					group = $(this).data('group'),
+					item;
+				e.preventDefault();
+				if (group) {
+					submenu.empty();
+					$("#menu > li" ).removeClass('active');
 					$(this).parent().addClass('active');
-					e.preventDefault();
 					for (var i = 0; i < group.items.length; i++) {
 						item = group.items[i];
 						if (item.visible && item.can_view()) {
 							submenu.append($('<li></li>').append(
-							$('<a href="#"></a>')
-							.text(item.item_caption)
-							.data('item', item)
-							.click(function(e) {
-								var item = $(this).data('item');
-								$("#submenu li" ).removeClass('active');
-								$(this).parent().addClass('active');
-								e.preventDefault();
-								viewItem(item);
-							})));
+									$('<a href="#"></a>').text(item.item_caption).data('item', item)
+								)
+							)
 						}
 					}
-			})));
-		}
+				}
+			}
+		));
+		$('#submenu').on('click', 'a', (function(e) {
+			var item = $(this).data('item');
+			e.preventDefault();
+			$("#submenu > li" ).removeClass('active');
+			$(this).parent().addClass('active');
+			viewItem(item);
+		}));
 		$("#menu").append($('<li></li>').append($('<a href="#">About</a>').click(function(e) {
 			e.preventDefault();
 			task.information($(
@@ -78,7 +83,8 @@ function Events5() { // demo
 				'<h3>Demo application</h3>' +
 				' with <a href="http://chinookdatabase.codeplex.com/" target="_blank">Chinook Database</a>' +
 				'<p>by Andrew Yushev</p>' +
-				'<p>2014</p>')
+				'<p>2014</p>'),
+				{title: 'Jam.py framework', margin: 0, text_center: true, buttons: {"OK": undefined}, center_buttons: true}
 			)
 		})));
 	
@@ -201,6 +207,7 @@ function Events5() { // demo
 	}
 	
 	function on_after_show_view_form(item) {
+		expand_buttons(item.view_form);
 		item.open();
 	}
 	
@@ -221,6 +228,8 @@ function Events5() { // demo
 					height: 400,
 					tabindex: 90,
 					editable: true,
+					sortable: true,
+	//				sort_fields: ['track'],
 					column_width: {"track": "60%"}
 				});
 			item.edit_form.find("#new-btn").attr("tabindex", 92).on('click.task', function() {item.invoice_table.append_record()});
@@ -229,7 +238,16 @@ function Events5() { // demo
 		}
 	}
 	
+	function expand_buttons(form) {
+		form.find(".modal-footer button.btn").each(function() {
+			if ($(this).outerWidth() < 100) {
+				$(this).outerWidth(100);
+			}
+		});
+	}
+	
 	function on_after_show_edit_form(item) {
+		expand_buttons(item.edit_form);
 		if (item.details_active) {
 			item.eachDetail(function(d) {
 				d.update_controls();
@@ -269,10 +287,18 @@ function Events5() { // demo
 		item.filter_form.find("#ok-btn").attr("tabindex", 100).on('click.task', function() {item.apply_filter()});
 	}
 	
+	function on_after_show_filter_form(item) {
+		expand_buttons(item.filter_form);
+	}
+	
 	function on_before_show_params_form(item) {
 		item.create_params(item.params_form.find(".edit-body"));
 		item.params_form.find("#cancel-btn").attr("tabindex", 101).on('click.task', function() {item.close_params_form()});
 		item.params_form.find("#ok-btn").attr("tabindex", 100).on('click.task', function() {item.process_report()});
+	}
+	
+	function on_after_show_params_form(item) {
+		expand_buttons(item.params_form);
 	}
 	
 	function on_view_keyup(item, event) {
@@ -346,10 +372,13 @@ function Events5() { // demo
 	this.on_before_show_view_form = on_before_show_view_form;
 	this.on_after_show_view_form = on_after_show_view_form;
 	this.on_before_show_edit_form = on_before_show_edit_form;
+	this.expand_buttons = expand_buttons;
 	this.on_after_show_edit_form = on_after_show_edit_form;
 	this.on_edit_form_close_query = on_edit_form_close_query;
 	this.on_before_show_filter_form = on_before_show_filter_form;
+	this.on_after_show_filter_form = on_after_show_filter_form;
 	this.on_before_show_params_form = on_before_show_params_form;
+	this.on_after_show_params_form = on_after_show_params_form;
 	this.on_view_keyup = on_view_keyup;
 	this.on_edit_keyup = on_edit_keyup;
 	this.resize_view_grid = resize_view_grid;
@@ -494,8 +523,6 @@ function Events16() { // demo.journals.invoices
 		now.setDate(now.getDate() - 365);
 		item.filters.invoicedate1.value = now;
 		item.calculating = false;
-	//	item.calculate = calculate;
-	//	item.calc_total = calc_total;
 	}
 	
 	function on_get_field_text(field) {

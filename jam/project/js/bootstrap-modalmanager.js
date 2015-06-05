@@ -194,14 +194,22 @@
         },
 
         setFocus: function () {
-            var topModal;
+            var topModal,
+                tag;
 
             for (var i = 0; i < this.stack.length; i++){
                 if (this.stack[i].isShown) topModal = this.stack[i];
             }
 
             if (topModal) {
-                $(topModal.tabList()).eq(0).focus();
+                tag = $(topModal.tabList()).eq(0);
+                topModal.focus();
+                if (tag.length) {
+                    setTimeout(function()
+                        {tag.focus()},
+                        100
+                    );
+                }
             }
         },
 

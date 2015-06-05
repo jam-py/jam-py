@@ -100,6 +100,92 @@ CLIENT_MODULE, WEB_CLIENT_MODULE, SERVER_MODULE = range(3)
 TAB_FUNCS, TAB_EVENTS, TAB_TASK, TAB_FIELDS = range(4)
 editor_tabs = ("Module", "Events", "Task", "Fields")
 
+mime_types = {
+    'text/html':                             ['html', 'htm', 'shtml'],
+    'text/css':                              ['css'],
+    'text/xml':                              ['xml'],
+    'image/gif':                             ['gif'],
+    'image/jpeg':                            ['jpeg', 'jpg'],
+    'application/x-javascript':              ['js'],
+    'application/atom+xml':                  ['atom'],
+    'application/rss+xml':                   ['rss'],
+
+    'text/mathml':                           ['mml'],
+    'text/plain':                            ['txt'],
+    'text/vnd.sun.j2me.app-descriptor':      ['jad'],
+    'text/vnd.wap.wml':                      ['wml'],
+    'text/x-component':                      ['htc'],
+
+    'image/png':                             ['png'],
+    'image/tiff':                            ['tif', 'tiff'],
+    'image/vnd.wap.wbmp':                    ['wbmp'],
+    'image/x-icon':                          ['ico'],
+    'image/x-jng':                           ['jng'],
+    'image/x-ms-bmp':                        ['bmp'],
+    'image/svg+xml':                         ['svg'],
+    'image/webp':                            ['webp'],
+
+    'application/java-archive':              ['jar', 'war', 'ear'],
+    'application/mac-binhex40':              ['hqx'],
+    'application/msword':                    ['doc'],
+    'application/pdf':                       ['pdf'],
+    'application/postscript':                ['ps', 'eps', 'ai'],
+    'application/rtf':                       ['rtf'],
+    'application/vnd.ms-excel':              ['xls'],
+    'application/vnd.ms-powerpoint':         ['ppt'],
+    'application/vnd.wap.wmlc':              ['wmlc'],
+    'application/vnd.google-earth.kml+xml':  ['kml'],
+    'application/vnd.google-earth.kmz':      ['kmz'],
+    'application/x-7z-compressed':           ['7z'],
+    'application/x-cocoa':                   ['cco'],
+    'application/x-java-archive-diff':       ['jardiff'],
+    'application/x-java-jnlp-file':          ['jnlp'],
+    'application/x-makeself':                ['run'],
+    'application/x-perl':                    ['pl', 'pm'],
+    'application/x-pilot':                   ['prc', 'pdb'],
+    'application/x-rar-compressed':          ['rar'],
+    'application/x-redhat-package-manager':  ['rpm'],
+    'application/x-sea':                     ['sea'],
+    'application/x-shockwave-flash':         ['swf'],
+    'application/x-stuffit':                 ['sit'],
+    'application/x-tcl':                     ['tcl', 'tk'],
+    'application/x-x509-ca-cert':            ['der', 'pem', 'crt'],
+    'application/x-xpinstall':               ['xpi'],
+    'application/xhtml+xml':                 ['xhtml'],
+    'application/zip':                       ['zip'],
+
+    'application/octet-stream':              ['bin', 'exe', 'dll'],
+    'application/octet-stream':              ['deb'],
+    'application/octet-stream':              ['dmg'],
+    'application/octet-stream':              ['eot'],
+    'application/octet-stream':              ['iso', 'img'],
+    'application/octet-stream':              ['msi', 'msp', 'msm'],
+
+    'audio/midi':                            ['mid', 'midi', 'kar'],
+    'audio/mpeg':                            ['mp3'],
+    'audio/ogg':                             ['ogg'],
+    'audio/x-realaudio':                     ['ra'],
+
+    'video/3gpp':                            ['3gpp', '3gp'],
+    'video/mpeg':                            ['mpeg', 'mpg'],
+    'video/quicktime':                       ['mov'],
+    'video/x-flv':                           ['flv'],
+    'video/x-mng':                           ['mng'],
+    'video/x-ms-asf':                        ['asx', 'asf'],
+    'video/x-ms-wmv':                        ['wmv'],
+    'video/x-msvideo':                       ['avi'],
+    'video/mp4':                             ['m4v', 'mp4']
+}
+
+ext_mime_types = {}
+for mime, ext in mime_types.items():
+    for e in ext:
+        ext_mime_types[e] = mime
+
+def mime_type_by_ext(ext):
+    ext = ext.replace('.', '')
+    return ext_mime_types.get(ext)
+
 def get_alignment(data_type, item=None, value_list=None):
     if (data_type == INTEGER) or (data_type == FLOAT) or (data_type == CURRENCY):
         result = ALIGN_RIGHT
@@ -324,31 +410,92 @@ def empty_strings(text, module_type):
 
 def remove_comments(text, module_type, comment_sign):
     result = []
-    comment = False
-    for line in text.splitlines(True):
-        if comment:
-            pos = line.find('*/')
-            if pos != -1:
-                comment = False
-                line = pos * ' ' + '*/' + line[pos + 2:]
-            else:
-                line = ' ' * len(line)
-        else:
-            pos = line.find(comment_sign)
-            if pos != -1:
-                line = line[0:pos] + comment_sign + (len(line) - len(line[0:pos] + comment_sign) - 1) * ' ' + '\n'
-            if module_type == WEB_CLIENT_MODULE:
-                pos = line.find('/*')
+    if text:
+        comment = False
+        for line in text.splitlines(True):
+            if comment:
+                pos = line.find('*/')
                 if pos != -1:
-                    end = line.find('*/', pos + 2)
-                    if end != -1:
-                        line = line[0:pos] + '/*' + ' ' * (end - pos - 2) + line[end:]
-                    else:
-                        comment = True
-                        line = line[0:pos+2] + ' ' * (len(line) - (pos + 2))
-        result.append(line)
-    result = ''.join(result)
+                    comment = False
+                    line = pos * ' ' + '*/' + line[pos + 2:]
+                else:
+                    line = ' ' * len(line)
+            else:
+                pos = line.find(comment_sign)
+                if pos != -1:
+                    line = line[0:pos] + comment_sign + (len(line) - len(line[0:pos] + comment_sign) - 1) * ' ' + '\n'
+                if module_type == WEB_CLIENT_MODULE:
+                    pos = line.find('/*')
+                    if pos != -1:
+                        end = line.find('*/', pos + 2)
+                        if end != -1:
+                            line = line[0:pos] + '/*' + ' ' * (end - pos - 2) + line[end:]
+                        else:
+                            comment = True
+                            line = line[0:pos+2] + ' ' * (len(line) - (pos + 2))
+            result.append(line)
+        result = ''.join(result)
     return result
+
+def get_funcs_info(text, module_type):
+
+    def check_line(line, comment_sign, func_literal):
+        func_name = ''
+        trimed_line = line.strip()
+        if len(trimed_line) > 0:
+            if not (trimed_line[:len(comment_sign)] == comment_sign):
+                indent = line.find(func_literal)
+                if indent >= 0:
+                    def_end = line.find('(')
+                    if def_end > indent:
+                        func_name = line[indent+len(func_literal):def_end].strip()
+                        if func_name:
+                            return (indent, func_name)
+
+    def add_child_funcs(i, parent_indent, parent_dic, parent_key):
+        dic = {}
+        parent_dic[parent_key] = dic
+        if i < len(funcs_list):
+            cur_indent = funcs_list[i][0]
+        else:
+            return
+        cur_indent = -1
+        child_indent = -1
+        while i < len(funcs_list):
+            (indent, func_name) = funcs_list[i]
+            if cur_indent == -1:
+                cur_indent = indent
+            if indent == cur_indent:
+                dic[func_name] = None
+                cur_func_name = func_name
+            elif indent > cur_indent:
+                if child_indent == -1:
+                    child_indent = indent
+                if not indent > child_indent:
+                    i = add_child_funcs(i, indent, dic, cur_func_name)
+            elif indent < cur_indent:
+                return i - 1
+            i += 1
+        return i
+
+    funcs = {}
+    funcs['result'] = {}
+    if text:
+        if module_type == WEB_CLIENT_MODULE:
+            comment_sign = '//'
+            func_literal = 'function'
+        else:
+            comment_sign = '#'
+            func_literal = 'def'
+        text = remove_comments(text, module_type, comment_sign)
+        lines = text.splitlines()
+        funcs_list = []
+        for i, line in enumerate(lines):
+            res = check_line(line, comment_sign, func_literal)
+            if res:
+                funcs_list.append(res)
+        add_child_funcs(0, -1, funcs, 'result')
+    return funcs['result']
 
 class SingleInstance(object):
     def __init__(self, port=None):

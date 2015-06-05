@@ -620,7 +620,7 @@ class ChangeLog(object):
                         detail = {
                             'logs': {},
                             'records': self.item._records,
-                            'fields': [field.field_name for field in self.item.fields if not field.master_field],
+                            'fields': [field.field_name for field in self.item.fields],
                             'expanded': self.item.expanded
                         }
                         details[str(self.item.ID)] = detail
@@ -1597,6 +1597,9 @@ class AbstractDataSet(object):
 
     def rec_modified(self):
         return self.record_status in (common.RECORD_MODIFIED, common.RECORD_DETAILS_MODIFIED)
+
+    def is_browsing(self):
+        return self.item_state == consts.STATE_BROWSE
 
     def is_changing(self):
         return (self.item_state == common.STATE_INSERT) or (self.item_state == common.STATE_EDIT)

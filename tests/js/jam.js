@@ -1,3 +1,4 @@
+
 (function(window, undefined) {
     "use strict";
 
@@ -201,7 +202,7 @@
         bindEvents: function() {
             var i = 0,
                 len = this.items.length,
-                events = window.task_events['events' + this.ID.toString()];
+                events = window.task_events['events' + this.ID];
 
             this._events = [];
             for (var event in events) {
@@ -264,18 +265,21 @@
         },
 
         makeFormModal: function(form, options) {
-            var $doc,
+            var self = this,
+                $doc,
                 $form,
                 $title,
+                printCaption = '',
+                print_button = '',
                 mouseX,
                 mouseY,
                 fade = 'fade',
                 closeCaption = '',
                 defaultOptions = {
                     title: this.item_caption,
-                    margin: '15px 8px',
                     transition: false,
-                    closeCaption: true
+                    closeCaption: true,
+                    print: false
                 };
 
             function captureMouseMove(e) {
@@ -303,19 +307,29 @@
             if (language && options.closeCaption) {
                 closeCaption = '&nbsp;' + language.close + ' - [Esc]</small>';
             }
+            if (language && options.print) {
+                printCaption = '&nbsp;' + language.print + ' - [Ctrl-P]</small>',
+                print_button = '<button type="button" id="print-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' + printCaption + '</button>'
+            }
             if (!options.transition) {
                 fade = ''
             }
             $form = $(
-                '<div class="modal hide ' + fade + ' normal-modal-border" tabindex="-1" data-backdrop="static">' +
-                '<div class="modal-header">' +
-                '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' + closeCaption + ' ×</button>' +
-                '<h4 class="modal-title">' + options.title + '</h4>' +
-                '<div>' +
-                '<div>'
+                '<div class="modal hide ' + fade + ' normal-modal-border" tabindex="-1" data-backdrop="static" data-item="' + this.item_name + '">' +
+                    '<div class="modal-header">' +
+                        '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' + closeCaption + ' ×</button>' +
+                        print_button +
+                        '<h4 class="modal-title">' + options.title + '</h4>' +
+                    '</div>' +
+                '</div>'
             );
             $doc = $(document);
             $form.find('#close-btn').css('cursor', 'default');
+            $form.find('#print-btn')
+                .css('cursor', 'default')
+                .click(function(e) {
+                    self.print_message($form.find(".modal-body").clone());
+                });
             $title = $form.find('.modal-title');
             $title.on("mousedown", function(e) {
                 mouseX = e.screenX;
@@ -329,13 +343,6 @@
             });
 
             $form.append(form);
-            $form.title = options.title;
-            $form.modal_width = options.modal_width;
-            $form.modal_height = options.modal_height;
-            $form.tabindex = 1;
-            if (form.tabindex) {
-                $form.tabindex = form.tabindex;
-            }
             $form.isModal = true;
             return $form;
         },
@@ -384,9 +391,14 @@
                         });
 
                         this[formName].on("hide", function(e) {
+                            var canClose = true;
                             e.stopPropagation();
                             if (options.onHide) {
-                                options.onHide.call(self, e);
+                                canClose = options.onHide.call(self, e);
+                            }
+                            if (canClose === false) {
+                                e.preventDefault();
+                                self[formName].data('closing', false)
                             }
                         });
 
@@ -421,11 +433,12 @@
             }
         },
 
-        close_form: function(formName, onHidden) {
+        close_form: function(formName) {
             var self = this,
                 keySuffix = formName + '.' + this.item_name,
                 timeOut;
             if (this[formName]) {
+                this[formName].data('closing', true);
                 if (this[formName].isModal) {
                     clearTimeout(timeOut);
                     timeOut = setTimeout(function() {
@@ -437,9 +450,6 @@
                         100
                     );
                 } else {
-                    if (onHidden) {
-                        onHidden.call(this);
-                    }
                     $(window).off("keydown." + keySuffix);
                     $(window).off("keyup." + keySuffix);
                     this[formName].remove();
@@ -455,42 +465,80 @@
                 if (keyup) {
                     keyup.call(self, e);
                 }
-                var datepicker = self[form_name].find('.datepicker'),
+                var datepicker,
                     code = (e.keyCode ? e.keyCode : e.which);
-                if (datepicker.length && datepicker.is(':visible') && code === 27 && !e.ctrlKey && !e.shiftKey) {
-                    e.stopImmediatePropagation();
-                    e.preventDefault();
-                    datepicker.hide();
+                if (self[form_name]) {
+                    datepicker = self[form_name].find('.datepicker')
+                    if (datepicker.length && datepicker.is(':visible') && code === 27 && !e.ctrlKey && !e.shiftKey) {
+                        e.stopImmediatePropagation();
+                        e.preventDefault();
+                        datepicker.hide();
+                    }
                 }
             }
             this.create_form(form_name, options);
         },
 
-        message: function(mess, buttons, width, margin) {
+        print_message: function(html) {
+            var win = window.frames["dummy"];
+            win.document.write('<body onload="window.print()">' + html.html() + '</body>');
+            win.document.close();
+        },
+
+        message: function(mess, options) {
             var tab = 1,
                 self = this,
+                default_options = {
+                    buttons: undefined,
+                    title: '',
+                    width: 400,
+                    height: undefined,
+                    margin: undefined,
+                    print: false,
+                    text_center: false,
+                    button_min_width: 100,
+                    center_buttons: false
+                },
+                buttons,
                 key,
+                el = '',
                 $element,
-                $button = $('<button type="button" class="btn item-btn">OK</button>'),
+                $modal_body,
+                $button = $('<button type="button" class="btn">OK</button>'),
                 timeOut;
 
-            if (margin === undefined) {
-                margin = 0;
-            }
-            if (!width) {
-                width = 400;
-                margin = 20;
-            }
-            $element = $(
-                '<div id="message" class="modal hide" tabindex="-1" data-backdrop="static">' +
-                '    <div class="modal-body">' +
-                '    </div>' +
-                '    <div class="modal-footer" style="text-align: center;">' +
-                '    </div>' +
-                '</div>').attr("data-width", width);
-            $element.find('.modal-body').css("margin", margin);
+            options = $.extend({}, default_options, options);
+            buttons = options.buttons;
 
-            $element.find(".modal-body").html(mess).addClass("text-center");
+            el = '<div class="modal-body"></div>';
+            if (!this.isEmptyObj(buttons)) {
+                el += '<div class="modal-footer"></div>'
+            }
+
+            $element = this.makeFormModal($(el), options)
+
+            $modal_body = $element.find('.modal-body');
+
+            if (options.margin) {
+                $modal_body.css('margin', options.margin);
+            }
+
+            $modal_body.html(mess)
+
+            if (!options.title) {
+                $element.find('.modal-header').remove();
+            }
+
+            if (options.text_center) {
+                $modal_body.html(mess).addClass("text-center");
+            }
+            if (options.center_buttons) {
+                $element.find(".modal-footer").css("text-align", "center");
+            }
+
+            $element.find("#close-btn").click(function(e) {
+                $element.modal('hide');
+            });
 
             for (key in buttons) {
                 if (buttons.hasOwnProperty(key)) {
@@ -500,6 +548,15 @@
                 }
             }
 
+            $element.on("shown", function(e) {
+                e.stopPropagation();
+                $element.find(".modal-footer").find('button.btn').each(function() {
+                    if ($(this).outerWidth() < options.button_min_width) {
+                        $(this).outerWidth(options.button_min_width);
+                    }
+                });
+            });
+
             $element.on("hide", function(e) {
                 e.stopPropagation();
             });
@@ -508,14 +565,14 @@
                 e.stopPropagation();
             });
 
-            $element.on("keyup keydown", function(e) {
-                e.stopPropagation();
-            });
+            //~ $element.on("keyup keydown", function(e) {
+                //~ var code = (e.keyCode ? e.keyCode : e.which);
+            //~ });
 
             $element.on("click", ".btn", function(e) {
                 var button;
                 e.preventDefault();
-                e.stopPropagation();
+                e.stopImmediatePropagation();
                 for (var key in buttons) {
                     if (buttons.hasOwnProperty(key)) {
                         if ($(e.target).attr("id") === key) {
@@ -535,7 +592,7 @@
                 }
             });
 
-            $element.modal();
+            $element.modal({width: options.width, height: options.height});
             return $element;
         },
 
@@ -543,19 +600,20 @@
             var buttons = {};
             buttons[language.yes] = yesCallback;
             buttons[language.no] = noCallback;
-            this.message(mess, buttons);
+            this.message(mess, {buttons: buttons, margin: "20px 20px", text_center: true, center_buttons: true});
         },
 
         warning: function(mess, callback) {
-            this.message(mess, {"OK": callback});
+            var buttons = {"OK": callback};
+            this.message(mess, {buttons: buttons, margin: "20px 20px", text_center: true, center_buttons: true});
         },
 
-        information: function(mess, callback, width) {
-            this.message(mess, {"OK": callback}, width);
+        information: function(mess, options) {
+            return this.message(mess, options);
         },
 
-        show_message: function(mess) {
-            return this.message(mess);
+        show_message: function(mess, options) {
+            return this.message(mess, options);
         },
 
         hide_message: function($element) {
@@ -567,7 +625,15 @@
             buttons[language.yes] = yesCallback;
             buttons[language.no] = noCallback;
             buttons[language.cancel] = cancelCallback;
-            this.message(mess, buttons, 500, 20);
+            this.message(mess, {buttons: buttons, margin: "20px 20px", text_center: true, width: 500, center_buttons: true});
+        },
+
+        isEmptyObj: function(obj) {
+            for (var prop in obj) {
+                if (obj.hasOwnProperty(prop))
+                    return false;
+            }
+            return true;
         },
 
         emptyFunc: function() {},
@@ -621,7 +687,7 @@
             }
 
             $.ajax({
-                url: "\api",
+                url: "/api",
                 type: "POST",
                 contentType: contentType,
                 async: async,
@@ -647,7 +713,8 @@
                             return
                         }
                         if (data.result.status === consts.NOT_LOGGED) {
-                            self.login(repeat_request);
+//                            self.login(repeat_request);
+                            self.login();
                             return
                         }
                         if (callback) {
@@ -674,6 +741,121 @@
             if (reply !== undefined) {
                 return reply;
             }
+        },
+
+        _byteLength: function(str) {
+            var s = str.length;
+            for (var i=str.length-1; i>=0; i--) {
+                var code = str.charCodeAt(i);
+                if (code > 0x7f && code <= 0x7ff) s++;
+                else if (code > 0x7ff && code <= 0xffff) s+=2;
+                if (code >= 0xDC00 && code <= 0xDFFF) i--;
+            }
+            return s;
+        },
+
+        do_upload: function(path, file_info, options) {
+            var self = this,
+                i,
+                file,
+                files = [],
+                content,
+                header = '',
+                body = [],
+                div_chr = ';',
+                xhr = new XMLHttpRequest();
+            header += file_info.length + div_chr;
+            header += this._byteLength(path) + div_chr;
+            for (i = 0; i < file_info.length; i++) {
+                file = file_info[i][0];
+                content = file_info[i][1];
+                header += this._byteLength(file.name) + div_chr;
+                header += content.byteLength  + div_chr;
+                files.push(file.name);
+            }
+            body.push(header);
+            body.push(path);
+            for (i = 0; i < file_info.length; i++) {
+                file = file_info[i][0];
+                content = file_info[i][1];
+                body.push(file.name);
+                body.push(content)
+            }
+            xhr.open('POST', '/upload', true);
+            if (options.callback) {
+                xhr.onload = function(e) {
+                    if (options.multiple) {
+                        options.callback.call(self, self, files)
+                    }
+                    else {
+                        options.callback.call(self, self, files[0]);
+                    }
+                };
+            }
+            if (options.on_progress) {
+                xhr.upload.onprogress = function(e) {
+                    options.on_progress.call(self, self, e);
+                }
+            }
+            var blob = new Blob(body, {type: 'application/octet-stream'});
+            xhr.send(blob);
+        },
+
+        upload: function(path, options) {
+            var self = this,
+                default_options = {
+                    callback: undefined,
+                    on_progress: undefined,
+                    extension: undefined,
+                    multiple: false
+                },
+                button = $('<input type="file" style="position: absolute; top: -100px"/>');
+            options = $.extend({}, default_options, options);
+            if (options.multiple) {
+                button.attr('multiple', 'multiple');
+            }
+            $('body').append(button);
+            button.on('change', function(e) {
+                var files = e.target.files,
+                    i,
+                    parts,
+                    ext,
+                    counter = 0,
+                    f,
+                    file,
+                    file_info = [],
+                    reader,
+                    file_list = [];
+
+                for (i = 0, f; f = files[i]; i++) {
+                    ext = '';
+                    if (options.extension) {
+                        parts = f.name.split('.');
+                        if (parts.length) {
+                            ext = parts[parts.length - 1];
+                        }
+                        if (ext !== options.extension) {
+                            continue;
+                        }
+                    }
+                    file_list.push(f);
+                }
+                for (i = 0; i < file_list.length; i++) {
+                    file = file_list[i];
+                    reader = new FileReader();
+                    reader.onload = (function (cur_file) {
+                        return function (e) {
+                            file_info.push([cur_file, e.target.result])
+                            if (file_info.length === file_list.length) {
+                                self.do_upload(path, file_info, options);
+                            }
+                        };
+                    })(file);
+                    reader.readAsArrayBuffer(file);
+                }
+                button.remove();
+            })
+            button.click();
         },
 
         load: function(callback) {
@@ -747,9 +929,10 @@
                         if ($form) {
                             $form.modal('hide');
                         }
-                        if (callback) {
-                            callback.call(self);
-                        }
+                        location.reload();
+                        //~ if (callback) {
+                            //~ callback.call(self);
+                        //~ }
                     }
                 });
 
@@ -785,12 +968,15 @@
                 this.send_request('logout', this.user_id);
                 this.user_id = null;
                 this.eraseCookie('user_id');
-                location.reload()
+                location.reload();
             }
         },
 
         has_privilege: function(item, priv_name) {
             var priv_dic;
+            if (item.task.item_name === "admin") {
+                return true;
+            }
             if (!this.user_privileges || item.master) {
                 return true;
             } else {
@@ -914,9 +1100,10 @@
                         if (this.isEmptyObj(detail)) {
                             len = this.item.fields.length;
                             for (i = 0; i < len; i++) {
-                                if (!this.item.fields[i].master_field) {
-                                    fields.push(this.item.fields[i].field_name);
-                                }
+                                fields.push(this.item.fields[i].field_name);
+                                //~ if (!this.item.fields[i].master_field) {
+                                    //~ fields.push(this.item.fields[i].field_name);
+                                //~ }
                             }
                             detail = {
                                 'logs': {},
@@ -1399,8 +1586,6 @@
         this.parent_read_only = true;
         this._active = false;
         this._disabled_count = 0;
-        this.status_text = '';
-        this.delete_params = {};
         this._open_params = {};
         this._where_list = [];
         this._order_by_list = [];
@@ -1682,6 +1867,13 @@
             }
         },
 
+        system_field_name: function(name) {
+            if (name === 'id' || name === 'deleted'
+                || name === 'owner_id' || name === 'owner_rec_id') {
+                return true;
+            }
+        },
+
         get_records: function() {
             var i,
                 len,
@@ -1732,11 +1924,17 @@
             }
             result.fields = result._fields.slice(0);
             for (i = 0; i < len; i++) {
-                field = this.fields[i];
-                if (this[field.field_name] === undefined) {
-                    this[field.field_name] = field;
+                field = result.fields[i];
+                if (result[field.field_name] === undefined) {
+                    result[field.field_name] = field;
                 }
             }
+            //~ for (i = 0; i < len; i++) {
+                //~ field = this.fields[i];
+                //~ if (this[field.field_name] === undefined) {
+                    //~ this[field.field_name] = field;
+                //~ }
+            //~ }
             if (options.filters) {
                 this.eachFilter(function(filter, i) {
                     filter.copy(result);
@@ -1757,7 +1955,7 @@
             if (options.handlers) {
                 len = this._events.length;
                 for (i = 0; i < len; i++) {
-                    result[this._events[0]] = this._events[1];
+                    result[this._events[i][0]] = this._events[i][1];
                 }
             }
             if (options.handlers) {
@@ -2059,6 +2257,8 @@
                 this._where_list = [];
                 this._order_by_list = [];
             }
+            this._sorted_fields = [];
+            this._sorted_desc = false;
             this._open_params = params;
             return result
         },
@@ -2316,6 +2516,95 @@
             }
         },
 
+            "TEXT": 1,
+            "INTEGER": 2,
+            "FLOAT": 3,
+            "CURRENCY": 4,
+            "DATE": 5,
+            "DATETIME": 6,
+            "BOOLEAN": 7,
+            "BLOB": 8,
+
+        sort: function(fields) {
+            var self = this,
+                i,
+                field_name,
+                field_names = [],
+                desc = [],
+                field;
+
+            function convert_value(value, data_type) {
+                if (value === null) {
+                    if (data_type === consts.TEXT) {
+                        value = ''
+                    }
+                    else if (data_type === consts.INTEGER || data_type === consts.FLOAT || data_type === consts.CURRENCY) {
+                        value = 0;
+                    }
+                    else if (data_type === consts.DATE || data_type === consts.DATETIME) {
+                        value = new Date(0);
+                    }
+                    else if (data_type === consts.BOOLEAN) {
+                        value = false;
+                    }
+                }
+                if (data_type === consts.FLOAT) {
+                    value = Number(value.toFixed(10));
+                }
+                if (data_type === consts.CURRENCY) {
+                    value = Number(value.toFixed(2));
+                }
+                return value;
+            }
+
+            function compare_records(rec1, rec2) {
+                var i,
+                    field,
+                    data_type,
+                    index,
+                    result,
+                    val1,
+                    val2;
+                for (var i = 0; i < field_names.length; i++) {
+                    field = self.field_by_name(field_names[i]);
+                    index = field.bind_index;
+                    if (field.lookup_item) {
+                        index = field.lookup_index;
+                    }
+                    data_type = field.get_lookup_data_type();
+                    val1 = convert_value(rec1[index], data_type);
+                    val2 = convert_value(rec2[index], data_type);
+                    if (val1 < val2) {
+                        result = -1;
+                    }
+                    if (val1 > val2) {
+                        result = 1;
+                    }
+                    if (result) {
+                        if (desc[i]) {
+                            result = -result;
+                        }
+                        return result;
+                    }
+                }
+                return 0;
+            }
+
+            for (i = 0; i < fields.length; i++) {
+                field_name = fields[i];
+                if (field_name.charAt(0) === '-') {
+                    field_names.push(field_name.substring(1));
+                    desc.push(true);
+                }
+                else {
+                    field_names.push(field_name);
+                    desc.push(false);
+                }
+            }
+            this._records.sort(compare_records);
+            this.update_controls();
+        },
+
         search: function(field_name, text) {
             var searchText = text.trim(),
                 params = {};
@@ -2551,6 +2840,10 @@
             }
         },
 
+        is_browsing: function() {
+            return this.get_state() === consts.STATE_BROWSE;
+        },
+
         is_changing: function() {
             return (this.get_state() === consts.STATE_INSERT) || (this.get_state() === consts.STATE_EDIT);
         },
@@ -2722,6 +3015,10 @@
             }
             this.change_log.get_changes(changes);
             if (!this.master && !this.change_log.isEmptyObj(changes.data)) {
+                if (this.item_state !== consts.STATE_BROWSE) {
+                    this.warning('Item: ' + this.item_name + ' is not is browse state. Apply is only possible in browse state.');
+                    return
+                }
                 if (this.on_before_apply) {
                     this.on_before_apply.call(this, this);
                 }
@@ -3162,6 +3459,10 @@
             }
         },
 
+        rec_unchanged: function() {
+            return this.get_record_status() === consts.RECORD_UNCHANGED;
+        },
+
         rec_inserted: function() {
             return this.get_record_status() === consts.RECORD_INSERTED;
         },
@@ -3239,7 +3540,7 @@
                 if (this.record_count() > 0) {
                     //            if ((this.get_state() === consts.STATE_BROWSE) && (this.record_count() > 0)) {
                     this.question(language.delete_record, function() {
-                        self.delete();
+                        self["delete"]();
                         try {
                             self.apply();
                         } catch (e) {
@@ -3413,9 +3714,7 @@
                     if (canClose === undefined && self.task.on_view_form_close_query) {
                         canClose = self.task.on_view_form_close_query.call(self, self);
                     }
-                    if (canClose === false) {
-                        e.preventDefault();
-                    }
+                    return canClose;
                 },
                 onHidden: function() {
                     this.close();
@@ -3426,10 +3725,7 @@
         },
 
         close_view_form: function() {
-            this.close_form('view_form', function() {
-//                this.close();
-//                $(window).off("keyup" + this.item_name);
-            });
+            this.close_form('view_form');
         },
 
         do_on_edit_keyup: function(e) {
@@ -3516,9 +3812,7 @@
                     if (canClose === undefined && self.task.on_edit_form_close_query) {
                         canClose = self.task.on_edit_form_close_query.call(self, self);
                     }
-                    if (canClose === false) {
-                        e.preventDefault();
-                    }
+                    return canClose;
                 },
                 onKeyUp: this.do_on_edit_keyup,
                 onKeyDown: this.do_on_edit_keydown
@@ -3526,9 +3820,7 @@
         },
 
         close_edit_form: function() {
-            this.close_form('edit_form', function() {
-//                $(window).off("keyup" + this.item_name);
-            });
+            this.close_form('edit_form');
         },
 
         create_filter_form: function() {
@@ -3588,9 +3880,7 @@
                     if (canClose === undefined && self.task.on_filter_form_close_query) {
                         canClose = self.task.on_filter_form_close_query.call(self, self);
                     }
-                    if (canClose === false) {
-                        e.preventDefault();
-                    }
+                    return canClose;
                 },
 
             })
@@ -3672,9 +3962,13 @@
         },
 
         create_grid: function(container, options) {
-            var grid = new DBGrid(this, container, options);
-            return grid;
+            return new DBGrid(this, container, options);
         },
+
+        create_tree: function(container, parent_field, text_field, parent_of_root_value, options) {
+            return new DBTree(this, container, parent_field, text_field, parent_of_root_value, options);
+        },
+
 
         create_entries: function(container, options) {
             var default_options,
@@ -3856,7 +4150,7 @@
             }
         },
 
-        set_edit_fields: function(fields) {
+        set_edit_fields: function(fields, captions) {
             var i = 0,
                 len = fields.length,
                 field;
@@ -3869,13 +4163,20 @@
                 if (field) {
                     field.edit_visible = true;
                     field.edit_index = i + 1;
+                    if (captions) {
+                        try {
+                            field.field_caption = captions[i];
+                        }
+                        catch (e) {
+                        }
+                    }
                 } else {
                     throw this.item_name + " set_edit_fields: no field for field_name " + field[i];
                 }
             }
         },
 
-        set_view_fields: function(fields) {
+        set_view_fields: function(fields, captions) {
             var i = 0,
                 len = fields.length,
                 field;
@@ -3888,6 +4189,13 @@
                 if (field) {
                     field.view_visible = true;
                     field.view_index = i + 1;
+                    if (captions) {
+                        try {
+                            field.field_caption = captions[i];
+                        }
+                        catch (e) {
+                        }
+                    }
                 } else {
                     throw this.item_name + " set_edit_fields: no field for field_name " + field[i];
                 }
@@ -4066,9 +4374,7 @@
                     if (canClose === undefined && self.task.on_params_form_close_query) {
                         canClose = self.task.on_params_form_close_query.call(self, self);
                     }
-                    if (canClose === false) {
-                        e.preventDefault();
-                    }
+                    return canClose;
                 },
             })
         },
@@ -4150,12 +4456,22 @@
                         } else {
                             win = window.open(url, "_blank")
                             if (self.send_to_printer) {
-                                win.addEventListener('load', function() {win.print(false);});
-                                timeOut = setTimeout(function() {
-                                        win.close();
-                                    },
-                                    100
-                                );
+                                win.onload = function() {
+                                    win.print();
+                                    timeOut = setTimeout(
+                                        function() {
+                                            win.onfocus=function() { win.close();}
+                                        },
+                                        1000
+                                    );
+                                }
+                                //~
+                                //~ win.addEventListener('load', function() {win.print(false);});
+                                //~ timeOut = setTimeout(function() {
+                                        //~ win.close();
+                                    //~ },
+                                    //~ 100
+                                //~ );
                             }
                         }
                     }
@@ -5375,6 +5691,388 @@
     }
 
     /**********************************************************************/
+    /*                            DBTree class                            */
+    /**********************************************************************/
+
+    function DBTree(item, container, parent_field, text_field, parent_of_root_value, options) {
+        this.init(item, container, parent_field, text_field, parent_of_root_value, options);
+    }
+
+    DBTree.prototype = {
+        constructor: DBTree,
+
+        init: function(item, container, options) {
+            var self = this,
+                default_options = {
+                id_field: undefined,
+                parent_field: undefined,
+                text_field: undefined,
+                parent_of_root_value: undefined,
+                text_tree: undefined,
+                on_click: undefined,
+                on_dbl_click: undefined
+            };
+            this.id = item.task.controlId++;
+            this.item = item;
+            this.$container = container;
+            this.options = $.extend({}, default_options, options);
+            this.$element = $('<div class="treeview DBTree" tabindex="0" style="overflow-x:auto; overflow-y:auto;"></div>')
+            this.$element.css('position', 'relative');
+            this.$element.data('tree', this);
+            this.$element.tabindex = 0;
+            this.item.controls.push(this);
+            this.$element.bind('destroyed', function() {
+                self.item.controls.splice(self.item.controls.indexOf(self), 1);
+            });
+            this.$element.appendTo(this.$container);
+            this.height(container.height());
+            this.$element.on('focus blur', function(e) {
+//                self.select_node(self.selected_node);
+            });
+            this.$element.on('keyup', function(e) {
+                self.keyup(e);
+            })
+            this.$element.on('keydown', function(e) {
+                self.keydown(e);
+            })
+            if (item.get_active() && this.$container.width()) {
+                this.build();
+            }
+        },
+
+        form_closing: function() {
+            var $modal = this.$element.closest('.modal');
+            if ($modal) {
+                return $modal.data('closing')
+            }
+            return false;
+        },
+
+        height: function(value) {
+            if (value) {
+                this.$element.height(value);
+            }
+            else {
+                return this.$element.height();
+            }
+        },
+
+        is_focused: function() {
+            return this.$element.get(0) === document.activeElement;
+        },
+
+        scroll_into_view: function() {
+            this.select_node(this.selected_node);
+        },
+
+        update: function(state) {
+            var recNo,
+                self = this,
+                row;
+            if (this.form_closing()) {
+                return;
+            }
+            switch (state) {
+                case consts.UPDATE_OPEN:
+                    this.build();
+                    break;
+                case consts.UPDATE_CANCEL:
+                    this.changed();
+                    break;
+                case consts.UPDATE_APPEND:
+                    this.changed();
+                    break;
+                case consts.UPDATE_INSERT:
+                    this.changed();
+                    break;
+                case consts.UPDATE_DELETE:
+                    this.changed();
+                    break;
+                case consts.UPDATE_SCROLLED:
+                    this.syncronize();
+                    break;
+                case consts.UPDATE_CONTROLS:
+                    this.syncronize();
+                    break;
+                case consts.UPDATE_CLOSE:
+                    this.$element.empty();
+                    break;
+                case consts.UPDATE_REFRESH:
+                    this.build();
+                    break;
+            }
+        },
+
+        keydown: function(e) {
+            var self = this,
+                $li,
+                code = (e.keyCode ? e.keyCode : e.which);
+            if (this.selected_node && !e.ctrlKey && !e.shiftKey) {
+                switch (code) {
+                    case 13: //return
+                        e.preventDefault();
+                        this.toggle_expanded(this.selected_node);
+                        break;
+                    case 38: //up
+                        e.preventDefault();
+                        $li = this.selected_node.prev();
+                        if ($li.length) {
+                            this.select_node($li);
+                        }
+                        else {
+                            $li = this.selected_node.parent().parent()
+                            if ($li.length && $li.prop("tagName") === "LI") {
+                                this.select_node($li);
+                            }
+                        }
+                        break;
+                        break;
+                    case 40: //down
+                        e.preventDefault();
+                        if (this.selected_node.hasClass('parent') && !this.selected_node.hasClass('collapsed')) {
+                            $li = this.selected_node.find('ul:first li:first')
+                            if ($li.length) {
+                                this.select_node($li);
+                            }
+                        }
+                        else {
+                            $li = this.selected_node.next();
+                            if ($li.length) {
+                                this.select_node($li);
+                            }
+                            else {
+                                $li = this.selected_node.find('ul:first li:first')
+                                if ($li.length) {
+                                    this.select_node($li);
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
+        },
+
+        keyup: function(e) {
+            var self = this,
+                code = (e.keyCode ? e.keyCode : e.which);
+            if (!e.ctrlKey && !e.shiftKey) {
+                switch (code) {
+                    case 13:
+                        break;
+                    case 38:
+                        break;
+                    case 40:
+                        break;
+                }
+            }
+        },
+
+        build_child_nodes: function(tree, nodes) {
+            var i = 0,
+                len = nodes.length,
+                node,
+                id,
+                text,
+                rec,
+                bullet,
+                parent_class,
+                collapsed_class,
+                li,
+                ul,
+                info,
+                children,
+                child_len;
+            for (i = 0; i < len; i++) {
+                node = nodes[i];
+                id = node.id;
+                text = node.text;
+                rec = node.rec;
+                bullet = '&nbsp',
+                parent_class = "",
+                collapsed_class = "",
+                children = this.child_nodes[id + ''];
+                if (children && children.length) {
+                    bullet = '+';
+                    parent_class = ' parent';
+                    collapsed_class = 'collapsed';
+                }
+                li = '<li class="' + collapsed_class + parent_class +'" style="list-style: none" data-rec="' + rec + '">' +
+                    '<div><span class="tree-bullet">' + bullet + '</span>' +
+                    '&nbsp&nbsp<span class="tree-text">' +  text + '<span></div>';
+                tree += li;
+                if (children && children.length) {
+                    tree += '<ul style="display: none">';
+                    tree = this.build_child_nodes(tree, children);
+                    tree += '</ul>';
+                }tree += '</li>';
+                tree += '</li>';
+            }
+            return tree
+        },
+
+        collect_nodes: function(clone) {
+            var id_field = clone[this.options.id_field],
+                parent_field = clone[this.options.parent_field],
+                text_field = clone[this.options.text_field],
+                array;
+            this.child_nodes = {};
+            clone.first();
+            while (!clone.eof()) {
+                array = this.child_nodes[parent_field.value + ''];
+                if (array === undefined) {
+                    array = []
+                    this.child_nodes[parent_field.value + ''] = array;
+                }
+                array.push({'id': id_field.value, 'text': text_field.display_text,
+                    'rec': clone.rec_no});
+                clone.next();
+            }
+        },
+
+        build: function() {
+            var self = this,
+                clone = this.item.clone(),
+                tree = '<ul>',
+                i,
+                len,
+                rec,
+                info,
+                $li,
+                $lis,
+                nodes;
+            this.collect_nodes(clone);
+            this.$element.empty();
+            nodes = this.child_nodes[this.options.parent_of_root_value + ''];
+            if (nodes && nodes.length) {
+                tree = this.build_child_nodes(tree, nodes);
+            }
+            tree += '</ul>'
+            this.$element.append($(tree));
+            $lis = this.$element.find('li');
+            len = $lis.length;
+            for (i = 0; i < len; i++) {
+                $li = $lis.eq(i);
+                rec = $li.data('rec');
+                clone.set_rec_no(rec);
+                this.item._cur_row = rec;
+                $li.data("record", clone._records[rec]);
+                info = clone.rec_controls_info();
+                info[this.id] = $li.get();
+                if (this.options.node_callback) {
+                    this.options.node_callback($li, this.item);
+                }
+            }
+            this.select_node($lis.eq(0));
+
+            this.$element.on('click', 'li.parent > div span.tree-bullet', function(e) {
+                var $span = $(this),
+                    $li = $span.parent().parent(),
+                    $ul;
+                    self.toggle_expanded($li);
+            });
+            this.$element.on('click', 'li > div span.tree-text', function(e) {
+                var $li = $(this).parent().parent();
+                self.select_node($li);
+            });
+        },
+
+        toggle_expanded: function($li) {
+            var $span = $li.find('div:first span.tree-bullet'),
+                $ul;
+            if ($li.hasClass('parent')) {
+                $ul = $li.find('ul:first'),
+                $li.toggleClass('collapsed');
+                if ($li.hasClass('collapsed')) {
+                    $span.text('+');
+                }
+                else {
+                    $span.text('-');
+                }
+                $ul.slideToggle(0);
+            }
+        },
+
+        expand: function($li) {
+            if ($li.hasClass('parent') && $li.hasClass('collapsed')) {
+                this.toggle_expanded($li);
+            }
+            $li = $li.parent().parent()
+            if ($li.prop("tagName") === "LI") {
+                this.expand($li);
+            }
+        },
+
+        collapse: function($li) {
+            if ($li.hasClass('parent') && !$li.hasClass('collapsed')) {
+                this.toggle_expanded($li);
+            }
+        },
+
+        select_node: function($li) {
+            var self = this,
+                $parent,
+                rec;
+            if (this.selected_node) {
+                this.selected_node.removeClass('selected selected-focused');
+            }
+            if ($li && (!this.selected_node || $li.get(0) !== this.selected_node.get(0))) {
+                this.selected_node = $li;
+                rec = this.item._records.indexOf($li.data("record"));
+                if (rec !== this.item.rec_no) {
+                    this.item.set_rec_no(rec);
+                }
+                $parent = this.selected_node.parent().parent()
+                if ($parent.prop("tagName") === "LI") {
+                    this.expand($parent);
+                }
+            }
+            if (this.is_focused()) {
+                this.selected_node.addClass('selected-focused');
+            }
+            else {
+                this.selected_node.addClass('selected');
+            }
+            this.update_selected_node(this.selected_node);
+        },
+
+        update_selected_node: function($li) {
+            var containerTop,
+                containerBottom,
+                elemTop,
+                elemBottom,
+                parent;
+            if ($li.length) {
+                containerTop = this.$element.scrollTop();
+                containerBottom = containerTop + this.$element.height();
+                elemTop = $li.get(0).offsetTop;
+                elemBottom = elemTop + $li.height();
+                if (elemTop < containerTop) {
+                    this.$element.scrollTop(elemTop);
+                } else if (elemBottom > containerBottom) {
+                    this.$element.scrollTop(elemBottom - this.$element.height());
+                }
+            }
+        },
+
+        syncronize: function() {
+            var info,
+                $li;
+            if (this.item.record_count()) {
+                try {
+                    info = this.item.rec_controls_info(),
+                    $li = $(info[this.id]);
+                    this.select_node($li);
+                } catch (e) {
+                    console.log(e);
+                }
+            }
+        },
+
+        changed: function() {
+        },
+    }
+
+    /**********************************************************************/
     /*                            DBGrid class                            */
     /**********************************************************************/
 
@@ -5429,6 +6127,8 @@
             this.$container = container;
             this.options = $.extend({}, default_options, options);
             this.editMode = this.options.always_show_editor;
+            this._sorted_fields = [];
+            this._multiple_sort = false;
             this.on_dblclick = this.options.on_dblclick;
             if (this.item.is_lookup_item && this.item.lookup_selected_ids) {
                 this.options.multi_select = true;
@@ -5451,15 +6151,22 @@
 
             this.initFields();
 
-            this.$element = $('<div style="overflow-x:auto;"></div>').addClass("DBGrid");
+            this.$element = $('<div class="DBGrid" style="overflow-x:auto;"></div>');
+            this.$element.data('grid', this);
             this.item.controls.push(this);
             this.$element.bind('destroyed', function() {
                 self.item.controls.splice(self.item.controls.indexOf(self), 1);
             });
             this.$element.appendTo(this.$container);
             this.createTable();
-            if (item.get_active() && this.$container.width()) {
-                this.initRows()
+            if (item.get_active()) {
+                setTimeout(function() {
+                        if (self.$container.width()) {
+                            self.initRows();
+                        }
+                    },
+                    0
+                );
             }
         },
 
@@ -5648,6 +6355,7 @@
                     self.clicked(e, $this.closest('td'));
                     if (self.options.multi_select_set_selected) {
                         self.options.multi_select_set_selected.call(self.item, self.item, !checked);
+                        self.update_select_all_checkbox();
                     }
                 });
             }
@@ -5662,17 +6370,6 @@
             this.$table.attr("tabindex", this.options.tabindex);
 
             this.initKeyboardEvents();
-            //~ this.$table.on('keydown', function(e) {
-                //~ self.keydown(e);
-            //~ });
-//~
-            //~ this.$table.on('keyup', function(e) {
-                //~ self.keyup(e);
-            //~ });
-//~
-            //~ this.$table.on('keypress', function(e) {
-                //~ self.keypress(e);
-            //~ });
 
             this.$element.on('mousemove.grid-title', 'table.outer-table thead tr:first th', function(e) {
                 var $this = $(this),
@@ -5680,7 +6377,7 @@
                     lastCell = self.$element.find("thead tr:first th:last").get(0);
                 if ($this.outerWidth() - e.offsetX < 8 && !mouseX && this !== lastCell) {
                     $this.css('cursor', 'col-resize');
-                } else if (self.options.sortable && !self.item.master &&
+                } else if (self.options.sortable && //!self.item.master &&
                     (!self.options.sort_fields || self.options.sort_fields.indexOf(field_name) !== -1)) {
                     $this.css('cursor', 'pointer');
                 } else {
@@ -5693,7 +6390,6 @@
                     left = parseInt($selection.css("left"), 10);
                 if (mouseX) {
                     e.preventDefault();
-//                    if (newDelta > -($th.innerWidth() - 30) && (newDelta < ($thNext.innerWidth() - 30))) {
                     if (newDelta > -($th.innerWidth() - 30) && (!self.options.auto_fit_width || newDelta < ($thNext.innerWidth() - 30))) {
                         delta = newDelta;
                         $selection.css('left', left + e.screenX - mouseX);
@@ -5760,7 +6456,11 @@
                     index,
                     lastCell,
                     field_name = $this.data('field_name'),
-                    old_field_name,
+                    cur_field_name,
+                    fields = [],
+                    new_fields = [],
+                    desc = [],
+                    index,
                     desc = false,
                     next_field_name;
                 lastCell = self.$element.find("thead tr:first th:last").get(0);
@@ -5783,20 +6483,65 @@
                             'top': self.$element.position().top
                         });
                     $selection.appendTo(self.$element);
-                } else if (self.options.sortable && !self.item.master &&
+                } else if (self.options.sortable && //!self.item.master &&
                     (!self.options.sort_fields || self.options.sort_fields.indexOf(field_name) !== -1)) {
-                    if (self.item._open_params.__order && self.item._open_params.__order.length === 1) {
-                        old_field_name = self.item.field_by_ID(self.item._open_params.__order[0][0]).field_name
-                    }
-                    if (field_name && old_field_name === field_name) {
-                        desc = !self.item._open_params.__order[0][1]
-                    }
-                    if (field_name) {
-                        if (desc) {
-                            self.item._open_params.__order = self.item.get_order_by_list(['-' + field_name]);
-                        } else {
-                            self.item._open_params.__order = self.item.get_order_by_list([field_name])
+
+                    if (e.ctrlKey) {
+                        if (!self._multiple_sort) {
+                            self._multiple_sort = true;
                         }
+                    }
+                    else {
+                        if (self._multiple_sort) {
+                            self._sorted_fields = [];
+                            self._multiple_sort = false;
+                        }
+                    }
+                    desc = [];
+                    fields = [];
+                    for (var i = 0; i < self._sorted_fields.length; i++) {
+                        cur_field_name = self._sorted_fields[i];
+                        if (cur_field_name.charAt(0) === '-') {
+                            desc.push(true);
+                            fields.push(cur_field_name.substring(1));
+                        }
+                        else {
+                            desc.push(false);
+                            fields.push(cur_field_name);
+                        }
+                    }
+                    if (self._multiple_sort) {
+                        index = jQuery.inArray(field_name, fields);
+                        if (index === -1) {
+                            fields.push(field_name);
+                            desc.push(false);
+                        }
+                        else {
+                            desc[index] = !desc[index];
+                        }
+                    }
+                    else {
+                        if (fields.length && fields[0] === field_name) {
+                            desc[0] = !desc[0];
+                        }
+                        else {
+                            fields = [field_name];
+                            desc = [false];
+                        }
+                    }
+                    self._sorted_fields = [];
+                    for (var i = 0; i < fields.length; i++) {
+                        field_name = fields[i];
+                        if (desc[i]) {
+                            field_name = '-' + field_name;
+                        }
+                        self._sorted_fields.push(field_name);
+                    }
+                    if (self.item.master) {
+                        self.item.sort(self._sorted_fields);
+                    }
+                    else {
+                        self.item._open_params.__order = self.item.get_order_by_list(self._sorted_fields);
                         self.item.open({params: self.item._open_params});
                     }
                 }
@@ -5860,7 +6605,7 @@
             }
         },
 
-        createPager: function() {
+        createPager: function($element) {
             var self = this,
                 $pagination,
                 $pager,
@@ -5940,7 +6685,12 @@
                     this.options.pagination_container.append($pagination);
                 }
                 else {
-                    this.$element.find('tfoot').append($pagination);
+                    if ($element) {
+                        $element.find('tfoot').append($pagination);
+                    }
+                    else {
+                        this.$element.find('tfoot').append($pagination);
+                    }
                 }
                 this.$pageCount.text(language.of + ' ');
                 $pagination.find('#pager').width(pagerWidth);
@@ -6120,24 +6870,25 @@
                 div,
                 cell,
                 input,
-                order_field_name,
-                order_desc,
-                order_icon_class,
+                field_name,
+                order_fields = {},
                 title = '',
                 cellWidth;
             if ($element === undefined) {
                 $element = this.$element
             }
 
-            if (this.item._open_params.__order && this.item._open_params.__order.length === 1) {
-                order_field_name = this.item.field_by_ID(this.item._open_params.__order[0][0]).field_name;
-                order_desc = this.item._open_params.__order[0][1];
-                if (order_desc) {
-                    order_icon_class = 'icon-arrow-up';
-                } else {
-                    order_icon_class = 'icon-arrow-down';
+            len = this._sorted_fields.length;
+            for (i = 0; i < len; i++) {
+                field_name = this._sorted_fields[i];
+                if (field_name.charAt(0) === '-') {
+                    order_fields[field_name.substring(1)] = 'icon-arrow-down';
+                }
+                else {
+                    order_fields[field_name] = 'icon-arrow-up';
                 }
             }
+
             heading = $element.find("table.outer-table thead tr:first");
             heading.empty();
             if (this.options.multi_select) {
@@ -6175,8 +6926,8 @@
                     cell.width(cellWidth);
                     div.width(cellWidth);
                 }
-                if (order_field_name == field.field_name) {
-                    cell.find('p').append('<i class="' + order_icon_class + '"></i>');
+                if (order_fields[field.field_name]) {
+                    cell.find('p').append('<i class="' + order_fields[field.field_name] + '"></i>');
                     cell.find('i').css('margin-left', 2)
                 }
                 heading.append(cell);
@@ -6247,10 +6998,21 @@
             this.refresh();
         },
 
+        form_closing: function() {
+            var $modal = this.$element.closest('.modal');
+            if ($modal) {
+                return $modal.data('closing')
+            }
+            return false;
+        },
+
         update: function(state) {
             var recNo,
                 self = this,
                 row;
+            if (this.form_closing()) {
+                return;
+            }
             switch (state) {
                 case consts.UPDATE_OPEN:
                     this.initRows();
@@ -6432,7 +7194,8 @@
         hide_selection: function() {
             if (this.selected_row) {
                 if (this.options.editable && this.selectedField) {
-                    this.selected_row.find('td').removeClass("selected-focused selected");
+                    this.selected_row.removeClass("selected-focused selected");
+//                    this.selected_row.find('td').removeClass("selected-focused selected");
                     this.selected_row.find('td.' + this.selectedField.field_name)
                         .removeClass("field-selected-focused field-selected")
                 } else {
@@ -6450,7 +7213,8 @@
             }
             if (this.selected_row) {
                 if (this.options.editable && this.selectedField) {
-                    this.selected_row.find('td').addClass(selClassName);
+                    this.selected_row.addClass(selClassName);
+//                    this.selected_row.find('td').addClass(selClassName);
                     this.selected_row.find('td.' + this.selectedField.field_name)
                         .removeClass(selClassName)
                         .addClass(selFieldClassName);
@@ -6490,9 +7254,7 @@
                 elemTop,
                 elemBottom;
             if ($row.length) {
-                this.srcollDelta = new Date()
                 containerTop = this.$scroll_div.scrollTop();
-                this.srcollDelta = new Date() - this.srcollDelta;
                 containerBottom = containerTop + this.$scroll_div.height();
                 elemTop = $row.get(0).offsetTop;
                 elemBottom = elemTop + $row.height();
@@ -6666,7 +7428,12 @@
         },
 
         reload: function(callback) {
-            this.setPageNumber(this.page, callback);
+            if (this.item.auto_loading) {
+                this.setPageNumber(this.page, callback);
+            }
+            else {
+                this.open(callback);
+            }
         },
 
         updatePageInfo: function() {
@@ -6884,9 +7651,6 @@
                 clone = this.item.clone(),
                 container = $('<div>');
 
-            //~ if (!this.item.controls_enabled()) {
-                //~ return
-            //~ }
             is_focused = this.is_focused();
             if (this.options.editable && this.editMode && this.editor) {
                 if (!is_focused) {
@@ -7013,9 +7777,10 @@
             this.$outer_table.detach();
             this.$element.append(this.$outer_table);
 
+            this.update_select_all_checkbox();
+
             this.syncronize();
             if (is_focused) {
-//                this.$table.focus();
                 this.focus();
             }
             if (this.options.editable && this.editMode && this.editor) {
@@ -7024,6 +7789,18 @@
             }
             if (callback) {
                 callback.call(this);
+            }
+        },
+
+        update_select_all_checkbox: function() {
+            var self = this;
+            if (this.options.multi_select_select_all) {
+                setTimeout(function() {
+                    self.$outer_table.find('th input.multi_select')
+                        .prop('checked', self.$table.find('td input.multi_select').is(":checked"));
+                    },
+                    200
+                );
             }
         },
 
@@ -7087,7 +7864,19 @@
                     .click(function(e) {
                         self.field.value = !self.field.value;
                     });
-            } else {
+            } else if (field.data_type === consts.INTEGER && field.value_list) {
+                $input = $('<select>');
+                $input.append('<option value="0"></option>');
+                for (var i = 0; i < field.value_list.length; i++) {
+                    $input.append('<option value="' + (i + 1) + '">' + field.value_list[i] + '</option>');
+                }
+                $input.attr("id", field.field_name)
+                    .attr("tabindex", tabIndex + "");
+                $input.on('change', function() {
+                    self.field.value = parseInt($input.val(), 10);
+                })
+            }
+            else {
                 $input = $('<input>')
                     .attr("id", field.field_name)
                     .attr("type", "text")
@@ -7141,7 +7930,12 @@
                         $controls.append($input);
                         break;
                     case consts.INTEGER:
-                        $input.addClass("input-integer");
+                        if (this.field.value_list) {
+                            $input.addClass("input-select");
+                        }
+                        else {
+                            $input.addClass("input-integer");
+                        }
                         $controls.append($input);
                         break;
                     case consts.FLOAT:
@@ -7220,11 +8014,19 @@
                     e.stopPropagation()
                 });
 
+            this.$modalForm = this.$input.closest('.modal');
             this.update();
         },
 
+        form_closing: function() {
+            if (this.$modalForm) {
+                return this.$modalForm.data('closing')
+            }
+            return false;
+        },
+
         update: function() {
-            if (!this.removed) {
+            if (!this.removed && !this.form_closing()) {
                 if (this.read_only !== this.field.get_read_only()) {
                     this.read_only = this.field.get_read_only();
                     if (this.$firstBtn) {
@@ -7254,7 +8056,10 @@
                     } else {
                         this.$input.removeAttr("checked", "checked");
                     }
-                } else {
+                } if (this.field.value_list) {
+                    this.$input.val(this.field.value + '');
+                }
+                else {
                     this.errorValue = undefined;
                     this.error = undefined;
                     this.$input.val(this.field.get_display_text());
@@ -7295,10 +8100,10 @@
                         this.grid.item.edit();
                     }
                     this.grid.flushEditor();
+                    this.grid.hideEditor();
                     if (this.grid.item.is_changing()) {
                         this.grid.item.post();
                     }
-                    this.grid.hideEditor();
                 } else if (this.field.lookup_item) {
                     e.stopPropagation();
                     e.preventDefault();
@@ -7321,7 +8126,9 @@
             if (this.field.lookup_item) {
                 e.preventDefault();
             }
-            if (code && !this.field.valid_char_code(code)) {
+            if (this.$input.is('select')) {
+            }
+            else if (code && !this.field.valid_char_code(code)) {
                 e.preventDefault();
             }
         },
@@ -7385,6 +8192,9 @@
                         this.$input.val(text);
                     }
                 } catch (e) {
+                    if (this.field.owner && this.field.owner.task.settings.DEBUGGING) {
+                        console.log('change_field_text error: ' + e);
+                    }
                     this.errorValue = text;
                     this.error = e;
                     result = false;
@@ -7413,7 +8223,18 @@
 
         focusOut: function(e) {
             var result = false;
+
+            if (this.grid && this.grid.editMode) {
+                if (this.grid.item.is_changing()) {
+                    this.grid.flushEditor();
+                    this.grid.item.post();
+                }
+            }
+
             if (this.field.data_type === consts.BOOLEAN) {
+                result = true;
+            }
+            else if (this.field.value_list) {
                 result = true;
             } else if (this.change_field_text()) {
                 this.$input.val(this.field.get_display_text());
@@ -7521,6 +8342,7 @@
     };
 
     window.task = new Task();
+    window.task.constructors = {task: Task, group: Group, item: Item};
     $.ajaxSetup({
         cache: false
     });

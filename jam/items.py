@@ -38,14 +38,12 @@ class AbstractItem(object):
             if result:
                 return result
 
-    def write_info(self, info, web=None):
+    def write_info(self, info):
         info[ITEM_ID] = self.ID
         info[ITEM_NAME] = self.item_name
         info[ITEM_CAPTION] = self.item_caption
         info[ITEM_VISIBLE] = self.visible
         info[ITEM_TYPE] = self.item_type_id
-        if not web:
-            info[ITEM_CLIENT_CODE] = self.client_code
 
     def read_info(self, info):
         self.ID = info[ITEM_ID]
@@ -56,12 +54,12 @@ class AbstractItem(object):
 #        self.item_type = common.ITEM_TYPES[self.item_type_id - 1]
         self.client_code = info[ITEM_CLIENT_CODE]
 
-    def get_info(self, web=None):
+    def get_info(self):
         result = [None for i in range(len(ITEM_INFO))]
         result[ITEM_ITEMS] = []
-        self.write_info(result, web)
+        self.write_info(result)
         for item in self.items:
-            result[ITEM_ITEMS].append((item.item_type_id, item.get_info(web)))
+            result[ITEM_ITEMS].append((item.item_type_id, item.get_info()))
         return result
 
     def get_child_class(self, item_type_id):
@@ -150,6 +148,23 @@ class Task(AbstractItem):
                 if group.item_type_id != common.REPORTS_TYPE:
                     for detail in item.details:
                         self.compile_item(detail)
+        #~ for module in reversed(self.modules):
+            #~ del sys.modules[module]
+        #~ self.modules = []
+        #~ self.compile_item(self)
+        #~ for group in self.items:
+            #~ module = self.compile_item(group)
+            #~ self.modules.append(module)
+        #~ for group in self.items:
+            #~ for item in group.items:
+                #~ module = self.compile_item(item)
+                #~ self.modules.append(module)
+        #~ for group in self.items:
+            #~ for item in group.items:
+                #~ if group.item_type_id != common.REPORTS_TYPE:
+                    #~ for detail in item.details:
+                        #~ module = self.compile_item(detail)
+                        #~ self.modules.append(module)
 
     def get_language(self):
         return self.__language
@@ -201,8 +216,8 @@ class Task(AbstractItem):
 
 class Item(AbstractItem):
 
-    def write_info(self, info, web=None):
-        super(Item, self).write_info(info, web)
+    def write_info(self, info):
+        super(Item, self).write_info(info)
         info[ITEM_FIELDS] = self.get_fields_info()
         info[ITEM_FILTERS] = self.get_filters_info()
         info[ITEM_REPORTS] = self.get_reports_info()
@@ -260,8 +275,8 @@ class Report(AbstractItem):
                 setattr(self, name, obj)
                 return obj
 
-    def write_info(self, info, web=None):
-        super(Report, self).write_info(info, web)
+    def write_info(self, info):
+        super(Report, self).write_info(info)
         info[ITEM_FIELDS] = self.get_params_info()
 
     def read_info(self, info):

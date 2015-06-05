@@ -81,7 +81,6 @@ detail_client_events = \
         'on_before_field_changed': 'field, new_value, new_lookup_value',
         'on_filter_changed': 'filter',
         'on_field_validate': 'field',
-#        'on_get_field_value_list': 'field',
         'on_get_field_text': 'field',
         'on_field_lookup_item_show': 'field, lookup_item',
         'on_filter_lookup_item_show': 'filter, lookup_item'
@@ -104,6 +103,7 @@ report_client_events = \
 
 task_server_events = \
     {
+        'on_ext_request': 'task, request, params, env',
         'on_created': 'task',
         'on_login': 'task, env, admin, login, password_hash',
         'on_get_user_info': 'task, user_uuid, env',

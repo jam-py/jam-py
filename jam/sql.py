@@ -106,6 +106,8 @@ class SQL(object):
             return '"'
 
     def get_gen_name(self, db_type=None):
+        if db_type is None:
+            db_type = self.task.db_type
         if db_type == common.POSTGRESQL:
             return '%s_id_seq' % self.table_name.lower()
         elif db_type == common.FIREBIRD:
@@ -362,17 +364,19 @@ class SQL(object):
 
         def escape_search(value, esc_char):
             result = ''
+            found = False
             for ch in value:
                 if ch == "'":
                     ch = ch + ch
                 elif ch in ['_', '%']:
                     ch = esc_char + ch
+                    found = True
                 result += ch
-            return result
+            return result, found
 
         def get_condition(field_name, filter_type, value):
             field = self._field_by_name(field_name)
-            esc_char = ' '
+            esc_char = '/'
             cond_field_name = self.set_case(db_type, '"%s"."%s"' % (self.table_name, field_name))
             if type(value) == str:
                 value = value.decode('utf-8')
@@ -388,7 +392,7 @@ class SQL(object):
             else:
                 value = convert_field_value(field, value, filter_type)
                 if filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
-                    value = escape_search(value, esc_char)
+                    value, esc_found = escape_search(value, esc_char)
                     if field.lookup_item:
                         cond_field_name = self.set_case(db_type, '"%s"."%s"' % (self.ref_table_alias(field), field.lookup_field))
                     if filter_type == common.FILTER_CONTAINS:
@@ -400,7 +404,10 @@ class SQL(object):
                     if db_type == common.FIREBIRD:
                         cond_string = 'UPPER(%s) %s %s'
                         value = value.upper()
-                    value = "'" + value + "' ESCAPE '" + esc_char + "'"
+                    if esc_found:
+                        value = "'" + value + "' ESCAPE '" + esc_char + "'"
+                    else:
+                        value = "'" + value + "'"
             sql = cond_string % (cond_field_name, filter_sign, value)
             if field.data_type == common.BOOLEAN and value == '0':
                 if filter_sign == '=':

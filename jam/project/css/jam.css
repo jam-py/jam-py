@@ -12,9 +12,18 @@ body {
     min-height: 24px;
 }
 
-/*
-select,
-*/
+select {
+  height: 24px;
+  padding: 4px 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.form-horizontal select {
+  margin-bottom: 4px;
+}
+
 textarea,
 input[type="text"],
 input[type="password"],
@@ -153,6 +162,10 @@ h4 small {
   width: 55%;
 }
 
+.input-select {
+  width: %60;
+}
+
 .input-with-buttons {
   width: 100%;
 }
@@ -192,6 +205,7 @@ h4.title {
     display: none;
 }
 
+/*
 .item-btn {
     margin: 1px 1px;
     width: 100px;
@@ -201,6 +215,7 @@ h4.title {
     margin: 1px 1px;
     width: 144px;
 }
+*/
 
 .inline {
     display:inline;
@@ -230,20 +245,16 @@ h4.title {
     border-bottom: 1px solid #dddddd;
 }
 
-.table tbody tr.selected > td {
+.table tbody tr.selected > td:not(.field-selected) {
     background-color: #e5e5e5;
 }
 
-.table tbody tr.selected-focused > td {
+.table tbody tr.selected-focused > td:not(.field-selected-focused) {
     background-color: #d9edf7;
 }
 
 .table tbody tr td.selected {
     background-color: #e5e5e5;
-}
-
-.table tbody tr td.selected-focused {
-    background-color: #d9edf7;
 }
 
 .table tbody td.field-selected {
@@ -335,6 +346,12 @@ h4.title {
 
 .treeview li div {
     cursor: default;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -o-user-select: none;
+    -khtml-user-select: none;
+    user-select: none;
 }
 
 .treeview li.parent div span.tree-bullet {

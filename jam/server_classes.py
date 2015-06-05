@@ -173,6 +173,8 @@ class ServerDataset(Dataset, SQL):
     def do_apply(self, params=None):
         result = True
         if not self.master and self.log_changes:
+            if self.item_state != common.STATE_BROWSE:
+                raise Exception, u'Item: %s is not in browse state. Apply requires browse state.'
             changes = {}
             self.change_log.get_changes(changes)
             if changes['data']:
@@ -487,6 +489,13 @@ class ServerReport(Report, ServerAbstractItem):
         copy_report = self.copy();
         return copy_report.generate(param_values, url, ext);
 
+    def get_report_file_name(self, ext=None):
+        if not ext:
+            ext = 'ods'
+        file_name = self.item_caption + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
+        file_name = escape(file_name, {':': '-', '/': '_', '\\': '_'})
+        return os.path.abspath(os.path.join(self.task.work_dir, 'static', 'reports', file_name))
+
     def generate(self, param_values, url, ext):
         self.extension = ext
         self.url = url
@@ -500,9 +509,11 @@ class ServerReport(Report, ServerAbstractItem):
             self.content_name = os.path.join(self.task.work_dir, 'reports', 'content%s.xml' % time.time())
             self.content = open(self.content_name, 'wb')
             try:
-                file_name = self.item_caption + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.ods'
-                file_name = escape(file_name, {':': '-', '/': '_', '\\': '_'})
-                self.report_filename = os.path.abspath(os.path.join(self.task.work_dir, 'static', 'reports', file_name))
+                #~ file_name = self.item_caption + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.ods'
+                #~ file_name = escape(file_name, {':': '-', '/': '_', '\\': '_'})
+                #~ self.report_filename = os.path.abspath(os.path.join(self.task.work_dir, 'static', 'reports', file_name))
+                self.report_filename = self.get_report_file_name()
+                file_name = os.path.basename(self.report_filename)
                 static_dir = os.path.dirname(self.report_filename)
                 if not os.path.exists(static_dir):
                     os.makedirs(static_dir)
@@ -550,14 +561,13 @@ class ServerReport(Report, ServerAbstractItem):
                 if converted and os.path.exists(converted_file):
                     self.delete_report(self.report_filename)
                     file_name = file_name.replace('.ods', '.' + ext)
+            self.report_filename = os.path.join(self.task.work_dir, 'static', 'reports', file_name)
+            self.report_url = self.report_filename
+            if self.url:
+                self.report_url = '%s/static/reports/%s' % (self.url, file_name)
         else:
             if self.on_generate_report:
                 self.on_generate_report(self)
-
-        self.report_filename = os.path.join(self.task.work_dir, 'static', 'reports', file_name)
-        self.report_url = self.report_filename
-        if self.url:
-            self.report_url = '%s/static/reports/%s' % (self.url, file_name)
         if self.on_report_generated:
             self.on_report_generated(self)
         return self.report_url
@@ -869,8 +879,9 @@ def execute_sql(db_type, db_database, db_user, db_password,
             cursor.execute("PRAGMA foreign_keys = ON")
         return execute(connection)
 
-def process_request(name, queue, db_type, db_database, db_user, db_password, db_host, db_port, db_encoding):
+def process_request(name, queue, db_type, db_database, db_user, db_password, db_host, db_port, db_encoding, mod_count):
     con = None
+    counter = 0
     while True:
         request = queue.get()
         if request:
@@ -881,6 +892,14 @@ def process_request(name, queue, db_type, db_database, db_user, db_password, db_
             result_set = request['result_set']
             call_proc = request['call_proc']
             commit = request['commit']
+            cur_mod_count = request['mod_count']
+            if cur_mod_count != mod_count or counter > 1000:
+                if con:
+                    con.rollback()
+                    con.close()
+                con = None
+                mod_count = cur_mod_count
+                counter = 0
             if command == 'QUIT':
                 if con:
                     con.commit()
@@ -890,6 +909,7 @@ def process_request(name, queue, db_type, db_database, db_user, db_password, db_
             else:
                 con, result = execute_sql(db_type, db_database, db_user, db_password,
                     db_host, db_port, db_encoding, con, command, params, result_set, call_proc, commit)
+                counter += 1
                 result_queue.put(result)
 
 class AbstractServerTask(Task, ServerAbstractItem):
@@ -910,7 +930,10 @@ class AbstractServerTask(Task, ServerAbstractItem):
         self.db_encoding = encoding
         self.work_dir = os.getcwd()
         self.con_pool_size = 0
+        self.mod_count = 0
+#        self.modules = []
         self.processes = []
+        self._busy = 0
         if sys.db_multiprocessing and con_pool_size:
             self.queue = multiprocessing.Queue()
             self.manager = multiprocessing.Manager()
@@ -925,7 +948,7 @@ class AbstractServerTask(Task, ServerAbstractItem):
                 p = multiprocessing.Process(target=process_request, args=(self.item_name,
                     self.queue, self.db_type, self.db_database, self.db_user,
                     self.db_password, self.db_host, self.db_port,
-                    self.db_encoding))
+                    self.db_encoding, self.mod_count))
                 self.processes.append(p)
                 p.daemon = True
                 p.start()
@@ -934,8 +957,6 @@ class AbstractServerTask(Task, ServerAbstractItem):
         if self.con_pool_size:
             for i in range(self.con_pool_size):
                 self.execute('QUIT')
-            for p in self.processes:
-                p.join()
             self.processes = []
 
     def execute(self, command, params=None, result_set=None, call_proc=False, commit=True):
@@ -949,8 +970,13 @@ class AbstractServerTask(Task, ServerAbstractItem):
             request['result_set'] = result_set
             request['call_proc'] = call_proc
             request['commit'] = commit
-            self.queue.put(request)
-            result = result_queue.get()
+            request['mod_count'] = self.mod_count
+            self._busy += 1
+            try:
+                self.queue.put(request)
+                result = result_queue.get()
+            finally:
+                self._busy -= 1
             return result
         else:
             result = execute_sql(self.db_type, self.db_database, self.db_user,
@@ -1085,6 +1111,7 @@ class ServerTask(AbstractServerTask):
         self.on_login = None
         self.on_get_user_info = None
         self.on_logout = None
+        self.on_ext_request = None
 
     def get_ui_path(self):
         filepath = os.getcwd()

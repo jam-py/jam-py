@@ -122,25 +122,24 @@
                 this.$element.css('margin-left', '');
             }
 
-            //~ this.$element.find('.modal-body')
+            this.$element.find('.modal-body')
+                .css('overflow', '')
+                .css(prop, '');
+            if (value){
+                this.$element.find('.modal-body')
+                    .css('overflow', 'auto')
+                    .css(prop, value);
+            }
+
+            //~ this.$element
                 //~ .css('overflow', '')
                 //~ .css(prop, '');
 //~
             //~ if (value){
-                //~ this.$element.find('.modal-body')
+                //~ this.$element
                     //~ .css('overflow', 'auto')
                     //~ .css(prop, value);
             //~ }
-
-            this.$element
-                .css('overflow', '')
-                .css(prop, '');
-
-            if (value){
-                this.$element
-                    .css('overflow', 'auto')
-                    .css(prop, value);
-            }
 
             var modalOverflow = $(window).height() - 10 < this.$element.height();
             if (modalOverflow || this.options.modalOverflow) {
@@ -385,8 +384,6 @@
                         .addClass(that.options.attentionAnimation);
                 }, 0);
             }
-
-
             this.focus();
         },
 

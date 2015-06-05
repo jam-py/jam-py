@@ -1,20 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import uuid
 import common
 import adm_server
 import time
 from threading import Lock
-
-def get_request(env, request, user_id, task_id, item_id, params=None, web=False):
-    return server.process_request(env, request, user_id, task_id, item_id, params, web)
-
-def build_events():
-    adm_server.update_events_code()
-
-def minify(file_name, min_file_name):
-    adm_server.minify(file_name, min_file_name)
 
 class Server(object):
     def __init__(self):
@@ -25,20 +17,14 @@ class Server(object):
         self.users = {}
         self.roles = None
         self.last_users_update = common.now()
+        self.task_server_modified = False
+        self.task_client_modified = True
         self.under_maintenance = False
 
     def get_task(self):
         if self.task is None:
-            while True:
-                if self.task_lock.acquire(False):
-                    try:
-                        self.task = adm_server.create_task(self)
-                    finally:
-                        self.task_lock.release()
-                else:
-                    time.sleep(0.5)
-                if self.task:
-                    break
+            with self.task_lock:
+                self.task = adm_server.create_task(self)
         return self.task
 
     def release_connections(self):
@@ -66,17 +52,35 @@ class Server(object):
                 params.append(env)
             return func(obj, *params)
 
-    def init_client(self, user_info, is_admin, web=None):
+    def check_task_server_modified(self):
+        if self.task_server_modified:
+            adm_server.reload_task()
+            self.task_server_modified = False
+
+    def check_task_client_modified(self, file_name):
+        if self.task_client_modified and file_name == 'index.html':
+            adm_server.update_events_code()
+            self.task_client_modified = False
+        if not common.SETTINGS['DEBUGGING']:
+            adm_server.update_js_files()
+
+    def check_file_name(self, file_name):
+        if not common.SETTINGS['DEBUGGING']:
+            file_name = adm_server.get_minified_name(file_name)
+        return file_name
+
+    def init_client(self, user_info, is_admin):
         if is_admin:
             task = self.admin
         else:
             task = self.task
+            self.check_task_server_modified()
         if user_info:
             priv = self.get_privileges(user_info['role_id'])
         else:
             priv = None
         return {
-            'task': task.get_info(web),
+            'task': task.get_info(),
             'settings': self.admin.get_settings(),
             'language': self.admin.get_lang(),
             'user_info': user_info,
@@ -140,9 +144,9 @@ class Server(object):
     def has_privilege(self, user_info, item, priv_name):
         return self.find_privileges(user_info, item)[priv_name]
 
-    def process_request(self, env, request, user_uuid, task_id, item_id, params, web):
+    def process_request(self, env, request, user_uuid=None, task_id=None, item_id=None, params=None, ext=None):
         #~ print ''
-        #~ print 'process_request: ', request, user_uuid, task_id, item_id, params, web
+        #~ print 'process_request: ', request, user_uuid, task_id, item_id, params
 
         user_info = {}
         is_admin = task_id == 0
@@ -154,21 +158,29 @@ class Server(object):
             return {'status': common.UNDER_MAINTAINANCE, 'data': None}
         if request == 'login':
             return {'status': common.RESPONSE, 'data': self.login(params[0], params[1], is_admin, env)}
-        if self.admin.safe_mode:
-            now = common.now()
-            if common.hour_diff(now - self.last_users_update) > 1:
-                self.update_users()
-            user_info = self.get_user_info(user_uuid, is_admin, env)
-            if not user_info:
-                return {'status': common.NOT_LOGGED, 'data': common.NOT_LOGGED}
-        obj = task
-        if task:
-            obj = task.item_by_ID(item_id)
+        if ext:
+            obj = task
+        else:
+            if self.admin.safe_mode:
+                now = common.now()
+                if common.hour_diff(now - self.last_users_update) > 1:
+                    self.update_users()
+                user_info = self.get_user_info(user_uuid, is_admin, env)
+                if not user_info:
+                    return {'status': common.NOT_LOGGED, 'data': common.NOT_LOGGED}
+            obj = task
+            if task:
+                obj = task.item_by_ID(item_id)
 
-        return {'status': common.RESPONSE, 'data': self.get_response(is_admin, env, request, user_info, task_id, obj, params, web)}
+        return {'status': common.RESPONSE, 'data': self.get_response(is_admin, env, request, user_info, task_id, obj, params, ext)}
 
-    def get_response(self, is_admin, env, request, user_info, task_id, item, params, web):
-        if request[0:7] == 'server_':
+    def get_response(self, is_admin, env, request, user_info, task_id, item, params, ext):
+        if ext:
+            if item.on_ext_request:
+                return item.on_ext_request(item, request, params, env)
+            else:
+                raise Exception, u'Unknown request type %s' % request
+        elif request[0:7] == 'server_':
             return self.server_func(item, request, params, env)
         elif request == 'open':
             if self.has_privilege(user_info, item, 'can_view'):
@@ -206,7 +218,7 @@ class Server(object):
         elif request == 'logout':
             return self.logout(params, is_admin, env)
         elif request == 'init_client':
-            return self.init_client(user_info, is_admin, web)
+            return self.init_client(user_info, is_admin)
         elif request == 'exit' and task_id == 0:
             return True;
 
