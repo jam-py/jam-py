@@ -522,7 +522,7 @@ class SingleInstance(object):
                 sys.exit(-1)
 
     def close(self):
-        if os.exists(self.pid_file):
+        if os.path.exists(self.pid_file):
             os.remove(self.pid_file)
 
 def json_defaul_handler(obj):

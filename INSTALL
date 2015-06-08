@@ -7,7 +7,7 @@ this command from the command prompt:
 
 Note: on some unix like systems you may need to switch to root or run:
 
-	sudo python setup.py install
+    sudo python setup.py install
 
 AS AN ALTERNATIVE, you can just copy the entire "jam" directory to Python's
 site-packages directory, which is located wherever your Python installation
@@ -17,4 +17,15 @@ lives. Some places you might check are:
     /usr/lib/python2.6/site-packages (Unix, Python 2.6)
     C:\\PYTHON\site-packages         (Windows)
 
-For more detailed instructions, see user guide in doc directory.
+To creating a new project:
+1. Create a new directory.
+2. Go into the directory and run from command line:
+
+    jam-project.py
+
+3. Run server.py and in the browser input http://127.0.0.1:8080/admin.html
+in the adress bar. Select your language and specify the project params.
+
+There is a demo project in the demo directory.
+
+

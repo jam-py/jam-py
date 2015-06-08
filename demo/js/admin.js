@@ -110,8 +110,10 @@ function Events0() { // admin
 				'import':		  {handler: import_task, short_cut: 'Ctrl-I', key_code: 73, key_ctrl: true},
 				find:			  {handler: find_in_task, short_cut: 'Shift-F', key_code: 70, key_shift: true},
 				print:			 {handler: print_code, short_cut: 'Shift-P', key_code: 80, key_shift: true},
-				client_module:	 {handler: task.sys_items.edit_client, item: task.sys_items, short_cut: 'F9', key_code: 120},
-				server_module:	 {handler: task.sys_items.edit_server, item: task.sys_items, short_cut: 'F10', key_code: 121},
+				client_module:	 {handler: task.sys_items.edit_client, item: task.sys_items, short_cut: 'F8', key_code: 119},
+				server_module:	 {handler: task.sys_items.edit_server, item: task.sys_items, short_cut: 'F9', key_code: 120},
+				'index.html':	  {handler: task.sys_items.edit_index_html, item: task.sys_items, short_cut: 'F10', key_code: 121},
+				'project.css':	  {handler: task.sys_items.edit_project_css, item: task.sys_items, short_cut: 'F11', key_code: 122},
 				viewing:		   {handler: task.sys_items.view_setup, item: task.sys_items},
 				editing:		   {handler: task.sys_items.edit_setup, item: task.sys_items},
 				filters:		   {handler: task.sys_items.filters_setup, item: task.sys_items},
@@ -673,7 +675,12 @@ function Events3() { // admin.catalogs.sys_items
 				['ID', task.language.caption, task.language.name]);
 			item.set_edit_fields(['f_name', 'f_item_name'],
 				[task.language.caption, task.language.name]);
-			task.add_buttons(task, ['client_module', 'server_module']);
+			task.add_buttons(task, [
+				'client_module',
+				'server_module',
+				'index.html',
+				'project.css'
+			]);
 			return true
 		}
 	}
@@ -770,7 +777,7 @@ function Events3() { // admin.catalogs.sys_items
 		if (task.item_tree.type_id.value === task.item_types.REPORTS_TYPE) {
 			item.set_view_fields(['id', 'f_name', 'f_item_name', 'f_view_template', 'f_visible'],
 				['ID', task.language.caption, task.language.name, task.language.template, task.language.visible]);
-			item.set_edit_fields(['f_item_name', 'f_name', 'f_view_template', 'f_visible'],
+			item.set_edit_fields(['f_name', 'f_item_name', 'f_view_template', 'f_visible'],
 				[task.language.caption, task.language.name, task.language.template, task.language.visible]);
 			task.add_buttons(task,
 				[
@@ -1118,12 +1125,24 @@ function Events3() { // admin.catalogs.sys_items
 		item.task.sys_code_editor.code_editor(item, field_name)
 	}
 	
+	function edit_file(item, file_name) {
+		item.task.sys_code_editor.file_editor(item, file_name)
+	}
+	
 	function edit_client(item) {
 		edit_code(item, 'f_web_client_module');
 	}
 	
 	function edit_server(item) {
 		edit_code(item, 'f_server_module');
+	}
+	
+	function edit_index_html(item) {
+		edit_file(item, 'index.html');
+	}
+	
+	function edit_project_css(item) {
+		edit_file(item, 'css/project.css');
 	}
 	
 	function get_detail_source_list(item) {
@@ -1318,8 +1337,11 @@ function Events3() { // admin.catalogs.sys_items
 	this.view_setup = view_setup;
 	this.edit_setup = edit_setup;
 	this.edit_code = edit_code;
+	this.edit_file = edit_file;
 	this.edit_client = edit_client;
 	this.edit_server = edit_server;
+	this.edit_index_html = edit_index_html;
+	this.edit_project_css = edit_project_css;
 	this.get_detail_source_list = get_detail_source_list;
 	this.get_detail_dest_list = get_detail_dest_list;
 	this.details_setup = details_setup;
@@ -1351,49 +1373,66 @@ function Events2() { // admin.catalogs.sys_roles
 
 	function on_before_show_view_form(item) {
 		var grid_height = item.task.center_panel.height() - item.task.view_panel.height();
-		item.details_active = true;
-		item.view_form.find("#roles-panel #new-btn")
-			.text(item.task.language['new'])
-			.on('click.task', function() {append_role(item);});
-		item.view_form.find("#roles-panel #delete-btn")
-			.text(item.task.language['delete'])
-			.on('click.task', function() {del_role(item);});
-		item.view_form.find("#select-all-btn")
-			.text(item.task.language.select_all)
-			.on('click.task', function() {select_all_clicked(item);});
-		item.view_form.find("#unselect-all-btn")
-			.text(item.task.language.unselect_all)
-			.on('click.task', function() {unselect_all_clicked(item);});
-		item.set_view_fields(['f_name'], [item.task.language.roles]);
-		item.view_grid = item.create_grid(item.view_form.find("#roles-panel .view-table"),
-			{
-				height: grid_height,
-				word_wrap: false,
-				sortable: false
-			}
-		);
-		item.sys_privileges.set_view_fields(['item_id', 'f_can_view', 'f_can_create', 'f_can_edit', 'f_can_delete'],
-			[item.task.language.item, item.task.language.can_view, item.task.language.can_create,
-			item.task.language.can_edit, item.task.language.can_delete]);
-		item.detail_grid = item.sys_privileges.create_grid(item.view_form.find("#priv-panel .view-table"),
-			{
-				height: grid_height,
-				word_wrap: true,
-				column_width: {item_id: '50%'},
-				sortable: false
-			}
-		);
-		item.detail_grid.$table.on('click', 'td', function() {
-			var $td = $(this),
-				field_name = $td.data('field_name'),
-				field = item.sys_privileges.field_by_name(field_name);
-			if (field.field_type === "boolean") {
-				if (!item.sys_privileges.is_changing()) {
-					item.sys_privileges.edit();
+		if (item.view_form.hasClass('modal')) {
+			grid_height = 460;
+			item.view_form.modal_width = 560;
+			item.view_form.find("#priv-panel").remove();
+			item.view_form.find("#roles-panel").removeClass('span4').addClass('span12');
+			item.view_form.find("#roles-footer").hide();
+			item.view_grid = item.create_grid(item.view_form.find("#roles-panel .view-table"),
+				{
+					height: grid_height,
+					fields: ['id', 'f_name'],
+					column_width: {id: '10%'}
 				}
-				field.value = !field.value
-			}
-		})
+			);
+		}
+		else {
+			item.details_active = true;
+			item.view_form.find("#roles-panel #new-btn")
+				.text(item.task.language['new'])
+				.on('click.task', function() {append_role(item);});
+			item.view_form.find("#roles-panel #delete-btn")
+				.text(item.task.language['delete'])
+				.on('click.task', function() {del_role(item);});
+			item.view_form.find("#select-all-btn")
+				.text(item.task.language.select_all)
+				.on('click.task', function() {select_all_clicked(item);});
+			item.view_form.find("#unselect-all-btn")
+				.text(item.task.language.unselect_all)
+				.on('click.task', function() {unselect_all_clicked(item);});
+			item.set_view_fields(['f_name'], [item.task.language.roles]);
+			item.view_grid = item.create_grid(item.view_form.find("#roles-panel .view-table"),
+				{
+					height: grid_height,
+					fields: ['id', 'f_name'],
+					word_wrap: false,
+					sortable: false
+				}
+			);
+			item.sys_privileges.set_view_fields(['item_id', 'f_can_view', 'f_can_create', 'f_can_edit', 'f_can_delete'],
+				[item.task.language.item, item.task.language.can_view, item.task.language.can_create,
+				item.task.language.can_edit, item.task.language.can_delete]);
+			item.detail_grid = item.sys_privileges.create_grid(item.view_form.find("#priv-panel .view-table"),
+				{
+					height: grid_height,
+					word_wrap: true,
+					column_width: {item_id: '50%'},
+					sortable: false
+				}
+			);
+			item.detail_grid.$table.on('click', 'td', function() {
+				var $td = $(this),
+					field_name = $td.data('field_name'),
+					field = item.sys_privileges.field_by_name(field_name);
+				if (field.field_type === "boolean") {
+					if (!item.sys_privileges.is_changing()) {
+						item.sys_privileges.edit();
+					}
+					field.value = !field.value
+				}
+			})
+		}
 	}
 	
 	function select_all_clicked(item, value) {
@@ -1545,6 +1584,14 @@ function Events14() { // admin.catalogs.sys_code_editor
 		editor.view_modal();
 	}
 	
+	function file_editor(item, file_name) {
+		var editor = this.copy();
+		editor.item = item;
+		editor.file_name = file_name;
+		editor.item_info = item.task.server_function('server_get_file_info', [file_name]);
+		editor.view_modal();
+	}
+	
 	function on_before_show_view_form(item) {
 		task.code_editor_item = item;
 		item.view_form.find("#left-box").width(250);
@@ -1562,28 +1609,61 @@ function Events14() { // admin.catalogs.sys_code_editor
 	}
 	
 	function on_after_show_view_form(item) {
-		item.view_form.find('h4.modal-title').text('Editor ' + item.item_info.module_name);
+		if (item.field_name) {
+			item.view_form.find('h4.modal-title').text('Editor ' + item.item_info.module_name);
+			item.view_form.find('#editor-tabs ul')
+				.append('<li id="module"><a href="#">Module</a></li>')
+				.append('<li id="events"><a href="#">Events</a></li>')
+				.append('<li id="task"><a href="#">Task</a></li>')
+				.append('<li id="fields"><a href="#">Fields</a></li>');
 	
-		add_tree(item, "Module");
-		add_tree(item, "Events");
-		add_tree(item, "Task");
-		add_tree(item, "Fields");
+			add_tree(item, "Module");
+			add_tree(item, "Events");
+			add_tree(item, "Task");
+			add_tree(item, "Fields");
 	
-		item.view_form.find('#editor-tabs #info-grids').height(
-			item.view_form.find('#left-box').innerHeight() - item.view_form.find('ul.nav-tabs').outerHeight() - 14
-		)
-		info_tab_clicked(item, item.view_form.find('li#module'));
+			item.view_form.find('#editor-tabs #info-grids').height(
+				item.view_form.find('#left-box').innerHeight() - item.view_form.find('ul.nav-tabs').outerHeight() - 14
+			)
+			info_tab_clicked(item, item.view_form.find('li#module'));
 	
-		item.editor = ace.edit("editor");
-		item.editor.$blockScrolling = Infinity;
-		$(item.editor).focus();
-		if (item.is_server) {
-			item.is_server_module = true;
-			item.editor.getSession().setMode("ace/mode/python");
-			item.editor.getSession().setUseSoftTabs(true);
+			item.editor = ace.edit("editor");
+			item.editor.$blockScrolling = Infinity;
+			$(item.editor).focus();
+			if (item.is_server) {
+				item.is_server_module = true;
+				item.editor.getSession().setMode("ace/mode/python");
+				item.editor.getSession().setUseSoftTabs(true);
+			}
+			else {
+				item.editor.getSession().setMode("ace/mode/javascript");
+			}
 		}
-		else {
-			item.editor.getSession().setMode("ace/mode/javascript");
+		else if (item.file_name) {
+			item.view_form.find('h4.modal-title').text('Editor ' + item.file_name);
+	
+			if (item.item_info.Templates) {
+				item.view_form.find('#editor-tabs ul')
+					.append('<li id="templates"><a href="#">Templates</a></li>');
+				add_tree(item, "Templates");
+				item.view_form.find('#editor-tabs #info-grids').height(
+					item.view_form.find('#left-box').innerHeight() - item.view_form.find('ul.nav-tabs').outerHeight() - 14
+				)
+				info_tab_clicked(item, item.view_form.find('li#templates'));
+			}
+			else {
+				item.view_form.find("#left-box").hide();
+			}
+	
+			item.editor = ace.edit("editor");
+			item.editor.$blockScrolling = Infinity;
+			$(item.editor).focus();
+			if (item.file_name === 'index.html') {
+				item.editor.getSession().setMode("ace/mode/html");
+			}
+			else {
+				item.editor.getSession().setMode("ace/mode/css");
+			}
 		}
 		item.loaded = true;
 		item.editor.setValue(item.item_info.code);
@@ -1649,14 +1729,42 @@ function Events14() { // admin.catalogs.sys_code_editor
 		}
 	}
 	
-	function save_edit(item) {
+	function save_to_field(item) {
 		var info = item.task.server_function('server_save_edit', [item.task.sys_items.id.value, item.editor.getValue(), item.is_server]),
 			error = info[0],
 			line = info[1],
-			module_info = info[1];
-		item.view_form.find("#error-info").text(error)
+			module_info = info[2];
 		if (error && line && line < item.editor.session.getLength()) {
 			item.editor.gotoLine(line);
+		}
+		if (!error) {
+			item.item_info["Module"] = module_info;
+			add_tree(item, "Module");
+			update_tab_height(item);
+		}
+		return error;
+	}
+	
+	function save_to_file(item) {
+		var result =  item.task.server_function('server_save_file', [item.file_name, item.editor.getValue()]),
+			error = result.error;
+		if (result['Templates']) {
+			item.item_info["Templates"] = result['Templates'];
+			add_tree(item, "Templates");
+			update_tab_height(item);
+		}
+	}
+	
+	function save_edit(item) {
+		var error = false;
+		if (item.field_name) {
+			error = save_to_field(item);
+		}
+		else if (item.file_name) {
+			error = save_to_file(item);
+		}
+		if (error) {
+			item.view_form.find("#error-info").text(error)
 		}
 		else {
 			mark_clean(item);
@@ -1713,6 +1821,17 @@ function Events14() { // admin.catalogs.sys_code_editor
 		else if (tab === 'task' || tab === 'fields') {
 			item.editor.insert(node_text);
 		}
+		else if (tab === 'templates') {
+			item.editor.gotoLine(1);
+			text = node_text;
+			item.editor.find(text, {
+				backwards: false,
+				wrap: false,
+				caseSensitive: true,
+				wholeWord: true,
+				regExp: false
+			});
+		}
 		item.editor.focus();
 	}
 	
@@ -1729,7 +1848,9 @@ function Events14() { // admin.catalogs.sys_code_editor
 				.height(height)
 				.find('.treeview').height(height);
 			dbtree = item.view_form.find('#editor-tabs div.info-tree.' + $li.attr('id')).find('.treeview').data('tree');
-			dbtree.scroll_into_view();
+			if (dbtree) {
+				dbtree.scroll_into_view();
+			}
 		}
 	}
 	
@@ -1745,9 +1866,16 @@ function Events14() { // admin.catalogs.sys_code_editor
 			info_name = title.toLowerCase(),
 			$li = item.view_form.find('li#' + info_name),
 			tree_info = item.item_info[title],
-			tree_div = $('<div id="' + info_name + '" class="info-tree ' + info_name + '">');
+			tree_div;
 	
-		item.view_form.find('#editor-tabs #info-grids').append(tree_div);
+		tree_div = item.view_form.find('#editor-tabs #info-grids > div.' + info_name);
+		if (tree_div.length) {
+			tree_div.empty();
+		}
+		else {
+			tree_div = $('<div id="' + info_name + '" class="info-tree ' + info_name + '">');
+			item.view_form.find('#editor-tabs #info-grids').append(tree_div);
+		}
 		tree_div.hide();
 		tree_item.open({open_empty: true});
 		build_tree(tree_item, tree_info, 0);
@@ -1815,11 +1943,14 @@ function Events14() { // admin.catalogs.sys_code_editor
 		}
 	}
 	this.code_editor = code_editor;
+	this.file_editor = file_editor;
 	this.on_before_show_view_form = on_before_show_view_form;
 	this.on_after_show_view_form = on_after_show_view_form;
 	this.is_modified = is_modified;
 	this.mark_clean = mark_clean;
 	this.on_view_form_close_query = on_view_form_close_query;
+	this.save_to_field = save_to_field;
+	this.save_to_file = save_to_file;
 	this.save_edit = save_edit;
 	this.cancel_edit = cancel_edit;
 	this.update_size = update_size;

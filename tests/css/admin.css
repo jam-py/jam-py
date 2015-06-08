@@ -110,7 +110,7 @@
 }
 
 #editor {
-    font-size: 14px;
+    font-size: 12px;
     position: absolute;
     top: 0;
     right: 0;
@@ -127,6 +127,7 @@
 }
 
 .treeview {
+    font-size: 12px;
     padding-top: 2px;
     padding-left: 10px;
     padding-right: 10px;

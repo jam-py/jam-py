@@ -7,7 +7,7 @@ import datetime
 import time
 import zipfile
 import shutil
-import traceback
+import traceback 
 import sqlite3
 
 from third_party.jsparser import parse, SyntaxError_
@@ -1391,21 +1391,21 @@ def get_task_dict(task_id):
     get_children(items, task_id, common.TASK_TYPE, result, 'task')
     return result['task']
 
-def server_get_info(task, item_id):
-    items = task.sys_items.copy()
-    items.set_where(id=item_id)
-    items.open()
-    type_id = items.type_id.value
-    parent_id = items.parent.value
-    task_id = items.task_id.value
-    table_id = items.table_id.value
-    name = items.f_name.value
+# def server_get_info(task, item_id):
+    # items = task.sys_items.copy()
+    # items.set_where(id=item_id)
+    # items.open()
+    # type_id = items.type_id.value
+    # parent_id = items.parent.value
+    # task_id = items.task_id.value
+    # table_id = items.table_id.value
+    # name = items.f_name.value
 
-    result = {}
-    result[common.editor_tabs[common.TAB_FIELDS]] = get_field_dict(item_id, parent_id, type_id, table_id)
-    result[common.editor_tabs[common.TAB_TASK]] = get_task_dict(task_id)
-    return result
-task.register(server_get_info)
+    # result = {}
+    # result[common.editor_tabs[common.TAB_FIELDS]] = get_field_dict(item_id, parent_id, type_id, table_id)
+    # result[common.editor_tabs[common.TAB_TASK]] = get_task_dict(task_id)
+    # return result
+# task.register(server_get_info)
 
 def server_item_info(task, item_id, is_server):
     items = task.sys_items.copy()
@@ -1500,6 +1500,68 @@ def server_save_edit(task, item_id, text, is_server):
             task.server.task_client_modified = True
     return error, line, module_info
 task.register(server_save_edit)
+
+def get_templates(text):
+    result = {}
+    all = []
+    views = []
+    edits = []
+    filters = []
+    params = []
+    start = 0
+    while True:
+        index = text.find('class=', start)
+        if index == -1:
+            break
+        else:
+            print ''
+            start_char = text[index + 6: index + 7]
+            sub_str = text[index + 7:]
+            class_str = ''
+            for ch in sub_str:
+                if ch == start_char:
+                    break
+                else:
+                    class_str += ch
+            if class_str.find('-view') > 0:
+                views.append(class_str)
+            elif class_str.find('-edit') > 0:
+                edits.append(class_str)                    
+            elif class_str.find('-filter') > 0:
+                filters.append(class_str)                    
+            elif class_str.find('-params') > 0:
+                params.append(class_str)                    
+            start = index + 6 + len(class_str)
+    all = views + edits + filters + params
+    for one in all:
+        if not one in ['icon-edit', 'icon-filter']:
+            result[one] = None
+    return result
+
+def server_get_file_info(task, file_name):
+    result = {}
+    if os.path.exists(file_name):
+        with open(file_name, 'r') as f:
+            result['code'] = f.read()
+        if file_name == 'index.html':
+            result['Templates'] = get_templates(result['code'])
+    return result
+task.register(server_get_file_info)
+
+def server_save_file(task, file_name, code):
+    result = {}
+    error = ''
+    file_name = os.path.normpath(file_name)
+    try:
+        with open(file_name, 'w') as f:
+            f.write(code)
+        if file_name == 'index.html':
+            result['Templates'] = get_templates(code)
+    except Exception, e:
+        error = e.message
+    result['error'] = error
+    return result
+task.register(server_save_file)
 
 def do_on_apply_sys_changes(item, delta, params, priv, user_info, env):
     debugging = common.SETTINGS['DEBUGGING']

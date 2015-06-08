@@ -10,10 +10,10 @@ function Events5() { // demo
 
 	function viewItem(item) {
 		var content; 
-		if (item.task.cur_item) {
-			item.task.cur_item.close_view_form();
+		if (item.task.cur_item) { 
+			item.task.cur_item.close_view_form(); 
 		}
-		if (item.item_type === "report") {
+		if (item.item_type === "report") { 
 			item.print_report();
 		}
 		else {
@@ -23,7 +23,6 @@ function Events5() { // demo
 			item.view(content);
 		}
 	}
-	
 	
 	function on_before_show_main_form(task)  {
 		var groups;
@@ -91,7 +90,7 @@ function Events5() { // demo
 		$(window).on('resize', function() {
 			resize(task);
 		});
-	}
+	} 
 	
 	function create_print_btns(item) {
 		var $ul,
