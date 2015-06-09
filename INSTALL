@@ -26,6 +26,11 @@ To creating a new project:
 3. Run server.py and in the browser input http://127.0.0.1:8080/admin.html
 in the adress bar. Select your language and specify the project params.
 
-There is a demo project in the demo directory.
+Development process
+Run the server.py and the in the browser adress bar input 127.0.0.1:8080 to run
+the project and 127.0.0.1:8080/admin.html to work in Administrator.
+To imply the changes made in Administrator press F5 to see them in the project.
+
+Please try Demo project in the demo directory.
 
 

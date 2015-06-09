@@ -1418,7 +1418,8 @@ function Events2() { // admin.catalogs.sys_roles
 					height: grid_height,
 					word_wrap: true,
 					column_width: {item_id: '50%'},
-					sortable: false
+					sortable: false,
+					dblclick_edit: false
 				}
 			);
 			item.detail_grid.$table.on('click', 'td', function() {
@@ -2856,7 +2857,7 @@ window.task_events.events6 = new Events6();
 
 function Events8() { // admin.catalogs.sys_roles.sys_privileges 
 
-	function on_filter_changed(filter) {
+	function on_field_changed(field, lookup_item) {
 		var item = field.owner;
 		item.post();
 		item.owner.post();
@@ -2869,7 +2870,7 @@ function Events8() { // admin.catalogs.sys_roles.sys_privileges
 		item.owner.apply();
 		item.owner.edit();
 	}
-	this.on_filter_changed = on_filter_changed;
+	this.on_field_changed = on_field_changed;
 }
 
 window.task_events.events8 = new Events8();

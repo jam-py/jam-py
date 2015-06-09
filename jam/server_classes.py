@@ -159,14 +159,6 @@ class ServerDataset(Dataset, SQL):
         setattr(self.filters, name, fltr)
         return fltr
 
-    def __getattr__(self, name):
-        if self.detail_by_name(name):
-            obj = self.detail_by_name(name)
-            setattr(self, name, obj)
-            return obj
-        else:
-            raise AttributeError(self.item_name + ' attribute: ' + name)
-
     def do_internal_open(self, params):
         return self.select_records(params)
 
@@ -208,12 +200,6 @@ class ServerDataset(Dataset, SQL):
             result.append(detail.get_info())
         return result
 
-    #~ def get_reports_info(self):
-        #~ result = []
-        #~ for report in self.reports:
-            #~ result.append(report.ID)
-        #~ return result
-
     def add_detail(self, table):
         detail = ServerDetail(self, table.item_name, table.item_caption, table.table_name)
         self.details.append(detail)
@@ -225,12 +211,6 @@ class ServerDataset(Dataset, SQL):
         for table in self.details:
             if table.item_name == caption:
                 return table
-
-    def do_on_loaded(self):
-        self._filter_row = []
-        for i, fltr in enumerate(self.filters):
-            self._filter_row.append(None)
-            fltr.field.bind_index = i
 
     def get_view_template(self):
         if self.view_template:
@@ -931,7 +911,7 @@ class AbstractServerTask(Task, ServerAbstractItem):
         self.work_dir = os.getcwd()
         self.con_pool_size = 0
         self.mod_count = 0
-#        self.modules = []
+        self.modules = []
         self.processes = []
         self._busy = 0
         if sys.db_multiprocessing and con_pool_size:
@@ -1015,6 +995,7 @@ class AbstractServerTask(Task, ServerAbstractItem):
         item_module = type(sys)(item.module_name)
         item_module.__dict__['this'] = item
         sys.modules[item.module_name] = item_module
+        item.task.modules.append(item.module_name)
         if item.owner:
             sys.modules[item.owner.get_module_name()].__dict__[item.module_name] = item_module
         if code:
@@ -1036,12 +1017,6 @@ class AbstractServerTask(Task, ServerAbstractItem):
 
     def login(self, params):
         return 1
-
-    def __getattr__(self, name):
-        if self.item_by_name(name):
-            return self.item_by_name(name)
-        else:
-            raise AttributeError (self.item_name + ' AttributeError: ' + name)
 
     def add_item(self, item):
         self.items.append(item)
@@ -1144,12 +1119,6 @@ class ServerGroup(Group, ServerAbstractItem):
         if item_type_id == common.REPORTS_TYPE:
             self.on_convert_report = None
 
-    def __getattr__(self, name):
-        if self.find(name):
-            return self.find(name)
-        else:
-            raise AttributeError (self.item_name + ' AttributeError: ' + name)
-
     def get_view_template(self):
         return self.view_template
 
@@ -1215,6 +1184,3 @@ class ServerDetail(ServerAbstractItem, Detail, ServerDataset):
 
     def get_filters(self):
         return self.prototype.filters
-
-    #~ def get_reports_info(self):
-        #~ return []

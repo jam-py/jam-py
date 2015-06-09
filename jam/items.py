@@ -20,6 +20,8 @@ class AbstractItem(object):
         if owner:
             if not owner.find(name):
                 owner.items.append(self)
+                if not hasattr(owner, self.item_name):
+                    setattr(owner, self.item_name, self)
             self.task = owner.task
         self.item_caption = caption
         self.visible = visible
@@ -137,6 +139,9 @@ class Task(AbstractItem):
         pass
 
     def compile_all(self):
+        for module in self.modules:
+            del sys.modules[module]
+        self.modules = []
         self.compile_item(self)
         for group in self.items:
             self.compile_item(group)
@@ -148,23 +153,6 @@ class Task(AbstractItem):
                 if group.item_type_id != common.REPORTS_TYPE:
                     for detail in item.details:
                         self.compile_item(detail)
-        #~ for module in reversed(self.modules):
-            #~ del sys.modules[module]
-        #~ self.modules = []
-        #~ self.compile_item(self)
-        #~ for group in self.items:
-            #~ module = self.compile_item(group)
-            #~ self.modules.append(module)
-        #~ for group in self.items:
-            #~ for item in group.items:
-                #~ module = self.compile_item(item)
-                #~ self.modules.append(module)
-        #~ for group in self.items:
-            #~ for item in group.items:
-                #~ if group.item_type_id != common.REPORTS_TYPE:
-                    #~ for detail in item.details:
-                        #~ module = self.compile_item(detail)
-                        #~ self.modules.append(module)
 
     def get_language(self):
         return self.__language
@@ -215,6 +203,10 @@ class Task(AbstractItem):
             common.D_T_FMT = '%X'
 
 class Item(AbstractItem):
+    def __init__(self, owner, name, caption, visible = True, item_type_id=0):
+        AbstractItem.__init__(self, owner, name, caption, visible, item_type_id)
+        if not hasattr(self.task, self.item_name):
+            setattr(self.task, self.item_name, self)
 
     def write_info(self, info):
         super(Item, self).write_info(info)
@@ -265,6 +257,10 @@ class Detail(Item):
     def read_info(self, info):
         super(Detail, self).read_info(info)
         self.owner.details.append(self)
+        if not hasattr(self.owner.details, self.item_name):
+            setattr(self.owner.details, self.item_name, self)
+
+
 
 class Report(AbstractItem):
 

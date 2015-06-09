@@ -6483,7 +6483,7 @@
                             'top': self.$element.position().top
                         });
                     $selection.appendTo(self.$element);
-                } else if (self.options.sortable && //!self.item.master &&
+                } else if (field_name && self.options.sortable && //!self.item.master &&
                     (!self.options.sort_fields || self.options.sort_fields.indexOf(field_name) !== -1)) {
 
                     if (e.ctrlKey) {

@@ -558,36 +558,8 @@ class DBFilter(object):
 
     value = property (get_value, set_value)
 
-
 class DBList(list):
-    def __init__(self, owner):
-        self.owner = owner
-        self.obj_by_name = None
-        self.attr_err_mess = '%s DBList attribute error: %s'
-        self.list_err_mess = '%s: list is empty'
-
-    def __getattr__(self, name):
-        if len(self) > 0:
-            obj = self.obj_by_name(name)
-            if obj:
-                setattr(self, name, obj)
-                return obj
-            else:
-                raise AttributeError(self.attr_err_mess % (self.owner.item_name, name))
-        else:
-            raise RuntimeError(self.list_err_mess % self.owner.item_name)
-
-
-class DBFilters(list):
     pass
-
-class DBTables(DBList):
-    def __init__(self, owner):
-        DBList.__init__(self, owner)
-        self.obj_by_name = owner.detail_by_name
-        self.attr_err_mess = '%s details list attribute error: %s'
-        self.list_err_mess = '%s: details list is empty'
-
 
 class ChangeLog(object):
     def __init__(self, item):
@@ -895,8 +867,9 @@ class AbstractDataSet(object):
         self.ID = 0
         self._fields = []
         self.fields = []
-        self.filters = DBFilters()#[]
-        self.details = DBTables(self)
+        self._filters = []
+        self.filters = DBList()
+        self.details = DBList()
         self.controls = []
         self.change_log = ChangeLog(self)
         self._log_changes = True
@@ -1855,6 +1828,10 @@ class MasterDataSet(AbstractDataSet):
                 copy_table.expanded = detail.expanded
                 result.details.append(copy_table)
                 result.items.append(copy_table)
+                if not hasattr(result, copy_table.item_name):
+                    setattr(result, copy_table.item_name, copy_table)
+                if not hasattr(result.details, copy_table.item_name):
+                    setattr(result.details, copy_table.item_name, copy_table)
         return result
 
     def do_apply(self, params):
