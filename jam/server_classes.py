@@ -14,102 +14,12 @@ from xml.sax.saxutils import escape
 import datetime, time
 import traceback
 import inspect
+import json
 
-import common
+import common, db.db_modules as db_modules
 from items import *
 from dataset import *
 from sql import *
-
-class ServerField(DBField):
-    def __init__(self, owner, field_kind, field_name, caption, data_type, required = False,
-            item = None, object_field = None, visible = True, index=0,
-            edit_visible = True, edit_index = 0, read_only = False,
-            expand = False, word_wrap = False, size = 0, default = False, calculated = False,
-            editable = False, master_field = None, value_list=None):
-        DBField.__init__(self)
-        self.owner = owner
-        self.field_kind = field_kind
-        self.field_name = field_name
-        self.field_caption = caption
-        self.field_size = size
-        self.is_default = default
-        self.data_type = data_type
-        self.required = required
-        self.lookup_field = None
-        self.lookup_item = None
-        self.master_field = None
-        if item:
-            self.lookup_item = item
-            self.lookup_field = object_field
-        if master_field:
-            self.master_field = master_field
-            self.lookup_field = object_field
-        self.view_visible = visible
-        self.view_index = index
-        self.edit_visible = edit_visible
-        self.edit_index = edit_index
-        self.read_only = read_only
-        self.expand = expand
-        self.word_wrap = word_wrap
-        self.calculated = calculated
-        self.editable = editable
-        self.value_list = value_list
-
-    def copy(self, owner):
-        result = ServerField(owner, self.field_kind, self.field_name, self.field_caption, self.data_type)
-        result.set_info(self.get_info())
-        result.lookup_item = self.lookup_item
-        return result
-
-class ServerFilterField(DBField):
-    def __init__(self, fltr, field):
-        DBField.__init__(self)
-        self.owner = field.owner
-        self.filter = fltr
-        self.lookup_item = None
-        info = field.get_info()
-        self.set_info(field.get_info())
-
-    def do_before_changed(self, new_value, new_lookup_value):
-        pass
-
-    def get_row(self):
-        return self.owner._filter_row
-
-    def check_reqired(self, value):
-        return True
-
-    def set_modified(self, value):
-        pass
-
-    def set_record_status(self, value):
-        pass
-
-class ServerFilter(DBFilter):
-    def __init__(self, owner, name, caption, field_name, filter_type = common.FILTER_EQ, data_type = None, visible = True):
-        DBFilter.__init__(self)
-        self.owner = owner
-        self.filter_name = name
-        self.filter_caption = caption
-        self.field_name = None
-        self.field_ID = None
-        if type(field_name) == int:
-            self.field_name = owner._field_by_ID(field_name).field_name
-        else:
-            self.field_name = field_name
-        self.filter_type = filter_type
-        self.data_type = data_type;
-        self.visible = visible
-        self.list = []
-        if self.field_name:
-            field = self.owner._field_by_name(self.field_name)
-            self.field = ServerFilterField(self, field)
-            setattr(self, self.field_name, self.field)
-
-    def copy(self, owner):
-        result = ServerFilter(owner, self.filter_name, self.filter_caption, self.field_name, self.filter_type, self.visible)
-        return result
-
 
 class ServerDataset(Dataset, SQL):
     def __init__(self, table_name='', view_template='', edit_template='', filter_template='', soft_delete=True):
@@ -121,7 +31,6 @@ class ServerDataset(Dataset, SQL):
         self.filter_template = filter_template
         self.filter_template = filter_template
         self._order_by = []
-        self.on_get_next_id = None
         self.values = None
         self.on_select = None
         self.on_apply = None
@@ -143,20 +52,20 @@ class ServerDataset(Dataset, SQL):
     def get_event(self, caption):
         return getattr(caption)
 
-    def add_field(self, field_kind, field_name, caption, data_type, required = False,
+    def add_field(self, field_id, field_name, field_caption, data_type, required = False,
         item = None, object_field = None,
         visible = True, index=0, edit_visible = True, edit_index = 0, read_only = False, expand = False,
-        word_wrap = False, size = 0, default = False, calculated = False, editable = False, master_field = None, value_list=None):
-        field = ServerField(self, field_kind, field_name, caption, data_type, required, item, object_field, visible,
-            index, edit_visible, edit_index, read_only, expand, word_wrap, size, default, calculated, editable, master_field, value_list)
+        word_wrap = False, size = 0, default = False, calculated = False, editable = False, master_field = None, alignment=None, value_list=None):
+        field_def = self.add_field_def(field_id, field_name, field_caption, data_type, required, item, object_field, visible,
+            index, edit_visible, edit_index, read_only, expand, word_wrap, size, default, calculated, editable, master_field, alignment, value_list)
+        field = DBField(self, field_def)
         self._fields.append(field)
         return field
 
     def add_filter(self, name, caption, field_name, filter_type = common.FILTER_EQ, data_type = None, visible = True):
-        fltr = ServerFilter(self, name, caption, field_name, filter_type, data_type, visible)
+        filter_def = self.add_filter_def(name, caption, field_name, filter_type, data_type, visible)
+        fltr = DBFilter(self, filter_def)
         self.filters.append(fltr)
-        fltr.owner = self
-        setattr(self.filters, name, fltr)
         return fltr
 
     def do_internal_open(self, params):
@@ -179,9 +88,6 @@ class ServerDataset(Dataset, SQL):
                         self.change_log.update(data['result'])
         return result
 
-    def get_details(self):
-        return self.details
-
     def get_fields_info(self):
         result = []
         for field in self._fields:
@@ -192,12 +98,6 @@ class ServerDataset(Dataset, SQL):
         result = []
         for fltr in self.filters:
             result.append(fltr.get_info())
-        return result
-
-    def get_details_info(self):
-        result = []
-        for detail in self.details:
-            result.append(detail.get_info())
         return result
 
     def add_detail(self, table):
@@ -211,34 +111,6 @@ class ServerDataset(Dataset, SQL):
         for table in self.details:
             if table.item_name == caption:
                 return table
-
-    def get_view_template(self):
-        if self.view_template:
-            return self.view_template
-        elif self.owner:
-            return self.owner.get_view_template()
-
-    def get_view_ui(self):
-        return common.ui_to_string(os.path.join(self.task.get_ui_path(), 'ui', self.get_view_template()))
-
-    def get_edit_template(self):
-        if self.edit_template:
-            return self.edit_template
-        elif self.owner:
-            return self.owner.get_edit_template()
-
-    def get_edit_ui(self):
-        return common.ui_to_string(os.path.join(self.task.get_ui_path(), 'ui', self.get_edit_template()))
-
-    def get_filter_template(self):
-        if self.filter_template:
-            return self.filter_template
-        elif self.owner:
-            return self.owner.get_filter_template()
-
-    def get_filter_ui(self):
-        if self.owner.filter_template:
-            return common.ui_to_string(os.path.join(self.task.get_ui_path(), 'ui', self.get_filter_template()))
 
     def change_order(self, *fields):
         self._order_by = []
@@ -285,6 +157,7 @@ class ServerDataset(Dataset, SQL):
 
     def apply_changes(self, data, privileges, user_info=None, enviroment=None):
         error = None
+        result = None
         try:
             changes, params = data
             if not params:
@@ -300,44 +173,61 @@ class ServerDataset(Dataset, SQL):
             if not error:
                 error = '%s: apply_changes error' % self.item_name
             print traceback.format_exc()
-        if error:
-            return {'error': error, 'result': None}
-        else:
-            return {'error': error, 'result': result}
+        return {'error': error, 'result': result}
 
+    def update_deleted(self):
+        if self.is_delta and len(self.details):
+            rec_no = self.rec_no
+            try:
+                for it in self:
+                    if it.rec_deleted():
+                        for detail in self.details:
+                            fields = []
+                            for field in detail.fields:
+                                fields.append(field.field_name)
+                            det = self.task.item_by_name(detail.item_name).copy()
+                            det.set_where(owner_id=self.ID, owner_rec_id=self.id.value)
+                            det.open(fields=fields, expanded=detail.expanded)
+                            it.edit()
+                            for d in det:
+                                detail.append()
+                                for field in detail.fields:
+                                    f = det.field_by_name(field.field_name)
+                                    field.set_value(f.value, f.lookup_value)
+                                detail.post()
+                            it.post()
+                            for d in detail:
+                                d.record_status = common.RECORD_DELETED
+            finally:
+                self.rec_no = rec_no
 
     def field_by_id(self, id_value, field_name):
         return self.get_field_by_id((id_value, field_name))
 
     def get_field_by_id(self, params):
-        id_value, field_name = params
-        if isinstance(field_name, tuple) or isinstance(field_name, list):
-            field_names = field_name
-        else:
-            field_names = [field_name]
-        field_types = [self._field_by_name(field_name).data_type for field_name in field_names]
-        fields_str = ', '.join(['"%s"."%s"' % (self.table_name.upper(), field_name.upper()) for field_name in field_names])
-        sql = 'SELECT %s FROM "%s" WHERE ID = %s AND DELETED = 0' % (fields_str, self.table_name.upper(), id_value)
-        rec = self.task.execute_select_one(sql)
-        if rec:
-            rec = list(rec)
-            for i, val in enumerate(rec):
-                if val is None:
-                    if field_types[i] == common.TEXT:
-                        rec[i] = ''
-                    elif field_types[i] in [common.INTEGER, common.FLOAT, common.CURRENCY]:
-                        rec[i] = 0
-            if len(field_names) == 1:
-                return rec[0]
+        id_value, fields = params
+        if not (isinstance(fields, tuple) or isinstance(fields, list)):
+            fields = [fields]
+        copy = self.copy()
+        copy.set_where(id=id_value)
+        copy.open(fields=fields)
+        if copy.record_count() == 1:
+            result = []
+            for field_name in fields:
+                result.append(copy.field_by_name(field_name).value)
+            if len(fields) == 1:
+                return result[0]
             else:
-                return rec
+                return result
+        return
 
-class ServerAbstractItem(object):
-    def __init__(self):
+class ServerItem(Item, ServerDataset):
+    def __init__(self, owner, name, caption, visible = True,
+            table_name='', view_template='', edit_template='', filter_template='', soft_delete=True):
+        Item.__init__(self, owner, name, caption, visible)
+        ServerDataset.__init__(self, table_name, view_template, edit_template, filter_template, soft_delete)
+        self.item_type_id = None
         self.reports = []
-
-    def init_reports(self):
-        pass
 
     def get_reports_info(self):
         result = []
@@ -345,52 +235,36 @@ class ServerAbstractItem(object):
             result.append(report.ID)
         return result
 
-    def register(self, func):
-        setattr(self, func.__name__, func)
-
-
-class ServerItem(Item, ServerAbstractItem, ServerDataset):
-    def __init__(self, owner, name, caption, visible = True,
-            table_name='', view_template='', edit_template='', filter_template='', soft_delete=True):
-        Item.__init__(self, owner, name, caption, visible)
-        ServerAbstractItem.__init__(self)
-        ServerDataset.__init__(self, table_name, view_template, edit_template, filter_template, soft_delete)
-        self.item_type_id = None
 
 class ServerParam(DBField):
-    def __init__(self, caption='', name='', data_type=common.INTEGER, item=None, lookup_field=None, required=True, visible=True, alignment=0):
-        DBField.__init__(self)
-        self.field_caption = caption
-        self.param_caption = caption
-        self.field_name = name
-        self.param_name = name
-        self.lookup_item = item
-        self.lookup_field = lookup_field
-        self.data_type = data_type
+    def __init__(self, owner, param_def):
+        DBField.__init__(self, owner, param_def)
+        self.field_type = common.PARAM_FIELD
         if self.data_type == common.TEXT:
             self.field_size = 1000
         else:
             self.field_size = 0
-        self.required = required
-        self.alignment = alignment
-        self.edit_visible = visible
-        self.edit_value = None
-        self.param_lookup_value = None
+        self.param_name = self.field_name
+        self.param_caption = self.field_caption
+        self._value = None
+        self._lookup_value = None
+        setattr(owner, self.param_name, self)
+
 
     def system_field(self):
         return False
 
     def get_data(self):
-        return self.edit_value
+        return self._value
 
     def set_data(self, value):
-        self.edit_value = value
+        self._value = value
 
     def get_lookup_data(self):
-        return self.param_lookup_value
+        return self._lookup_value
 
     def set_lookup_data(self, value):
-        self.param_lookup_value = value
+        self._lookup_value = value
 
     def do_before_changed(self, new_value, new_lookup_value):
         pass
@@ -407,19 +281,17 @@ class ServerParam(DBField):
         return result
 
     def copy(self, owner):
-        result = ServerParam(self.param_caption, self.field_name, self.data_type,
+        result = ServerParam(owner, self.param_caption, self.field_name, self.data_type,
             self.lookup_item, self.lookup_field, self.required,
             self.edit_visible, self.alignment)
-        result.set_info(self.get_info())
-        result.owner = owner
         return result
 
 
-class ServerReport(Report, ServerAbstractItem):
+class ServerReport(Report):
     def __init__(self, owner, name='', caption='', visible = True,
             table_name='', view_template='', edit_template='', filter_template=''):
-        ServerAbstractItem.__init__(self)
         Report.__init__(self, owner, name, caption, visible)
+        self.param_defs = []
         self.params = []
         self.template = view_template
         self.band_tags = []
@@ -431,48 +303,82 @@ class ServerReport(Report, ServerAbstractItem):
         self.on_report_generated = None
         self.on_before_save_report = None
 
+        self.on_before_append = None
+        self.on_after_append = None
+        self.on_before_edit = None
+        self.on_after_edit = None
+        self.on_before_open = None
+        self.on_after_open = None
+        self.on_before_post = None
+        self.on_after_post = None
+        self.on_before_delete = None
+        self.on_after_delete = None
+        self.on_before_cancel = None
+        self.on_after_cancel = None
+        self.on_before_apply = None
+        self.on_after_apply = None
+        self.on_before_scroll = None
+        self.on_after_scroll = None
+        self.on_filter_record = None
+        self.on_field_changed = None
+        self.on_filter_applied = None
+        self.on_before_field_changed = None
+        self.on_filter_value_changed = None
+        self.on_field_validate = None
+        self.on_get_field_text = None
+
+
+    def add_param(self, caption='', name='', data_type=common.INTEGER, obj=None, obj_field=None, required=True, visible=True, value=None):
+        param_def = self.add_param_def(caption, name, data_type, obj, obj_field, required, visible, value)
+        param = ServerParam(self, param_def)
+        self.params.append(param)
+
+    def add_param_def(self, param_caption='', param_name='', data_type=common.INTEGER, lookup_item=None, lookup_field=None, required=True, visible=True, alignment=0):
+        param_def = [None for i in range(len(FIELD_DEF))]
+        param_def[FIELD_NAME] = param_name
+        param_def[NAME] = param_caption
+        param_def[FIELD_DATA_TYPE] = data_type
+        param_def[REQUIRED] = required
+        param_def[LOOKUP_ITEM] = lookup_item
+        param_def[LOOKUP_FIELD] = lookup_field
+        param_def[FIELD_EDIT_VISIBLE] = visible
+        param_def[FIELD_ALIGNMENT] = alignment
+        self.param_defs.append(param_def)
+        return param_def
+
+    def prepare_params(self):
+        for param in self.params:
+            if param.lookup_item and type(param.lookup_item) == int:
+                param.lookup_item = self.task.item_by_ID(param.lookup_item)
+            if param.lookup_field and type(param.lookup_field) == int:
+                param.lookup_field = param.lookup_item._field_by_ID(param.lookup_field).field_name
+
     def copy(self):
         result = self.__class__(self.owner, self.item_name, self.item_caption, self.visible,
-            self.table_name, self.template, '', '');
+            '', self.template, '', '');
         result.on_before_generate_report = self.on_before_generate_report
         result.on_generate_report = self.on_generate_report
         result.on_report_generated = self.on_report_generated
         result.on_before_save_report = self.on_before_save_report
-        for param in self.params:
-            new_param = param.copy(result)
-            new_param.lookup_item = param.lookup_item
-            result.params.append(new_param)
-        for param in result.params:
-            if param.master_field:
-                param.master_field = result.get_master_field(params, param.master_field)
+        result.param_defs = self.param_defs
+        for param_def in result.param_defs:
+            param = ServerParam(result, param_def)
+            result.params.append(param)
+        result.prepare_params()
         return  result
 
-    def add_param(self, caption='', name='', data_type=common.INTEGER, obj=None, obj_field=None, required=True, visible=True, value=None):
-        self.params.append(ServerParam(caption, name, data_type, obj, obj_field, required, visible, value))
-
-    def get_params_info(self):
-        result = []
-        for param in self.params:
-            result.append(param.get_info())
-        return result
-
-    def get_edit_template(self):
-        if self.edit_template:
-            return self.edit_template
-        elif self.owner:
-            return self.owner.get_edit_template()
-
-    def get_edit_ui(self):
-        return common.ui_to_string(os.path.join(self.task.get_ui_path(), 'ui', self.get_edit_template()))
-
     def print_report(self, param_values, url, ext=None):
-        copy_report = self.copy();
-        return copy_report.generate(param_values, url, ext);
+        copy_report = self.copy()
+        return copy_report.generate(param_values, url, ext)
 
     def get_report_file_name(self, ext=None):
         if not ext:
             ext = 'ods'
-        file_name = self.item_caption + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
+        os_system = os.name
+        if os_system == "nt":
+            file_name = self.item_name + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
+        else:
+            file_name = self.item_caption + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
         file_name = escape(file_name, {':': '-', '/': '_', '\\': '_'})
         return os.path.abspath(os.path.join(self.task.work_dir, 'static', 'reports', file_name))
 
@@ -530,7 +436,15 @@ class ServerReport(Report, ServerAbstractItem):
                 if not converted:
                     try:
                         from subprocess import Popen, STDOUT, PIPE
-                        convertion = Popen(['soffice', '--headless', '--convert-to', ext,
+                        os_system = os.name
+                        if os_system == "nt":
+                            import _winreg
+                            regpath = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\soffice.exe"
+                            root = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, regpath)
+                            s_office = _winreg.QueryValue(root, "")
+                        else:
+                            s_office = "soffice"
+                        convertion = Popen([s_office, '--headless', '--convert-to', ext,
                             self.report_filename, '--outdir', os.path.join(self.task.work_dir, 'static', 'reports') ],
                             stderr=STDOUT,stdout = PIPE)#, shell=True)
                         out, err = convertion.communicate()
@@ -704,14 +618,15 @@ class ServerReport(Report, ServerAbstractItem):
 
 delta_result = None
 
-def execute_sql(db_type, db_database, db_user, db_password,
+def execute_sql(db_module, db_database, db_user, db_password,
     db_host, db_port, db_encoding, connection, command,
     params=None, result_set=None, call_proc=False, commit=True):
 
     def execute_command(cursor, command, params=None):
         try:
             #~ print ''
-            #~ print command, params
+            #~ print command
+            #~ print params
 
             result = None
             if params:
@@ -722,6 +637,15 @@ def execute_sql(db_type, db_database, db_user, db_password,
                 result = cursor.fetchone()
             elif result_set == 'ALL':
                 result = cursor.fetchall()
+
+            #~ if command.upper().find('SELECT') == -1:
+                #~ try:
+                    #~ with open("sql_log.txt", "a") as f:
+                        #~ f.write('\n')
+                        #~ f.write(command + '\n')
+                        #~ f.write(json.dumps(params) + '\n')
+                #~ except:
+                    #~ pass
             return result
         except Exception, x:
             print '\nError: %s\n command: %s\n params: %s' % (str(x), command, params)
@@ -743,21 +667,22 @@ def execute_sql(db_type, db_database, db_user, db_password,
                 (command, params, info), details = sql
                 if info:
                     rec_id = info['id']
-                    if rec_id:
-                        if info['change_id_sql'] and info['next_id_sql']:
-                            next_id = get_next_id(cursor, info['next_id_sql'])
-                            if next_id < rec_id:
-                                cursor.execute(info['change_id_sql'])
-                    else:
-                        if info['next_id_sql']:
-                            rec_id = get_next_id(cursor, info['next_id_sql'])
-                            params[info['id_index']] = rec_id
+                    if info['status'] == common.RECORD_INSERTED:
+                        if rec_id:
+                            pass
+                        else:
+                            next_sequence_value_sql = db_module.next_sequence_value_sql(info['table_name'])
+                            if next_sequence_value_sql:
+                                rec_id = get_next_id(cursor, next_sequence_value_sql)
+                                params[info['id_index']] = rec_id
                     if info['status'] == common.RECORD_INSERTED and info['owner_rec_id_index']:
                         params[info['owner_rec_id_index']] = master_rec_id
                     if command:
                         execute_command(cursor, command, params)
-                    if db_type == common.SQLITE and not info['status'] == common.RECORD_DELETED and not rec_id:
-                        rec_id = cursor.lastrowid
+                    if not rec_id and info['status'] == common.RECORD_INSERTED:
+                        new_id = db_module.get_lastrowid(cursor)
+                        if new_id:
+                            rec_id = new_id
                     result_details = []
                     if rec_id:
                         changes.append({'log_id': info['log_id'], 'rec_id': rec_id, 'details': result_details})
@@ -834,34 +759,14 @@ def execute_sql(db_type, db_database, db_user, db_password,
     delta_result = None
     if not db_host:
         db_host = 'localhost'
-    if db_type == common.POSTGRESQL:
-        if connection is None:
-            import psycopg2
-            connection = psycopg2.connect(database=db_database, user=db_user, password=db_password, host=db_host, port=db_port)
-        return execute(connection)
-    elif db_type == common.MYSQL:
-        if connection is None:
-            import MySQLdb
-            connection = MySQLdb.connect(host=db_host, user=db_user, passwd=db_password, db=db_database)
-            cursor = connection.cursor()
-            cursor.execute("SET SESSION SQL_MODE=ANSI_QUOTES;")
-        return execute(connection)
-    elif db_type == common.FIREBIRD:
-        if connection is None:
-            import fdb
-            connection = fdb.connect(host=db_host, database=db_database, user=db_user, password=db_password, charset=db_encoding)
-        return execute(connection)
-    elif db_type == common.SQLITE:
-        if connection is None:
-            import sqlite3
-            connection = sqlite3.connect(db_database)
-            cursor = connection.cursor()
-            cursor.execute("PRAGMA foreign_keys = ON")
-        return execute(connection)
+    if connection is None:
+        connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
+    return execute(connection)
 
 def process_request(name, queue, db_type, db_database, db_user, db_password, db_host, db_port, db_encoding, mod_count):
     con = None
     counter = 0
+    db_module = db_modules.get_db_module(db_type)
     while True:
         request = queue.get()
         if request:
@@ -887,12 +792,12 @@ def process_request(name, queue, db_type, db_database, db_user, db_password, db_
                 result_queue.put('QUIT')
                 break
             else:
-                con, result = execute_sql(db_type, db_database, db_user, db_password,
+                con, result = execute_sql(db_module, db_database, db_user, db_password,
                     db_host, db_port, db_encoding, con, command, params, result_set, call_proc, commit)
                 counter += 1
                 result_queue.put(result)
 
-class AbstractServerTask(Task, ServerAbstractItem):
+class AbstractServerTask(Task):
     def __init__(self, name, caption, template, edit_template, db_type, db_database = '',
             db_user = '', db_password = '', host='', port='', encoding='', con_pool_size=1):
         Task.__init__(self, None, None, None, None)
@@ -908,6 +813,7 @@ class AbstractServerTask(Task, ServerAbstractItem):
         self.db_host = host
         self.db_port = port
         self.db_encoding = encoding
+        self.db_module = db_modules.get_db_module(self.db_type)
         self.work_dir = os.getcwd()
         self.con_pool_size = 0
         self.mod_count = 0
@@ -959,7 +865,7 @@ class AbstractServerTask(Task, ServerAbstractItem):
                 self._busy -= 1
             return result
         else:
-            result = execute_sql(self.db_type, self.db_database, self.db_user,
+            result = execute_sql(self.db_module, self.db_database, self.db_user,
                 self.db_password, self.db_host, self.db_port,
                 self.db_encoding, self.connection, command, params, result_set, call_proc, commit)
             self.connection = result[0]
@@ -1001,8 +907,8 @@ class AbstractServerTask(Task, ServerAbstractItem):
         if code:
             try:
                 code = code.encode('utf-8')
-            except:
-                pass
+            except Exception, e:
+                print e
             try:
                 comp_code = compile(code, item.module_name, "exec")
             except Exception, e:
@@ -1026,53 +932,60 @@ class AbstractServerTask(Task, ServerAbstractItem):
     def find_item(self, g_index, i_index):
         return self.items[g_index].items[i_index]
 
-    def get_ui_file(self, file_name):
-        return common.ui_to_string(os.path.join(self.get_ui_path(), 'ui', file_name))
-
-    def get_ui(self):
-        if self.template:
-            return common.ui_to_string(os.path.join(self.get_ui_path(), 'ui', self.template))
-
     def copy_database_data(self, db_type, db_database=None, db_user=None, db_password=None,
         db_host=None, db_port=None, db_encoding=None):
         connection = None
         limit = 1024
+        db_module = db_modules.get_db_module(db_type)
         for group in self.items:
             for item in group.items:
-                if item.item_type != 'report':
-                    self.execute('DELETE FROM %s' % item.table_name)
-                    item.open(expanded=False, open_empty=True)
-                    params = {'__fields': [], '__filters': [], '__expanded': False, '__loaded': 0, '__limit': 0}
-                    sql = item.get_record_count_query(params, db_type)
-                    connection, (result, error) = \
-                    execute_sql(db_type, db_database, db_user, db_password,
-                        db_host, db_port, db_encoding, connection, sql, None, 'ALL')
-                    record_count = result[0][0]
-                    loaded = 0
-                    while True:
-                        params['__loaded'] = loaded
-                        params['__limit'] = limit
-                        sql = item.get_select_statement(params, db_type)
+                handlers = item.store_handlers()
+                item.clear_handlers()
+                try:
+                    if item.item_type != 'report':
+                        self.execute(self.db_module.set_case('DELETE FROM %s' % item.table_name))
+                        item.open(expanded=False, open_empty=True)
+                        params = {'__fields': [], '__filters': [], '__expanded': False, '__loaded': 0, '__limit': 0}
+                        sql = item.get_record_count_query(params, db_module)
                         connection, (result, error) = \
-                        execute_sql(db_type, db_database, db_user, db_password,
+                        execute_sql(db_module, db_database, db_user, db_password,
                             db_host, db_port, db_encoding, connection, sql, None, 'ALL')
-                        if not error:
-                            for i, r in enumerate(result):
-                                item.append()
-                                j = 0
-                                for field in item.fields:
-                                    if not field.master_field:
-                                        field.value = r[j]
-                                        j += 1
-                                item.post()
-                            item.apply()
-                        else:
-                            raise Exception, error
-                        loaded = len(result)
-                        loaded += loaded
-                        print 'coping table %s: %d%%' % (item.item_name, int(loaded * 100 / record_count))
-                        if loaded == 0 or loaded < limit:
-                            break
+                        record_count = result[0][0]
+                        loaded = 0
+                        max_id = 0
+                        if record_count:
+                            while True:
+                                params['__loaded'] = loaded
+                                params['__limit'] = limit
+                                sql = item.get_select_statement(params, db_module)
+                                connection, (result, error) = \
+                                execute_sql(db_module, db_database, db_user, db_password,
+                                    db_host, db_port, db_encoding, connection, sql, None, 'ALL')
+                                if not error:
+                                    for i, r in enumerate(result):
+                                        item.append()
+                                        j = 0
+                                        for field in item.fields:
+                                            if not field.master_field:
+                                                field.value = r[j]
+                                                j += 1
+                                        if item.id.value > max_id:
+                                            max_id = item.id.value
+                                        item.post()
+                                    item.apply()
+                                else:
+                                    raise Exception, error
+                                records = len(result)
+                                loaded += records
+                                print 'coping table %s: %d%%' % (item.item_name, int(loaded * 100 / record_count))
+                                if records == 0 or records < limit:
+                                    break
+                            if self.db_module.restart_sequence_sql:
+                                sql = self.db_module.restart_sequence_sql(item.table_name, max_id + 1)
+                                self.execute(sql)
+                finally:
+                    item.load_handlers(handlers)
+
 
 
 class ServerTask(AbstractServerTask):
@@ -1087,13 +1000,12 @@ class ServerTask(AbstractServerTask):
         self.on_get_user_info = None
         self.on_logout = None
         self.on_ext_request = None
-
-    def get_ui_path(self):
-        filepath = os.getcwd()
-        return filepath.decode('utf-8')
+        self.init_dict = {}
+        for key, value in self.__dict__.items():
+            self.init_dict[key] = value
 
     def find_user(self, login, password_hash=None):
-        return self.admin.find_user(login, password_hash);
+        return self.admin.find_user(login, password_hash)
 
 class AdminServerTask(AbstractServerTask):
     def __init__(self, name, caption, template, edit_template,
@@ -1104,13 +1016,9 @@ class AdminServerTask(AbstractServerTask):
         filepath, filename = os.path.split(__file__)
         self.cur_path = filepath
 
-    def get_ui_path(self):
-        return self.cur_path.decode('utf-8')
 
-
-class ServerGroup(Group, ServerAbstractItem):
+class ServerGroup(Group):
     def __init__(self, owner, name, caption, view_template = None, edit_template = None, filter_template = None, visible = True, item_type_id=0):
-        ServerAbstractItem.__init__(self)
         Group.__init__(self, owner, name, caption, True, item_type_id)
         self.ID = None
         self.view_template = view_template
@@ -1149,38 +1057,41 @@ class ServerGroup(Group, ServerAbstractItem):
         return result
 
 
-class ServerDetail(ServerAbstractItem, Detail, ServerDataset):
+class ServerDetail(Detail, ServerDataset):
     def __init__(self, owner, name, caption, table_name):
-        ServerAbstractItem.__init__(self)
         Detail.__init__(self, owner, name, caption, True)
         ServerDataset.__init__(self, table_name)
         self.prototype = self.task.item_by_name(self.item_name)
         self.master = owner
 
     def init_fields(self):
-        for field in self.prototype._fields:
-            self._fields.append(field.copy(self))
-
-    def get_gen_name(self, db_type):
-        return self.prototype.get_gen_name(db_type)
+        self.field_defs = []
+        for field_def in self.prototype.field_defs:
+            self.field_defs.append(list(field_def))
+        for field_def in self.field_defs:
+            field = DBField(self, field_def)
+            self._fields.append(field)
 
     def do_internal_post(self):
         return {'success': True, 'id': None, 'message': '', 'detail_ids': None}
 
-    def where_clause(self, query, db_type):
+    def where_clause(self, query, db_module):
         owner_id = query['__owner_id']
         owner_rec_id = query['__owner_rec_id']
         if type(owner_id) == int and type(owner_rec_id) == int:
-            result = super(ServerDetail, self).where_clause(query, db_type)
+            result = super(ServerDetail, self).where_clause(query, db_module)
             clause = '"%s"."OWNER_ID"=%s AND "%s"."OWNER_REC_ID"=%s' % \
             (self.table_name.upper(), str(owner_id), self.table_name.upper(), str(owner_rec_id))
             if result:
                 result += ' AND ' + clause
             else:
                 result = ' WHERE ' + clause
-            return self.set_case(db_type, result)
+            return db_module.set_case(result)
         else:
             raise Exception, 'Invalid request parameter'
 
     def get_filters(self):
         return self.prototype.filters
+
+    def get_reports_info(self):
+        return []

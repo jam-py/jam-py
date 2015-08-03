@@ -6,7 +6,7 @@ function TaskEvents() {}
 
 window.task_events = new TaskEvents();
 
-function Events5() { // demo 
+function Events1() { // demo 
 
 	function viewItem(item) {
 		var content; 
@@ -14,7 +14,7 @@ function Events5() { // demo
 			item.task.cur_item.close_view_form(); 
 		}
 		if (item.item_type === "report") { 
-			item.print_report();
+			item.print_report(false);
 		}
 		else {
 			content = $("#content");
@@ -24,7 +24,7 @@ function Events5() { // demo
 		}
 	}
 	
-	function on_before_show_main_form(task)  {
+	function on_page_loaded(task) {
 		var groups;
 	
 		$("#title").html('Jam.py demo application');
@@ -62,7 +62,7 @@ function Events5() { // demo
 							submenu.append($('<li></li>').append(
 									$('<a href="#"></a>').text(item.item_caption).data('item', item)
 								)
-							)
+							);
 						}
 					}
 				}
@@ -84,7 +84,7 @@ function Events5() { // demo
 				'<p>by Andrew Yushev</p>' +
 				'<p>2014</p>'),
 				{title: 'Jam.py framework', margin: 0, text_center: true, buttons: {"OK": undefined}, center_buttons: true}
-			)
+			);
 		})));
 	
 		$(window).on('resize', function() {
@@ -108,7 +108,7 @@ function Events5() { // demo
 					$li = $('<li><a href="#">' + reports[i].item_caption + '</a></li>');
 					$li.find('a').data('report', reports[i]);
 					$li.on('click', 'a', function() {
-						$(this).data('report').print_report();
+						$(this).data('report').print_report(false);
 					});
 					$ul.append($li);
 				}
@@ -124,7 +124,7 @@ function Events5() { // demo
 	
 	function on_before_show_view_form(item) {
 		var expand_selected_row,
-			grid_height,
+			table_height,
 			multi_select,
 			multi_select_get_selected,
 			multi_select_set_selected;
@@ -134,20 +134,20 @@ function Events5() { // demo
 		if (item.is_lookup_item) {
 			item.view_form.find("#select-btn").on('click.task', function() {item.set_lookup_field_value();});
 			item.view_form.modal_width = 960;
-			grid_height = 480;
+			table_height = 480;
 		}
 		else {
 			item.view_form.find(".modal-body").css('padding', 0);
 			item.view_form.find(".view-title #title-left").append($('<h4>' + item.item_caption + '<h4>'));
-			item.view_form.find("#select-btn").hide()
+			item.view_form.find("#select-btn").hide();
 			if (item.item_name === 'invoices') {
-				grid_height = $(window).height() - $('body').height() - 200 - 40;
-				if (grid_height < 200) {
-					grid_height = 200;
+				table_height = $(window).height() - $('body').height() - 200 - 40;
+				if (table_height < 200) {
+					table_height = 200;
 				}
 			}
 			else {
-				grid_height = $(window).height() - $('body').height() - 40;
+				table_height = $(window).height() - $('body').height() - 40;
 			}
 		}
 	
@@ -169,26 +169,12 @@ function Events5() { // demo
 		else {
 			item.view_form.find("#delete-btn").attr('disabled','disabled');
 		}
+		
+		create_print_btns(item);
 	
-	//	if (item.item_name === "tracks") {
-	//		item.selected_records = {};
-	//		multi_select = true;
-	//		multi_select_get_selected = function() {
-	//			return item.selected_records[item.id.value]
-	//		}
-	//		multi_select_set_selected = function(value) {
-	//			if (value) {
-	//				item.selected_records[item.id.value] = 1;
-	//			}
-	//			else {
-	//				delete item.selected_records[item.id.value];
-	//			}
-	//		}
-	//		expand_selected_row = 3;
-	//	}
-		item.view_grid = item.create_grid(item.view_form.find(".view-table"),
+		item.view_table = item.create_table(item.view_form.find(".view-table"),
 			{
-				height: grid_height,
+				height: table_height,
 				word_wrap: false,
 				sortable: true,
 				expand_selected_row: expand_selected_row,
@@ -198,11 +184,9 @@ function Events5() { // demo
 			});
 		if (item.item_name === 'invoices') {
 			item.details_active = true;
-			item.detail_grid = item.invoice_table.create_grid(item.view_form.find(".view-detail"),
+			item.detail_table = item.invoice_table.create_table(item.view_form.find(".view-detail"),
 				{height: 200, dblclick_edit: false, column_width: {"track": "60%"}});
 		}
-	
-		create_print_btns(item);
 	}
 	
 	function on_after_show_view_form(item) {
@@ -218,17 +202,17 @@ function Events5() { // demo
 			width = 1050;
 		}
 		item.edit_form.modal_width = width;
-		item.create_entries(item.edit_form.find(".edit-body"), {col_count: col_count});
+		item.create_inputs(item.edit_form.find(".edit-body"), {col_count: col_count});
 		item.edit_form.find("#cancel-btn").attr("tabindex", 101).on('click.task', function(e) {item.cancel_edit(e); return false;});
 		item.edit_form.find("#ok-btn").attr("tabindex", 100).on('click.task', function() {item.apply_record()});
 		if (item.item_name === 'invoices') {
-			item.edit_grid = item.invoice_table.create_grid(item.edit_form.find(".edit-detail"),
+			item.edit_table = item.invoice_table.create_table(item.edit_form.find(".edit-detail"),
 				{
 					height: 400,
 					tabindex: 90,
 					editable: true,
+					editable_fields: ['quantity'],
 					sortable: true,
-	//				sort_fields: ['track'],
 					column_width: {"track": "60%"}
 				});
 			item.edit_form.find("#new-btn").attr("tabindex", 92).on('click.task', function() {item.invoice_table.append_record()});
@@ -246,7 +230,6 @@ function Events5() { // demo
 	}
 	
 	function on_after_show_edit_form(item) {
-		expand_buttons(item.edit_form);
 		if (item.details_active) {
 			item.eachDetail(function(d) {
 				d.update_controls();
@@ -255,7 +238,8 @@ function Events5() { // demo
 		else {
 			item.open_details();
 		}
-		resize_edit_grid(item);
+		expand_buttons(item.edit_form);
+		resize_edit_table(item);	
 	}
 	
 	function on_edit_form_close_query(item) {
@@ -276,12 +260,12 @@ function Events5() { // demo
 				item.cancel();
 			}
 		}
-		return result
+		return result;
 	}
 	
 	function on_before_show_filter_form(item) {
 		item.filter_form.title = item.item_caption + ' - filter';
-		item.create_filter_entries(item.filter_form.find(".edit-body"));
+		item.create_filter_inputs(item.filter_form.find(".edit-body"));
 		item.filter_form.find("#cancel-btn").attr("tabindex", 101).on('click.task', function() {item.close_filter()});
 		item.filter_form.find("#ok-btn").attr("tabindex", 100).on('click.task', function() {item.apply_filter()});
 	}
@@ -291,7 +275,7 @@ function Events5() { // demo
 	}
 	
 	function on_before_show_params_form(item) {
-		item.create_params(item.params_form.find(".edit-body"));
+		item.create_param_inputs(item.params_form.find(".edit-body"));
 		item.params_form.find("#cancel-btn").attr("tabindex", 101).on('click.task', function() {item.close_params_form()});
 		item.params_form.find("#ok-btn").attr("tabindex", 100).on('click.task', function() {item.process_report()});
 	}
@@ -319,35 +303,35 @@ function Events5() { // demo
 		}
 	}
 	
-	function resize_view_grid(item) {
+	function resize_view_table(item) {
 		var newHeight;
-		if (item.view_grid) {
-			newHeight = item.view_grid.height() + $(window).height() - $('body').height() - 40;
+		if (item.view_table) {
+			newHeight = item.view_table.height() + $(window).height() - $('body').height() - 40;
 			if (newHeight < 200) {
 				newHeight = 200;
 			}
-			item.view_grid.height(newHeight);
-			item.view_grid.resize();
+			item.view_table.height(newHeight);
+			item.view_table.resize();
 		}
 	}
 	
-	function resize_edit_grid(item, window_resized) {
+	function resize_edit_table(item, window_resized) {
 		var edit_form_height,
 			window_height,
 			newHeight;
-		if (item.edit_form && item.edit_grid) {
+		if (item.edit_form && item.edit_table) {
 			edit_form_height = item.edit_form.height();
 			window_height = $(window).height();
 			if (window_resized || edit_form_height > window_height - 20) {
-				newHeight = item.edit_grid.height() - (edit_form_height - window_height) - 20;
+				newHeight = item.edit_table.height() - (edit_form_height - window_height) - 20;
 				if (newHeight > 450) {
 					newHeight = 450;
 				}
 				if (newHeight < 200) {
 					newHeight = 200;
 				}
-				item.edit_grid.height(newHeight);
-				item.edit_grid.resize();
+				item.edit_table.height(newHeight);
+				item.edit_table.resize();
 			}
 		}
 	}
@@ -359,14 +343,14 @@ function Events5() { // demo
 		clearTimeout(timeOut);
 		timeOut = setTimeout(function() {
 			if (item) {
-				resize_view_grid(item);
-				resize_edit_grid(item, true);
+				resize_view_table(item);
+				resize_edit_table(item, true);
 			}
 		},
 		100);
 	}
 	this.viewItem = viewItem;
-	this.on_before_show_main_form = on_before_show_main_form;
+	this.on_page_loaded = on_page_loaded;
 	this.create_print_btns = create_print_btns;
 	this.on_before_show_view_form = on_before_show_view_form;
 	this.on_after_show_view_form = on_after_show_view_form;
@@ -380,14 +364,14 @@ function Events5() { // demo
 	this.on_after_show_params_form = on_after_show_params_form;
 	this.on_view_keyup = on_view_keyup;
 	this.on_edit_keyup = on_edit_keyup;
-	this.resize_view_grid = resize_view_grid;
-	this.resize_edit_grid = resize_edit_grid;
+	this.resize_view_table = resize_view_table;
+	this.resize_edit_table = resize_edit_table;
 	this.resize = resize;
 }
 
-window.task_events.events5 = new Events5();
+window.task_events.events1 = new Events1();
 
-function Events6() { // demo.catalogs 
+function Events2() { // demo.catalogs 
 
 	function on_before_show_view_form(item) {
 		var timeOut,
@@ -450,12 +434,11 @@ function Events6() { // demo.catalogs
 	this.on_after_show_view_form = on_after_show_view_form;
 }
 
-window.task_events.events6 = new Events6();
+window.task_events.events2 = new Events2();
 
-function Events7() { // demo.journals 
+function Events3() { // demo.journals 
 
 	function on_before_show_view_form(item) {
-		var gridHeight;
 		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});
 		item.on_filter_applied = function(item) {
 			if (item.view_form) {
@@ -466,20 +449,19 @@ function Events7() { // demo.journals
 	}
 	
 	function on_after_show_view_form(item) {
-		if (item.view_grid) {
-			item.view_grid.focus();
+		if (item.view_table) {
+			item.view_table.focus();
 		}
 	}
 	this.on_before_show_view_form = on_before_show_view_form;
 	this.on_after_show_view_form = on_after_show_view_form;
 }
 
-window.task_events.events7 = new Events7();
+window.task_events.events3 = new Events3();
 
-function Events8() { // demo.tables 
+function Events4() { // demo.tables 
 
 	function on_before_show_view_form(item) {
-		var gridHeight;
 		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});
 		item.on_filter_applied = function(item) {
 			if (item.view_form) {
@@ -491,9 +473,9 @@ function Events8() { // demo.tables
 	this.on_before_show_view_form = on_before_show_view_form;
 }
 
-window.task_events.events8 = new Events8();
+window.task_events.events4 = new Events4();
 
-function Events9() { // demo.reports 
+function Events5() { // demo.reports 
 
 	function on_before_print_report(report) {
 		var select;
@@ -508,7 +490,7 @@ function Events9() { // demo.reports
 	this.on_before_print_report = on_before_print_report;
 }
 
-window.task_events.events9 = new Events9();
+window.task_events.events5 = new Events5();
 
 function Events16() { // demo.journals.invoices 
 
@@ -565,7 +547,7 @@ function Events16() { // demo.journals.invoices
 						subtotal += d.amount.value;
 						tax += d.tax.value;
 						total += d.total.value;
-					})
+					});
 				}
 				finally {
 					item.invoice_table.rec_no = rec;
@@ -632,7 +614,7 @@ window.task_events.events20 = new Events20();
 function Events18() { // demo.journals.invoices.invoice_table 
 
 	function on_after_post(item) {
-		item.owner.calculate(item.owner)
+		item.owner.calculate(item.owner);
 	}
 	
 	function on_field_changed(field, lookup_item) {

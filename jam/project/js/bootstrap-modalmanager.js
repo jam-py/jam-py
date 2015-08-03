@@ -32,15 +32,23 @@
         constructor: ModalManager,
 
         init: function (element, options) {
+            var that = this;
             this.$element = $(element);
             this.options = $.extend({}, $.fn.modalmanager.defaults, this.$element.data(), typeof options == 'object' && options);
             this.stack = [];
             this.backdropCount = 0;
 
-            if (this.options.resize) {
-                var resizeTimeout,
-                    that = this;
+            //~ $(document).on('focusin.modal', function (e) {
+                //~ var active_modal;
+                //~ if (that.stack.length) {
+                    //~ active_modal = that.stack[that.stack.length - 1];
+                //~ }
+                //~ if (active_modal) {
+                //~ }
+            //~ })
 
+            if (this.options.resize) {
+                var resizeTimeout;
                 $(window).on('resize.modal', function(){
                     resizeTimeout && clearTimeout(resizeTimeout);
                     resizeTimeout = setTimeout(function(){

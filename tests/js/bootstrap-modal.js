@@ -49,6 +49,8 @@
             manager.appendModal(this);
 
             this.manager = manager;
+
+            this.show();
         },
 
         toggle: function () {
@@ -59,6 +61,10 @@
             var e = $.Event('show');
 
             if (this.isShown) return;
+
+            if (this.options.item_options && this.options.item_options.modal_transition) {
+                this.$element.addClass('fade');
+            }
 
             this.$element.trigger(e);
 
@@ -88,7 +94,7 @@
 
             this.isLoading && this.loading();
 
-            $(document).off('focusin.modal');
+//            $(document).off('focusin.modal');
 
             this.$element
                 .removeClass('in')
@@ -104,15 +110,23 @@
 
         layout: function () {
             var prop = this.options.height ? 'height' : 'max-height',
-                value = this.options.height || this.options.maxHeight;
+                value = this.options.height || this.options.maxHeight,
+                width;
 
-            if (this.options.width){
-                this.$element.css('width', this.options.width);
+            if (this.options.item_options && this.options.item_options.modal_width) {
+                width = this.options.item_options.modal_width;
+            }
+            else if (this.options.width) {
+                width = this.options.width;
+            }
+
+            if (width){
+                this.$element.css('width', width);
 
                 var that = this;
                 this.$element.css('margin-left', function () {
-                    if (/%/ig.test(that.options.width)){
-                        return -(parseInt(that.options.width) / 2) + '%';
+                    if (/%/ig.test(width)){
+                        return -(parseInt(width) / 2) + '%';
                     } else {
                         return -($(this).width() / 2) + 'px';
                     }
@@ -131,16 +145,6 @@
                     .css(prop, value);
             }
 
-            //~ this.$element
-                //~ .css('overflow', '')
-                //~ .css(prop, '');
-//~
-            //~ if (value){
-                //~ this.$element
-                    //~ .css('overflow', 'auto')
-                    //~ .css(prop, value);
-            //~ }
-
             var modalOverflow = $(window).height() - 10 < this.$element.height();
             if (modalOverflow || this.options.modalOverflow) {
                 this.$element
@@ -154,90 +158,50 @@
             }
         },
 
-        validTabElement: function(element) {
-            var tagName = element.tagName,
-                tabIndex = element.tabIndex,
-                $element = $(element);
-            if (tabIndex < 0 || $element.is(':hidden')) {
-                return false;
-            }
-            //~ if (!(tabIndex >= 0)) {
-                //~ if ((tagName === 'A')
-                    //~ || (tagName === 'LINK')
-                    //~ || (tagName === 'BUTTON')
-                    //~ || (tagName === 'INPUT')
-                    //~ || (tagName === 'SELECT')
-                    //~ || (tagName === 'TEXTAREA')
-                    //~ || (tagName === 'MENUITEM')) {
-                    //~ $element.attr('tabindex', 0);
-                //~ }
-            //~ }
-            if ((tagName === 'INPUT') || (tagName === 'TEXTAREA')) {
-                return $element.is(':enabled:not([readonly])');
-            }
-            else if ((tagName === 'BUTTON')
-                || (tagName === 'FIELDSET')
-                || (tagName === 'OPTGROUP')
-                || (tagName === 'OPTION')
-                || (tagName === 'SELECT')) {
-                return $element.is(':enabled');
-            } else if (tabIndex >= 0) {
-                return true;
-            }
-        },
-
-        validInputElement: function(element) {
-            var $element = $($element);
-            if ($element.is('input') || $element.is('textarea')) {
-                if (!$element.is(':hidden') && ($element.attr('tabindex') >= 0)) {
-                    console.log($element.get(0).tagName);
-                    return $element.is(':enabled:not([readonly])');
-                }
-            }
-        },
-
-        getTabChildren: function(el, validFunc, result) {
+        getTabChildren: function(el, result) {
             var i,
                 len,
                 nodes;
             if (el.nodeType === 1) {
-                if (validFunc(el)) {
+                if (el.tabIndex >= 0) {
                     result.push(el);
                 }
                 nodes = el.childNodes;
-                if (nodes && !(el.tagName === 'THEAD') && !(el.tagName === 'TABLE' && el.className.indexOf('inner-table') >= 0)) {
+                if (nodes) {
                     len = nodes.length;
                     for (i = 0; i < len; i++) {
-                        this.getTabChildren(nodes[i], validFunc, result);
+                        this.getTabChildren(nodes[i], result);
                     }
                 }
             }
         },
 
-        tabList: function(validFunc) {
+        tabList: function() {
             var self = this,
+                i,
+                len,
+                el,
+                els0 = [],
+                els1 = [],
                 result = [];
-            if (!validFunc) {
-                validFunc = this.validTabElement;
-            }
-            this.getTabChildren(this.$element.get(0), validFunc, result);
+            this.getTabChildren(this.$element.get(0), result);
 
-            result.sort(function(a, b) {
-                var aIndex = a.tabIndex,
-                    bIndex = b.tabIndex;
-                if (aIndex === bIndex) {
-                    return 0
+            for (i = 0, len = result.length; i < len; i++) {
+                el = result[i];
+                if (!el.disabled && !el.hidden &&
+                    !el.readOnly && el.type !== 'hidden') {
+                    if (el.tabIndex === 0) {
+                        els0.push(el);
+                    }
+                    else {
+                        els1.push(el);
+                    }
                 }
-                else if (aIndex === 0) {
-                    return 1;
-                }
-                else if (bIndex === 0) {
-                    return -1;
-                }
-                else {
-                    return (aIndex > bIndex) ? 1: -1;
-                }
+            }
+            els1.sort(function(a, b) {
+                return a.tabIndex - b.tabIndex;
             });
+            result = els1.concat(els0);
             return result;
         },
 
@@ -251,7 +215,7 @@
                     if (e.target.tabIndex >= 0) {
                         key = e.charCode ? e.charCode : e.keyCode ? e.keyCode : 0;
                         if (key === 9 || (e.target.tagName !== 'TABLE') && (key === 38 || key === 40)){
-                            tabs = that.tabList(that.validTabElement);
+                            tabs = that.tabList();
                             curIndex = tabs.indexOf(e.target);
                             if (curIndex !== -1) {
                                 if ((!e.shiftKey && key === 9) || key === 40){
@@ -426,16 +390,15 @@
                 options = $.extend({}, $.fn.modal.defaults, $this.data(), typeof option == 'object' && option);
 
             if (!data) $this.data('modal', (data = new Modal(this, options)));
-            if (typeof option == 'string') data[option].apply(data, [].concat(args));
-            else if (options.show) data.show()
+            if (typeof option == 'string') data[option]()
         })
     };
 
     $.fn.modal.defaults = {
+        item_options: null,
         keyboard: true,
         backdrop: true,
         loading: false,
-        show: true,
         width: null,
         height: null,
         maxHeight: null,

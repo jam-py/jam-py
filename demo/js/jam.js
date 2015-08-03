@@ -19,6 +19,10 @@
             "BOOLEAN": 7,
             "BLOB": 8,
 
+            "ITEM_FIELD": 1,
+            "FILTER_FIELD": 2,
+            "PARAM_FIELD": 3,
+
             "FILTER_EQ": 1,
             "FILTER_NE": 2,
             "FILTER_LT": 3,
@@ -258,10 +262,29 @@
         },
 
         server_function: function(func_name, params, callback) {
+            var result;
             if (!params) {
                 params = [];
             }
-            return this.send_request(func_name, params, callback);
+            if (callback) {
+                result = this.send_request(func_name, params, function(result) {
+                        if (result.error) {
+                            throw result.error
+                        }
+                        else {
+                            callback.call(this, result.result);
+                        }
+                    });
+            }
+            else {
+                result = this.send_request(func_name, params);
+                if (result.error) {
+                    throw result.error
+                }
+                else {
+                    return result.result
+                }
+            }
         },
 
         makeFormModal: function(form, options) {
@@ -271,14 +294,14 @@
                 $title,
                 printCaption = '',
                 print_button = '',
+                close_button = '',
                 mouseX,
                 mouseY,
-                fade = 'fade',
                 closeCaption = '',
                 defaultOptions = {
                     title: this.item_caption,
-                    transition: false,
-                    closeCaption: true,
+                    close_caption: true,
+                    close_button: true,
                     print: false
                 };
 
@@ -304,20 +327,20 @@
             if (!options.title) {
                 options.title = '&nbsp';
             }
-            if (language && options.closeCaption) {
-                closeCaption = '&nbsp;' + language.close + ' - [Esc]</small>';
+            if (options.close_button) {
+                if (language && options.close_caption) {
+                    closeCaption = '&nbsp;' + language.close + ' - [Esc]</small>';
+                }
+                close_button = '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' + closeCaption + ' ×</button>'
             }
             if (language && options.print) {
                 printCaption = '&nbsp;' + language.print + ' - [Ctrl-P]</small>',
                 print_button = '<button type="button" id="print-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' + printCaption + '</button>'
             }
-            if (!options.transition) {
-                fade = ''
-            }
             $form = $(
-                '<div class="modal hide ' + fade + ' normal-modal-border" tabindex="-1" data-backdrop="static" data-item="' + this.item_name + '">' +
+                '<div class="modal hide normal-modal-border" tabindex="-1" data-backdrop="static" data-item="' + this.item_name + '">' +
                     '<div class="modal-header">' +
-                        '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' + closeCaption + ' ×</button>' +
+                        close_button +
                         print_button +
                         '<h4 class="modal-title">' + options.title + '</h4>' +
                     '</div>' +
@@ -375,12 +398,23 @@
                         options.onShown.call(this);
                     }
                 } else {
-                    if (options.beforeShow) {
-                        options.beforeShow.call(this);
-                    }
                     if (this[formName].hasClass("modal")) {
                         this[formName].find("#close-btn").click(function(e) {
                             self.close_form(formName);
+                        });
+
+                        this[formName].on("show", function(e) {
+                            e.stopPropagation();
+                            if (options.beforeShow) {
+                                options.beforeShow.call(self, e);
+                            }
+                            if (self[formName].title) {
+                                self[formName].find('.modal-title').html(self[formName].title);
+                            }
+                            if (self[formName].modal_width) {
+                                options.item_options.modal_width = self[formName].modal_width;
+                            }
+
                         });
 
                         this[formName].on("shown", function(e) {
@@ -423,10 +457,8 @@
                                 options.onKeyUp.call(self, e);
                             }
                         });
-                        this[formName].find('.modal-title').html(this[formName].title);
                         this[formName].modal({
-                            width: this[formName].modal_width,
-                            height: this[formName].modal_height
+                            item_options: options.item_options
                         });
                     }
                 }
@@ -565,9 +597,14 @@
                 e.stopPropagation();
             });
 
-            //~ $element.on("keyup keydown", function(e) {
-                //~ var code = (e.keyCode ? e.keyCode : e.which);
-            //~ });
+            $element.on("keyup keydown", function(e) {
+                var code = (e.keyCode ? e.keyCode : e.which);
+                e.stopPropagation();
+                if (code === 80 && e.ctrlKey) {
+                    e.preventDefault();
+                    self.print_message($element.find(".modal-body").clone());
+                }
+            });
 
             $element.on("click", ".btn", function(e) {
                 var button;
@@ -700,6 +737,7 @@
                 success: function(data) {
                     var mess;
                     if (data.error) {
+//                        throw data.error;
                         item.warning(item.item_name + ' error: ' + data.error)
                     }
                     else {
@@ -713,7 +751,6 @@
                             return
                         }
                         if (data.result.status === consts.NOT_LOGGED) {
-//                            self.login(repeat_request);
                             self.login();
                             return
                         }
@@ -891,7 +928,10 @@
                 templates = $(".templates");
                 self.templates = templates.clone();
                 templates.remove();
-                if (self.on_before_show_main_form) {
+                if (self.on_page_loaded) {
+                    self.on_page_loaded.call(self, self);
+                }
+                else if (self.on_before_show_main_form) {
                     self.on_before_show_main_form.call(self, self);
                 }
                 if (callback) {
@@ -1566,8 +1606,10 @@
         if (this.task && type !== 0 && !(item_name in this.task)) {
             this.task[item_name] = this;
         }
+        this.field_defs = [];
         this._fields = [];
         this.fields = [];
+        this.filter_defs = [];
         this.filters = [];
         this.details = [];
         this.controls = [];
@@ -1600,6 +1642,26 @@
         this.details_active = false;
         this.disabled = false;
         this._filter_row = [];
+        this.view_options = {
+            modal_width: 960,
+            modal_transition: false,
+            title: '',
+            visible_fields: [],
+        };
+        this.edit_options = {
+            modal_width: 560,
+            modal_height: null,
+            modal_transition: false,
+            title: '',
+            visible_fields: [],
+        };
+        this.filter_options = {
+            modal_width: 560,
+            modal_height: null,
+            modal_transition: false,
+            title: '',
+            visible_fields: [],
+        };
         Object.defineProperty(this, "rec_no", {
             get: function() {
                 return this.get_rec_no();
@@ -1685,44 +1747,81 @@
 
         initAttr: function(info) {
             var i,
-                fields = info[6],
-                filters = info[7],
+                field_defs = info[6],
+                filter_defs = info[7],
                 len;
-            if (fields) {
-                len = fields.length;
+            if (field_defs) {
+                len = field_defs.length;
                 for (i = 0; i < len; i++) {
-                    new Field(this, fields[i]);
+                    this.field_defs.push(field_defs[i]);
+                    new Field(this, field_defs[i]);
                 }
             }
-            if (filters) {
-                len = filters.length;
+            if (filter_defs) {
+                len = filter_defs.length;
                 for (i = 0; i < len; i++) {
-                    new Filter(this, filters[i]);
+                    this.filter_defs.push(filter_defs[i]);
+                    new Filter(this, filter_defs[i]);
                 }
             }
-            this.reports = info[9];
+            this.reports = info[8  ];
         },
 
         bindItem: function() {
             var i = 0,
+                len,
+                reports;
+
+            this.prepare_fields();
+            this.init_options();
+
+            this.prepare_filters();
+
+            len = this.reports.length;
+            reports = this.reports;
+            this.reports = [];
+            for (i = 0; i < len; i++) {
+                this.reports.push(this.task.item_by_ID(reports[i]));
+            }
+        },
+
+        prepare_fields: function() {
+            var i = 0,
                 len = this._fields.length,
-                report_ids,
                 field;
             for (; i < len; i++) {
                 field = this._fields[i];
                 if (field.lookup_item && (typeof field.lookup_item === "number")) {
                     field.lookup_item = this.task.item_by_ID(field.lookup_item);
+                    if (field.lookup_field && (typeof field.lookup_field === "number")) {
+                        field.lookup_field = field.lookup_item._field_by_ID(field.lookup_field).field_name;
+                    }
                 }
                 if (field.master_field && (typeof field.master_field === "number")) {
                     field.master_field = this.get_master_field(this._fields, field.master_field);
                 }
             }
             this.fields = this._fields.slice(0);
+            for (i = 0; i < len; i++) {
+                field = this.fields[i];
+                if (this[field.field_name] === undefined) {
+                    this[field.field_name] = field;
+                }
+            }
+        },
+
+        prepare_filters: function() {
+            var i = 0,
+                len,
+                field;
             len = this.filters.length;
             for (i = 0; i < len; i++) {
                 field = this.filters[i].field;
                 if (field.lookup_item && (typeof field.lookup_item === "number")) {
                     field.lookup_item = this.task.item_by_ID(field.lookup_item);
+                }
+                if (field.lookup_field && (typeof field.lookup_field === "number")) {
+                    field.lookup_field = field.lookup_item._field_by_ID(field.lookup_field).field_name;
                 }
                 this._filter_row.push(null);
                 this.filters[i].field.bind_index = i;
@@ -1734,12 +1833,54 @@
                     this.filters[i].field.lookup_index = this._filter_row.length - 1;
                 }
             }
-            len = this.reports.length;
-            report_ids = this.reports;
-            this.reports = [];
+        },
+
+        init_options: function() {
+            var i,
+                view_fields = [],
+                edit_fields = [],
+                len = this._fields.length;
             for (i = 0; i < len; i++) {
-                this.reports.push(this.task.item_by_ID(report_ids[i]));
+                if (this._fields[i].view_index !== -1) {
+                    view_fields.push(this._fields[i]);
+                }
+                if (this._fields[i].edit_index !== -1) {
+                    edit_fields.push(this._fields[i]);
+                }
             }
+            view_fields.sort(function(field1, field2) {
+                if (field1.view_index > field2.view_index === 0) {
+                    return 0;
+                }
+                if (field1.view_index > field2.view_index) {
+                    return 1;
+                } else {
+                    return -1;
+                }
+            });
+            edit_fields.sort(function(field1, field2) {
+                if (field1.edit_index > field2.edit_index === 0) {
+                    return 0;
+                }
+                if (field1.edit_index > field2.edit_index) {
+                    return 1;
+                } else {
+                    return -1;
+                }
+            });
+
+            this.view_options.visible_fields = [];
+            for (i = 0; i < view_fields.length; i++) {
+                this.view_options.visible_fields.push(view_fields[i].field_name);
+            }
+            this.edit_options.visible_fields = [];
+            for (i = 0; i < edit_fields.length; i++) {
+                this.edit_options.visible_fields.push(edit_fields[i].field_name);
+            }
+            this.edit_options.title = this.item_caption;
+            this.view_options.title = this.item_caption;
+            this._edit_options = $.extend({}, this.edit_options);
+            this._view_options = $.extend({}, this.view_options);
         },
 
         each: function(callback) {
@@ -1911,45 +2052,22 @@
             result.ID = this.ID;
             result.item_name = this.item_name;
             result.expanded = this.expanded;
-            len = this._fields.length;
+            result.field_defs = this.field_defs;
+            result.filter_defs = this.filter_defs;
+            result.edit_options = $.extend({}, this._edit_options);
+            result.view_options = $.extend({}, this._view_options);
+
+            len = result.field_defs.length;
             for (i = 0; i < len; i++) {
-                copy = this._fields[i].copy(result);
-                copy.lookup_item = this._fields[i].lookup_item;
+                new Field(result, result.field_defs[i]);
             }
-            for (i = 0; i < len; i++) {
-                field = this._fields[i];
-                if (field.master_field && (typeof field.master_field === "number")) {
-                    field.master_field = result.get_master_field(result._fields, field.master_field);
-                }
-            }
-            result.fields = result._fields.slice(0);
-            for (i = 0; i < len; i++) {
-                field = result.fields[i];
-                if (result[field.field_name] === undefined) {
-                    result[field.field_name] = field;
-                }
-            }
-            //~ for (i = 0; i < len; i++) {
-                //~ field = this.fields[i];
-                //~ if (this[field.field_name] === undefined) {
-                    //~ this[field.field_name] = field;
-                //~ }
-            //~ }
+            result.prepare_fields();
             if (options.filters) {
-                this.eachFilter(function(filter, i) {
-                    filter.copy(result);
-                });
-                result._filter_row = [];
-                result.eachFilter(function(filter, i) {
-                    result._filter_row.push(null);
-                    filter.field.bind_index = i;
-                });
-                result.eachFilter(function(filter) {
-                    if (filter.field.lookup_item) {
-                        result._filter_row.push(null);
-                        filter.field.lookup_index = result._filter_row.length - 1;
-                    }
-                });
+                len = result.filter_defs.length;
+                for (i = 0; i < len; i++) {
+                    new Filter(result, result.filter_defs[i]);
+                }
+                result.prepare_filters();
             }
             result._events = this._events;
             if (options.handlers) {
@@ -1979,6 +2097,9 @@
                     if (!(copyTable.item_name in result)) {
                         result[copyTable.item_name] = copyTable;
                     }
+                    if (!(copyTable.item_name in result.details)) {
+                        result.details[copyTable.item_name] = copyTable;
+                    }
                 });
             }
             return result;
@@ -1988,8 +2109,8 @@
             var result,
                 i,
                 len,
-                copy,
-                field;
+                field,
+                new_field;
             if (keep_filtered === undefined) {
                 keep_filtered = true;
             }
@@ -1999,25 +2120,34 @@
             result.item_type = this.item_type;
             result.ID = this.ID;
             result.item_name = this.item_name;
-            len = this._fields.length;
-            for (i = 0; i < len; i ++) {
-                copy = this._fields[i].copy(result);
-                copy.lookup_item = this._fields[i].lookup_item;
-            }
+
+            result.field_defs = this.field_defs;
+            result.filter_defs = this.filter_defs;
+
+            len = result.field_defs.length;
             for (i = 0; i < len; i++) {
-                field = this._fields[i];
-                if (field.master_field && (typeof field.master_field === "number")) {
-                    field.master_field = result.get_master_field(result._fields, field.master_field);
+                field = new Field(result, result.field_defs[i]);
+            }
+            result.prepare_fields();
+
+            len = result.fields.length;
+            for (i = 0; i < len; i++) {
+                field = result.fields[i]
+                if (result[field.field_name] !== undefined) {
+                    delete result[field.field_name];
                 }
             }
+            result.fields = []
             len = this.fields.length;
             for (i = 0; i < len; i++) {
-                field = result._field_by_name(this.fields[i].field_name);
-                result.fields.push(field)
-                if (!result[field.field_name]) {
-                    result[field.field_name] = field
+                field = this.fields[i];
+                new_field = result._field_by_name(field.field_name)
+                result.fields.push(new_field)
+                if (result[new_field.field_name] === undefined) {
+                    result[new_field.field_name] = new_field;
                 }
             }
+
             result.bind_fields();
             result._records = this._records;
             if (keep_filtered) {
@@ -3016,8 +3146,7 @@
             this.change_log.get_changes(changes);
             if (!this.master && !this.change_log.isEmptyObj(changes.data)) {
                 if (this.item_state !== consts.STATE_BROWSE) {
-                    this.warning('Item: ' + this.item_name + ' is not is browse state. Apply is only possible in browse state.');
-                    return
+                    throw 'Item: ' + this.item_name + ' is not is browse state. Apply is only possible in browse state.';
                 }
                 if (this.on_before_apply) {
                     this.on_before_apply.call(this, this);
@@ -3076,8 +3205,34 @@
             return result;
         },
 
-        field_by_id: function(id_value, field_name, callback) {
-            return this.send_request('get_field_by_id', [id_value, field_name], callback);
+        field_by_id: function(id_value, fields, callback) {
+            var copy,
+                values,
+                result;
+            if (typeof fields === 'string') {
+                fields = [fields];
+            }
+            copy = this.copy();
+            copy.set_where({id: id_value});
+            if (callback) {
+                copy.open({expanded: false, fields: fields}, function(){
+                    values = copy._records[0];
+                    if (fields.length === 1) {
+                        values = values[0];
+                    }
+                    return values
+                });
+            }
+            else {
+                copy.open({expanded: false, fields: fields});
+                if (copy.record_count() === 1) {
+                    values = copy._records[0];
+                    if (fields.length === 1) {
+                        values = values[0];
+                    }
+                    return values
+                }
+            }
         },
 
         locate: function(fields, values) {
@@ -3578,11 +3733,13 @@
                     if (field.controls[i].errorValue || field.controls[i].error) {
                         field.controls[i].updateState(false);
                         result = false;
+                        console.log(this.item_name + ', ' + field.field_name + ' check_record_valid error: ' + field.controls[i].error);
                     }
                 }
                 try {
                     field.check_valid();
                 } catch (e) {
+                    console.log(this.item_name + ', ' + field.field_name + ' check_record_valid error: ' + e);
                     for (i = 0; i < len; i++) {
                         field.controls[i].error = e;
                         field.controls[i].updateState(false);
@@ -3654,31 +3811,20 @@
         },
 
 
-        view_modal: function() {
+        view_modal: function(options) {
             this.is_lookup_item = true;
-            this.view();
+            this.view(options);
         },
 
-        view: function() {
-            var self = this,
-                container,
-                options,
-                argLen = arguments.length;
-            if (argLen) {
-                for (var i = 0; i < argLen; i++) {
-                    if (!container && arguments[i] instanceof jQuery) {
-                        container = arguments[i];
-                    } else if (!options) {
-                        options = arguments[i];
-                    }
-                }
-            }
+        view: function(container) {
+            var self = this;
             this.view_form = $("<div></div>").append(this.findTemplate("view"));
             if (!container) {
-                this.view_form = this.makeFormModal(this.view_form, options);
+                this.view_form = this.makeFormModal(this.view_form, this.view_options);
             }
             this.create_form('view_form', {
                 container: container,
+                item_options: this.view_options,
                 beforeShow: function() {
                     if (this.task.on_before_show_view_form) {
                         this.task.on_before_show_view_form.call(this, this);
@@ -3775,6 +3921,7 @@
             }
             this.show_edit_form('edit_form', {
                 container: container,
+                item_options: this.edit_options,
                 beforeShow: function() {
                     if (self.task.on_before_show_edit_form) {
                         self.task.on_before_show_edit_form.call(self, self);
@@ -3846,6 +3993,7 @@
             }
             this.show_edit_form('filter_form', {
                 container: container,
+                item_options: this.filter_options,
                 beforeShow: function() {
                     if (self.task.on_before_show_filter_form) {
                         self.task.on_before_show_filter_form.call(self, self);
@@ -3961,21 +4109,25 @@
             }
         },
 
-        create_grid: function(container, options) {
-            return new DBGrid(this, container, options);
+        create_table: function(container, options) {
+            return new DBTable(this, container, options);
+        },
+
+        create_grid: function(container, options) { // deprecated
+            return this.create_table(container, options);
         },
 
         create_tree: function(container, parent_field, text_field, parent_of_root_value, options) {
             return new DBTree(this, container, parent_field, text_field, parent_of_root_value, options);
         },
 
-
-        create_entries: function(container, options) {
+        create_inputs: function(container, options) {
             var default_options,
                 i, len, col,
                 //            colHeight,
                 field,
                 fields = [],
+                visible_fields = [],
                 cols = [],
                 tabindex,
                 form;
@@ -3992,59 +4144,54 @@
                 return;
             }
 
-            this.options = $.extend({}, default_options, options);
+            options = $.extend({}, default_options, options);
 
-            if (this.options.fields.length) {
-                len = this.options.fields.length;
-                for (i = 0; i < len; i++) {
-                    field = this.field_by_name(this.options.fields[i])
-                    if (this.options.fields[i] && !field) {
-                        throw  this.item_name + ' create_entries: there is not a field with field_name - "' + this.options.fields[i] + '"';
-                    }
+            if (options.fields.length) {
+                visible_fields = options.fields
+            }
+            else {
+                visible_fields = this.edit_options.visible_fields;
+            }
+            len = visible_fields.length;
+            for (i = 0; i < len; i++) {
+                field = this.field_by_name(visible_fields[i]);
+                if (field) {
                     fields.push(field);
                 }
-            } else {
-                this.eachField(function(field, i) {
-                    if (field.edit_visible && field.edit_index !== -1) {
-                        fields.push(field);
-                    }
-                });
-                fields.sort(function(field1, field2) {
-                    if (field1.edit_index > field2.edit_index === 0) {
-                        return 0;
-                    }
-                    if (field1.edit_index > field2.edit_index) {
-                        return 1;
-                    } else {
-                        return -1;
-                    }
-                });
+                else {
+                    throw  this.item_name + ' create_entries: there is not a field with field_name - "' + visible_fields.fields[i] + '"';
+                }
             }
+
             container.empty();
 
             form = $("<form></form>").appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
-            if (!this.options.label_on_top) {
+            if (!options.label_on_top) {
                 form.addClass("form-horizontal");
             }
             len = fields.length;
-            for (col = 0; col < this.options.col_count; col++) {
-                cols.push($("<div></div>").addClass("span" + 12 / this.options.col_count).appendTo(form));
+            for (col = 0; col < options.col_count; col++) {
+                cols.push($("<div></div>").addClass("span" + 12 / options.col_count).appendTo(form));
             }
-            tabindex = this.options.tabindex;
+            tabindex = options.tabindex;
             if (!tabindex && this.edit_form) {
                 tabindex = this.edit_form.tabindex;
                 this.edit_form.tabindex += len;
             }
-            if (!this.options.row_count) {
-                this.options.row_count = Math.ceil(len / this.options.col_count);
+            if (!options.row_count) {
+                options.row_count = Math.ceil(len / options.col_count);
             }
             for (i = 0; i < len; i++) {
-                new DBEntry(fields[i], i + tabindex, cols[Math.floor(i / this.options.row_count)],
-                    this.options.label_on_top);
+                new DBInput(fields[i], i + tabindex, cols[Math.floor(i / options.row_count)],
+                    options.label_on_top);
             }
         },
 
-        create_filter_entries: function(container, options) {
+        create_entries: function(container, options) { // deprecated
+            this.create_inputs(container, options);
+        },
+
+        create_filter_inputs: function(container, options) {
             var default_options,
                 i, len, col,
                 filters = [],
@@ -4059,12 +4206,12 @@
                     tabindex: undefined
                 },
 
-                this.options = $.extend({}, default_options, options);
+            options = $.extend({}, default_options, options);
 
-            if (this.options.filters.length) {
-                len = this.options.filters.length;
+            if (options.filters.length) {
+                len = options.filters.length;
                 for (i = 0; i < len; i++) {
-                    filters.push(this.filter_by_name(this.options.filters[i]));
+                    filters.push(this.filter_by_name(options.filters[i]));
                 }
             } else {
                 this.eachFilter(function(filter, i) {
@@ -4075,22 +4222,26 @@
             }
             container.empty();
             form = $("<form></form>").appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
-            if (!this.options.label_on_top) {
+            if (!options.label_on_top) {
                 form.addClass("form-horizontal");
             }
             len = filters.length;
-            for (col = 0; col < this.options.col_count; col++) {
-                cols.push($("<div></div>").addClass("span" + 12 / this.options.col_count).appendTo(form));
+            for (col = 0; col < options.col_count; col++) {
+                cols.push($("<div></div>").addClass("span" + 12 / options.col_count).appendTo(form));
             }
-            tabindex = this.options.tabindex;
+            tabindex = options.tabindex;
             if (!tabindex && this.filter_form) {
                 tabindex = this.filter_form.tabindex;
                 this.filter_form.tabindex += len;
             }
             for (i = 0; i < len; i++) {
-                new DBEntry(filters[i].field, i + 1, cols[Math.floor(i % this.options.col_count)],
-                    this.options.label_on_top, filters[i].filter_caption);
+                new DBInput(filters[i].field, i + 1, cols[Math.floor(i % options.col_count)],
+                    options.label_on_top, filters[i].filter_caption);
             }
+        },
+
+        create_filter_entries: function(container, options) { // deprecated
+            this.create_filter_inputs(container, options);
         },
 
         set_lookup_field_value: function(gridClicked) {
@@ -4106,7 +4257,6 @@
                 if (object_field) {
                     lookup_value = object_field.get_value();
                 }
-                //        lookup_field.do_before_changed();
                 if (this.lookup_selected_ids) {
                     lookup_field.value = null;
                     for (var id in this.lookup_selected_ids) {
@@ -4150,56 +4300,12 @@
             }
         },
 
-        set_edit_fields: function(fields, captions) {
-            var i = 0,
-                len = fields.length,
-                field;
-            this.eachField(function(field, i) {
-                field.edit_visible = false;
-                field.edit_index = -1;
-            });
-            for (; i < len; i++) {
-                field = this.field_by_name(fields[i]);
-                if (field) {
-                    field.edit_visible = true;
-                    field.edit_index = i + 1;
-                    if (captions) {
-                        try {
-                            field.field_caption = captions[i];
-                        }
-                        catch (e) {
-                        }
-                    }
-                } else {
-                    throw this.item_name + " set_edit_fields: no field for field_name " + field[i];
-                }
-            }
+        set_edit_fields: function(fields) {
+            this.edit_options.visible_fields = fields;
         },
 
-        set_view_fields: function(fields, captions) {
-            var i = 0,
-                len = fields.length,
-                field;
-            this.eachField(function(field, i) {
-                field.view_visible = false;
-                field.view_index = -1;
-            });
-            for (; i < len; i++) {
-                field = this.field_by_name(fields[i]);
-                if (field) {
-                    field.view_visible = true;
-                    field.view_index = i + 1;
-                    if (captions) {
-                        try {
-                            field.field_caption = captions[i];
-                        }
-                        catch (e) {
-                        }
-                    }
-                } else {
-                    throw this.item_name + " set_edit_fields: no field for field_name " + field[i];
-                }
-            }
+        set_view_fields: function(fields) {
+            this.view_options.visible_fields = fields;
         },
 
         round: function(num, dec) {
@@ -4219,7 +4325,7 @@
                 self.eachField(function(field) {
                     fields.push(field.field_name)
                 })
-                copy.open({fields: fields, where: {id: this.id.value}})
+                copy.open({expanded: this.expanded, fields: fields, where: {id: this.id.value}})
                 if (copy.record_count() === 1) {
                     self._records[self.rec_no] = copy._records[0].slice(0);
                     self.update_controls(consts.UPDATE_CANCEL);
@@ -4246,6 +4352,13 @@
         this.params = this._fields;
         this.params_row = [];
         this._state = consts.STATE_EDIT;
+        this.params_options = {
+            modal_width: 560,
+            modal_height: null,
+            modal_transition: false,
+            title: '',
+            visible_fields: [],
+        };
     }
 
     $.extend(Report.prototype, {
@@ -4285,6 +4398,9 @@
                 param = this.params[i];
                 if (param.lookup_item && (typeof param.lookup_item === "number")) {
                     param.lookup_item = this.task.item_by_ID(param.lookup_item);
+                }
+                if (param.lookup_field && (typeof param.lookup_field === "number")) {
+                    param.lookup_field = param.lookup_item._field_by_ID(param.lookup_field).field_name;
                 }
                 this.params_row.push(null);
                 param.lookup_index = this.params_row.length - 1;
@@ -4340,6 +4456,7 @@
             }
             this.show_edit_form('params_form', {
                 container: container,
+                item_options: this.params_options,
                 beforeShow: function() {
                     if (self.task.on_before_show_params_form) {
                         self.task.on_before_show_params_form.call(self, self);
@@ -4483,7 +4600,11 @@
             }
         },
 
-        create_params: function(container, options) {
+        create_params: function(container, options) { // deprecated
+            this.create_param_inputs(container, options);
+        },
+
+        create_param_inputs: function(container, options) {
             var default_options,
                 i, len, col,
                 params = [],
@@ -4537,7 +4658,7 @@
                 this.params_form.tabindex += len;
             }
             for (i = 0; i < len; i++) {
-                new DBEntry(params[i], i + tabindex, cols[Math.floor(i % this.options.col_count)], this.options.label_on_top)
+                new DBInput(params[i], i + tabindex, cols[Math.floor(i % this.options.col_count)], this.options.label_on_top)
             }
         }
     });
@@ -4715,10 +4836,19 @@
         get_data: function() {
             var row;
             row = this.get_row();
-            if (row && (this.bind_index >= 0)) {
-                return row[this.bind_index];
-            } else {
+            if (row) {
+                if (this.bind_index >= 0) {
+                    return row[this.bind_index];
+                }
+                else {
+                    return null;
+                }
+            } else if (row === undefined) {
                 return null;
+                //~ if (this.owner) {
+                    //~ throw 'An attempt to get a field value in the empty dataset - item: ' +
+                        //~ this.owner.item_name + ', field: ' + this.field_name
+                //~ }
             }
         },
 
@@ -5608,7 +5738,7 @@
                 owner.filters[this.filter_name] = this;
             }
             if (this.field_name) {
-                field = this.owner._field_by_name(this.field_name);
+                field = this.owner._field_by_ID(this.field_name);
                 this.field = new Field();
                 this.field.set_info(field.get_info());
                 this.field.read_only = false;
@@ -5682,9 +5812,10 @@
         Field.call(this, owner, info);
         this.param_name = this.field_name;
         this.param_caption = this.field_caption;
+        this.field_size = 0;
         this.report = owner;
-        this.edit_value = null;
-        this.param_lookup_value = null;
+        this._value = null;
+        this._lookup_value = null;
         if (this.owner[this.param_name] === undefined) {
             this.owner[this.param_name] = this;
         }
@@ -6073,15 +6204,15 @@
     }
 
     /**********************************************************************/
-    /*                            DBGrid class                            */
+    /*                            DBTable class                            */
     /**********************************************************************/
 
-    function DBGrid(item, container, options) {
+    function DBTable(item, container, options) {
         this.init(item, container, options);
     }
 
-    DBGrid.prototype = {
-        constructor: DBGrid,
+    DBTable.prototype = {
+        constructor: DBTable,
 
         init: function(item, container, options) {
             var self = this,
@@ -6151,7 +6282,7 @@
 
             this.initFields();
 
-            this.$element = $('<div class="DBGrid" style="overflow-x:auto;"></div>');
+            this.$element = $('<div class="DBTable" style="overflow-x:auto;"></div>');
             this.$element.data('grid', this);
             this.item.controls.push(this);
             this.$element.bind('destroyed', function() {
@@ -6161,53 +6292,35 @@
             this.createTable();
             if (item.get_active()) {
                 setTimeout(function() {
-                        if (self.$container.width()) {
+                        //~ if (self.$container.width()) {
                             self.initRows();
-                        }
+                        //~ }
                     },
                     0
                 );
             }
         },
 
-
         initFields: function() {
             var i = 0,
                 len,
-                field;
+                field,
+                fields;
             this.fields = [];
             if (this.options.fields.length) {
-                if (this.options.fields instanceof Array) {
-                    len = this.options.fields.length;
-                    for (; i < len; i++) {
-                        this.fields.push(this.item.field_by_name(this.options.fields[i]));
-                    }
-                } else {
-                    this.autoFieldWidth = false;
-                    for (var field in this.options.fields) {
-                        if (this.options.fields.hasOwnProperty(field)) {
-                            this.fields.push(this.item.field_by_name(field));
-                            this.setCellWidth(field, this.options.fields[field]);
-                        }
-                    }
-                }
-            } else {
-                len = this.item.fields.length;
+                fields = this.options.fields
+            }
+            else {
+                fields = this.item.view_options.visible_fields;
+            }
+            if (fields.length) {
+                len = fields.length;
                 for (; i < len; i++) {
-                    if (this.item.fields[i].view_index !== -1) {
-                        this.fields.push(this.item.fields[i]);
+                    field = this.item.field_by_name(fields[i]);
+                    if (field) {
+                        this.fields.push(field);
                     }
                 }
-                this.fields.sort(function(field1, field2) {
-                    if (field1.view_index > field2.view_index === 0) {
-                        return 0;
-                    }
-                    if (field1.view_index > field2.view_index) {
-                        return 1;
-                    } else {
-                        return -1;
-                    }
-                });
             }
             this.options.editable = this.options.editable && !this.item.read_only;
             if (this.options.editable) {
@@ -6814,7 +6927,7 @@
                     //~ return
                 //~ }
                 this.editMode = true;
-                this.editor = new DBGridEntry(this, this.selectedField);
+                this.editor = new DBTableInput(this, this.selectedField);
                 this.editor.$controlGroup.find('.controls, .input-prepend, .input-append, input').css('margin-bottom', 0);
                 this.editor.$controlGroup.css('margin-bottom', 0);
 
@@ -7776,6 +7889,7 @@
 
             this.$outer_table.detach();
             this.$element.append(this.$outer_table);
+            container.remove();
 
             this.update_select_all_checkbox();
 
@@ -7825,17 +7939,17 @@
     };
 
     /**********************************************************************/
-    /*                      DBAbstractEntry class                         */
+    /*                      DBAbstractInput class                         */
     /**********************************************************************/
 
-    function DBAbstractEntry(field) {
+    function DBAbstractInput(field) {
         var self = this;
         this.field = field;
         this.read_only = false;
     }
 
-    DBAbstractEntry.prototype = {
-        constructor: DBAbstractEntry,
+    DBAbstractInput.prototype = {
+        constructor: DBAbstractInput,
 
         createEntry: function(field, tabIndex, container) {
             var self = this,
@@ -8074,7 +8188,7 @@
                 e.preventDefault();
             }
             if (e.ctrlKey === true) {
-                if (code !== 67 && code !== 86 && code !== 88 && code != 90) { // Ctrl-V , C, X, Z
+                if (code !== 67 && code !== 86 && code !== 88 && code != 90 && code != 8) { // Ctrl-V , C, X, Z, backspace
                     e.preventDefault();
                 }
             }
@@ -8277,31 +8391,31 @@
     };
 
     /**********************************************************************/
-    /*                        DBGridEntry class                           */
+    /*                        DBTableInput class                           */
     /**********************************************************************/
 
-    DBGridEntry.prototype = new DBAbstractEntry();
-    DBGridEntry.prototype.constructor = DBGridEntry;
+    DBTableInput.prototype = new DBAbstractInput();
+    DBTableInput.prototype.constructor = DBTableInput;
 
-    function DBGridEntry(grid, field) {
-        DBAbstractEntry.call(this, field);
+    function DBTableInput(grid, field) {
+        DBAbstractInput.call(this, field);
         this.grid = grid;
         this.createEntry(field, 0);
     }
 
-    $.extend(DBGridEntry.prototype, {
+    $.extend(DBTableInput.prototype, {
 
     });
 
     /**********************************************************************/
-    /*                           DBEntry class                            */
+    /*                           DBInput class                            */
     /**********************************************************************/
 
-    DBEntry.prototype = new DBAbstractEntry();
-    DBEntry.prototype.constructor = DBEntry;
+    DBInput.prototype = new DBAbstractInput();
+    DBInput.prototype.constructor = DBInput;
 
-    function DBEntry(field, index, container, label_on_top, label) {
-        DBAbstractEntry.call(this, field);
+    function DBInput(field, index, container, label_on_top, label) {
+        DBAbstractInput.call(this, field);
         if (this.field.owner && this.field.owner.edit_form &&
             this.field.owner.edit_form.hasClass("modal")) {
             this.$edit_form = this.field.owner.edit_form;
@@ -8314,7 +8428,7 @@
         this.createEntry(field, index, container);
     }
 
-    $.extend(DBEntry.prototype, {
+    $.extend(DBInput.prototype, {
 
         showError: function(value) {
             if (this.$edit_form && this.$edit_form.hasClass("normal-modal-border")) {

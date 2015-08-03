@@ -147,6 +147,7 @@ class Upload:
             file_name = os.path.join(path, file_name)
             with open(file_name, 'wb') as f:
                 f.write(content)
+            os.chmod(file_name, 0o666)
             start = start + header[index]
 
 class Index:
@@ -172,4 +173,3 @@ def run(server):
     web.server = server
     server.app = app
     app.run()
-

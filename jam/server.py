@@ -3,10 +3,12 @@
 
 import os
 import uuid
-import common
-import adm_server
+import traceback
 import time
 from threading import Lock
+
+import common
+import adm_server
 
 class Server(object):
     def __init__(self):
@@ -45,12 +47,23 @@ class Server(object):
         return self.roles[role_id]
 
     def server_func(self, obj, func_name, params, env):
+        result = None
+        error = ''
         func = getattr(obj, func_name)
         if func:
             if func_name[-4:] == '_env':
                 params = list(params)
                 params.append(env)
-            return func(obj, *params)
+            try:
+                result = func(obj, *params)
+            except Exception, e:
+                print traceback.format_exc()
+                error = e.message
+                if not error:
+                    error = '%s: apply_changes error' % obj.item_name
+        else:
+            error = 'item: %s no server function with name %s' % (obj.item_name, func_name)
+        return {'error': error, 'result': result}
 
     def check_task_server_modified(self):
         if self.task_server_modified:
@@ -128,8 +141,7 @@ class Server(object):
         self.last_users_update = common.now()
 
     def find_privileges(self, user_info, item):
-        if not self.admin.safe_mode or item.master or \
-            (item.task == self.admin) or (item == item.task):
+        if not self.admin.safe_mode or item.master or (item.task == self.admin) or (item == item.task):
             return {'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': True}
         else:
             try:
@@ -191,10 +203,6 @@ class Server(object):
             return item.get_record_count(params, env)
         elif request == 'apply_changes':
             return item.apply_changes(params, self.find_privileges(user_info, item), user_info, env)
-        elif request == 'get_reports':
-            return item.get_reports_info()
-        elif request == 'get_report_params':
-            return item.get_params_info()
         elif request == 'print_report':
             if self.has_privilege(user_info, item, 'can_view'):
                 return item.print_report(*params)
@@ -203,18 +211,6 @@ class Server(object):
                     'message': item.task.lang['cant_view'] % item.item_caption}
         elif request == 'delete_report':
             return item.delete_report(params)
-        elif request == 'get_field_by_id':
-            return item.get_field_by_id(params)
-        elif request == 'get_view_ui':
-            return item.get_view_ui()
-        elif request == 'get_edit_ui':
-            return item.get_edit_ui()
-        elif request == 'get_filter_ui':
-            return item.get_filter_ui()
-        elif request == 'get_ui':
-            return item.get_ui()
-        elif request == 'get_ui_file':
-            return item.get_ui_file(params)
         elif request == 'logout':
             return self.logout(params, is_admin, env)
         elif request == 'init_client':

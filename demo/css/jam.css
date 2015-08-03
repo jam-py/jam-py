@@ -186,47 +186,28 @@ h4.title {
     margin: 6px 0;
 }
 
-/*
-.form-horizontal .control-group {
-    margin-bottom: 10px;
-    margin-top: 10px;
-}
-
-.input-button {
-    padding: 4px 6px
-}
-
-.pager {
-    padding: 4px;
-}
-*/
-
 .template {
     display: none;
 }
-
-/*
-.item-btn {
-    margin: 1px 1px;
-    width: 100px;
-}
-
-.item-btn-with-hint {
-    margin: 1px 1px;
-    width: 144px;
-}
-*/
 
 .inline {
     display:inline;
 }
 
 .modal.fade {
-    -webkit-transition: opacity 0.1s linear;
-       -moz-transition: opacity 0.1s linear;
-         -o-transition: opacity 0.1s linear;
-            transition: opacity 0.1s linear;
+    -webkit-transition: opacity 0.4s linear;
+       -moz-transition: opacity 0.4s linear;
+         -o-transition: opacity 0.4s linear;
+            transition: opacity 0.4s linear;
 }
+
+.modal-backdrop,
+.modal-backdrop.fade.in{
+    opacity: 0.2;
+    filter: alpha(opacity=20);
+    background: #fff;
+}
+
 
 .inner-table {
     outline: none;
@@ -263,13 +244,6 @@ h4.title {
 
 .table tbody td.field-selected-focused {
     background-color: #b4e3fa;
-}
-
-.modal-backdrop,
-.modal-backdrop.fade.in{
-    opacity: 0.2;
-    filter: alpha(opacity=20);
-    background: #fff;
 }
 
 .table th{

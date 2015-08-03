@@ -6,7 +6,8 @@ import common
 
 task_client_events = \
     {
-        'on_before_show_main_form': 'task',
+#        'on_before_show_main_form': 'task',
+        'on_page_loaded': 'task',
         'on_before_show_view_form': 'item',
         'on_before_show_edit_form': 'item',
         'on_before_show_filter_form': 'item',

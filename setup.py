@@ -5,13 +5,13 @@ cur_dir = os.getcwd()
 
 setup(
     name='jam.py',
-    version='2.0.3',
+    version='2.0.4',
     url='http://jam-py.com/',
     author='Andrew Yushev',
     author_email='yushevaa@gmail.com',
     description=('Jam.py is the fastest way to create a web database application.'),
     license='BSD',
-    packages=['jam', 'jam.lang', 'jam.third_party', 'jam.third_party.web',
+    packages=['jam', 'jam.lang', 'jam.db', 'jam.third_party', 'jam.third_party.web',
         'jam.third_party.web.contrib', 'jam.third_party.web.wsgiserver',
         'jam.third_party.slimit', 'jam.third_party.slimit.ply',
         'jam.third_party.slimit.visitors'],

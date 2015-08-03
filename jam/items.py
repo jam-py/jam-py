@@ -7,7 +7,7 @@ import lang.langs as langs
 import common
 
 ITEM_INFO = ITEM_ID, ITEM_NAME, ITEM_CAPTION, ITEM_VISIBLE, ITEM_TYPE, \
-    ITEM_ITEMS, ITEM_FIELDS, ITEM_FILTERS, ITEM_CLIENT_CODE, ITEM_REPORTS = range(10)
+    ITEM_ITEMS, ITEM_FIELDS, ITEM_FILTERS, ITEM_REPORTS = range(9)
 
 class AbstractItem(object):
     def __init__(self, owner, name='', caption='', visible = True, item_type_id=0):
@@ -15,8 +15,8 @@ class AbstractItem(object):
         self.item_name = name
         self.items = []
         self.ID = None
-        self.client_code = None
         self._events = []
+        self.master = None
         if owner:
             if not owner.find(name):
                 owner.items.append(self)
@@ -53,8 +53,6 @@ class AbstractItem(object):
         self.item_caption = info[ITEM_CAPTION]
         self.visible = info[ITEM_VISIBLE]
         self.item_type_id = info[ITEM_TYPE]
-#        self.item_type = common.ITEM_TYPES[self.item_type_id - 1]
-        self.client_code = info[ITEM_CLIENT_CODE]
 
     def get_info(self):
         result = [None for i in range(len(ITEM_INFO))]
@@ -108,6 +106,10 @@ class AbstractItem(object):
         for field in fields:
             if field.ID == master_field:
                 return field
+
+    def register(self, func):
+        setattr(self, func.__name__, func)
+
 
 
 class Group(AbstractItem):
@@ -210,8 +212,8 @@ class Item(AbstractItem):
 
     def write_info(self, info):
         super(Item, self).write_info(info)
-        info[ITEM_FIELDS] = self.get_fields_info()
-        info[ITEM_FILTERS] = self.get_filters_info()
+        info[ITEM_FIELDS] = self.field_defs
+        info[ITEM_FILTERS] = self.filter_defs
         info[ITEM_REPORTS] = self.get_reports_info()
 
     def read_info(self, info):
@@ -223,34 +225,8 @@ class Item(AbstractItem):
     def bind_item(self):
         self.prepare_fields()
         self.prepare_filters()
-        self.init_reports()
         self.fields = list(self._fields)
 
-    def prepare_fields(self):
-        for field in self._fields:
-            if field.lookup_item:
-                field.lookup_item = self.task.item_by_ID(field.lookup_item)
-            if field.master_field:
-                field.master_field = self.get_master_field(self._fields, field.master_field)
-            if field.lookup_field and type(field.lookup_field) == int:
-                field.lookup_field = field.lookup_item._field_by_ID(field.lookup_field).field_name
-
-    def prepare_filters(self):
-        for fltr in self.filters:
-            setattr(self.filters, fltr.filter_name, fltr)
-            if fltr.field.lookup_item and type(fltr.field.lookup_item) == int:
-                fltr.field.lookup_item = self.task.item_by_ID(fltr.field.lookup_item)
-        self._filter_row = []
-        for i, fltr in enumerate(self.filters):
-            self._filter_row.append(None)
-            fltr.field.bind_index = i
-        length = len(self.filters)
-        i = 0
-        for fltr in self.filters:
-            if fltr.field.lookup_item:
-                self._filter_row.append(None)
-                fltr.field.lookup_index = length + i
-                i += 1
 
 class Detail(Item):
 
@@ -261,19 +237,15 @@ class Detail(Item):
             setattr(self.owner.details, self.item_name, self)
 
 
-
 class Report(AbstractItem):
-
-    def __getattr__(self, name):
-        if self.param_by_name(name):
-            obj = self.param_by_name(name)
-            if obj:
-                setattr(self, name, obj)
-                return obj
+    def __init__(self, owner, name, caption, visible = True, item_type_id=0):
+        AbstractItem.__init__(self, owner, name, caption, visible, item_type_id)
+        if not hasattr(self.task, self.item_name):
+            setattr(self.task, self.item_name, self)
 
     def write_info(self, info):
         super(Report, self).write_info(info)
-        info[ITEM_FIELDS] = self.get_params_info()
+        info[ITEM_FIELDS] = self.param_defs
 
     def read_info(self, info):
         super(Report, self).read_info(info)
@@ -287,9 +259,3 @@ class Report(AbstractItem):
     def bind_item(self):
         self.prepare_params()
 
-    def prepare_params(self):
-        for param in self.params:
-            if param.lookup_item and type(param.lookup_item) == int:
-                param.lookup_item = self.task.item_by_ID(param.lookup_item)
-            if param.lookup_field and type(param.lookup_field) == int:
-                param.lookup_field = param.lookup_item._field_by_ID(param.lookup_field).field_name

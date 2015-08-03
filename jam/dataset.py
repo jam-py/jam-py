@@ -4,9 +4,12 @@ import datetime
 import traceback
 import common
 
-FIELD_INFO = FIELD_ID, FIELD_NAME, NAME, FIELD_DATA_TYPE, REQUIRED, ITEM, MASTER_FIELD, lookup_field, \
+FIELD_DEF = FIELD_ID, FIELD_NAME, NAME, FIELD_DATA_TYPE, REQUIRED, LOOKUP_ITEM, MASTER_FIELD, LOOKUP_FIELD, \
     FIELD_VISIBLE, FIELD_VIEW_INDEX, FIELD_EDIT_VISIBLE, FIELD_EDIT_INDEX, FIELD_READ_ONLY, FIELD_EXPAND, FIELD_WORD_WRAP, \
     FIELD_SIZE, FIELD_DEFAULT, FIELD_CALCULATED, FIELD_EDITABLE, FIELD_ALIGNMENT, FIELD_VALUES_LIST = range(21)
+
+FILTER_DEF = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, \
+    FILTER_TYPE, FILTER_DATA_TYPE, FILTER_VISIBLE = range(6)
 
 class DatasetException(Exception):
     pass
@@ -15,95 +18,34 @@ class AbortException(Exception):
     pass
 
 class DBField(object):
-    def __init__(self):
-        self.ID = None
-        self.required = None
-        self.field_size = None
-        self.is_default = None
-        self.data_type = None
-        self.required = None
-        self.master_field = None
-        self.lookup_field = None
-        self.view_index = None
-        self.edit_visible = None
-        self.edit_index = None
-        self.calculated = None
-        self.editable = None
-        self._read_only = None
-        self._visible = None
-        self._expand = None
-        self._word_wrap = None
-        self.wrap_width = 0
-        self._alignment = 0
-        self.value_list = None
-        self.bind_index = None
-        self.lookup_index = None
-        self.filter = None
-        self.owner = None
-        self.new_value = None
-        self.on_get_field_text_called = False
-
-    def copy(self, owner):
-        result = self.__class__(owner, self.get_info())
-        return result
-
-    def get_info(self):
-        result = [None for i in range(len(FIELD_INFO))]
-        result[FIELD_ID] = self.ID
-        result[FIELD_NAME] = self.field_name
-        result[NAME] = self.field_caption
-        result[FIELD_DATA_TYPE] = self.data_type
-        result[REQUIRED] = self.required
-        if self.lookup_item:
-            if type(self.lookup_item) == int:
-                result[ITEM] = self.lookup_item
-            else:
-                result[ITEM] = self.lookup_item.ID
-        result[MASTER_FIELD] = None
-        if self.master_field:
-            if type(self.master_field) == int:
-                result[MASTER_FIELD] = self.master_field
-            else:
-                result[MASTER_FIELD] = self.master_field.ID
-        result[lookup_field] = self.lookup_field
-        result[FIELD_READ_ONLY] = self._read_only
-        result[FIELD_VISIBLE] = self.view_visible
-        result[FIELD_VIEW_INDEX] = self.view_index
-        result[FIELD_EDIT_VISIBLE] = self.edit_visible
-        result[FIELD_EDIT_INDEX] = self.edit_index
-        result[FIELD_EXPAND] = self.expand
-        result[FIELD_WORD_WRAP] = self.word_wrap
-        result[FIELD_SIZE] = self.field_size
-        result[FIELD_DEFAULT] = self.is_default
-        result[FIELD_CALCULATED] = self.calculated
-        result[FIELD_EDITABLE] = self.editable
-        result[FIELD_ALIGNMENT] = self.alignment
-        result[FIELD_VALUES_LIST] = self.value_list
-        return result
-
-    def set_info(self, info):
-        self.ID = info[FIELD_ID]
-        self.field_name = info[FIELD_NAME]
-        self.field_caption = info[NAME]
-        self.data_type = info[FIELD_DATA_TYPE]
-        self.required = info[REQUIRED]
-        self.lookup_item = info[ITEM]
-        self.master_field = info[MASTER_FIELD]
-        self.lookup_field = info[lookup_field]
-        self.read_only = info[FIELD_READ_ONLY]
-        self.view_visible = info[FIELD_VISIBLE]
-        self.view_index = info[FIELD_VIEW_INDEX]
-        self.edit_visible = info[FIELD_EDIT_VISIBLE]
-        self.edit_index = info[FIELD_EDIT_INDEX]
-        self.expand = info[FIELD_EXPAND]
-        self.word_wrap = info[FIELD_WORD_WRAP]
-        self.field_size = info[FIELD_SIZE]
-        self.is_default = info[FIELD_DEFAULT]
-        self.calculated = info[FIELD_CALCULATED]
-        self.editable = info[FIELD_EDITABLE]
-        self.alignment = info[FIELD_ALIGNMENT]
-        self.value_list = info[FIELD_VALUES_LIST]
+    def __init__(self, owner, field_def):
+        self.owner = owner
+        self.field_def = field_def
+        self.field_type = common.ITEM_FIELD
+        self.ID = field_def[FIELD_ID]
+        self.field_name = field_def[FIELD_NAME]
+        self.field_caption = field_def[NAME]
+        self.data_type = field_def[FIELD_DATA_TYPE]
+        self.required = field_def[REQUIRED]
+        self.lookup_item = field_def[LOOKUP_ITEM]
+        self.master_field = field_def[MASTER_FIELD]
+        self.lookup_field = field_def[LOOKUP_FIELD]
+        self.read_only = field_def[FIELD_READ_ONLY]
+        self.view_visible = field_def[FIELD_VISIBLE]
+        self.view_index = field_def[FIELD_VIEW_INDEX]
+        self.edit_visible = field_def[FIELD_EDIT_VISIBLE]
+        self.edit_index = field_def[FIELD_EDIT_INDEX]
+        self.expand = field_def[FIELD_EXPAND]
+        self.word_wrap = field_def[FIELD_WORD_WRAP]
+        self.field_size = field_def[FIELD_SIZE]
+        self.is_default = field_def[FIELD_DEFAULT]
+        self.calculated = field_def[FIELD_CALCULATED]
+        self.editable = field_def[FIELD_EDITABLE]
+        self.alignment = field_def[FIELD_ALIGNMENT]
+        self.value_list = field_def[FIELD_VALUES_LIST]
         self.field_type = common.FIELD_TYPE_NAMES[self.data_type]
+        self.filter = None
+        self.on_get_field_text_called = None
 
     def get_row(self):
         if self.owner._records:
@@ -111,8 +53,12 @@ class DBField(object):
 
     def get_data(self):
         row = self.get_row()
-        if row and (self.bind_index >= 0):
-            return row[self.bind_index]
+        if row:
+            if self.bind_index >= 0:
+                return row[self.bind_index]
+        elif row is None:
+            if self.owner:
+                raise Exception, u'An attempt to get a field value in the empty dataset - item: %s, field: %s ' % (self.owner.item_name, self.field_name)
 
     def set_data(self, value):
         row = self.get_row()
@@ -228,6 +174,7 @@ class DBField(object):
                     value = self.convert_date_time(value)
             return value
         except Exception, e:
+            print 111111111
             print traceback.format_exc()
             self.do_on_error(self.type_error() % (''), e)
 
@@ -270,7 +217,7 @@ class DBField(object):
                                 field.set_lookup_data(slave_field_values[field.field_name])
                             else:
                                 field.set_lookup_text(None)
-                            field.update_controls();
+                            field.update_controls()
 
     def do_before_changed(self, new_value, new_lookup_value):
         if self.owner:
@@ -527,28 +474,57 @@ class DBField(object):
         if self.field_name in ('id', 'owner_id', 'owner_rec_id', 'deleted'):
             return True
 
-FILTER_INFO = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, \
-    FILTER_TYPE, FILTER_DATA_TYPE, FILTER_VISIBLE = range(6)
+
+class FilterField(DBField):
+    def __init__(self, fltr, field, owner):
+        DBField.__init__(self, owner, field.field_def)
+        self.field_type = common.FILTER_FIELD
+        self.filter = fltr
+        self.lookup_item = None
+        self._value = None
+        self._lookup_value = None
+
+
+    def do_before_changed(self, new_value, new_lookup_value):
+        pass
+
+    def get_data(self):
+        return self._value
+
+    def set_data(self, value):
+        self._value = value
+
+    def get_lookup_data(self):
+        return self._lookup_value
+
+    def set_lookup_data(self, value):
+        self._lookup_value = value
+
+    def check_reqired(self, value):
+        return True
+
+    def set_modified(self, value):
+        pass
+
+    def set_record_status(self, value):
+        pass
 
 class DBFilter(object):
-
-    def get_info(self):
-        result = [None for i in range(len(FILTER_INFO))]
-        result[FILTER_OBJ_NAME] = self.filter_name
-        result[FILTER_NAME] = self.filter_caption
-        result[FILTER_FIELD_NAME] = self.field_name
-        result[FILTER_TYPE] = self.filter_type
-        result[FILTER_DATA_TYPE] = self.data_type
-        result[FILTER_VISIBLE] = self.visible
-        return result
-
-    def set_info(self, info):
-        self.filter_name = info[FILTER_OBJ_NAME]
-        self.filter_caption = info[FILTER_NAME]
-        self.field_name = info[FILTER_FIELD_NAME]
-        self.filter_type = info[FILTER_TYPE]
-        self.data_type = info[FILTER_DATA_TYPE]
-        self.visible = info[FILTER_VISIBLE]
+    def __init__(self, owner, filter_def):
+        self.owner = owner
+        self.filter_def = filter_def
+        self.filter_name = filter_def[FILTER_OBJ_NAME]
+        self.filter_caption = filter_def[FILTER_NAME]
+        self.field_name = filter_def[FILTER_FIELD_NAME]
+        self.filter_type = filter_def[FILTER_TYPE]
+        self.data_type = filter_def[FILTER_DATA_TYPE]
+        self.visible = filter_def[FILTER_VISIBLE]
+        if type(self.field_name) == int:
+            self.field_name = owner._field_by_ID(self.field_name).field_name
+        field = self.owner._field_by_name(self.field_name)
+        if self.field_name:
+            self.field = FilterField(self, field, self.owner)
+            setattr(self, self.field_name, self.field)
 
     def set_value(self, value):
         self.field.value = value
@@ -576,7 +552,7 @@ class ChangeLog(object):
 
     def log_changes(self):
         if self.item.master:
-            return self.item.master.change_log.log_changes();
+            return self.item.master.change_log.log_changes()
         else:
             return self.item.log_changes;
 
@@ -831,7 +807,6 @@ class ChangeLog(object):
 
 
     def prepare(self):
-#        self.find_record_log();
         self.records = [];
         self.logs = {};
         self.fields = [field.field_name for field in self.item.fields if not field.master_field]
@@ -865,9 +840,10 @@ class ChangeLog(object):
 class AbstractDataSet(object):
     def __init__(self):
         self.ID = 0
+        self.field_defs = []
         self._fields = []
         self.fields = []
-        self._filters = []
+        self.filter_defs = []
         self.filters = DBList()
         self.details = DBList()
         self.controls = []
@@ -888,16 +864,11 @@ class AbstractDataSet(object):
         self._order_by_list = []
         self.on_state_changed = None
         self.on_filter_changed = None
-        self._filter_row = None
         self._record_lookup_index = -1
         self._record_info_index = -1
         self._filtered = False
         self.expanded = True
-        self.limit = 100
         self._open_params = {}
-        self.auto_loading = False
-        self.loaded_count = 0
-        self.is_loaded = False
         self.post_local = False
         self._disabled_count = 0
         self.open_params = {}
@@ -936,37 +907,63 @@ class AbstractDataSet(object):
             raise IndexError
         return self
 
+    def add_field_def(self, field_ID, field_name, field_caption, data_type, required, lookup_item, lookup_field,
+            view_visible, view_index, edit_visible, edit_index, read_only, expand, word_wrap,
+            field_size, is_default, calculated, editable, master_field, alignment, value_list):
+        field_def = [None for i in range(len(FIELD_DEF))]
+        field_def[FIELD_ID] = field_ID
+        field_def[FIELD_NAME] = field_name
+        field_def[NAME] = field_caption
+        field_def[FIELD_DATA_TYPE] = data_type
+        field_def[REQUIRED] = required
+        field_def[LOOKUP_ITEM] = lookup_item
+        field_def[MASTER_FIELD] = master_field
+        field_def[LOOKUP_FIELD] = lookup_field
+        field_def[FIELD_READ_ONLY] = read_only
+        field_def[FIELD_VISIBLE] = view_visible
+        field_def[FIELD_VIEW_INDEX] = view_index
+        field_def[FIELD_EDIT_VISIBLE] = edit_visible
+        field_def[FIELD_EDIT_INDEX] = edit_index
+        field_def[FIELD_EXPAND] = expand
+        field_def[FIELD_WORD_WRAP] = word_wrap
+        field_def[FIELD_SIZE] = field_size
+        field_def[FIELD_DEFAULT] = is_default
+        field_def[FIELD_CALCULATED] = calculated
+        field_def[FIELD_EDITABLE] = editable
+        field_def[FIELD_ALIGNMENT] = alignment
+        field_def[FIELD_VALUES_LIST] = value_list
+        self.field_defs.append(field_def)
+        return field_def
+
+    def add_filter_def(self, filter_name, filter_caption, field_name, filter_type, data_type, visible):
+        filter_def = [None for i in range(len(FILTER_DEF))]
+        filter_def[FILTER_OBJ_NAME] = filter_name
+        filter_def[FILTER_NAME] = filter_caption
+        filter_def[FILTER_FIELD_NAME] = field_name
+        filter_def[FILTER_TYPE] = filter_type
+        filter_def[FILTER_DATA_TYPE] = data_type
+        filter_def[FILTER_VISIBLE] = visible
+        self.filter_defs.append(filter_def)
+        return filter_def
+
     def copy(self, filters=True, details=True, handlers=True):
         result = self.__class__(self.owner, self.item_name, self.item_caption, self.visible)
         result.ID = self.ID
         result.item_name = self.item_name
         result.expanded = self.expanded
-        result.limit = self.limit
+        result.field_defs = self.field_defs
+        result.filter_defs = self.filter_defs
 
-        for field in self._fields:
-            copy_field = field.copy(result)
-            copy_field.lookup_item = field.lookup_item
-            result._fields.append(copy_field)
-        for field in result._fields:
-            if field.master_field:
-                field.master_field = result.get_master_field(result._fields, field.master_field)
-        result.fields = list(result._fields)
-        for field in result.fields:
-            if not hasattr(result, field.field_name):
-                setattr(result, field.field_name, field)
-        if filters:
-            for fltr in self.filters:
-                result.filters.append(fltr.copy(result))
-            result._filter_row = []
-            if len(result.filters) > 0:
-                for i, fltr in enumerate(result.filters):
-                    setattr(result.filters, fltr.filter_name, fltr)
-                    result._filter_row.append(None)
-                    fltr.field.bind_index = i
-                for fltr in result.filters:
-                    if fltr.field.lookup_item:
-                        result._filter_row.append(None)
-                        fltr.field.lookup_index = len(result._filter_row) - 1
+        for field_def in result.field_defs:
+            field = DBField(result, field_def)
+            result._fields.append(field)
+        result.prepare_fields()
+
+        for filter_def in result.filter_defs:
+            fltr = DBFilter(result, filter_def)
+            result.filters.append(fltr)
+        result.prepare_filters()
+
         result._events = self._events
         if handlers:
             for func_name, func in result._events:
@@ -977,13 +974,19 @@ class AbstractDataSet(object):
         result = self.__class__(self.owner, self.item_name, self.item_caption, self.visible)
         result.ID = self.ID
         result.item_name = self.item_name
-        for field in self._fields:
-            copy_field = field.copy(result)
-            copy_field.lookup_item = field.lookup_item
-            result._fields.append(copy_field)
-        for field in result._fields:
-            if field.master_field:
-                field.master_field = result.get_master_field(result._fields, field.master_field)
+        result.field_defs = self.field_defs
+        result.filter_defs = self.filter_defs
+
+        for field_def in result.field_defs:
+            field = DBField(result, field_def)
+            result._fields.append(field)
+        result.prepare_fields()
+
+        for field in result.fields:
+            if hasattr(result, field.field_name):
+                delattr(result, field.field_name)
+
+        result.fields = [];
         for field in self.fields:
             new_field = result._field_by_name(field.field_name)
             result.fields.append(new_field)
@@ -997,6 +1000,25 @@ class AbstractDataSet(object):
         result._active = True
         result.first()
         return result
+
+    def prepare_fields(self):
+        for field in self._fields:
+            if field.lookup_item and type(field.lookup_item) == int:
+                field.lookup_item = self.task.item_by_ID(field.lookup_item)
+            if field.master_field and type(field.master_field) == int:
+                field.master_field = self._field_by_ID(field.master_field)
+            if field.lookup_field and type(field.lookup_field) == int:
+                field.lookup_field = field.lookup_item._field_by_ID(field.lookup_field).field_name
+        self.fields = list(self._fields)
+        for field in self.fields:
+            if not hasattr(self, field.field_name):
+                setattr(self, field.field_name, field)
+
+    def prepare_filters(self):
+        for fltr in self.filters:
+            setattr(self.filters, fltr.filter_name, fltr)
+            if fltr.field.lookup_item and type(fltr.field.lookup_item) == int:
+                fltr.field.lookup_item = self.task.item_by_ID(fltr.field.lookup_item)
 
     def get_records(self):
         result = []
@@ -1390,7 +1412,7 @@ class AbstractDataSet(object):
             if not hasattr(self, field.field_name):
                 setattr(self, field.field_name, field)
 
-    def do_before_open(self, expanded, fields, where, order_by, open_empty, params):
+    def do_before_open(self, expanded, fields, where, order_by, open_empty, params, offset, limit):
         result = None
         params['__expanded'] = expanded
         params['__fields'] = []
@@ -1405,6 +1427,12 @@ class AbstractDataSet(object):
             params['__fields'] = fields
 
         if result != False and not open_empty:
+            params['__limit'] = 0
+            params['__loaded'] = 0
+            if limit:
+                params['__limit'] = limit
+                if offset:
+                    params['__loaded'] = offset
             if where:
                 filters = self.get_where_list(where)
             elif self._where_list:
@@ -1431,18 +1459,15 @@ class AbstractDataSet(object):
         if self.on_after_open:
             self.on_after_open(self)
 
-    def open(self, expanded, fields, where, order_by, open_empty, params, offset):
+    def open(self, expanded, fields, where, order_by, open_empty, params, offset, limit):
         if not params:
             params = {}
-        self.loaded_count = 0
-        if not offset is None:
-            self.loaded_count = offset
-        if self.do_before_open(expanded, fields, where, order_by, open_empty, params) != False:
+        if self.do_before_open(expanded, fields, where, order_by, open_empty, params, offset, limit) != False:
             self.change_log.prepare()
             self.bind_fields(expanded)
             self._records = []
             if not open_empty:
-                self.load_next(params)
+                self.do_open(params)
             self._active = True
             self._cur_row = None
             self.item_state = common.STATE_BROWSE
@@ -1452,30 +1477,15 @@ class AbstractDataSet(object):
             if self.on_filter_applied:
                 self.on_filter_applied(self)
 
-
-    def load_next(self, params=None):
+    def do_open(self, params=None):
         if not params:
             params = self._open_params
-        if self.auto_loading:
-            params['__loaded'] = self.loaded_count
-            params['__limit'] = self.limit
-        else:
-            params['__loaded'] = 0
-            params['__limit'] = 0
         rows, error_mes = self.do_internal_open(params)
         if error_mes:
-#            self.warning(error_mes)
             raise RuntimeError(error_mes)
         else:
             for row in rows:
                 self._records.append(list(row))
-            result = len(rows)
-            if self.limit and self.auto_loading and result:
-                self.loaded_count += self.limit
-                self.is_loaded = False
-            if result < self.limit:
-                self.is_loaded = True
-            return result
 
     def close(self):
         self._active = False
@@ -1781,25 +1791,6 @@ class AbstractDataSet(object):
             except Exception, e:
                 raise RuntimeError('%s: set_filters method arument error %s=%s: %s' % (self.item_name, filter_name, filters[filter_name], e))
 
-    #~ def set_fields(self, **fields):
-        #~ for field_name in fields.keys():
-            #~ try:
-                #~ field = self.field_by_name(field_name)
-                #~ value = fields[field_name]
-                #~ field.value = value
-            #~ except Exception, e:
-                #~ raise RuntimeError('%s: set_fields method arument error %s: %s' % (self.item_name, field_name, e))
-#~
-    #~ def add(self, **fields):
-        #~ self.append()
-        #~ self.set_fields(fields)
-        #~ self.post()
-#~
-    #~ def change(self, **fields):
-        #~ self.edit()
-        #~ self.set_fields(fields)
-        #~ self.post()
-
     def find_default_field(self):
         for field in self.fields:
             if field.is_default:
@@ -1832,6 +1823,7 @@ class MasterDataSet(AbstractDataSet):
                     setattr(result, copy_table.item_name, copy_table)
                 if not hasattr(result.details, copy_table.item_name):
                     setattr(result.details, copy_table.item_name, copy_table)
+
         return result
 
     def do_apply(self, params):
@@ -1900,7 +1892,6 @@ class MasterDataSet(AbstractDataSet):
 class MasterDetailDataset(MasterDataSet):
     def __init__(self):
         MasterDataSet.__init__(self)
-        self.master = None
         self.disabled = False
 
     def find_change_log(self):
@@ -1908,7 +1899,7 @@ class MasterDetailDataset(MasterDataSet):
             if self.master.record_status != common.RECORD_UNCHANGED:
                 return self.master.change_log.get_detail_log(str(self.ID))
 
-    def open(self, expanded=None, fields=None, where=None, order_by=None, open_empty=False, params=None, offset=None):
+    def open(self, expanded=None, fields=None, where=None, order_by=None, open_empty=False, params=None, offset=None, limit=None):
         if expanded is None:
             expanded = self.expanded
         else:
@@ -1927,7 +1918,7 @@ class MasterDetailDataset(MasterDataSet):
                         fields = log['fields']
                         expanded = log['expanded']
                 if not records is None:
-                    if self.do_before_open(expanded, fields, where, order_by, open_empty, params) != False:
+                    if self.do_before_open(expanded, fields, where, order_by, open_empty, params, offset, limit) != False:
                         self.bind_fields(expanded)
                         self._records = records
                         self._active = True
@@ -1938,11 +1929,11 @@ class MasterDetailDataset(MasterDataSet):
                 else:
                     params['__owner_id'] = self.master.ID
                     params['__owner_rec_id'] = self.master.id.value
-                    return super(MasterDetailDataset, self).open(expanded, fields, where, order_by, open_empty, params, offset)
+                    return super(MasterDetailDataset, self).open(expanded, fields, where, order_by, open_empty, params, offset, limit)
             else:
                 return
         else:
-            return super(MasterDetailDataset, self).open(expanded, fields, where, order_by, open_empty, params, offset)
+            return super(MasterDetailDataset, self).open(expanded, fields, where, order_by, open_empty, params, offset, limit)
 
     def insert(self):
         if self.master and not self.master.is_changing():
