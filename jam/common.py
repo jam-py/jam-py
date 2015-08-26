@@ -16,6 +16,7 @@ DEFAULT_SETTINGS = {
     'SAFE_MODE': False,
     'DEBUGGING': False,
     'LOG_FILE': '',
+    'VERSION': '',
     'DECIMAL_POINT': '.',
     'MON_DECIMAL_POINT': '.',
     'MON_THOUSANDS_SEP': '',
@@ -541,17 +542,6 @@ def zip_dir(dir, zip_file, exclude_dirs=[], exclude_ext=[]):
                     file_path = os.path.join(dirpath, file_name)
                     arcname = os.path.relpath(os.path.join(dir, file_path))
                     zip_file.write(file_path, arcname)
-
-def unzip_dir(dir, zip_file_name):
-    z = zipfile.ZipFile(zip_file_name)
-    for file_name in z.namelist():
-        path = os.path.join(dir, os.path.join(*file_name.split('/')))
-        dir_name = os.path.dirname(path)
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-        data = z.read(file_name)
-        with open(path, 'w') as f:
-            f.write(data)
 
 def now():
     return datetime.datetime.now()

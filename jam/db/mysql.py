@@ -29,9 +29,9 @@ def connect(database, user, password, host, port, encoding):
         use_unicode = True
     connection = MySQLdb.connect(db=database, user=user, passwd=password, host=host,
         charset=charset, use_unicode=use_unicode)
+    connection.autocommit(False)
     cursor = connection.cursor()
     cursor.execute("SET SESSION SQL_MODE=ANSI_QUOTES")
-    cursor.execute("SET AUTOCOMMIT=0")
     return connection
 
 def get_lastrowid(cursor):
@@ -47,7 +47,7 @@ def limit_end(offset, limit):
     return 'LIMIT %d, %d' % (offset, limit)
 
 def upper_function():
-    return ''
+    pass
 
 def create_table_sql(table_name, fields, foreign_fields=None):
     result = []

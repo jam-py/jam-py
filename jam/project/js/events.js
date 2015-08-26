@@ -2,7 +2,7 @@
 "use strict";
 var $ = window.$;
 
-function TaskEvents() {};
+function TaskEvents() {}
 
 window.task_events = new TaskEvents();
 

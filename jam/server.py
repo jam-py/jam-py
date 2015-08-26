@@ -190,10 +190,8 @@ class Server(object):
         if ext:
             if item.on_ext_request:
                 return item.on_ext_request(item, request, params, env)
-            else:
-                raise Exception, u'Unknown request type %s' % request
-        elif request[0:7] == 'server_':
-            return self.server_func(item, request, params, env)
+        elif request == 'server_function':
+            return self.server_func(item, params[0], params[1], env)
         elif request == 'open':
             if self.has_privilege(user_info, item, 'can_view'):
                 return item.select_records(params, user_info, env)

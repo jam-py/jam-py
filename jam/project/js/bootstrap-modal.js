@@ -62,7 +62,7 @@
 
             if (this.isShown) return;
 
-            if (this.options.item_options && this.options.item_options.modal_transition) {
+            if (this.options.item_options && this.options.item_options.transition) {
                 this.$element.addClass('fade');
             }
 
@@ -113,8 +113,8 @@
                 value = this.options.height || this.options.maxHeight,
                 width;
 
-            if (this.options.item_options && this.options.item_options.modal_width) {
-                width = this.options.item_options.modal_width;
+            if (this.options.item_options && this.options.item_options.width) {
+                width = this.options.item_options.width;
             }
             else if (this.options.width) {
                 width = this.options.width;

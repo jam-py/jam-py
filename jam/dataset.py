@@ -21,7 +21,7 @@ class DBField(object):
     def __init__(self, owner, field_def):
         self.owner = owner
         self.field_def = field_def
-        self.field_type = common.ITEM_FIELD
+        self.field_kind = common.ITEM_FIELD
         self.ID = field_def[FIELD_ID]
         self.field_name = field_def[FIELD_NAME]
         self.field_caption = field_def[NAME]
@@ -50,15 +50,13 @@ class DBField(object):
     def get_row(self):
         if self.owner._records:
             return self.owner._records[self.owner.rec_no]
+        else:
+            raise Exception, u'An attempt to get a field value in the empty dataset - item: %s, field: %s ' % (self.owner.item_name, self.field_name)
 
     def get_data(self):
         row = self.get_row()
-        if row:
-            if self.bind_index >= 0:
-                return row[self.bind_index]
-        elif row is None:
-            if self.owner:
-                raise Exception, u'An attempt to get a field value in the empty dataset - item: %s, field: %s ' % (self.owner.item_name, self.field_name)
+        if row and self.bind_index >= 0:
+            return row[self.bind_index]
 
     def set_data(self, value):
         row = self.get_row()
@@ -174,7 +172,6 @@ class DBField(object):
                     value = self.convert_date_time(value)
             return value
         except Exception, e:
-            print 111111111
             print traceback.format_exc()
             self.do_on_error(self.type_error() % (''), e)
 
@@ -478,7 +475,7 @@ class DBField(object):
 class FilterField(DBField):
     def __init__(self, fltr, field, owner):
         DBField.__init__(self, owner, field.field_def)
-        self.field_type = common.FILTER_FIELD
+        self.field_kind = common.FILTER_FIELD
         self.filter = fltr
         self.lookup_item = None
         self._value = None
@@ -1447,7 +1444,7 @@ class AbstractDataSet(object):
                 filters.append([field_name, common.FILTER_SEARCH, text])
             params['__filters'] = filters
             if order_by:
-                params['__order'] = get_order_by_list(order_by)
+                params['__order'] = self.get_order_by_list(order_by)
             elif self._order_by_list:
                 params['__order'] = list(self._order_by_list)
             self._order_by_list = []

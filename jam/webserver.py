@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys, os
-sys.db_multiprocessing = True
+import signal
 
 import cPickle
 import json
@@ -33,35 +33,24 @@ class Request(object):
         self.web_request = None
 
     def get_request(self):
-        data = web.data()
-        self.web_request = data[0] == '1'
-        if self.web_request:
-            result = json.loads(data[1:])
-        else:
-            result = cPickle.loads(data[1:].decode('zlib'))
-        return result
+        return json.loads(web.data())
 
     def prepare_response(self, r):
-        if self.web_request:
-            accepts_gzip = 0
-            try:
-                if web.ctx.env.get("HTTP_ACCEPT_ENCODING").find("gzip") != -1:
-                    accepts_gzip = 1
-            except:
-                pass
-            buff = json.dumps(r, default=common.json_defaul_handler)
-            web.header('Content-Type', 'application/json')
-            if accepts_gzip:
-                buff = common.compressBuf(buff)
-                web.header('Content-encoding', 'gzip')
-                web.header('Content-Length', str(len(buff)))
-                return buff
-            else:
-                return buff
+        accepts_gzip = 0
+        try:
+            if web.ctx.env.get("HTTP_ACCEPT_ENCODING").find("gzip") != -1:
+                accepts_gzip = 1
+        except:
+            pass
+        buff = json.dumps(r, default=common.json_defaul_handler)
+        web.header('Content-Type', 'application/json')
+        if accepts_gzip:
+            buff = common.compressBuf(buff)
+            web.header('Content-encoding', 'gzip')
+            web.header('Content-Length', str(len(buff)))
+            return buff
         else:
-            web.header('Content-encoding', 'deflate')
-            return cPickle.dumps(r, 2).encode('zlib')
-
+            return buff
 
 class Api(Request):
     def __init__(self):
@@ -92,12 +81,6 @@ class Api(Request):
 class Ext(Request):
     def __init__(self):
         Request.__init__(self)
-
-    def get_request(self):
-        data = web.data()
-        self.web_request = True
-        result = json.loads(data)
-        return result
 
     def POST(self, name):
         r = {'result': None, 'error': None}
@@ -168,8 +151,25 @@ class Index:
         else:
             return ''
 
+def signal_handler(signal, frame):
+    sys.exit(0)
+
+def process_connections(handler):
+    web.ctx.sadb = {}
+    result = handler()
+    if web.ctx.sadb:
+        try:
+            for connection in web.ctx.sadb.values():
+                connection.close()
+        except:
+            pass
+    return result
+
 def run(server):
     me = common.SingleInstance()
+    signal.signal(signal.SIGINT, signal_handler)
     web.server = server
+    server.web = web
     server.app = app
+    app.add_processor(process_connections)
     app.run()

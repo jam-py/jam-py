@@ -2,12 +2,10 @@
 
 from __future__ import with_statement
 import sys, os
-if not hasattr(sys, 'db_multiprocessing'):
-    sys.db_multiprocessing = False
 
 import Queue
 import multiprocessing
-#from multiprocessing.managers import BaseManager
+import threading
 import zipfile
 from xml.dom.minidom import parseString
 from xml.sax.saxutils import escape
@@ -239,7 +237,7 @@ class ServerItem(Item, ServerDataset):
 class ServerParam(DBField):
     def __init__(self, owner, param_def):
         DBField.__init__(self, owner, param_def)
-        self.field_type = common.PARAM_FIELD
+        self.field_kind = common.PARAM_FIELD
         if self.data_type == common.TEXT:
             self.field_size = 1000
         else:
@@ -374,8 +372,7 @@ class ServerReport(Report):
     def get_report_file_name(self, ext=None):
         if not ext:
             ext = 'ods'
-        os_system = os.name
-        if os_system == "nt":
+        if os.name == "nt":
             file_name = self.item_name + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
         else:
             file_name = self.item_caption + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
@@ -422,35 +419,19 @@ class ServerReport(Report):
                         converted = True
                     except:
                         pass
+                #~ if not converted:
+                    #~ # OpenOffice must be running in server mode
+                    #~ # soffice --headless --accept="socket,host=127.0.0.1,port=2002;urp;"
+                    #~ ext_file_name = self.report_filename.replace('.ods', '.' + ext)
+                    #~ try:
+                        #~ from third_party.DocumentConverter import DocumentConverter
+                        #~ converter = DocumentConverter()
+                        #~ converter.convert(self.report_filename, ext_file_name)
+                        #~ converted = True
+                    #~ except:
+                        #~ pass
                 if not converted:
-                    # OpenOffice must be running in server mode
-                    # soffice --headless --accept="socket,host=127.0.0.1,port=2002;urp;"
-                    ext_file_name = self.report_filename.replace('.ods', '.' + ext)
-                    try:
-                        from third_party.DocumentConverter import DocumentConverter
-                        converter = DocumentConverter()
-                        converter.convert(self.report_filename, ext_file_name)
-                        converted = True
-                    except:
-                        pass
-                if not converted:
-                    try:
-                        from subprocess import Popen, STDOUT, PIPE
-                        os_system = os.name
-                        if os_system == "nt":
-                            import _winreg
-                            regpath = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\soffice.exe"
-                            root = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, regpath)
-                            s_office = _winreg.QueryValue(root, "")
-                        else:
-                            s_office = "soffice"
-                        convertion = Popen([s_office, '--headless', '--convert-to', ext,
-                            self.report_filename, '--outdir', os.path.join(self.task.work_dir, 'static', 'reports') ],
-                            stderr=STDOUT,stdout = PIPE)#, shell=True)
-                        out, err = convertion.communicate()
-                        converted = True
-                    except:
-                        pass
+                    converted = self.task.convert_report(self, ext)
                 converted_file = self.report_filename.replace('.ods', '.' + ext)
                 if converted and os.path.exists(converted_file):
                     self.delete_report(self.report_filename)
@@ -603,7 +584,6 @@ class ServerReport(Report):
                 z.close()
             if self.zip_file:
                 self.zip_file.close()
-#            os.remove(self.content_name)
 
     def cur_to_str(self, value):
         return common.cur_to_str(value)
@@ -643,7 +623,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
                     #~ with open("sql_log.txt", "a") as f:
                         #~ f.write('\n')
                         #~ f.write(command + '\n')
-                        #~ f.write(json.dumps(params) + '\n')
+                        #~ f.write(json.dumps(params, default=common.json_defaul_handler) + '\n')
                 #~ except:
                     #~ pass
             return result
@@ -763,14 +743,15 @@ def execute_sql(db_module, db_database, db_user, db_password,
         connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
     return execute(connection)
 
-def process_request(name, queue, db_type, db_database, db_user, db_password, db_host, db_port, db_encoding, mod_count):
+def process_request(parentPID, name, queue, db_type, db_database, db_user, db_password, db_host, db_port, db_encoding, mod_count):
     con = None
     counter = 0
     db_module = db_modules.get_db_module(db_type)
     while True:
+        if hasattr(os, 'getppid') and os.getppid() != parentPID:
+            break
         request = queue.get()
         if request:
-#            print name, 'process id:', os.getpid()
             result_queue = request['queue']
             command = request['command']
             params = request['params']
@@ -820,18 +801,18 @@ class AbstractServerTask(Task):
         self.modules = []
         self.processes = []
         self._busy = 0
-        if sys.db_multiprocessing and con_pool_size:
+        self.conversion_lock = threading.Lock()
+        if con_pool_size:
             self.queue = multiprocessing.Queue()
             self.manager = multiprocessing.Manager()
             self.con_pool_size = con_pool_size
             self.create_connection_pool()
-        else:
-            self.connection = None
 
     def create_connection_pool(self):
         if self.con_pool_size:
+            pid = os.getpid()
             for i in range(self.con_pool_size):
-                p = multiprocessing.Process(target=process_request, args=(self.item_name,
+                p = multiprocessing.Process(target=process_request, args=(pid, self.item_name,
                     self.queue, self.db_type, self.db_database, self.db_user,
                     self.db_password, self.db_host, self.db_port,
                     self.db_encoding, self.mod_count))
@@ -844,6 +825,16 @@ class AbstractServerTask(Task):
             for i in range(self.con_pool_size):
                 self.execute('QUIT')
             self.processes = []
+
+    def create_connection(self):
+        return self.db_module.connect(self.db_database, self.db_user, self.db_password, self.db_host, self.db_port, self.db_encoding)
+
+    def close_connections(self): # Release connections
+        if not self.con_pool_size:
+            if hasattr(self.server.web.ctx, 'sadb'):
+                for connection in self.server.web.ctx.sadb.values():
+                    connection.close()
+                self.server.web.ctx.sadb = {}
 
     def execute(self, command, params=None, result_set=None, call_proc=False, commit=True):
         if self.con_pool_size:
@@ -865,10 +856,18 @@ class AbstractServerTask(Task):
                 self._busy -= 1
             return result
         else:
+            try:
+                connection = self.server.web.ctx.sadb.get(self.ID)
+            except:
+                connection = None
             result = execute_sql(self.db_module, self.db_database, self.db_user,
                 self.db_password, self.db_host, self.db_port,
-                self.db_encoding, self.connection, command, params, result_set, call_proc, commit)
-            self.connection = result[0]
+                self.db_encoding, connection, command, params, result_set, call_proc, commit)
+            try:
+                self.server.web.ctx.sadb[self.ID] = result[0]
+            except:
+                if not hasattr(self.server.web.ctx, 'sadb'):
+                    self.server.web.ctx.sadb = {self.ID: result[0]}
             return result[1]
 
     def callproc(self, command, params=None):
@@ -882,7 +881,6 @@ class AbstractServerTask(Task):
             raise Exception, error
         else:
             return result
-
 
     def execute_select_one(self, command, params=None):
         result, error = self.execute(command, params, result_set='ONE', commit=False)
@@ -931,6 +929,27 @@ class AbstractServerTask(Task):
 
     def find_item(self, g_index, i_index):
         return self.items[g_index].items[i_index]
+
+    def convert_report(self, report, ext):
+        converted = False
+        with self.conversion_lock:
+            try:
+                from subprocess import Popen, STDOUT, PIPE
+                if os.name == "nt":
+                    import _winreg
+                    regpath = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\soffice.exe"
+                    root = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, regpath)
+                    s_office = _winreg.QueryValue(root, "")
+                else:
+                    s_office = "soffice"
+                convertion = Popen([s_office, '--headless', '--convert-to', ext,
+                    report.report_filename, '--outdir', os.path.join(self.work_dir, 'static', 'reports') ],
+                    stderr=STDOUT,stdout = PIPE)#, shell=True)
+                out, err = convertion.communicate()
+                converted = True
+            except Exception, e:
+                print e
+        return converted
 
     def copy_database_data(self, db_type, db_database=None, db_user=None, db_password=None,
         db_host=None, db_port=None, db_encoding=None):
@@ -1012,7 +1031,7 @@ class AdminServerTask(AbstractServerTask):
         db_type, db_database = '', db_user = '', db_password = '',
         host='', port='', encoding=''):
         AbstractServerTask.__init__(self, name, caption, template, edit_template,
-            db_type, db_database, db_user, db_password, host, port, encoding, 1)
+            db_type, db_database, db_user, db_password, host, port, encoding, 0)
         filepath, filename = os.path.split(__file__)
         self.cur_path = filepath
 
@@ -1026,15 +1045,6 @@ class ServerGroup(Group):
         self.filter_template = filter_template
         if item_type_id == common.REPORTS_TYPE:
             self.on_convert_report = None
-
-    def get_view_template(self):
-        return self.view_template
-
-    def get_edit_template(self):
-        return self.edit_template
-
-    def get_filter_template(self):
-        return self.filter_template
 
     def add_ref(self, name, caption, table_name, visible = True, view_template = '', edit_template = '', filter_template='', soft_delete=True):
         result = ServerItem(self, name, caption, visible, table_name, view_template, edit_template, filter_template, soft_delete)

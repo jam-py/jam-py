@@ -94,6 +94,7 @@ def create_items(task):
     task.sys_params.add_field(21, 'f_d_t_fmt', u'Date and time format string', common.TEXT, size = 30)
     task.sys_params.add_field(22, 'f_language', task.lang['language'], common.INTEGER, required=True, value_list=langs.LANGUAGE, edit_visible=False)
     task.sys_params.add_field(23, 'f_author', task.lang['author'], common.TEXT, size = 30, edit_visible=False)
+    task.sys_params.add_field(24, 'f_version', u'Version', common.TEXT, size = 15)
 
     task.sys_items = task.sys_catalogs.add_ref('sys_items', u'Items', 'SYS_ITEMS')
 
@@ -364,11 +365,14 @@ def update_admin_fields(task):
     con.close()
 
 task = AdminServerTask('admin', u'Administrator', 'adm_main.ui', 'adm_edit.ui', db_modules.SQLITE, db_database='admin.sqlite')
-read_setting()
-task.task_con_pool_size = common.SETTINGS['CON_POOL_SIZE']
-task.safe_mode = common.SETTINGS['SAFE_MODE']
-task.language = common.SETTINGS['LANGUAGE']
-task.item_caption = task.lang['admin']
+try:
+    read_setting()
+    task.task_con_pool_size = common.SETTINGS['CON_POOL_SIZE']
+    task.safe_mode = common.SETTINGS['SAFE_MODE']
+    task.language = common.SETTINGS['LANGUAGE']
+    task.item_caption = task.lang['admin']
+except:
+    task.language = 1
 create_items(task)
 update_admin_fields(task)
 
@@ -866,19 +870,19 @@ def server_export_task(task, task_id, url=None):
     try:
         with open(task_file, 'w') as f:
             cPickle.dump(result, f)
-        zip_file = zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED)
-        zip_file.write(task_file)
-        zip_file.write('index.html')
-        zip_file.write('admin.html')
-        zip_file.write('server.py')
-        common.zip_dir('jam', zip_file, exclude_ext=['.pyc'])
-        common.zip_dir('js', zip_file)
-        common.zip_dir('css', zip_file)
-        common.zip_dir('img', zip_file)
-        common.zip_dir('reports', zip_file)
-        if os.path.exists('utils'):
-            common.zip_dir('utils', zip_file, exclude_ext=['.pyc'])
-        zip_file.close()
+        with zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.write(task_file)
+            zip_file.write('index.html')
+            zip_file.write('admin.html')
+            zip_file.write('server.py')
+            if os.path.exists('jam'):
+                common.zip_dir('jam', zip_file, exclude_ext=['.pyc'])
+            common.zip_dir('js', zip_file)
+            common.zip_dir('css', zip_file)
+            common.zip_dir('img', zip_file)
+            common.zip_dir('reports', zip_file, exclude_ext=['.xml', '.ods#'])
+            if os.path.exists('utils'):
+                common.zip_dir('utils', zip_file, exclude_ext=['.pyc'])
         if url:
             items = task.sys_items.copy()
             items.set_where(id=task_id)
@@ -886,7 +890,8 @@ def server_export_task(task, task_id, url=None):
             result_path = os.path.join(task.work_dir, 'static', 'internal')
             if not os.path.exists(result_path):
                 os.makedirs(result_path)
-            result_file = '%s_%s.zip' % (items.f_item_name.value, datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+            result_file = '%s_%s_%s.zip' % (items.f_item_name.value, common.SETTINGS['VERSION'],
+                datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
             os.rename(file_name, os.path.join(result_path, result_file))
             result = '%s/static/internal/%s' % (url, result_file)
         else:
@@ -901,30 +906,6 @@ def server_export_task(task, task_id, url=None):
 task.register(server_export_task)
 
 def server_import_task(task, task_id, file_name):
-
-    def copy_tmp_files(data):
-        dir = os.path.join(os.getcwd(), 'tmp-' + datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
-        if os.path.exists(dir):
-            shutil.rmtree(dir)
-        os.makedirs(dir)
-        zip_file_name = os.path.join(dir, 'task.zip')
-        with open(zip_file_name, 'w' ) as f:
-            f.write(data)
-        try:
-            common.unzip_dir(dir, zip_file_name)
-        finally:
-            if os.path.exists(zip_file_name):
-                os.remove(zip_file_name)
-        return dir
-
-    def delete_tmp_files(dir):
-        if os.path.exists(dir):
-            shutil.rmtree(dir)
-
-    def copy_files(dir):
-        from distutils import dir_util
-        dir_util.copy_tree(dir, os.getcwd())
-        os.chmod('server.py', 0o777)
 
     def refresh_old_item(item):
         item = item.copy()
@@ -1051,6 +1032,27 @@ def server_import_task(task, task_id, file_name):
         if new_items.locate('id', item_id):
             return new_items.f_table_name.value
 
+    def copy_tmp_files(zip_file_name):
+        dir = os.path.join(os.getcwd(), 'tmp-' + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+        if os.path.exists(dir):
+            shutil.rmtree(dir)
+        os.makedirs(dir)
+        try:
+            with zipfile.ZipFile(zip_file_name) as z:
+                z.extractall(dir)
+        finally:
+            if os.path.exists(zip_file_name):
+                os.remove(zip_file_name)
+        return dir
+
+    def delete_tmp_files(dir):
+        if os.path.exists(dir):
+            shutil.rmtree(dir)
+
+    def copy_files(dir):
+        from distutils import dir_util
+        dir_util.copy_tree(dir, os.getcwd())
+        os.chmod('server.py', 0o777)
 
     error = ''
 
@@ -1060,9 +1062,7 @@ def server_import_task(task, task_id, file_name):
 
     file_name = os.path.join(os.getcwd(), os.path.normpath(file_name))
     print 'Import: reading changes'
-    with open(file_name, 'r') as f:
-        data = f.read()
-    dir = copy_tmp_files(data)
+    dir = copy_tmp_files(file_name)
     print 'Import: analyzing changes'
     try:
         try:
@@ -1138,8 +1138,10 @@ def server_import_task(task, task_id, file_name):
                     print 'Import: copying files'
                     copy_files(dir)
             except Exception, e:
-                error = '%s: %s' % (e.message, traceback.format_exc())
-                print u'Import error: %s' % error
+                error = str(e)
+                print u'Import error:', error
+                if os.name != 'nt':
+                    print u'Import error traceback:', traceback.format_exc()
             finally:
                 task.server.under_maintenance = False
     finally:

@@ -37,7 +37,7 @@ def limit_end(offset, limit):
     return 'LIMIT %d OFFSET %d' % (limit, offset)
 
 def upper_function():
-    return ''
+    pass
 
 def create_table_sql(table_name, fields, foreign_fields=None):
     result = []

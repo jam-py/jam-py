@@ -10,7 +10,7 @@ function Events1() { // demo
 
 	function viewItem(item) {
 		var content; 
-		if (item.task.cur_item) { 
+		if (item.task.cur_item) {	
 			item.task.cur_item.close_view_form(); 
 		}
 		if (item.item_type === "report") { 
@@ -108,6 +108,7 @@ function Events1() { // demo
 					$li = $('<li><a href="#">' + reports[i].item_caption + '</a></li>');
 					$li.find('a').data('report', reports[i]);
 					$li.on('click', 'a', function() {
+						e.preventDefault();
 						$(this).data('report').print_report(false);
 					});
 					$ul.append($li);
@@ -124,33 +125,25 @@ function Events1() { // demo
 	
 	function on_before_show_view_form(item) {
 		var expand_selected_row,
-			table_height,
-			multi_select,
-			multi_select_get_selected,
-			multi_select_set_selected;
+			table_options = {
+				height: 480,
+				word_wrap: false,
+				sortable: true
+			};
 		if (!item.master) {
 			item.auto_loading = true;
 		}
-		if (item.is_lookup_item) {
-			item.view_form.find("#select-btn").on('click.task', function() {item.set_lookup_field_value();});
-			item.view_form.modal_width = 960;
-			table_height = 480;
+		if (item.view_form.hasClass('modal')) {
+			item.view_options.width = 960;
 		}
 		else {
 			item.view_form.find(".modal-body").css('padding', 0);
 			item.view_form.find(".view-title #title-left").append($('<h4>' + item.item_caption + '<h4>'));
-			item.view_form.find("#select-btn").hide();
-			if (item.item_name === 'invoices') {
-				table_height = $(window).height() - $('body').height() - 200 - 40;
-				if (table_height < 200) {
-					table_height = 200;
-				}
-			}
-			else {
-				table_height = $(window).height() - $('body').height() - 40;
-			}
+			table_options.height = $(window).height() - $('body').height() - 40;
 		}
-	
+		if (item.init_table) {
+			item.init_table(item, table_options);
+		}
 		if (item.can_create()) {
 			item.view_form.find("#new-btn").on('click.task', function() {item.insert_record();});
 		}
@@ -172,21 +165,7 @@ function Events1() { // demo
 		
 		create_print_btns(item);
 	
-		item.view_table = item.create_table(item.view_form.find(".view-table"),
-			{
-				height: table_height,
-				word_wrap: false,
-				sortable: true,
-				expand_selected_row: expand_selected_row,
-				multi_select: multi_select,
-				multi_select_get_selected: multi_select_get_selected,
-				multi_select_set_selected: multi_select_set_selected
-			});
-		if (item.item_name === 'invoices') {
-			item.details_active = true;
-			item.detail_table = item.invoice_table.create_table(item.view_form.find(".view-detail"),
-				{height: 200, dblclick_edit: false, column_width: {"track": "60%"}});
-		}
+		item.view_table = item.create_table(item.view_form.find(".view-table"), table_options);
 	}
 	
 	function on_after_show_view_form(item) {
@@ -195,30 +174,16 @@ function Events1() { // demo
 	}
 	
 	function on_before_show_edit_form(item) {
-		var col_count = 1,
-			width = 560;
-		if (item.item_name === 'invoices') {
-			col_count = 2;
-			width = 1050;
+		var input_options = {
+				col_count: 1
+			};
+		item.edit_options.width = 560;
+		if (item.init_inputs) {
+			item.init_inputs(item, input_options);
 		}
-		item.edit_form.modal_width = width;
-		item.create_inputs(item.edit_form.find(".edit-body"), {col_count: col_count});
+		item.create_inputs(item.edit_form.find(".edit-body"), input_options);
 		item.edit_form.find("#cancel-btn").attr("tabindex", 101).on('click.task', function(e) {item.cancel_edit(e); return false;});
 		item.edit_form.find("#ok-btn").attr("tabindex", 100).on('click.task', function() {item.apply_record()});
-		if (item.item_name === 'invoices') {
-			item.edit_table = item.invoice_table.create_table(item.edit_form.find(".edit-detail"),
-				{
-					height: 400,
-					tabindex: 90,
-					editable: true,
-					editable_fields: ['quantity'],
-					sortable: true,
-					column_width: {"track": "60%"}
-				});
-			item.edit_form.find("#new-btn").attr("tabindex", 92).on('click.task', function() {item.invoice_table.append_record()});
-			item.edit_form.find("#edit-btn").attr("tabindex", 91).on('click.task', function() {item.invoice_table.edit_record()});
-			item.edit_form.find("#delete-btn").attr("tabindex", 90).on('click.task', function() {item.invoice_table.delete_record()});
-		}
 	}
 	
 	function expand_buttons(form) {
@@ -377,7 +342,7 @@ function Events2() { // demo.catalogs
 		var timeOut,
 			search;
 		if (item.default_field) {
-			if (item.is_lookup_item && item.lookup_field && item.lookup_field.value) {
+			if (item.lookup_field && item.lookup_field.value) {
 				item.view_form.find(".view-title #title-left")
 					.append($('<p><a href="#" id="cur_value">' + item.lookup_field.lookup_text + '</a></p>'))
 					.css('padding-top', '12px');
@@ -389,13 +354,13 @@ function Events2() { // demo.catalogs
 			}
 			search = item.view_form.find(".view-title input");
 			search.on('input', function() {
+				search.css('font-weight', 'normal');
 				var where = {},
 					input = $(this);
 				clearTimeout(timeOut);
 				timeOut = setTimeout(function() {
-	//					where[item.default_field.field_name + '__contains'] = input.val();
-	//					item.open({where: where});
 						item.search(item.default_field.field_name, input.val());
+						search.css('font-weight', 'bold');
 					},
 					500
 				);
@@ -410,27 +375,38 @@ function Events2() { // demo.catalogs
 					e.preventDefault();
 				}
 			});
-			item.view_form.keypress(function(e) {
-				var ch = String.fromCharCode(e.which),
-					input,
-					digits = '0123456789';
-				if (digits.indexOf(ch) === -1 && e.which !== 13) {
-					input = item.view_form.find('#input-find');
-					if (!input.is(":focus")) {
-						input.focus();
+			item.view_form.on('keydown', function(e) {
+				var code = (e.keyCode ? e.keyCode : e.which);
+				if (isCharCode(code) || code === 32 || code === 8) {
+					if (!search.is(":focus")) {
+						if (code !== 8) {
+							search.val('');
+						}
+						search.focus();
 					}
 				}
 			});
 		}
 		else {
-			item.view_form.find("#title-right .form-inline").hide()
+			item.view_form.find("#title-right .form-inline").hide();
+		}
+	}
+	
+	function isCharCode(code) {
+		if (code >= 65 && code <= 90 || code >= 186 && code <= 192 || code >= 219 && code <= 222) {
+			return true;
 		}
 	}
 	
 	function on_after_show_view_form(item) {
-		item.view_form.find(".view-title input").focus();
+		setTimeout(function() {
+				item.view_form.find(".view-title input").focus();
+			},
+			0
+		);	
 	}
 	this.on_before_show_view_form = on_before_show_view_form;
+	this.isCharCode = isCharCode;
 	this.on_after_show_view_form = on_after_show_view_form;
 }
 
@@ -445,7 +421,7 @@ function Events3() { // demo.journals
 				item.view_form.find(".view-title #title-right")
 					.html('<h5 class="pull-right">' + item.get_status_text() + '<h5>');
 			}
-		}
+		};
 	}
 	
 	function on_after_show_view_form(item) {
@@ -458,22 +434,6 @@ function Events3() { // demo.journals
 }
 
 window.task_events.events3 = new Events3();
-
-function Events4() { // demo.tables 
-
-	function on_before_show_view_form(item) {
-		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});
-		item.on_filter_applied = function(item) {
-			if (item.view_form) {
-				item.view_form.find(".view-title #title-right")
-					.html('<h5 class="pull-right">' + item.get_status_text() + '<h5>');
-			}
-		}
-	}
-	this.on_before_show_view_form = on_before_show_view_form;
-}
-
-window.task_events.events4 = new Events4();
 
 function Events5() { // demo.reports 
 
@@ -499,16 +459,47 @@ function Events16() { // demo.journals.invoices
 		item.taxrate.value = 5;
 	}
 	
+	function init_table(item, table_options) {
+		table_options.height = $(window).height() - $('body').height() - 200 - 40;
+		if (table_options.height < 200) {
+			table_options.height = 200;
+		}
+	}
+	
 	function on_before_show_view_form(item) {
 		var now = new Date();
 		now.setDate(now.getDate() - 365);
 		item.filters.invoicedate1.value = now;
 		item.calculating = false;
+		
+		item.details_active = true;
+		item.detail_table = item.invoice_table.create_table(item.view_form.find(".view-detail"),
+			{height: 200, dblclick_edit: false, column_width: {"track": "60%"}});
+	}
+	
+	function init_inputs(item, input_options) {
+		input_options.col_count = 2;
+	}
+	
+	function on_before_show_edit_form(item) {
+		item.edit_options.width = 1050;
+		item.edit_table = item.invoice_table.create_table(item.edit_form.find(".edit-detail"),
+			{
+				height: 400,
+				tabindex: 90,
+				editable: true,
+				editable_fields: ['quantity'],
+				sortable: true,
+				column_width: {"track": "60%"}
+			});
+		item.edit_form.find("#new-btn").attr("tabindex", 92).on('click.task', function() {item.invoice_table.append_record()});
+		item.edit_form.find("#edit-btn").attr("tabindex", 91).on('click.task', function() {item.invoice_table.edit_record()});
+		item.edit_form.find("#delete-btn").attr("tabindex", 90).on('click.task', function() {item.invoice_table.delete_record()});
 	}
 	
 	function on_get_field_text(field) {
 		if (field.field_name === 'customer') {
-			return field.owner.firstname.lookup_text + ' ' + field.lookup_text
+			return field.owner.firstname.lookup_text + ' ' + field.lookup_text;
 		}
 	}
 	
@@ -577,7 +568,10 @@ function Events16() { // demo.journals.invoices
 		}
 	}
 	this.on_after_append = on_after_append;
+	this.init_table = init_table;
 	this.on_before_show_view_form = on_before_show_view_form;
+	this.init_inputs = init_inputs;
+	this.on_before_show_edit_form = on_before_show_edit_form;
 	this.on_get_field_text = on_get_field_text;
 	this.on_field_changed = on_field_changed;
 	this.calc_total = calc_total;

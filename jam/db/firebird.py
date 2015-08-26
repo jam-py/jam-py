@@ -49,7 +49,7 @@ def create_table_sql(table_name, fields, foreign_fields=None):
     sql = 'CREATE TABLE "%s"\n(\n' % table_name
     for field in fields:
         sql += '"%s" %s' % (field['field_name'], FIELD_TYPES[field['data_type']])
-        if field['size'] != 0 and field['data_type'] == common.TEXT:
+        if field['size'] != 0 and field['data_type'] == TEXT:
             sql += '(%d)' % field['size']
         sql +=  ',\n'
     sql += 'CONSTRAINT %s_PR_INDEX PRIMARY KEY ("ID")\n' % table_name
