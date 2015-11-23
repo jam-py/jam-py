@@ -144,6 +144,11 @@ class SQL(object):
     def fields_clause(self, query, fields, db_module=None):
         if db_module is None:
             db_module = self.task.db_module
+        funcs = query.get('__funcs')
+        if funcs:
+            functions = {}
+            for key, value in funcs.iteritems():
+                functions[key.upper()] = value
         sql = ''
         for field in fields:
             if field.master_field:
@@ -151,7 +156,12 @@ class SQL(object):
             elif field.calculated:
                 sql += 'NULL AS "%s", ' % field.field_name
             else:
-                sql += '"%s"."%s", ' % (self.table_name, field.field_name)
+                field_sql = '"%s"."%s"' % (self.table_name, field.field_name)
+                if funcs:
+                    func = functions.get(field.field_name.upper())
+                    if func:
+                        field_sql = '%s(%s)' % (func, field_sql)
+                sql += field_sql + ', '
         if query['__expanded']:
             for field in fields:
                 if field.lookup_item:
@@ -318,6 +328,21 @@ class SQL(object):
             result = ' WHERE ' + result
         return result
 
+    def group_clause(self, query, fields, db_module=None):
+        if db_module is None:
+            db_module = self.task.db_module
+        group_fields = query.get('__group')
+        result = ''
+        if group_fields:
+            for field_name in group_fields:
+                result += '"%s"."%s", ' % (self.table_name, field_name)
+            if result:
+                result = result[:-2]
+                result = ' GROUP BY ' + result
+            return db_module.set_case(result)
+        else:
+            return ''
+
     def order_clause(self, query, db_module=None):
         if db_module is None:
             db_module = self.task.db_module
@@ -347,7 +372,7 @@ class SQL(object):
             db_module = self.task.db_module
         result = ''
         if query['__limit']:
-            result = db_module.limit_start(query['__loaded'], query['__limit'])
+            result = db_module.limit_start(query['__offset'], query['__limit'])
         if result:
             result += ' '
         return db_module.set_case(result)
@@ -357,7 +382,7 @@ class SQL(object):
             db_module = self.task.db_module
         result = ''
         if query['__limit']:
-            result = db_module.limit_end(query['__loaded'], query['__limit'])
+            result = db_module.limit_end(query['__offset'], query['__limit'])
         return ' ' + db_module.set_case(result)
 
     def get_select_statement(self, query, db_module=None):
@@ -374,6 +399,7 @@ class SQL(object):
             ' FROM ' + \
             self.from_clause(query, fields, db_module) + \
             self.where_clause(query, db_module) + \
+            self.group_clause(query, fields, db_module) + \
             self.order_clause(query, db_module) + \
             self.limit_clause_end(query, db_module)
         return sql

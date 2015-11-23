@@ -1,0 +1,29 @@
+========
+Workflow
+========
+
+In the Jam.py framework on the server there are two tasks at the same time: 
+Administrator and Project. Each of which represents a tree of objects - there 
+are the Administrator task tree and the Project task tree. So prior to 
+consideration of the Jam.py workflow it's necessary to be familiar with the 
+concept of the :doc:`task tree <task_tree>`.
+
+The the Jam.py workflow is the following:
+
+* After apllication.py is started the Administrator task tree is created and 
+  initialized on the server.
+* The Project task tree is created on the server by Administrator after the 
+  server receives first request from the Project client.
+* When client (Administrator or Project) is first run in the browser (after 
+  admin.html or index.html is loaded) the empty task object is built that sends 
+  to the server a request to initialize itself.
+* If the project safe mode parameter is set, the framework checks if the user is 
+  logged before executing any request. If not then it notifies the client that 
+  it must to login, client creates a login form and after a user inputs its login 
+  and password the client task sends server request to login.
+* After successfull login or if the project safe mode parameter is not set the 
+  server sends the client iformation about the requested task. The task on the 
+  client builds its tree, based on this information, assigns event handlers to 
+  its objects and executes on_page_loaded event handler. In this event handler 
+  a developer should 
+

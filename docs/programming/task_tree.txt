@@ -1,0 +1,139 @@
+=========
+Task tree
+=========
+
+All objects of the framework represent a tree::
+
+    /task/
+        catalogs/ 
+            catalog1/
+                table1
+            catalog2   
+           ...
+        journals/
+            journal1
+            journal2/
+                table2            
+                table3
+            ...
+        tables/
+            table1
+            table2
+            table3
+            ...
+        reports/
+            report1
+            report2
+            ...
+
+At the root of the tree is a task object that contains item group objects: 
+catalogs, journals, tables and reports. Catalogs, journals and tables item groups 
+in their turn contain item objects. Each item object can have detail objects.
+Reports group object contains report objects. 
+
+For example the task tree of the demo project is::
+
+    /demo/
+        catalogs/
+           customers 
+           tracks
+           albums
+           artists
+           genres
+           media_types
+        journals/
+            invoices/
+                invoice_table
+        tables/
+            invoice_table
+        reports/
+            invoice
+            purchases_report
+            customers_report
+
+All items of this trees have a common ancestor AbstractItem and common attributes:
+
+* **ID**  - unique in the framework ID of the item
+	
+* **owner** - immediate parent and owner of the item
+	
+* **task** — root of the task tree
+	
+* **items** — list of child items
+	
+* **item_type** — type of the item — one of the following values "task", 
+  "catalogs", "journals", "tables", "reports",  "catalog", "journal", 
+  "table", "report", "detail"
+      
+* **item_name** — the name of the item that will be used in programming code 
+  to get access to the item object
+	  
+* **item_caption** — the item name that appears to users
+	
+and methods:
+
+* **find(name)** — looks among immediate children for an item with item_name 
+  that equals name parameter and returns it if it's found, otherwise return 
+  None for python or undefined for JavaScript
+	  
+* **item_by_ID(ID)** - looks among all its children for an item with ID that 
+  equals ID parameter and returns it if it's found, otherwise return None 
+  for python or undefined for JavaScript
+
+So the following code in the task server module that is executed when task is 
+created::
+
+    def print_item(item, ident):
+        owner_name = None
+        if item.owner:
+            owner_name = item.owner.item_name
+        print '%s %s - item_type: "%s", ID: %s, item_caption: "%s", owner: %s' % \
+            (2 * ident * ' ', item.item_name, item.item_type, item.ID, \
+            item.item_caption, owner_name)
+
+    def on_created(task):
+        print_item(task, 0)
+        for group in task.items:
+            print_item(group, 1)
+            for item in group.items:
+                print_item(item, 2)
+                for detail in item.items:
+                    print_item(detail, 3)
+                    
+will print::
+
+    demo - item_type: "task", ID: 5, item_caption: "Demo", owner: None
+      catalogs - item_type: "catalogs", ID: 6, item_caption: "Catalogs", owner: demo
+        customers - item_type: "catalog", ID: 10, item_caption: "Customers", owner: catalogs
+        artists - item_type: "catalog", ID: 11, item_caption: "Artists", owner: catalogs
+        albums - item_type: "catalog", ID: 12, item_caption: "Albums", owner: catalogs
+        genres - item_type: "catalog", ID: 13, item_caption: "Genres", owner: catalogs
+        media_types - item_type: "catalog", ID: 14, item_caption: "MediaTypes", owner: catalogs
+        tracks - item_type: "catalog", ID: 15, item_caption: "Tracks", owner: catalogs
+      journals - item_type: "journals", ID: 7, item_caption: "Journals", owner: demo
+        invoices - item_type: "journal", ID: 16, item_caption: "Invoices", owner: journals
+          invoice_table - item_type: "detail", ID: 18, item_caption: "InvoiceTable", owner: invoices
+      tables - item_type: "tables", ID: 8, item_caption: "Tables", owner: demo
+        invoice_table - item_type: "table", ID: 17, item_caption: "InvoiceTable", owner: tables
+      reports - item_type: "reports", ID: 9, item_caption: "Reports", owner: demo
+        invoice - item_type: "report", ID: 19, item_caption: "Print invoice", owner: reports
+        purchases_report - item_type: "report", ID: 20, item_caption: "Customer purchases ", owner: reports
+        customers_report - item_type: "report", ID: 22, item_caption: "Customer list", owner: reports
+                    
+In addition every item is an attribute of its owner and all journals, catalogs, 
+tables and reports are attibutes not only of their owner item group but of the 
+task (they all have a unique item_name). So::
+
+    albums = task.catalogs.albums
+    print_item(task.journals.invoices.invoice_table)
+    print_item(task.invoices.invoice_table)
+    print_item(task.invoice_table)    
+    print_item(albums.task.invoices)
+    
+will print::
+
+    invoice_table - item_type: "detail", ID: 18, item_caption: "InvoiceTable", owner: invoices
+    invoice_table - item_type: "detail", ID: 18, item_caption: "InvoiceTable", owner: invoices
+    invoice_table - item_type: "table", ID: 17, item_caption: "InvoiceTable", owner: tables
+    invoices - item_type: "journal", ID: 16, item_caption: "Invoices", owner: journals
+    

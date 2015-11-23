@@ -1,0 +1,15 @@
+=========
+Group API
+=========
+
+.. js:class:: Group
+
+Group class inherits attributes and methods of 
+:doc:`AbstractItem class <abstractitem_api>`
+
+.. toctree::
+    :maxdepth: 1
+
+    item_group_attributes
+    item_group_methods
+    item_group_events

@@ -1,0 +1,24 @@
+=========
+item_type
+=========
+
+Specifies the type of the item.
+
+.. js:attribute:: item_type
+
+Description
+===========
+
+Use the type attribute to get the type of the item. It can have one of the 
+following values 
+
+* “task”, 
+* “catalogs”, 
+* “journals”, 
+* “tables”, 
+* “reports”, 
+* “catalog”, 
+* “journal”, 
+* “table”, 
+* “report”, 
+* “detail”

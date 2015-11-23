@@ -13,9 +13,11 @@ for file_name in os.listdir(project_dir):
     name, ext = os.path.splitext(file_name)
     if ext == '.py':
         os.chmod(file_name, 0o777)
-reports_path = os.path.join(project_dir, 'static', 'reports')
-if not os.path.isdir(reports_path):
-    os.makedirs(reports_path)
+dirs = ['js', 'img', 'reports', os.path.join('static', 'reports')]
+for dir in dirs:
+    path = os.path.join(project_dir, dir)
+    if not os.path.isdir(path):
+        os.makedirs(path)
 
 con = sqlite3.connect(os.path.join(project_dir, 'admin.sqlite'))
 cursor = con.cursor()

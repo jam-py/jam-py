@@ -1,0 +1,8 @@
+============
+item_caption
+============
+
+Specifies the name of the item that appears to users
+
+.. js:attribute:: item_caption
+

@@ -1,0 +1,13 @@
+====
+task
+====
+
+Indicates the root of the :doc:`task tree </programming/task_tree>` that owns this item. 
+
+.. js:attribute:: task
+
+Description
+===========
+
+Use task attribute to find the root of the :doc:`task tree </programming/task_tree>` 
+of which the item is a member.

@@ -1,0 +1,12 @@
+=====
+owner
+=====
+
+Indicates the item that owns this item. 
+
+.. js:attribute:: owner
+
+Description
+===========
+
+Use owner to find the owner of an item. 

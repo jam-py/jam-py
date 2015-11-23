@@ -112,11 +112,11 @@ class AbstractItem(object):
 
 
 
-class Group(AbstractItem):
+class AbstrGroup(AbstractItem):
     pass
 
 
-class Task(AbstractItem):
+class AbstrTask(AbstractItem):
     def __init__(self, owner, name, caption, visible = True, item_type_id=0):
         AbstractItem.__init__(self, owner, name, caption, visible, item_type_id)
         self.task = self
@@ -125,7 +125,7 @@ class Task(AbstractItem):
         self.log = None
 
     def set_info(self, info):
-        super(Task, self).set_info(info)
+        super(AbstrTask, self).set_info(info)
         self.bind_items()
 
     def item_by_name(self, item_name):
@@ -199,25 +199,24 @@ class Task(AbstractItem):
             pass
         try:
             common.SETTINGS['D_FMT'] = locale.nl_langinfo(locale.D_FMT)
-            common.SETTINGS['D_T_FMT'] = '%s %s' % (common.D_FMT, '%H:%M')
         except:
-            common.D_FMT = '%x'
-            common.D_T_FMT = '%X'
+            common.SETTINGS['D_FMT'] = '%Y-%m-%d'
+        common.SETTINGS['D_T_FMT'] = '%s %s' % (common.D_FMT, '%H:%M')
 
-class Item(AbstractItem):
+class AbstrItem(AbstractItem):
     def __init__(self, owner, name, caption, visible = True, item_type_id=0):
         AbstractItem.__init__(self, owner, name, caption, visible, item_type_id)
         if not hasattr(self.task, self.item_name):
             setattr(self.task, self.item_name, self)
 
     def write_info(self, info):
-        super(Item, self).write_info(info)
+        super(AbstrItem, self).write_info(info)
         info[ITEM_FIELDS] = self.field_defs
         info[ITEM_FILTERS] = self.filter_defs
         info[ITEM_REPORTS] = self.get_reports_info()
 
     def read_info(self, info):
-        super(Item, self).read_info(info)
+        super(AbstrItem, self).read_info(info)
         self.create_fields(info[ITEM_FIELDS])
         self.create_filters(info[ITEM_FILTERS])
         self.reports = info[ITEM_REPORTS]
@@ -228,27 +227,27 @@ class Item(AbstractItem):
         self.fields = list(self._fields)
 
 
-class Detail(Item):
+class AbstrDetail(AbstrItem):
 
     def read_info(self, info):
-        super(Detail, self).read_info(info)
+        super(AbstrDetail, self).read_info(info)
         self.owner.details.append(self)
         if not hasattr(self.owner.details, self.item_name):
             setattr(self.owner.details, self.item_name, self)
 
 
-class Report(AbstractItem):
+class AbstrReport(AbstractItem):
     def __init__(self, owner, name, caption, visible = True, item_type_id=0):
         AbstractItem.__init__(self, owner, name, caption, visible, item_type_id)
         if not hasattr(self.task, self.item_name):
             setattr(self.task, self.item_name, self)
 
     def write_info(self, info):
-        super(Report, self).write_info(info)
+        super(AbstrReport, self).write_info(info)
         info[ITEM_FIELDS] = self.param_defs
 
     def read_info(self, info):
-        super(Report, self).read_info(info)
+        super(AbstrReport, self).read_info(info)
         self.create_params(info[ITEM_FIELDS])
 
     def param_by_name(self, name):

@@ -1,0 +1,16 @@
+========
+Item API
+========
+
+.. js:class:: Item
+
+Item class is used to create item objects of the 
+:doc:`task tree </programming/task_tree>` that have associated database table.
+It inherits attributes and methods of :doc:`AbstractItem class <abstractitem_api>`
+
+.. toctree::
+    :maxdepth: 1
+
+    item_attributes
+    item_methods
+    item_events

@@ -1,0 +1,8 @@
+====
+test
+====
+
+Now, we’ll walk you through the creation of a basic to-do list application.
+
+We'll assume that jam.py is already installed. If not, see 
+:doc:`installation <install>` guide how to do it.

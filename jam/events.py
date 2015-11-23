@@ -71,7 +71,7 @@ detail_client_events = \
         'on_after_delete': 'item',
         'on_before_cancel': 'item',
         'on_after_cancel': 'item',
-        'on_before_open': 'item',
+        'on_before_open': 'item, params',
         'on_after_open': 'item',
         'on_before_post': 'item',
         'on_after_post': 'item',
@@ -80,6 +80,7 @@ detail_client_events = \
         'on_filter_record': 'item',
         'on_field_changed': 'field, lookup_item',
         'on_before_field_changed': 'field, new_value, new_lookup_value',
+        'on_filter_applied': 'item',
         'on_filter_changed': 'filter',
         'on_field_validate': 'field',
         'on_get_field_text': 'field',
@@ -104,11 +105,12 @@ report_client_events = \
 
 task_server_events = \
     {
-        'on_ext_request': 'task, request, params, env',
         'on_created': 'task',
         'on_login': 'task, env, admin, login, password_hash',
         'on_get_user_info': 'task, user_uuid, env',
-        'on_logout': 'task, user_uuid, env'
+        'on_logout': 'task, user_uuid, env',
+        'on_ext_request': 'task, request, params, env',
+        'on_request': 'task, user_info, env, request, item, params, ext'
     }
 
 group_server_events = \

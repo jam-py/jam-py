@@ -99,7 +99,7 @@ class ServerDataset(Dataset, SQL):
         return result
 
     def add_detail(self, table):
-        detail = ServerDetail(self, table.item_name, table.item_caption, table.table_name)
+        detail = Detail(self, table.item_name, table.item_caption, table.table_name)
         self.details.append(detail)
         detail.owner = self
         detail.init_fields()
@@ -153,6 +153,10 @@ class ServerDataset(Dataset, SQL):
                 error_mes = e.message
         return rows, error_mes
 
+    def apply_delta(self, delta, privileges):
+        sql = delta.apply_sql(privileges)
+        return self.task.execute(sql)
+
     def apply_changes(self, data, privileges, user_info=None, enviroment=None):
         error = None
         result = None
@@ -164,8 +168,7 @@ class ServerDataset(Dataset, SQL):
             if self.on_apply:
                 result, error = self.on_apply(self, delta, params, privileges, user_info, enviroment)
             else:
-                sql = delta.apply_sql(privileges)
-                result, error = self.task.execute(sql)
+                result, error = self.apply_delta(delta, privileges)
         except Exception, e:
             error = e.message
             if not error:
@@ -219,10 +222,10 @@ class ServerDataset(Dataset, SQL):
                 return result
         return
 
-class ServerItem(Item, ServerDataset):
+class Item(AbstrItem, ServerDataset):
     def __init__(self, owner, name, caption, visible = True,
             table_name='', view_template='', edit_template='', filter_template='', soft_delete=True):
-        Item.__init__(self, owner, name, caption, visible)
+        AbstrItem.__init__(self, owner, name, caption, visible)
         ServerDataset.__init__(self, table_name, view_template, edit_template, filter_template, soft_delete)
         self.item_type_id = None
         self.reports = []
@@ -234,7 +237,7 @@ class ServerItem(Item, ServerDataset):
         return result
 
 
-class ServerParam(DBField):
+class Param(DBField):
     def __init__(self, owner, param_def):
         DBField.__init__(self, owner, param_def)
         self.field_kind = common.PARAM_FIELD
@@ -279,16 +282,16 @@ class ServerParam(DBField):
         return result
 
     def copy(self, owner):
-        result = ServerParam(owner, self.param_caption, self.field_name, self.data_type,
+        result = Param(owner, self.param_caption, self.field_name, self.data_type,
             self.lookup_item, self.lookup_field, self.required,
             self.edit_visible, self.alignment)
         return result
 
 
-class ServerReport(Report):
+class Report(AbstrReport):
     def __init__(self, owner, name='', caption='', visible = True,
             table_name='', view_template='', edit_template='', filter_template=''):
-        Report.__init__(self, owner, name, caption, visible)
+        AbstrReport.__init__(self, owner, name, caption, visible)
         self.param_defs = []
         self.params = []
         self.template = view_template
@@ -328,7 +331,7 @@ class ServerReport(Report):
 
     def add_param(self, caption='', name='', data_type=common.INTEGER, obj=None, obj_field=None, required=True, visible=True, value=None):
         param_def = self.add_param_def(caption, name, data_type, obj, obj_field, required, visible, value)
-        param = ServerParam(self, param_def)
+        param = Param(self, param_def)
         self.params.append(param)
 
     def add_param_def(self, param_caption='', param_name='', data_type=common.INTEGER, lookup_item=None, lookup_field=None, required=True, visible=True, alignment=0):
@@ -360,7 +363,7 @@ class ServerReport(Report):
         result.on_before_save_report = self.on_before_save_report
         result.param_defs = self.param_defs
         for param_def in result.param_defs:
-            param = ServerParam(result, param_def)
+            param = Param(result, param_def)
             result.params.append(param)
         result.prepare_params()
         return  result
@@ -748,7 +751,7 @@ def process_request(parentPID, name, queue, db_type, db_database, db_user, db_pa
     counter = 0
     db_module = db_modules.get_db_module(db_type)
     while True:
-        if hasattr(os, 'getppid') and os.getppid() != parentPID:
+        if parentPID and hasattr(os, 'getppid') and os.getppid() != parentPID:
             break
         request = queue.get()
         if request:
@@ -766,22 +769,65 @@ def process_request(parentPID, name, queue, db_type, db_database, db_user, db_pa
                 con = None
                 mod_count = cur_mod_count
                 counter = 0
-            if command == 'QUIT':
-                if con:
-                    con.commit()
-                    con.close()
-                result_queue.put('QUIT')
-                break
-            else:
-                con, result = execute_sql(db_module, db_database, db_user, db_password,
-                    db_host, db_port, db_encoding, con, command, params, result_set, call_proc, commit)
-                counter += 1
-                result_queue.put(result)
+            con, result = execute_sql(db_module, db_database, db_user, db_password,
+                db_host, db_port, db_encoding, con, command, params, result_set, call_proc, commit)
+            counter += 1
+            result_queue.put(result)
 
-class AbstractServerTask(Task):
-    def __init__(self, name, caption, template, edit_template, db_type, db_database = '',
-            db_user = '', db_password = '', host='', port='', encoding='', con_pool_size=1):
-        Task.__init__(self, None, None, None, None)
+class Consts(object):
+    def __init__(self):
+        self.TEXT = common.TEXT
+        self.INTEGER = common.INTEGER
+        self.FLOAT = common.FLOAT
+        self.CURRENCY = common.CURRENCY
+        self.DATE = common.DATE
+        self.DATETIME = common.DATETIME
+        self.BOOLEAN = common.BOOLEAN
+        self.BLOB = common.BLOB
+
+        self.ITEM_FIELD = common.ITEM_FIELD
+        self.FILTER_FIELD = common.FILTER_FIELD
+        self.PARAM_FIELD = common.PARAM_FIELD
+
+        self.FILTER_EQ = common.FILTER_EQ
+        self.FILTER_NE = common.FILTER_NE
+        self.FILTER_LT = common.FILTER_LT
+        self.FILTER_LE = common.FILTER_LE
+        self.FILTER_GT = common.FILTER_GT
+        self.FILTER_GE = common.FILTER_GE
+        self.FILTER_IN = common.FILTER_IN
+        self.FILTER_NOT_IN = common.FILTER_NOT_IN
+        self.FILTER_RANGE = common.FILTER_RANGE
+        self.FILTER_ISNULL = common.FILTER_ISNULL
+        self.FILTER_EXACT = common.FILTER_EXACT
+        self.FILTER_CONTAINS = common.FILTER_CONTAINS
+        self.FILTER_STARTWITH = common.FILTER_STARTWITH
+        self.FILTER_ENDWITH = common.FILTER_ENDWITH
+        self.FILTER_SEARCH = common.FILTER_SEARCH
+
+        self.ALIGN_LEFT = common.ALIGN_LEFT
+        self.ALIGN_CENTER = common.ALIGN_CENTER
+        self.ALIGN_RIGHT = common.ALIGN_RIGHT
+
+        self.STATE_INACTIVE = common.STATE_INACTIVE
+        self.STATE_BROWSE = common.STATE_BROWSE
+        self.STATE_INSERT = common.STATE_INSERT
+        self.STATE_EDIT = common.STATE_EDIT
+        self.STATE_DELETE = common.STATE_DELETE
+
+        self.RECORD_UNCHANGED = common.RECORD_UNCHANGED
+        self.RECORD_INSERTED = common.RECORD_INSERTED
+        self.RECORD_MODIFIED = common.RECORD_MODIFIED
+        self.RECORD_DETAILS_MODIFIED = common.RECORD_DETAILS_MODIFIED
+        self.RECORD_DELETED = common.RECORD_DELETED
+
+
+class AbstractServerTask(AbstrTask):
+    def __init__(self, name, caption, template, edit_template, db_type,
+        db_database = '', db_user = '', db_password = '', host='', port='',
+        encoding='', con_pool_size=1, mp_pool=False, persist_con=False):
+        AbstrTask.__init__(self, None, None, None, None)
+        self.consts = Consts()
         self.items = []
         self.ID = None
         self.item_name = name
@@ -795,80 +841,90 @@ class AbstractServerTask(Task):
         self.db_port = port
         self.db_encoding = encoding
         self.db_module = db_modules.get_db_module(self.db_type)
+        self.on_request = None
         self.work_dir = os.getcwd()
         self.con_pool_size = 0
         self.mod_count = 0
         self.modules = []
-        self.processes = []
-        self._busy = 0
         self.conversion_lock = threading.Lock()
-        if con_pool_size:
-            self.queue = multiprocessing.Queue()
-            self.manager = multiprocessing.Manager()
-            self.con_pool_size = con_pool_size
-            self.create_connection_pool()
+        self.con_pool_size = con_pool_size
+        self.mp_pool = mp_pool
+        self.persist_con = persist_con
+        self.persist_con_busy = 0
+        if self.mp_pool:
+            if self.persist_con:
+                self.create_connection_pool(1)
+            self.create_mp_connection_pool(self.con_pool_size)
+        else:
+            self.create_connection_pool(self.con_pool_size)
 
-    def create_connection_pool(self):
-        if self.con_pool_size:
-            pid = os.getpid()
-            for i in range(self.con_pool_size):
-                p = multiprocessing.Process(target=process_request, args=(pid, self.item_name,
-                    self.queue, self.db_type, self.db_database, self.db_user,
-                    self.db_password, self.db_host, self.db_port,
-                    self.db_encoding, self.mod_count))
-                self.processes.append(p)
-                p.daemon = True
-                p.start()
+    def get_version(self):
+        return common.SETTINGS['VERSION']
 
-    def release_connection_pool(self):
-        if self.con_pool_size:
-            for i in range(self.con_pool_size):
-                self.execute('QUIT')
-            self.processes = []
+    version = property (get_version)
+
+    def create_connection_pool(self, con_count):
+        self.queue = Queue.Queue()
+        pid = None
+        for i in range(con_count):
+            p = threading.Thread(target=process_request, args=(pid, self.item_name,
+                self.queue, self.db_type, self.db_database, self.db_user,
+                self.db_password, self.db_host, self.db_port,
+                self.db_encoding, self.mod_count))
+            p.daemon = True
+            p.start()
+
+    def create_mp_connection_pool(self, con_count):
+        self.mp_queue = multiprocessing.Queue()
+        self.mp_manager = multiprocessing.Manager()
+        pid = os.getpid()
+        for i in range(con_count):
+            p = multiprocessing.Process(target=process_request, args=(pid, self.item_name,
+                self.mp_queue, self.db_type, self.db_database, self.db_user,
+                self.db_password, self.db_host, self.db_port,
+                self.db_encoding, self.mod_count))
+            p.daemon = True
+            p.start()
 
     def create_connection(self):
         return self.db_module.connect(self.db_database, self.db_user, self.db_password, self.db_host, self.db_port, self.db_encoding)
 
-    def close_connections(self): # Release connections
-        if not self.con_pool_size:
-            if hasattr(self.server.web.ctx, 'sadb'):
-                for connection in self.server.web.ctx.sadb.values():
-                    connection.close()
-                self.server.web.ctx.sadb = {}
+    def send_to_pool(self, queue, result_queue, command, params=None, result_set=None, call_proc=False, commit=True):
+        request = {}
+        request['queue'] = result_queue
+        request['command'] = command
+        request['command'] = command
+        request['params'] = params
+        request['result_set'] = result_set
+        request['call_proc'] = call_proc
+        request['commit'] = commit
+        request['mod_count'] = self.mod_count
+        queue.put(request)
+        return  result_queue.get()
+
+    def execute_in_pool(self, command, params=None, result_set=None, call_proc=False, commit=True):
+        result_queue = Queue.Queue()
+        result = self.send_to_pool(self.queue, result_queue, command, params, result_set, call_proc, commit)
+        return result
+
+    def execute_in_mp_poll(self, command, params=None, result_set=None, call_proc=False, commit=True):
+        result_queue = self.mp_manager.Queue()
+        result = self.send_to_pool(self.mp_queue, result_queue, command, params, result_set, call_proc, commit)
+        return result
 
     def execute(self, command, params=None, result_set=None, call_proc=False, commit=True):
-        if self.con_pool_size:
-            result_queue = self.manager.Queue()
-            request = {}
-            request['queue'] = result_queue
-            request['command'] = command
-            request['command'] = command
-            request['params'] = params
-            request['result_set'] = result_set
-            request['call_proc'] = call_proc
-            request['commit'] = commit
-            request['mod_count'] = self.mod_count
-            self._busy += 1
-            try:
-                self.queue.put(request)
-                result = result_queue.get()
-            finally:
-                self._busy -= 1
-            return result
+        if self.mp_pool:
+            if self.persist_con and not self.persist_con_busy:
+                self.persist_con_busy += 1
+                try:
+                    result = self.execute_in_pool(command, params, result_set, call_proc, commit)
+                finally:
+                    self.persist_con_busy -= 1
+            else:
+                result = self.execute_in_mp_poll(command, params, result_set, call_proc, commit)
         else:
-            try:
-                connection = self.server.web.ctx.sadb.get(self.ID)
-            except:
-                connection = None
-            result = execute_sql(self.db_module, self.db_database, self.db_user,
-                self.db_password, self.db_host, self.db_port,
-                self.db_encoding, connection, command, params, result_set, call_proc, commit)
-            try:
-                self.server.web.ctx.sadb[self.ID] = result[0]
-            except:
-                if not hasattr(self.server.web.ctx, 'sadb'):
-                    self.server.web.ctx.sadb = {self.ID: result[0]}
-            return result[1]
+            result = self.execute_in_pool(command, params, result_set, call_proc, commit)
+        return result
 
     def callproc(self, command, params=None):
         result_set, error = self.execute(command, params, call_proc=True)
@@ -964,7 +1020,7 @@ class AbstractServerTask(Task):
                     if item.item_type != 'report':
                         self.execute(self.db_module.set_case('DELETE FROM %s' % item.table_name))
                         item.open(expanded=False, open_empty=True)
-                        params = {'__fields': [], '__filters': [], '__expanded': False, '__loaded': 0, '__limit': 0}
+                        params = {'__fields': [], '__filters': [], '__expanded': False, '__offset': 0, '__limit': 0}
                         sql = item.get_record_count_query(params, db_module)
                         connection, (result, error) = \
                         execute_sql(db_module, db_database, db_user, db_password,
@@ -974,7 +1030,7 @@ class AbstractServerTask(Task):
                         max_id = 0
                         if record_count:
                             while True:
-                                params['__loaded'] = loaded
+                                params['__offset'] = loaded
                                 params['__limit'] = limit
                                 sql = item.get_select_statement(params, db_module)
                                 connection, (result, error) = \
@@ -1006,14 +1062,14 @@ class AbstractServerTask(Task):
                     item.load_handlers(handlers)
 
 
-
-class ServerTask(AbstractServerTask):
+class Task(AbstractServerTask):
     def __init__(self, name, caption, template, edit_template,
         db_type, db_database = '', db_user = '', db_password = '',
-        host='', port='', encoding='', con_pool_size=4):
+        host='', port='', encoding='', con_pool_size=4, mp_pool=True,
+        persist_con=True):
         AbstractServerTask.__init__(self, name, caption, template, edit_template,
             db_type, db_database, db_user, db_password,
-            host, port, encoding, con_pool_size)
+            host, port, encoding, con_pool_size, mp_pool, persist_con)
         self.on_created = None
         self.on_login = None
         self.on_get_user_info = None
@@ -1026,19 +1082,19 @@ class ServerTask(AbstractServerTask):
     def find_user(self, login, password_hash=None):
         return self.admin.find_user(login, password_hash)
 
-class AdminServerTask(AbstractServerTask):
+
+class AdminTask(AbstractServerTask):
     def __init__(self, name, caption, template, edit_template,
         db_type, db_database = '', db_user = '', db_password = '',
         host='', port='', encoding=''):
         AbstractServerTask.__init__(self, name, caption, template, edit_template,
-            db_type, db_database, db_user, db_password, host, port, encoding, 0)
+            db_type, db_database, db_user, db_password, host, port, encoding, 2)
         filepath, filename = os.path.split(__file__)
         self.cur_path = filepath
 
-
-class ServerGroup(Group):
+class Group(AbstrGroup):
     def __init__(self, owner, name, caption, view_template = None, edit_template = None, filter_template = None, visible = True, item_type_id=0):
-        Group.__init__(self, owner, name, caption, True, item_type_id)
+        AbstrGroup.__init__(self, owner, name, caption, True, item_type_id)
         self.ID = None
         self.view_template = view_template
         self.edit_template = edit_template
@@ -1047,29 +1103,29 @@ class ServerGroup(Group):
             self.on_convert_report = None
 
     def add_ref(self, name, caption, table_name, visible = True, view_template = '', edit_template = '', filter_template='', soft_delete=True):
-        result = ServerItem(self, name, caption, visible, table_name, view_template, edit_template, filter_template, soft_delete)
+        result = Item(self, name, caption, visible, table_name, view_template, edit_template, filter_template, soft_delete)
         result.item_type_id = common.CATALOG_TYPE
         return result
 
     def add_journal(self, name, caption, table_name, visible = True, view_template = '', edit_template = '', filter_template='', soft_delete=True):
-        result = ServerItem(self, name, caption, visible, table_name, view_template, edit_template, filter_template, soft_delete)
+        result = Item(self, name, caption, visible, table_name, view_template, edit_template, filter_template, soft_delete)
         result.item_type_id = common.JOURNAL_TYPE
         return result
 
     def add_table(self, name, caption, table_name, visible = True, view_template = '', edit_template = '', filter_template='', soft_delete=True):
-        result = ServerItem(self, name, caption, visible, table_name, view_template, edit_template, filter_template, soft_delete)
+        result = Item(self, name, caption, visible, table_name, view_template, edit_template, filter_template, soft_delete)
         result.item_type_id = common.TABLE_TYPE
         return result
 
     def add_report(self, name, caption, table_name, visible = True, view_template = '', edit_template = '', filter_template='', soft_delete=True):
-        result = ServerReport(self, name, caption, visible, table_name, view_template, edit_template, filter_template)
+        result = Report(self, name, caption, visible, table_name, view_template, edit_template, filter_template)
         result.item_type_id = common.REPORT_TYPE
         return result
 
 
-class ServerDetail(Detail, ServerDataset):
+class Detail(AbstrDetail, ServerDataset):
     def __init__(self, owner, name, caption, table_name):
-        Detail.__init__(self, owner, name, caption, True)
+        AbstrDetail.__init__(self, owner, name, caption, True)
         ServerDataset.__init__(self, table_name)
         self.prototype = self.task.item_by_name(self.item_name)
         self.master = owner
@@ -1089,7 +1145,7 @@ class ServerDetail(Detail, ServerDataset):
         owner_id = query['__owner_id']
         owner_rec_id = query['__owner_rec_id']
         if type(owner_id) == int and type(owner_rec_id) == int:
-            result = super(ServerDetail, self).where_clause(query, db_module)
+            result = super(Detail, self).where_clause(query, db_module)
             clause = '"%s"."OWNER_ID"=%s AND "%s"."OWNER_REC_ID"=%s' % \
             (self.table_name.upper(), str(owner_id), self.table_name.upper(), str(owner_rec_id))
             if result:

@@ -1,0 +1,16 @@
+==============
+on_before_post
+==============
+
+Occurs before an application posts a record to the item dataset.
+
+on_before_post(item)
+
+The item parameter is the item that triggered the event.
+
+Description
+===========
+
+Write an on_before_post event handler to take specific action immediately before 
+an application posts a record in the item dataset. on_before_post is called 
+by :doc:`post <m_post>` method.

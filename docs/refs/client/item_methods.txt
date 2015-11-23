@@ -1,0 +1,28 @@
+==================
+Item class methods
+==================
+
+general methods
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+    
+    item/general/m_*
+    
+dataset method
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+    
+    item/db/m_*
+
+interface methods
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+    
+    item/interface/m_*    
+    

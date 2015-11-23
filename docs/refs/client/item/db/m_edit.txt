@@ -1,0 +1,35 @@
+====
+edit
+====
+
+Enables editing of data in the dataset.
+
+.. js:function:: edit()
+
+
+Description
+===========
+
+Checks if item dataset is active, otherwise raises exception.
+
+Checks if item dataset is not empty, otherwise raises exception.
+
+If item is a detail checks if the master item is in edit or insert 
+:doc:`state <at_item_state>`, otherwise raises exception.
+
+Checks if item is in browse :doc:`state <at_item_state>`, otherwise raises exception.
+
+Triggers the :doc:`on_before_edit <on_before_edit>` event handler if one is 
+defined for the item. If on_before_edit return false it exits.
+
+Puts the item into edit :doc:`state <at_item_state>`, enabling the application or 
+user to modify fields in the record.
+
+Triggers the :doc:`on_after_edit <on_after_edit>` event handler if one is 
+defined for the item.
+
+After a call to edit, an application can enable users to change data in the 
+fields of the record, and can then post those changes to the item dataset using 
+:doc:`post <m_post>` method, and then apply them to database using 
+:doc:`apply <m_apply>` method. 
+

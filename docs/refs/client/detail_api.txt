@@ -1,0 +1,8 @@
+================
+Detail class API
+================
+
+Detail class inherits attributes, methods and events of 
+:doc:`Item class <item_api>`
+
+.. js:class:: Detail

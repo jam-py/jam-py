@@ -1,0 +1,97 @@
+==================
+Creating a project
+==================
+
+1. Create a new directory. 
+
+2. Go into the directory and run from command line:
+
+.. code-block:: console
+
+    $ jam-project.py
+
+3. The following files and folders will be created in the directory::
+
+    /
+        css/
+            project.css
+        js/
+        img/
+        reports/
+        admin.sqlite
+        application.py
+        index.html
+
+4. To start Jam.py web application run **application.py** script.
+
+.. code-block:: console
+
+    $ ./application.py
+
+
+.. note::
+    You can specify a port as parameter, for example 
+    
+    .. code-block:: console
+    
+        $ ./application.py 8081. 
+        
+    By default, the port is 8080. If you will specify another port, you need to 
+    use it in a browser in the next steps.
+
+5. Go to a browser. Type in the browser address bar:
+
+.. code-block:: console
+
+    127.0.0.1:8080/admin.html
+    
+6. In the dialog that will appear, select the language and press OK button.
+
+.. image:: _images/lang.png
+	:width: 560px
+	:alt: Jam.py language dialog
+
+7. In the New project dialog box fill in:
+
+* **Caption** - the project name that appears to users
+* **Name** - name of project (task) that will be used in programming code to 
+  get access to the task object . Should be a short valid python identifier. 
+* **DB type** — select database type. If database is not Sqlite, it must be 
+  created in advance and its attributes should be entered in the 
+  corresponding form fields. 
+
+.. image:: _images/params.png
+	:width: 560px
+	:alt: Jam.py new project dialog
+
+When you press OK, the connection to the database will be checked, and in case 
+of failure 	an error message will be displayed.
+
+.. note::
+
+    Please note the following requirements:
+    
+    * to use FireBird database, the python fdb library must be installed 
+    * PostgreSQL requires psycopg2 library 
+    * MySQL requires MySQLdb library 
+    * to generate reports LibreOffice must be installed
+    
+If all goes well a new project will be created and a project tree will appear in 
+Administrator.
+
+
+.. image:: _images/admin.png
+	:align: center
+	:alt: Jam.py Administrator
+
+8. Now to see the project itself create new page in the browser and type in
+   the addres bar:
+   
+.. code-block:: console
+
+    127.0.0.1:8080
+
+
+.. image:: _images/project.png
+	:align: center
+	:alt: Jam.py project

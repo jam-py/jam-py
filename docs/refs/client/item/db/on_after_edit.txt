@@ -1,0 +1,16 @@
+=============
+on_after_edit
+=============
+
+Occurs after an application starts editing a record.
+
+on_after_edit(item)
+
+The item parameter is the item that triggered the event.
+
+Description
+===========
+
+Write an on_after_delete event handler to take specific action immediately after 
+an application starts editing a record. on_after_edit is called 
+by :doc:`edit <m_edit>`.

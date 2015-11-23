@@ -1,0 +1,16 @@
+========
+Task API
+========
+
+.. js:class:: Task
+
+Task class is a decendant of the :doc:`AbstractItem class <abstractitem_api>` 
+and inherits its attributes and methods
+
+.. toctree::
+    :maxdepth: 1
+
+    task_attributes
+    task_methods
+    task_events
+

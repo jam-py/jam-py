@@ -1,0 +1,33 @@
+======
+delete
+======
+
+Deletes the active record and positions the cursor on the next record.
+
+.. js:function:: delete()
+
+Description
+===========
+
+Checks if item dataset is active, otherwise raises exception.
+
+Checks if item dataset is not empty, otherwise raises exception.
+
+If item is a detail checks if the master item is in edit or insert 
+:doc:`state <at_item_state>`, otherwise raises exception.
+
+Checks if item is in browse :doc:`state <at_item_state>`, otherwise raises exception.
+
+Triggers the :doc:`on_before_delete <on_before_delete>` event handler if one is 
+defined for the item. If on_before_delete return false it exits.
+
+Puts the item into delete :doc:`state <at_item_state>`.
+
+Deletes the active record and positions the cursor on the next record.
+
+Puts the item into browse :doc:`state <at_item_state>`.
+
+Triggers the :doc:`on_after_delete <on_after_delete>` event handler if one is 
+defined for the item.
+
+

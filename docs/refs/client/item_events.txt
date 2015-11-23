@@ -1,0 +1,19 @@
+===========
+Item events
+===========
+
+dataset Item events
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+    
+    item/db/on_*
+
+interface Item events
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+    
+    item/interface/on_*    

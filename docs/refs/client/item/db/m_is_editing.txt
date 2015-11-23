@@ -1,0 +1,14 @@
+==========
+is_editing
+==========
+
+Indicates whether the item is in edit state
+
+.. js:function:: is_new() 
+
+Description
+===========
+
+Checks if an item is in edit state and returns true if it is.
+
+An application calls :doc:`edit <m_edit>` to put an item into edit state.

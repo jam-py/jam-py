@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import os, os.path
-import cPickle
+import os
+import json
 import hashlib
 import datetime
 import time
@@ -9,6 +9,7 @@ import zipfile
 import shutil
 import traceback
 import sqlite3
+import cPickle
 
 from third_party.jsparser import parse, SyntaxError_
 
@@ -16,6 +17,19 @@ import common, db.db_modules as db_modules
 from server_classes import *
 import lang.langs as langs
 from events import get_events
+
+def read_language():
+    result = None
+    sql = 'SELECT F_LANGUAGE FROM SYS_PARAMS'
+    db_module = db_modules.get_db_module(task.db_type)
+    connection, (rec, error) = execute_sql(db_module, \
+        task.db_database, task.db_user, task.db_password,
+        task.db_host, task.db_port, task.db_encoding, None, sql, result_set='ONE')
+    if rec:
+        result = rec[0]
+    if not result:
+        result = 1
+    return result
 
 def read_setting():
     sql = 'SELECT '
@@ -41,7 +55,6 @@ def read_setting():
     for key in common.SETTINGS.keys():
         common.__dict__[key] = common.SETTINGS[key]
 
-
 def write_setting():
     sql = 'UPDATE SYS_PARAMS SET '
     params = []
@@ -66,8 +79,8 @@ def write_setting():
 
 def create_items(task):
     task.items = []
-    task.sys_catalogs = ServerGroup(task, 'catalogs', task.lang['catalogs'])
-    task.sys_tables = ServerGroup(task, 'tables', task.lang['tables'], visible=False)
+    task.sys_catalogs = Group(task, 'catalogs', task.lang['catalogs'])
+    task.sys_tables = Group(task, 'tables', task.lang['tables'], visible=False)
 
     task.sys_params = task.sys_catalogs.add_ref('sys_params', u'', 'SYS_PARAMS')
 
@@ -95,6 +108,8 @@ def create_items(task):
     task.sys_params.add_field(22, 'f_language', task.lang['language'], common.INTEGER, required=True, value_list=langs.LANGUAGE, edit_visible=False)
     task.sys_params.add_field(23, 'f_author', task.lang['author'], common.TEXT, size = 30, edit_visible=False)
     task.sys_params.add_field(24, 'f_version', u'Version', common.TEXT, size = 15)
+    task.sys_params.add_field(25, 'f_mp_pool', u'Multiprocessing connection pool', common.BOOLEAN)
+    task.sys_params.add_field(26, 'f_persist_con', u'Persistent connection', common.BOOLEAN)
 
     task.sys_items = task.sys_catalogs.add_ref('sys_items', u'Items', 'SYS_ITEMS')
 
@@ -106,18 +121,19 @@ def create_items(task):
     task.sys_items.add_field(6, 'table_id', u'Table id', common.INTEGER, visible=False, edit_visible=False)
     task.sys_items.add_field(7, 'has_children', u'Has_children', common.BOOLEAN, visible=False, edit_visible=False)
     task.sys_items.add_field(8, 'f_index', u'Index', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_items.add_field(9, 'f_name', task.lang['caption'], common.TEXT, required=True, expand=True, size = 200)
-    task.sys_items.add_field(10, 'f_item_name', task.lang['name'], common.TEXT, required=True, expand=True, size = 200)
-    task.sys_items.add_field(11, 'f_table_name', task.lang['table_name'], common.TEXT, size = 200)
-    task.sys_items.add_field(12, 'f_view_template', task.lang['view_template'], common.TEXT, size = 200)
-    task.sys_items.add_field(13, 'f_edit_template', u'edit_template', common.TEXT, size = 200)
-    task.sys_items.add_field(14, 'f_filter_template', u'filter_template', common.TEXT, size = 200)
+    task.sys_items.add_field(9, 'f_name', task.lang['caption'], common.TEXT, required=True, expand=True, size=256)
+    task.sys_items.add_field(10, 'f_item_name', task.lang['name'], common.TEXT, required=True, expand=True, size=256)
+    task.sys_items.add_field(11, 'f_table_name', task.lang['table_name'], common.TEXT, size=256)
+    task.sys_items.add_field(12, 'f_view_template', task.lang['view_template'], common.TEXT, size=256)
+    task.sys_items.add_field(13, 'f_edit_template', u'edit_template', common.TEXT, size=256)
+    task.sys_items.add_field(14, 'f_filter_template', u'filter_template', common.TEXT, size=256)
     task.sys_items.add_field(15, 'f_visible', task.lang['visible'], common.BOOLEAN)
     task.sys_items.add_field(16, 'f_soft_delete', u'Soft delete', common.BOOLEAN)
     task.sys_items.add_field(17, 'f_client_module', task.lang['client_module'], common.BLOB, visible=False, edit_visible=False)
     task.sys_items.add_field(18, 'f_web_client_module', task.lang['web_client_module'], common.BLOB, visible=False, edit_visible=False)
     task.sys_items.add_field(19, 'f_server_module', task.lang['server_module'], common.BLOB, visible=False, edit_visible=False)
     task.sys_items.add_field(20, 'f_info', u'Info', common.BLOB, visible=False, edit_visible=False)
+    task.sys_items.add_field(21, 'f_virtual_table', u'Virtual table', common.BOOLEAN)
 
     task.sys_items.add_filter('id', u'ID', 'id', common.FILTER_EQ, visible=False)
     task.sys_items.add_filter('not_id', u'ID', 'id', common.FILTER_NE, visible=False)
@@ -131,8 +147,8 @@ def create_items(task):
     task.sys_tasks.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_tasks.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_tasks.add_field(3, 'task_id', u'Task ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_tasks.add_field(4, 'f_name', task.lang['caption'], common.TEXT, required=True, expand=True, size = 200, edit_visible=False)
-    task.sys_tasks.add_field(5, 'f_item_name', task.lang['name'], common.TEXT, required=True, expand=True, size = 200, edit_visible=False)
+    task.sys_tasks.add_field(4, 'f_name', task.lang['caption'], common.TEXT, required=True, expand=True, size=256, edit_visible=False)
+    task.sys_tasks.add_field(5, 'f_item_name', task.lang['name'], common.TEXT, required=True, expand=True, size=256, edit_visible=False)
     task.sys_tasks.add_field(6, 'f_manual_update', u'DB manual update', common.BOOLEAN, visible=False, edit_visible=False)
     task.sys_tasks.add_field(7, 'f_db_type', task.lang['db_type'], common.INTEGER, required=True, value_list=db_modules.DB_TYPE)
     task.sys_tasks.add_field(8, 'f_alias', task.lang['alias'], common.TEXT, required=True, size = 30)
@@ -151,8 +167,8 @@ def create_items(task):
     task.sys_fields.add_field(3, 'owner_id', u'Owner ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_fields.add_field(4, 'owner_rec_id', u'Owner record ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_fields.add_field(5, 'task_id', u'Task ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_fields.add_field(6, 'f_name',         task.lang['caption'],      common.TEXT, True, expand=True, size = 30)
-    task.sys_fields.add_field(7, 'f_field_name',   task.lang['name'],          common.TEXT, True, expand=True, size = 30)
+    task.sys_fields.add_field(6, 'f_name',         task.lang['caption'],      common.TEXT, True, expand=True, size=256)
+    task.sys_fields.add_field(7, 'f_field_name',   task.lang['name'],          common.TEXT, True, expand=True, size=256)
     task.sys_fields.add_field(8, 'f_data_type',    task.lang['data_type'],          common.INTEGER, True,  False, value_list=common.FIELD_TYPES)
     task.sys_fields.add_field(9, 'f_size',         task.lang['size'],      common.INTEGER)
     task.sys_fields.add_field(10, 'f_object',       task.lang['object'],       common.INTEGER, False, task.sys_items, 'f_item_name')#, word_wrap=True)
@@ -364,17 +380,25 @@ def update_admin_fields(task):
                 check_item_fields(item)
     con.close()
 
-task = AdminServerTask('admin', u'Administrator', 'adm_main.ui', 'adm_edit.ui', db_modules.SQLITE, db_database='admin.sqlite')
-try:
-    read_setting()
-    task.task_con_pool_size = common.SETTINGS['CON_POOL_SIZE']
-    task.safe_mode = common.SETTINGS['SAFE_MODE']
-    task.language = common.SETTINGS['LANGUAGE']
-    task.item_caption = task.lang['admin']
-except:
-    task.language = 1
+task = AdminTask('admin', u'Administrator', 'adm_main.ui', 'adm_edit.ui', db_modules.SQLITE, db_database='admin.sqlite')
+
+task.language = read_language()
 create_items(task)
 update_admin_fields(task)
+
+read_setting()
+task.task_con_pool_size = common.SETTINGS['CON_POOL_SIZE']
+if task.task_con_pool_size < 1:
+    task.task_con_pool_size = 3
+try:
+    task.task_mp_pool = common.SETTINGS['MP_POOL']
+    task.task_persist_con = common.SETTINGS['PERSIST_CON']
+except:
+    task.task_mp_pool = 4
+    task.task_persist_con = True
+task.safe_mode = common.SETTINGS['SAFE_MODE']
+task.language = common.SETTINGS['LANGUAGE']
+task.item_caption = task.lang['admin']
 
 def execute(task_id, sql, params=None):
 
@@ -441,7 +465,8 @@ def find_user(admin, login, password_hash=None):
                         'user_id': u.id.value,
                         'role_id': u.f_role.value,
                         'role_name': u.f_role.display_text,
-                        'user_name': u.f_name.value
+                        'user_name': u.f_name.value,
+                        'admin': u.f_admin.value
                     }
     return user_id, user_info
 task.find_user = find_user
@@ -462,7 +487,8 @@ def login(log, psw_hash, admin):
                             'user_id': u.id.value,
                             'role_id': u.f_role.value,
                             'role_name': u.f_role.display_text,
-                            'user_name': u.f_name.value
+                            'user_name': u.f_name.value,
+                            'admin': u.f_admin.value
                         }
     return user_id, user_info
 task.login = login
@@ -488,18 +514,22 @@ def get_tasks(id=None):
     return result
 
 def create_task(server):
+    result = None
     it = task.sys_items.copy()
     it.filters.type_id.value = [common.TASK_TYPE]
     it.open()
     it_task = task.sys_tasks.copy()
     it_task.filters.task_id.value = it.id.value
     it_task.open()
-    result = ServerTask(it.f_item_name.value, it.f_name.value, it.f_view_template.value,
-        it.f_edit_template.value, it_task.f_db_type.value, it_task.f_alias.value,
-        it_task.f_login.value, it_task.f_password.value, it_task.f_host.value,
-        it_task.f_port.value, it_task.f_encoding.value, task.task_con_pool_size)
-    result.ID = it.id.value
-    load_task(result, server)
+    if it_task.f_db_type.value:
+        result = Task(it.f_item_name.value, it.f_name.value, it.f_view_template.value,
+            it.f_edit_template.value, it_task.f_db_type.value, it_task.f_alias.value,
+            it_task.f_login.value, it_task.f_password.value, it_task.f_host.value,
+            it_task.f_port.value, it_task.f_encoding.value, task.task_con_pool_size,
+            task.task_mp_pool, task.task_persist_con
+            )
+        result.ID = it.id.value
+        load_task(result, server)
     return result
 
 ###############################################################################
@@ -511,17 +541,19 @@ def reload_task():
         task.server.under_maintenance = True
         try:
             while True:
-                if task.server.task._busy:
-                    time.sleep(0.2)
+                if task.server._busy > 1:
+                    time.sleep(0.1)
                 else:
                     break
-            load_task(task.server.task, task.server)
+
+            read_setting()
+            load_task(task.server.task, task.server, first_build=False)
             task.server.task.mod_count += 1
         finally:
             task.server.under_maintenance = False
 
 
-def load_task(target, server):
+def load_task(target, server, first_build=True):
 
     def create_fields(item, parent_id):
         for rec in sys_fields:
@@ -637,7 +669,7 @@ def load_task(target, server):
                 common.load_interface(sys_items)
                 target.server_code = rec.f_server_module.value
             if rec.parent.value == parent:
-                group = ServerGroup(target, rec.f_item_name.value, rec.f_name.value, rec.f_view_template.value,
+                group = Group(target, rec.f_item_name.value, rec.f_name.value, rec.f_view_template.value,
                     rec.f_edit_template.value, rec.f_filter_template.value, rec.f_visible.value, rec.type_id.value)
                 group.ID = rec.id.value
                 group.server_code = rec.f_server_module.value
@@ -733,6 +765,7 @@ def load_task(target, server):
     target.admin = server.admin
     target.admin.task = target
 
+    target.first_build = first_build
     if target.on_created:
         target.on_created(target)
 
@@ -777,6 +810,7 @@ def server_set_task_name(task, f_name, f_item_name):
     items.f_item_name.value = f_item_name
     items.post()
     items.apply()
+    task.server.task = None
 task.register(server_set_task_name)
 
 def server_set_project_langage(task, lang):
@@ -817,12 +851,27 @@ def server_set_project_langage(task, lang):
             pass
     with open(file_name, 'w') as f:
         f.write(data)
-    # initiate sys_items
+
+    task.sys_params.on_apply = do_on_apply_sys_changes
+    task.sys_tasks.on_apply = do_on_apply_sys_changes
+
     task.sys_items.on_apply = items_apply_changes
     task.sys_items.register(server_can_delete)
     task.sys_items.register(server_load_interface)
     task.sys_items.register(server_store_interface)
     task.sys_items.register(server_update_details)
+
+    task.sys_fields.register(server_can_delete_field)
+    task.sys_filters.on_apply = do_on_apply_changes
+    task.sys_report_params.on_apply = do_on_apply_changes
+
+    task.sys_indices.on_apply = indices_apply_changes
+    task.sys_indices.register(server_dump_index_fields)
+    task.sys_indices.register(server_load_index_fields)
+
+    task.role_privileges.on_select = privileges_table_get_select
+    task.sys_roles.register(roles_changed)
+
 task.register(server_set_project_langage)
 
 def server_update_has_children(task):
@@ -850,9 +899,10 @@ def server_export_task(task, task_id, url=None):
     def add_item(item):
         table = item.copy(handlers=False)
         table.open()
-        result[item.item_name] = table.records
-
-    update_js_files()
+        fields = []
+        for field in table.fields:
+            fields.append(field.field_name)
+        result[item.item_name] = {'fields': fields, 'records': table.records}
 
     result = {}
     add_item(task.sys_items)
@@ -869,20 +919,15 @@ def server_export_task(task, task_id, url=None):
     zip_file_name = os.path.join(task.work_dir, file_name)
     try:
         with open(task_file, 'w') as f:
-            cPickle.dump(result, f)
+            json.dump(result, f)
         with zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             zip_file.write(task_file)
             zip_file.write('index.html')
-            zip_file.write('admin.html')
-            zip_file.write('server.py')
-            if os.path.exists('jam'):
-                common.zip_dir('jam', zip_file, exclude_ext=['.pyc'])
             common.zip_dir('js', zip_file)
             common.zip_dir('css', zip_file)
             common.zip_dir('img', zip_file)
+            common.zip_dir('utils', zip_file, exclude_ext=['.pyc'])
             common.zip_dir('reports', zip_file, exclude_ext=['.xml', '.ods#'])
-            if os.path.exists('utils'):
-                common.zip_dir('utils', zip_file, exclude_ext=['.pyc'])
         if url:
             items = task.sys_items.copy()
             items.set_where(id=task_id)
@@ -890,8 +935,8 @@ def server_export_task(task, task_id, url=None):
             result_path = os.path.join(task.work_dir, 'static', 'internal')
             if not os.path.exists(result_path):
                 os.makedirs(result_path)
-            result_file = '%s_%s_%s.zip' % (items.f_item_name.value, common.SETTINGS['VERSION'],
-                datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+            result_file = '%s_%s_%s_%s.zip' % (items.f_item_name.value, common.SETTINGS['VERSION'],
+                task.server.jam_version, datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
             os.rename(file_name, os.path.join(result_path, result_file))
             result = '%s/static/internal/%s' % (url, result_file)
         else:
@@ -905,7 +950,7 @@ def server_export_task(task, task_id, url=None):
     return result
 task.register(server_export_task)
 
-def server_import_task(task, task_id, file_name):
+def server_import_task(task, task_id, file_name, from_client=False):
 
     def refresh_old_item(item):
         item = item.copy()
@@ -916,7 +961,7 @@ def server_import_task(task, task_id, file_name):
         file_name = os.path.join(dir, 'task.dat')
         with open(file_name, 'r' ) as f:
             data = f.read()
-        data_lists = cPickle.loads(data)
+        data_lists = json.loads(data)
         new_items = {}
         old_items = {}
         items = [task.sys_items, task.sys_fields, task.sys_indices, task.sys_filters, \
@@ -927,8 +972,8 @@ def server_import_task(task, task_id, file_name):
             old_item.soft_delete = False
             old_item.open()
             new_item = item.copy(handlers=False)
-            new_item.open()
-            new_item._records = data_lists[item.item_name]
+            new_item.open(fields=data_lists[item.item_name]['fields'])
+            new_item._records = data_lists[item.item_name]['records']
             new_items[item.item_name] = new_item
             old_items[item.item_name] = old_item
         os.remove(file_name)
@@ -941,13 +986,11 @@ def server_import_task(task, task_id, file_name):
         return True
 
     def copy_record(old, new):
-        for i, field in enumerate(old.fields):
-            try:
-                if can_copy_field(old.fields[i]):
-                    old.fields[i].value = new.fields[i].raw_value
-            except Exception, e:
-                print 'server_import_task copy_record error:', new.item_name, new.id.value, new.fields[i].field_name, new.fields[i].raw_value
-                raise
+        for old_field in old.fields:
+            if can_copy_field(old_field):
+                new_field = new.field_by_name(old_field.field_name)
+                if new_field:
+                    old_field.value = new_field.raw_value
 
     def compare_items(old, new, owner_id=None):
         result = {}
@@ -1030,19 +1073,16 @@ def server_import_task(task, task_id, file_name):
     def get_table_name(item_id):
         new_items = new_dict['sys_items']
         if new_items.locate('id', item_id):
-            return new_items.f_table_name.value
+            if not new_items.f_virtual_table.value:
+                return new_items.f_table_name.value
 
     def copy_tmp_files(zip_file_name):
         dir = os.path.join(os.getcwd(), 'tmp-' + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
         if os.path.exists(dir):
             shutil.rmtree(dir)
         os.makedirs(dir)
-        try:
-            with zipfile.ZipFile(zip_file_name) as z:
-                z.extractall(dir)
-        finally:
-            if os.path.exists(zip_file_name):
-                os.remove(zip_file_name)
+        with zipfile.ZipFile(zip_file_name) as z:
+            z.extractall(dir)
         return dir
 
     def delete_tmp_files(dir):
@@ -1052,21 +1092,10 @@ def server_import_task(task, task_id, file_name):
     def copy_files(dir):
         from distutils import dir_util
         dir_util.copy_tree(dir, os.getcwd())
-        os.chmod('server.py', 0o777)
 
-    error = ''
-
-    db_type = get_db_type(task_id)
-    if db_type == db_modules.SQLITE:
-        return 'Import operation is not allowed for SQLITE database'
-
-    file_name = os.path.join(os.getcwd(), os.path.normpath(file_name))
-    print 'Import: reading changes'
-    dir = copy_tmp_files(file_name)
-    print 'Import: analyzing changes'
-    try:
+    def analize(dir):
         try:
-            new_dict, old_dict = get_items(dir)
+            error = ''
 
             db_sql = []
             adm_sql = []
@@ -1074,7 +1103,9 @@ def server_import_task(task, task_id, file_name):
 
             delta = get_delta('sys_indices', options=['delete'])
             for d in delta:
-                db_sql.append(indices_delete_sql(task.sys_indices, d))
+                table_name = get_table_name(d.owner_rec_id.value)
+                if table_name:
+                    db_sql.append(indices_delete_sql(task.sys_indices, d))
             adm_sql.append(delta.apply_sql())
 
             delta = get_delta('sys_items', 'sys_fields')
@@ -1098,12 +1129,13 @@ def server_import_task(task, task_id, file_name):
             delta = get_delta('sys_indices', options=['update', 'insert'])
             for d in delta:
                 table_name = get_table_name(d.owner_rec_id.value)
-                if d.rec_inserted():
-                    db_sql.append(indices_insert_sql(task.sys_indices, d, table_name, get_new_fields(d.owner_rec_id.value)))
-                elif d.rec_modified():
-                    db_sql.append(indices_update_sql(task.sys_indices, d, table_name, get_new_fields(d.owner_rec_id.value)))
-                elif d.rec_deleted():
-                    db_sql.append(indices_delete_sql(task.sys_indices, d))
+                if table_name:
+                    if d.rec_inserted():
+                        db_sql.append(indices_insert_sql(task.sys_indices, d, table_name, get_new_fields(d.owner_rec_id.value)))
+                    elif d.rec_modified():
+                        db_sql.append(indices_update_sql(task.sys_indices, d, table_name, get_new_fields(d.owner_rec_id.value)))
+                    elif d.rec_deleted():
+                        db_sql.append(indices_delete_sql(task.sys_indices, d))
             adm_sql.append(delta.apply_sql())
 
             delta = get_delta('sys_filters')
@@ -1123,12 +1155,48 @@ def server_import_task(task, task_id, file_name):
         except Exception, e:
             error = '%s: %s' % (e.message, traceback.format_exc())
             print u'Import error: %s' % error
+        return error, db_sql, adm_sql
 
-        if not error:
-            task.server.under_maintenance = True
-            try:
+    def reload_utils():
+        utils_folder = os.path.join(task.work_dir, 'utils')
+        if os.path.exists(utils_folder):
+            for dirpath, dirnames, filenames in os.walk(utils_folder):
+                for file_name in filenames:
+                    name, ext = os.path.splitext(file_name)
+                    if ext == '.py':
+                        relpath = os.path.join(os.path.relpath(dirpath, task.work_dir), name)
+                        module_name = '.'.join(relpath.split(os.sep))
+                        module = sys.modules.get(module_name)
+                        if module:
+                            try:
+                                reload(module)
+                            except Exception, e:
+                                print module_name, e
+
+    error = ''
+
+    db_type = get_db_type(task_id)
+    if db_type == db_modules.SQLITE:
+        return 'Import operation is not allowed for SQLITE database'
+    request_count = 0
+    if from_client:
+        request_count = 1
+    file_name = os.path.join(os.getcwd(), os.path.normpath(file_name))
+    print 'Import: reading changes'
+    dir = copy_tmp_files(file_name)
+    try:
+        task.server.under_maintenance = True
+        try:
+            print 'Import: analyzing changes'
+            new_dict, old_dict = get_items(dir)
+            error, db_sql, adm_sql = analize(dir)
+            if not error:
                 print 'Import: waiting for connections to close'
-                task.server.release_connections()
+                while True:
+                    if task.server._busy > request_count:
+                        time.sleep(0.1)
+                    else:
+                        break
                 if len(db_sql):
                     print 'Import: applying changes to database'
                     error = execute(task_id, db_sql)
@@ -1137,19 +1205,28 @@ def server_import_task(task, task_id, file_name):
                     result, error = task.execute(adm_sql)
                     print 'Import: copying files'
                     copy_files(dir)
-            except Exception, e:
-                error = str(e)
-                print u'Import error:', error
-                if os.name != 'nt':
-                    print u'Import error traceback:', traceback.format_exc()
-            finally:
-                task.server.under_maintenance = False
+                if not error:
+                    print 'Import: deleteing tmp files'
+                    try:
+                        delete_tmp_files(dir)
+                    except:
+                        pass
+                    read_setting()
+                    if task.server.task:
+                        reload_utils()
+                        read_setting()
+                        load_task(task.server.task, task.server, first_build=False)
+                        task.server.task.mod_count += 1
+                        update_events_code()
+        except Exception, e:
+            error = str(e)
+            print u'Import error:', error
+            if os.name != 'nt':
+                print u'Import error traceback:', traceback.format_exc()
+        finally:
+            task.server.under_maintenance = False
     finally:
-        print 'Import: deleteing tmp files'
-        delete_tmp_files(dir)
-    if not error:
-        print 'Import: trying to stop application'
-        task.server.app.stop()
+        pass
     return error
 
 task.register(server_import_task)
@@ -1296,27 +1373,6 @@ def server_store_report_module(task, text, module_name):
         f.write(text)
 task.register(server_store_report_module)
 
-def update_js_files():
-    path = os.path.join(task.work_dir, 'js')
-    files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) ]
-    for f in files:
-        file_name = os.path.join(path, f)
-        min_file_name = get_minified_name(os.path.join(path, f))
-        if file_name != min_file_name:
-            if not os.path.exists(min_file_name) or os.path.getmtime(min_file_name) < os.path.getmtime(file_name):
-                minify(file_name, min_file_name)
-
-def get_minified_name(file_name):
-    basename = os.path.basename(file_name)
-    if basename in ['jam.js', 'events.js', 'admin.js']:
-        ext = os.path.splitext(file_name)[-1]
-        basename, ext = os.path.splitext(basename)
-        dirname = os.path.dirname(file_name)
-        dirname = os.path.split(dirname)[-1]
-        if ext == '.js' and dirname == 'js':
-            file_name = os.path.join(dirname, '_%s.min%s' % (basename, ext))
-    return file_name
-
 def update_events_code():
 
     def find_events(code):
@@ -1360,12 +1416,23 @@ def update_events_code():
             if code:
                 script = process_events(code, it.id.value, script)
     script += '\n})( window )'
-    with open(os.path.join(os.getcwd().decode('utf-8'), 'js','events.js'), 'w') as f:
+    file_name = os.path.join(os.getcwd().decode('utf-8'), 'js', 'events.js')
+    with open(file_name, 'w') as f:
         f.write(script)
+    if not common.SETTINGS['DEBUGGING']:
+        minify(file_name)
 
-def minify(file_name, min_file_name):
-    import jam
-    folder = os.path.join(os.path.dirname(jam.__file__), 'third_party')
+def get_minified_name(file_name):
+    result = file_name
+    head, tail = os.path.split(file_name)
+    name, ext = os.path.splitext(tail)
+    if (ext in ['.js', '.css']):
+        result = os.path.join(head, '%s.min%s' % (name, ext))
+    return result
+
+def minify(file_name):
+    min_file_name = get_minified_name(file_name)
+    folder = os.path.join(task.server.jam_dir, 'third_party')
     if folder not in sys.path:
         sys.path.append(folder)
     from slimit import minify
@@ -1524,7 +1591,6 @@ def get_templates(text):
         if index == -1:
             break
         else:
-            print ''
             start_char = text[index + 6: index + 7]
             sub_str = text[index + 7:]
             class_str = ''
@@ -1550,6 +1616,8 @@ def get_templates(text):
 
 def server_get_file_info(task, file_name):
     result = {}
+    if file_name == 'project.css':
+        file_name = os.path.join('css', 'project.css')
     if os.path.exists(file_name):
         with open(file_name, 'r') as f:
             result['code'] = f.read()
@@ -1561,6 +1629,8 @@ task.register(server_get_file_info)
 def server_save_file(task, file_name, code):
     result = {}
     error = ''
+    if file_name == 'project.css':
+        file_name = os.path.join('css', 'project.css')
     file_name = os.path.normpath(file_name)
     try:
         with open(file_name, 'w') as f:
@@ -1582,6 +1652,9 @@ def server_get_db_options(task, db_type):
     result['NEED_ENCODING'] = db_module.NEED_ENCODING
     result['NEED_HOST'] = db_module.NEED_HOST
     result['NEED_PORT'] = db_module.NEED_PORT
+    result['CAN_CHANGE_TYPE'] = db_module.CAN_CHANGE_TYPE
+    result['CAN_CHANGE_SIZE'] = db_module.CAN_CHANGE_SIZE
+
 
     return result
 task.register(server_get_db_options)
@@ -1735,13 +1808,20 @@ def change_item_sql(item, old_fields, new_fields):
         return item.change_table_sql(db_type, old_fields, new_fields)
 
 def items_insert_sql(item, delta):
-    if delta.type_id.value in (common.CATALOG_TYPE, common.JOURNAL_TYPE, common.TABLE_TYPE):
-        db_type = get_db_type(delta.task_id.value)
-        sql = delta.create_table_sql(db_type, delta.f_table_name.value, get_table_fields(delta.details.sys_fields))
-        return sql
+    if update_table(delta):
+        if delta.type_id.value in (common.CATALOG_TYPE, common.JOURNAL_TYPE, common.TABLE_TYPE):
+            db_type = get_db_type(delta.task_id.value)
+            sql = delta.create_table_sql(db_type, delta.f_table_name.value, get_table_fields(delta.details.sys_fields))
+            return sql
+
+def update_table(delta):
+    if manual_update(delta.task_id.value) or delta.f_virtual_table.value:
+        return False
+    else:
+        return True
 
 def items_execute_insert(item, delta):
-    if not manual_update(delta.task_id.value):
+    if update_table(delta):
         sql = items_insert_sql(item, delta)
         if sql:
             error = execute(delta.task_id.value, sql)
@@ -1755,20 +1835,22 @@ def items_execute_insert(item, delta):
     return result
 
 def items_update_sql(item, delta):
-    if delta.type_id.value in (common.CATALOGS_TYPE, common.JOURNALS_TYPE, common.TABLES_TYPE, common.CATALOG_TYPE, common.JOURNAL_TYPE, common.TABLE_TYPE) and \
-        delta.details.sys_fields.record_count():
-        it = item.copy()
-        it.filters.id.value = delta.id.value
-        it.open()
-        it_fields = it.details.sys_fields
-        it_fields.open()
-        old_fields = get_table_fields(it_fields)
-        new_fields = get_table_fields(it_fields, delta.details.sys_fields)
-        sql = change_item_sql(delta, old_fields, new_fields)
-        return sql
+    if update_table(delta):
+        if delta.type_id.value in (common.CATALOGS_TYPE, common.JOURNALS_TYPE, common.TABLES_TYPE,
+            common.CATALOG_TYPE, common.JOURNAL_TYPE, common.TABLE_TYPE) and \
+            delta.details.sys_fields.record_count():
+            it = item.copy()
+            it.filters.id.value = delta.id.value
+            it.open()
+            it_fields = it.details.sys_fields
+            it_fields.open()
+            old_fields = get_table_fields(it_fields)
+            new_fields = get_table_fields(it_fields, delta.details.sys_fields)
+            sql = change_item_sql(delta, old_fields, new_fields)
+            return sql
 
 def items_execute_update(item, delta):
-    if not manual_update(delta.task_id.value):
+    if update_table(delta):
         sql = items_update_sql(item, delta)
         if sql:
             error = execute(delta.task_id.value, sql)
@@ -1780,13 +1862,14 @@ def items_execute_update(item, delta):
     return result
 
 def items_delete_sql(item, delta):
-    if delta.type_id.value in (common.CATALOG_TYPE, common.JOURNAL_TYPE, common.TABLE_TYPE):
-        db_type = get_db_type(delta.task_id.value)
-        sql = delta.delete_table_sql(db_type)
-        return sql
+    if update_table(delta):
+        if delta.type_id.value in (common.CATALOG_TYPE, common.JOURNAL_TYPE, common.TABLE_TYPE):
+            db_type = get_db_type(delta.task_id.value)
+            sql = delta.delete_table_sql(db_type)
+            return sql
 
 def items_execute_delete(item, delta):
-    if not manual_update(delta.task_id.value):
+    if update_table(delta):
         sql = items_delete_sql(item, delta)
         if sql:
             error = execute(delta.task_id.value, sql)
@@ -1935,6 +2018,7 @@ def server_update_details(item, item_id, dest_list):
         items._reports_list = []
         common.store_interface(items)
     items.apply()
+    item.task.server.task_server_modified = True
 task.sys_items.register(server_update_details)
 
 
@@ -2005,6 +2089,15 @@ task.sys_fields.register(server_can_delete_field)
 #                                 sys_indices                                 #
 ###############################################################################
 
+def update_index(delta):
+    it = task.sys_items.copy()
+    it.set_where(id=delta.owner_rec_id.value)
+    it.open()
+    if manual_update(delta.task_id.value) or it.f_virtual_table.value:
+        return False
+    else:
+        return True
+
 def change_foreign_index(delta):
     items = task.sys_items.copy()
     items.filters.id.value = delta.owner_rec_id.value
@@ -2025,7 +2118,7 @@ def indices_insert_sql(item, delta, table_name=None, new_fields=None):
         return delta.create_index_sql(db_type, table_name, new_fields=new_fields)
 
 def indices_execute_insert(item, delta, params):
-    if not manual_update(delta.task_id.value):
+    if update_index(delta):
         sql = indices_insert_sql(item, delta)
         error = execute(delta.task_id.value, sql)
         if error:
@@ -2049,7 +2142,7 @@ def indices_update_sql(item, delta, table_name=None, new_fields=None):
     return sql
 
 def indices_execute_update(item, delta, params):
-    if not manual_update(delta.task_id.value):
+    if update_index(delta):
         sql = indices_update_sql(item, delta)
         error = execute(delta.task_id.value, sql)
         if error:
@@ -2065,7 +2158,7 @@ def indices_delete_sql(item, delta):
         return delta.delete_index_sql(db_type)
 
 def indices_execute_delete(item, delta, params):
-    if not manual_update(delta.task_id.value):
+    if update_index(delta):
         sql = indices_delete_sql(item, delta)
         error = execute(delta.task_id.value, sql)
         if error:
@@ -2125,3 +2218,6 @@ def privileges_table_get_select(item, query, user_info, enviroment):
     return rows, error_mes
 task.role_privileges.on_select = privileges_table_get_select
 
+def roles_changed(item):
+    task.server.roles = None
+task.sys_roles.register(roles_changed)

@@ -86,13 +86,13 @@ class DBField(object):
                 if self.data_type == common.INTEGER:
                     result = str(result)
                 elif self.data_type == common.FLOAT:
-                    result = common.float_to_str(result)
+                    result = self.float_to_str(result)
                 elif self.data_type == common.CURRENCY:
-                    result = common.float_to_str(result)
+                    result = self.cur_to_str(result)
                 elif self.data_type == common.DATE:
-                    result = common.date_to_str(result)
+                    result = self.date_to_str(result)
                 elif self.data_type == common.DATETIME:
-                    result = common.datetime_to_str(result)
+                    result = self.datetime_to_str(result)
                 elif self.data_type == common.TEXT:
                     result = unicode(result)
                 elif self.data_type == common.BOOLEAN:
@@ -299,13 +299,13 @@ class DBField(object):
                     data_type = self.get_lookup_data_type()
                     if data_type:
                         if data_type == common.DATE:
-                            result = common.date_to_str(result)
+                            result = self.date_to_str(result)
                         elif data_type == common.DATETIME:
-                            result = common.datetime_to_str(result)
+                            result = self.datetime_to_str(result)
                         elif data_type == common.FLOAT:
-                            result = common.float_to_str(result)
+                            result = self.float_to_str(result)
                         elif data_type == common.CURRENCY:
-                            result = common.currency_to_str(result)
+                            result = self.cur_to_str(result)
             result = unicode(result)
         except Exception, e:
             print traceback.format_exc()
@@ -471,6 +471,29 @@ class DBField(object):
         if self.field_name in ('id', 'owner_id', 'owner_rec_id', 'deleted'):
             return True
 
+    def float_to_str(self, value):
+        return common.float_to_str(value)
+
+    def cur_to_str(self, value):
+        return common.float_to_str(value)
+
+    def date_to_str(self, value):
+        return common.date_to_str(value)
+
+    def datetime_to_str(self, value):
+        return common.datetime_to_str(value)
+
+    def str_to_date(self, value):
+        return common.str_to_date(value)
+
+    def str_to_datetime(self, value):
+        return common.str_to_datetime(value)
+
+    def str_to_float(self, value):
+        return common.str_to_float(value)
+
+    def str_to_cur(self, value):
+        return common.str_to_currency(value)
 
 class FilterField(DBField):
     def __init__(self, fltr, field, owner):
@@ -635,7 +658,8 @@ class ChangeLog(object):
         if self.log_changes():
             record_log = self.find_record_log()
             if self.item.item_state == common.STATE_BROWSE:
-                if self.item.record_status == common.RECORD_UNCHANGED:
+                if (self.item.record_status == common.RECORD_UNCHANGED) or \
+                    (self.item.record_status == common.RECORD_DETAILS_MODIFIED and record_log['unmodified_record'] is None):
                     record_log['unmodified_record'] = self.copy_record(self.cur_record(), False)
                     return
             elif self.item.item_state == common.STATE_INSERT:
@@ -677,7 +701,7 @@ class ChangeLog(object):
                     detail_item.change_log.get_changes(new_detail)
                     new_details[detail_id] = new_detail
                 data[key] = {
-                        'unmodified_record': record_log['unmodified_record'],
+#                        'unmodified_record': record_log['unmodified_record'],
                         'record': new_record,
                         'details': new_details
                     }
@@ -697,7 +721,8 @@ class ChangeLog(object):
             new_records.append([int(key), record])
             details = {}
             self.logs[key] = {
-                'unmodified_record': record_log['unmodified_record'],
+#                'unmodified_record': record_log['unmodified_record'],
+                'unmodified_record': None,
                 'record': record,
                 'details': details
             }
@@ -762,7 +787,7 @@ class ChangeLog(object):
             result['record'] = self.copy_record(self.cur_record())
             details = {}
             for detail in self.item.details:
-                if detail._records:
+                if not detail.disabled and detail._records:
                     details[str(detail.ID)] = list(detail._records)
             result['details'] = details
         else:
@@ -854,11 +879,12 @@ class AbstractDataSet(object):
         self._old_status = None
         self._buffer = None
         self._modified = None
-        self._state = common.STATE_NONE
+        self._state = common.STATE_INACTIVE
         self._read_only = False
         self._active = False
         self._where_list = []
         self._order_by_list = []
+        self._select_field_list = []
         self.on_state_changed = None
         self.on_filter_changed = None
         self._record_lookup_index = -1
@@ -1370,6 +1396,10 @@ class AbstractDataSet(object):
                 result.append((field_name, filter_type, value))
         return result
 
+    def set_select_fields(self, field_list):
+        print 999999999999
+        self._select_field_list = field_list;
+
     def set_where(self, **fields):
         self._where_list = self.get_where_list(fields)
 
@@ -1409,27 +1439,26 @@ class AbstractDataSet(object):
             if not hasattr(self, field.field_name):
                 setattr(self, field.field_name, field)
 
-    def do_before_open(self, expanded, fields, where, order_by, open_empty, params, offset, limit):
+    def do_before_open(self, expanded, fields, where, order_by, open_empty,
+        params, offset, limit, funcs, group_by):
         result = None
         params['__expanded'] = expanded
         params['__fields'] = []
         params['__filters'] = []
         filters = []
 
-        if self.on_before_open:
-             result = self.on_before_open(self, params)
-
+        if fields is None and self._select_field_list:
+            fields = self._select_field_list
         self.update_fields(fields)
         if fields:
             params['__fields'] = fields
-
-        if result != False and not open_empty:
+        if not open_empty:
             params['__limit'] = 0
-            params['__loaded'] = 0
+            params['__offset'] = 0
             if limit:
                 params['__limit'] = limit
                 if offset:
-                    params['__loaded'] = offset
+                    params['__offset'] = offset
             if where:
                 filters = self.get_where_list(where)
             elif self._where_list:
@@ -1447,19 +1476,27 @@ class AbstractDataSet(object):
                 params['__order'] = self.get_order_by_list(order_by)
             elif self._order_by_list:
                 params['__order'] = list(self._order_by_list)
+            if funcs:
+                params['__funcs'] = funcs
+            if group_by:
+                params['__group'] = group_by
             self._order_by_list = []
             self._where_list = []
             self._open_params = params
+        if self.on_before_open:
+             result = self.on_before_open(self, params)
         return result
 
     def do_after_open(self):
         if self.on_after_open:
             self.on_after_open(self)
 
-    def open(self, expanded, fields, where, order_by, open_empty, params, offset, limit):
+    def open(self, expanded, fields, where, order_by, open_empty, params,
+        offset, limit, funcs, group_by):
         if not params:
             params = {}
-        if self.do_before_open(expanded, fields, where, order_by, open_empty, params, offset, limit) != False:
+        if self.do_before_open(expanded, fields, where, order_by, open_empty,
+            params, offset, limit, funcs, group_by) != False:
             self.change_log.prepare()
             self.bind_fields(expanded)
             self._records = []
@@ -1626,6 +1663,12 @@ class AbstractDataSet(object):
             self.on_after_delete(self)
 
     def delete(self):
+        if not self.active:
+            raise DatasetException(u"Can't delete record in %s: %s is not active" % (self.item_name, self.item_name))
+        #~ if self.item_state != common.STATE_BROWSE:
+            #~ raise DatasetException(u"Can't delete record in %s: %s is not in browse state" % (self.item_name, self.item_name))
+        if self.record_count() == 0:
+            raise DatasetException(u"Can't delete record in %s: %s' record list is empty" % (self.item_name, self.item_name))
         self.item_state = common.STATE_DELETE
         try:
             if self.record_count() > 0:
@@ -1685,30 +1728,24 @@ class AbstractDataSet(object):
             self.on_after_post(self)
 
     def post(self):
-        result = False
         if not self.is_changing():
             raise DatasetException, u'%s: dataset is not in edit or insert mode' % self.item_name
-        if self.modified:
-            if self.check_record_valid():
-                if self.do_before_post() != False:
-                    for detail in self.details:
-                        if detail.is_changing():
-                            if not detail.post():
-                                return result
-                    self.change_log.log_change()
-                    self.modified = False
-                    if self.master:
-                        self.master.modified = True
-                    self.item_state = common.STATE_BROWSE
-                    if not self.valid_record():
-                        self.update_controls(common.UPDATE_DELETE)
-                        self.search_record(self.rec_no, 0)
-                    self.do_after_post()
-                    result = True
-        else:
-            self.cancel()
-            result = True
-        return result
+        self.check_record_valid()
+        if self.do_before_post() != False:
+            for detail in self.details:
+                if detail.is_changing():
+                    detail.post()
+            if self.item_state == common.STATE_INSERT or \
+                (self.item_state == common.STATE_EDIT and self.get_modified()):
+                self.change_log.log_change()
+            self.modified = False
+            if self.master:
+                self.master.modified = True
+            self.item_state = common.STATE_BROWSE
+            if not self.valid_record():
+                self.update_controls(common.UPDATE_DELETE)
+                self.search_record(self.rec_no, 0)
+            self.do_after_post()
 
     def check_record_valid(self):
         for field in self.fields:
@@ -1723,7 +1760,7 @@ class AbstractDataSet(object):
                 for i, field in enumerate(fields):
                     if clone.field_by_name(field).value != values[i]:
                         return False
-                return true
+                return True
             else:
                 if clone.field_by_name(fields).value == values:
                     return True
@@ -1896,7 +1933,9 @@ class MasterDetailDataset(MasterDataSet):
             if self.master.record_status != common.RECORD_UNCHANGED:
                 return self.master.change_log.get_detail_log(str(self.ID))
 
-    def open(self, expanded=None, fields=None, where=None, order_by=None, open_empty=False, params=None, offset=None, limit=None):
+    def open(self, expanded=None, fields=None, where=None, order_by=None,
+        open_empty=False, params=None, offset=None, limit=None, funcs=None,
+        group_by=None):
         if expanded is None:
             expanded = self.expanded
         else:
@@ -1915,7 +1954,8 @@ class MasterDetailDataset(MasterDataSet):
                         fields = log['fields']
                         expanded = log['expanded']
                 if not records is None:
-                    if self.do_before_open(expanded, fields, where, order_by, open_empty, params, offset, limit) != False:
+                    if self.do_before_open(expanded, fields, where, order_by,
+                        open_empty, params, offset, limit, funcs, group_by) != False:
                         self.bind_fields(expanded)
                         self._records = records
                         self._active = True
@@ -1926,11 +1966,62 @@ class MasterDetailDataset(MasterDataSet):
                 else:
                     params['__owner_id'] = self.master.ID
                     params['__owner_rec_id'] = self.master.id.value
-                    return super(MasterDetailDataset, self).open(expanded, fields, where, order_by, open_empty, params, offset, limit)
+                    return super(MasterDetailDataset, self).open(expanded,
+                        fields, where, order_by, open_empty, params, offset,
+                        limit, funcs, group_by)
             else:
                 return
         else:
-            return super(MasterDetailDataset, self).open(expanded, fields, where, order_by, open_empty, params, offset, limit)
+            return super(MasterDetailDataset, self).open(expanded,
+                fields, where, order_by, open_empty, params, offset, limit,
+                funcs, group_by)
+
+    def open_for_ids(self, ids, expanded=None, fields=None, where=None, order_by=None, open_empty=False, params=None, offset=None, limit=None):
+
+        def slice_ids(ids):
+            MAX_IN_LIST = 999
+            result = []
+            if type(ids) == dict:
+                ids = ids.keys()
+            ids = [int(i) for i in ids]
+            while True:
+                result.append(ids[0:MAX_IN_LIST])
+                ids = ids[MAX_IN_LIST:]
+                if len(ids) == 0:
+                    break;
+            return result
+
+        params = {}
+        for args, value in locals().iteritems():
+            if not args in ['self', 'ids', 'params', 'slice_ids']:
+                params[args] = value
+        if type(ids) == dict:
+            id_field_name = ids.keys()[0]
+            ids = ids[id_field_name]
+        elif type(ids) == list:
+            id_field_name = 'id'
+        else:
+            raise Exception, u'Invalid ids parameter in open_for_ids method of item "%s"' % self.item_name
+        if params['where'] is None:
+            params['where'] = {}
+        on_after_open = self.on_after_open
+        self.on_after_open = None
+        on_filter_applied = self.on_filter_applied
+        self.on_filter_applied = None
+        records = []
+        lst = slice_ids(ids)
+        for l in lst:
+            params['where'][id_field_name + '__in'] = l
+            self.open(**params)
+            records += self._records
+        self._records = records
+        self.first()
+        self.on_after_open = on_after_open
+        self.on_filter_applied = on_filter_applied
+        self.do_after_open()
+        self.update_controls(common.UPDATE_OPEN)
+        if self.on_filter_applied:
+            self.on_filter_applied(self)
 
     def insert(self):
         if self.master and not self.master.is_changing():

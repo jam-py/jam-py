@@ -77,7 +77,7 @@ dictionary = \
     'foreign_keys':                     u'Foreign keys',
     'select_all':                       u'Выбрать все',
     'unselect_all':                     u'Отменить все',
-    'project_params':                   u'Параметры проекта',
+    'project_params':                   u'Параметры',
     'project_locale':                   u'Локализация',
     'reserved_word':                    u'Имя является зарезервированным словом',
 #editor
@@ -153,7 +153,8 @@ dictionary = \
     'delete_record':                    u'Удалить выбранную запись?',
     'server_request_error':             u'Ошибка при выполнении запроса на сервер.',
     'cant_delete_used_record':          u'Удаление запрещено. Запись используется.',
-    'website_maintenance':              u"На вебсайте проводятся технические работы.",
+    'website_maintenance':              u"Сервер временно не доступен.",
+    'apply_changes':                    u"Изменилась версия программы. Нажмите F5 для того, чтобы изменения вступили в силу",
     'items_selected':                   u"выбрано: %d",
 #rights messages
     'cant_view':                        u'%s: у Вас нет прав для просмотра',

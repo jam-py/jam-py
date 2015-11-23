@@ -1,0 +1,27 @@
+====
+open
+====
+
+Call open to sends a request to the server for obtaining a dataset. 
+
+.. js:function:: open(options, callback)
+
+* **options**: specify the parameters of the request sent to the server
+* **callback**: if the parameter is not present, the request is sent to the 
+  server synchronously, otherwise, the request is executed asynchronously and 
+  after a dataset is received, the callback is executed
+  
+The order of parameters don't matter.
+
+Description
+===========
+
+Triggers the :doc:`on_before_open <on_before_open>` event 
+handler if one is defined for the item.
+
+Sets an item state to browse.
+
+Triggers the :doc:`on_after_open <on_after_open>` event 
+handler if one is defined for the item.
+
+

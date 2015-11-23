@@ -1,0 +1,15 @@
+==========
+Report API
+==========
+
+.. js:class:: Report
+
+Report class inherits attributes and methods of 
+:doc:`AbstractItem class <abstractitem_api>`
+
+.. toctree::
+    :maxdepth: 1
+
+    report_attributes
+    report_methods
+    report_events

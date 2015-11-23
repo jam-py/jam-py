@@ -1,0 +1,91 @@
+=================
+Project managment
+=================
+
+Here the buttons on the right panel of the Administrator page will be described 
+after the project node is selected.
+
+
+Parameters
+==========
+
+AFter clicking on the Parameters button the following dialog will appear:
+
+.. image:: _images/params.png
+	:width: 460
+	:align: center
+	:alt: Project parameters dialog
+
+* **Safe mode** - If safe mode is enabled, authentication  is needed for user to 
+  work in the system (See :doc:`Users <users>` and :doc:`Roles <roles>`). 
+* **Debugging** - If this button is checked, compressed project javascript and 
+  css files are send to the client.
+* **Connection pool size** — the size of the server database connection pool. 
+  If zero no connection pool is created.
+* **Multiprocessing connection pool** - if this checkbox is checked the framework 
+  creates connection pool by using multiprocessing python module
+* **Persistent connection** - if this checkbox is checked and multiprocessing 
+  connection pool is selected, the framework creates connection in the main 
+  process. Before executing any statement, the framework checks if this 
+  connection is busy, if not, the statment is executed by this connection, 
+  otherwise multiprocessing connection pool is used.
+* **Version** — specify the version of the project here.
+
+Project locale
+==============
+
+After clicking on this button you can specify how float, currency, date and time 
+values will be displayed in the project:
+
+.. image:: _images/locale.png
+	:width: 560
+	:align: center
+	:alt: Project locale dialog
+
+
+Database
+========
+
+.. image:: _images/database.png
+	:width: 560
+	:align: center
+	:alt: Database dialog
+
+In this dialog project database pararameters are displayed. When they have been 
+changed and OK button is clicked, the Administrator will check connection to the 
+database and if it failed to connect the error will be displayed.
+
+If **DB manual update** checkbox is unchecked (default), then when changes to an 
+item, that have an associated database table, are saved, this database table is 
+automatically modified. For example, if we add a new field to some catalog in the 
+project, the new field will be create if the database table associated with this
+catalog as well. If this checkbox is checked, no modifications to the database 
+tables are made. Please be very carefull when changing this option.
+
+
+Export
+======
+
+Press this button to export project metadata to zip file.
+
+Import
+======
+
+Press this button to import project metadata from zip file.
+
+Find
+====
+
+Press this button to to search for the character string in all modules of 
+the project.
+
+.. image:: _images/find.png
+	:width: 560
+	:align: center
+	:alt: Find in project dialog
+
+
+Print
+=====
+
+Press this button to print all modules of the project.

@@ -1,0 +1,14 @@
+================
+AbstractItem API
+================
+
+.. js:class:: AbstractItem
+
+AbstractItem class is the ancestor for all item objects of the 
+:doc:`task tree </programming/task_tree>`
+
+.. toctree::
+    :maxdepth: 1
+
+    abstractitem_attributes
+    abstractitem_methods

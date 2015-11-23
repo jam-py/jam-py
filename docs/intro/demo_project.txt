@@ -1,0 +1,5 @@
+============
+Demo project
+============
+
+There is a demo project of Jam.py. To see it you should go to the demo folder

@@ -1,0 +1,12 @@
+===============
+Getting started
+===============
+
+.. toctree::
+   :maxdepth: 1
+
+   install
+   new_project
+   demo_project
+   simple_project
+   test

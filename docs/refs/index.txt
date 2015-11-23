@@ -1,0 +1,12 @@
+====================
+Jam.py API reference
+====================
+
+Server side is implemented in Python and uses Web.py library, the client side in 
+JavaScript and uses JQuery and Bootstrap 2 
+
+.. toctree::
+    :maxdepth: 1
+
+    client/client
+    server/server

@@ -8,24 +8,9 @@ window.task_events = new TaskEvents();
 
 function Events1() { // demo 
 
-	function viewItem(item) {
-		var content; 
-		if (item.task.cur_item) {	
-			item.task.cur_item.close_view_form(); 
-		}
-		if (item.item_type === "report") { 
-			item.print_report(false);
-		}
-		else {
-			content = $("#content");
-			content.empty();
-			item.task.cur_item = item;
-			item.view(content);
-		}
-	}
-	
 	function on_page_loaded(task) {
-		var groups;
+		var content = $("#content"),
+			groups = [task.journals, task.reports, task.catalogs];
 	
 		$("#title").html('Jam.py demo application');
 		if (task.safe_mode) {
@@ -37,8 +22,6 @@ function Events1() { // demo
 				task.logout();
 			});
 		}
-	
-		groups = [task.journals, task.reports, task.catalogs];
 	
 		$("#taskmenu").show();
 		for (var i = 0; i < groups.length; i++) {
@@ -73,7 +56,17 @@ function Events1() { // demo
 			e.preventDefault();
 			$("#submenu > li" ).removeClass('active');
 			$(this).parent().addClass('active');
-			viewItem(item);
+			if (item.task.cur_item) {	
+				item.task.cur_item.close_view_form();  
+			}
+			if (item.item_type === "report") { 
+				item.print_report(false);
+			} 
+			else { 
+				content.empty();
+				item.task.cur_item = item;
+				item.view(content);
+			}
 		}));
 		$("#menu").append($('<li></li>').append($('<a href="#">About</a>').click(function(e) {
 			e.preventDefault();
@@ -107,7 +100,7 @@ function Events1() { // demo
 				for (var i = 0; i < reports.length; i++) {
 					$li = $('<li><a href="#">' + reports[i].item_caption + '</a></li>');
 					$li.find('a').data('report', reports[i]);
-					$li.on('click', 'a', function() {
+					$li.on('click', 'a', function(e) {
 						e.preventDefault();
 						$(this).data('report').print_report(false);
 					});
@@ -131,7 +124,7 @@ function Events1() { // demo
 				sortable: true
 			};
 		if (!item.master) {
-			item.auto_loading = true;
+			item.paginate = true;
 		}
 		if (item.view_form.hasClass('modal')) {
 			item.view_options.width = 960;
@@ -139,10 +132,7 @@ function Events1() { // demo
 		else {
 			item.view_form.find(".modal-body").css('padding', 0);
 			item.view_form.find(".view-title #title-left").append($('<h4>' + item.item_caption + '<h4>'));
-			table_options.height = $(window).height() - $('body').height() - 40;
-		}
-		if (item.init_table) {
-			item.init_table(item, table_options);
+			table_options.height = $(window).height() - $('body').height() - 10;
 		}
 		if (item.can_create()) {
 			item.view_form.find("#new-btn").on('click.task', function() {item.insert_record();});
@@ -165,6 +155,9 @@ function Events1() { // demo
 		
 		create_print_btns(item);
 	
+		if (item.init_table) {
+			item.init_table(item, table_options);
+		}
 		item.view_table = item.create_table(item.view_form.find(".view-table"), table_options);
 	}
 	
@@ -182,8 +175,10 @@ function Events1() { // demo
 			item.init_inputs(item, input_options);
 		}
 		item.create_inputs(item.edit_form.find(".edit-body"), input_options);
-		item.edit_form.find("#cancel-btn").attr("tabindex", 101).on('click.task', function(e) {item.cancel_edit(e); return false;});
-		item.edit_form.find("#ok-btn").attr("tabindex", 100).on('click.task', function() {item.apply_record()});
+		item.edit_form.find("#cancel-btn").attr("tabindex", 101)
+			.on('click.task', function(e) {item.cancel_edit(e); return false;});
+		item.edit_form.find("#ok-btn").attr("tabindex", 100)
+			.on('click.task', function() {item.apply_record()});
 	}
 	
 	function expand_buttons(form) {
@@ -269,13 +264,13 @@ function Events1() { // demo
 	}
 	
 	function resize_view_table(item) {
-		var newHeight;
+		var height;
 		if (item.view_table) {
-			newHeight = item.view_table.height() + $(window).height() - $('body').height() - 40;
-			if (newHeight < 200) {
-				newHeight = 200;
+			height = item.view_table.height() + $(window).height() - $('body').height() - 10;
+			if (height < 200) {
+				height = 200;
 			}
-			item.view_table.height(newHeight);
+			item.view_table.height(height);
 			item.view_table.resize();
 		}
 	}
@@ -283,25 +278,26 @@ function Events1() { // demo
 	function resize_edit_table(item, window_resized) {
 		var edit_form_height,
 			window_height,
-			newHeight;
+			height;
 		if (item.edit_form && item.edit_table) {
 			edit_form_height = item.edit_form.height();
 			window_height = $(window).height();
 			if (window_resized || edit_form_height > window_height - 20) {
-				newHeight = item.edit_table.height() - (edit_form_height - window_height) - 20;
-				if (newHeight > 450) {
-					newHeight = 450;
+				height = item.edit_table.height() - (edit_form_height - window_height) - 20;
+				if (height > 450) {
+					height = 450;
 				}
-				if (newHeight < 200) {
-					newHeight = 200;
+				if (height < 200) {
+					height = 200;
 				}
-				item.edit_table.height(newHeight);
+				item.edit_table.height(height);
 				item.edit_table.resize();
 			}
 		}
 	}
 	
 	var timeOut;
+	
 	
 	function resize(task) {
 		var item = task.cur_item;
@@ -314,7 +310,6 @@ function Events1() { // demo
 		},
 		100);
 	}
-	this.viewItem = viewItem;
 	this.on_page_loaded = on_page_loaded;
 	this.create_print_btns = create_print_btns;
 	this.on_before_show_view_form = on_before_show_view_form;
@@ -402,7 +397,7 @@ function Events2() { // demo.catalogs
 		setTimeout(function() {
 				item.view_form.find(".view-title input").focus();
 			},
-			0
+			50
 		);	
 	}
 	this.on_before_show_view_form = on_before_show_view_form;
@@ -411,29 +406,6 @@ function Events2() { // demo.catalogs
 }
 
 window.task_events.events2 = new Events2();
-
-function Events3() { // demo.journals 
-
-	function on_before_show_view_form(item) {
-		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});
-		item.on_filter_applied = function(item) {
-			if (item.view_form) {
-				item.view_form.find(".view-title #title-right")
-					.html('<h5 class="pull-right">' + item.get_status_text() + '<h5>');
-			}
-		};
-	}
-	
-	function on_after_show_view_form(item) {
-		if (item.view_table) {
-			item.view_table.focus();
-		}
-	}
-	this.on_before_show_view_form = on_before_show_view_form;
-	this.on_after_show_view_form = on_after_show_view_form;
-}
-
-window.task_events.events3 = new Events3();
 
 function Events5() { // demo.reports 
 
@@ -452,6 +424,16 @@ function Events5() { // demo.reports
 
 window.task_events.events5 = new Events5();
 
+function Events15() { // demo.catalogs.tracks 
+
+	function init_table(item, table_options) {
+		table_options.sortable = false;
+	}
+	this.init_table = init_table;
+}
+
+window.task_events.events15 = new Events15();
+
 function Events16() { // demo.journals.invoices 
 
 	function on_after_append(item) {
@@ -460,10 +442,18 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function init_table(item, table_options) {
-		table_options.height = $(window).height() - $('body').height() - 200 - 40;
+		table_options.height = $(window).height() - $('body').height() - 200 - 10;
 		if (table_options.height < 200) {
 			table_options.height = 200;
 		}
+		table_options.show_footer = true;	
+		table_options.row_callback = function(row, it) {
+			var font_weight = 'normal';
+			if (it.total.value > 10) {
+				font_weight = 'bold';
+			}
+			row.find('td.total').css('font-weight', font_weight);
+		};
 	}
 	
 	function on_before_show_view_form(item) {
@@ -474,7 +464,31 @@ function Events16() { // demo.journals.invoices
 		
 		item.details_active = true;
 		item.detail_table = item.invoice_table.create_table(item.view_form.find(".view-detail"),
-			{height: 200, dblclick_edit: false, column_width: {"track": "60%"}});
+			{height: 200 - 4, dblclick_edit: false, column_width: {"track": "60%"}});
+			
+		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});
+	}
+	
+	function on_filter_applied(item) {
+		if (item.view_form) {
+			item.view_form.find(".view-title #title-right")
+				.html('<h5 class="pull-right">' + item.get_status_text() + '<h5>');
+			calc_footer(item);
+		}
+	}
+	
+	function calc_footer(item) {
+		var copy = item.copy();
+		copy.assign_filters(item);
+		copy.open({fields: ['subtotal', 'tax', 'total'], funcs: {subtotal: 'sum', tax: 'sum', total: 'sum'}}, function() {
+			var footer = item.view_form.find('.dbtable.' + item.item_name + ' tfoot');
+			copy.eachField(function(f) {
+				footer.find('div.' + f.field_name)
+					.css('text-align', 'right')
+					.css('color', 'black')
+					.text(f.display_text);
+			});
+		});
 	}
 	
 	function init_inputs(item, input_options) {
@@ -570,6 +584,8 @@ function Events16() { // demo.journals.invoices
 	this.on_after_append = on_after_append;
 	this.init_table = init_table;
 	this.on_before_show_view_form = on_before_show_view_form;
+	this.on_filter_applied = on_filter_applied;
+	this.calc_footer = calc_footer;
 	this.init_inputs = init_inputs;
 	this.on_before_show_edit_form = on_before_show_edit_form;
 	this.on_get_field_text = on_get_field_text;

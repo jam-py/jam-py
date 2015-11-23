@@ -1,0 +1,26 @@
+====================
+Jam.py documentation
+====================
+
+Jam.py is an event-driven framework for developing web database applications.
+=============================================================================
+
+Server side is implemented in Python and uses Web.py library, the client side in 
+JavaScript and uses JQuery and Bootstrap 2 
+ 
+Jam.py is “all in the browser” framework.
+=========================================
+
+Development takes place in Administrator  - web applications written in jam.py. 
+Developer needs running server (can be a remote one) and two pages in a 
+browser - one for application and another for  Administrator. Make changes in 
+Administrator, go to application, press F5 and see the results.  
+
+“Develop and test locally update remotely”
+==========================================
+
+Jam.py has Export and Import utilities that allow developer to store all 
+metadata (database structures, project parameters and code) in a file that can 
+be loaded by another application to apply all the changes.
+
+:doc:`Jam.py documentation contents <contents>`

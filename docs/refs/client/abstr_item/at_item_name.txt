@@ -1,0 +1,12 @@
+=========
+item_name
+=========
+
+Specifies the name of the item as referenced in code.
+
+.. js:attribute:: item_name
+
+Description
+===========
+
+Use item_name to refer to the item in code.

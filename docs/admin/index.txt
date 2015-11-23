@@ -1,0 +1,40 @@
+=============
+Administrator
+=============
+
+Administrator - is a jam.py web application intended for application development 
+and database administration.
+
+To run Administrator go to a Web browser and type in the browser address bar 
+
+.. code-block:: console
+
+    127.0.0.1:8080/admin.html
+
+.. note::
+
+    Please note that application.py must be running
+    
+After Administrator is started in a Web browser the following page will appear:
+
+
+.. image:: _images/admin.png
+	:align: center
+	:alt: Jam.py Administaor
+
+
+On the left side of Administrator page there is a panel that contains a project 
+tree. By selecting any node of the project tree, as a rule, we open it's content 
+in the center part of Administrator page, and in the bottom and right side of 
+Administrator can be buttons that allow us to modify it's content.
+    
+
+To see the changes made in Administrator go to the Project page and reload it 
+(press F5).
+
+.. toctree::
+   :maxdepth: 0
+
+   project
+   roles
+   users

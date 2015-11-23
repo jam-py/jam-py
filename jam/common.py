@@ -32,7 +32,9 @@ DEFAULT_SETTINGS = {
     'N_SIGN_POSN': 1,
     'D_FMT': '%x',
     'D_T_FMT': '%X',
-    'CON_POOL_SIZE': 4
+    'CON_POOL_SIZE': 4,
+    'MP_POOL': False,
+    'PERSIST_CON': False
 }
 
 LOCALE_SETTINGS = (
@@ -55,8 +57,7 @@ LOCALE_SETTINGS = (
 
 SETTINGS = {}
 
-VERSION = '1.0'
-RESPONSE, NOT_LOGGED, UNDER_MAINTAINANCE = range(1, 4)
+RESPONSE, NOT_LOGGED, UNDER_MAINTAINANCE, NO_PROJECT = range(1, 5)
 ROOT_TYPE, USERS_TYPE, ROLES_TYPE, TASKS_TYPE, TASK_TYPE, \
     CATALOGS_TYPE, JOURNALS_TYPE, TABLES_TYPE, REPORTS_TYPE, \
     CATALOG_TYPE, JOURNAL_TYPE, TABLE_TYPE, REPORT_TYPE, DETAIL_TYPE = range(1, 15)
@@ -86,7 +87,7 @@ FILTER_STRING = ('EQ', 'NE', 'LT', 'LE', 'GT', 'GE', 'IN', 'NOT IN',
 REC_STATUS, REC_CONTROLS_INFO, REC_CHANGE_ID = range(3)
 
 ORDER_ASC, ORDER_DESC = range(2)
-STATE_NONE, STATE_BROWSE, STATE_INSERT, STATE_EDIT, STATE_DELETE = range(5)
+STATE_INACTIVE, STATE_BROWSE, STATE_INSERT, STATE_EDIT, STATE_DELETE = range(5)
 UPDATE_OPEN, UPDATE_DELETE, UPDATE_CANCEL, UPDATE_APPEND, UPDATE_INSERT, UPDATE_SCROLLED, UPDATE_RESTORE, UPDATE_REFRESH = range(8)
 RECORD_UNCHANGED, RECORD_INSERTED, RECORD_MODIFIED, RECORD_DETAILS_MODIFIED, RECORD_DELETED = None, 1, 2, 3, 4
 EDITOR_TAB_SIZE = 4
@@ -532,16 +533,17 @@ def json_defaul_handler(obj):
     return result
 
 def zip_dir(dir, zip_file, exclude_dirs=[], exclude_ext=[]):
-    direct = os.path.join(os.getcwd().decode('utf-8'), dir)
-    for dirpath, dirnames, filenames in os.walk(direct):
-        head, tail = os.path.split(dirpath)
-        if not tail in exclude_dirs:
-            for file_name in filenames:
-                name, ext = os.path.splitext(file_name)
-                if not ext in exclude_ext:
-                    file_path = os.path.join(dirpath, file_name)
-                    arcname = os.path.relpath(os.path.join(dir, file_path))
-                    zip_file.write(file_path, arcname)
+    folder = os.path.join(os.getcwd().decode('utf-8'), dir)
+    if os.path.exists(folder):
+        for dirpath, dirnames, filenames in os.walk(folder):
+            head, tail = os.path.split(dirpath)
+            if not tail in exclude_dirs:
+                for file_name in filenames:
+                    name, ext = os.path.splitext(file_name)
+                    if not ext in exclude_ext:
+                        file_path = os.path.join(dirpath, file_name)
+                        arcname = os.path.relpath(os.path.join(dir, file_path))
+                        zip_file.write(file_path, arcname)
 
 def now():
     return datetime.datetime.now()

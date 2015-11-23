@@ -76,8 +76,8 @@ dictionary = \
     'foreign_keys':                     u'Foreign keys',
     'select_all':                       u'Select all',
     'unselect_all':                     u'Unselect all',
-    'project_params':                   u'Project parameters',
-    'project_locale':                   u'Project locale',
+    'project_params':                   u'Parameters',
+    'project_locale':                   u'Locale',
     'reserved_word':                    u'The name is a reserved word',
 #editor
     'case_sensitive':                   u'Case sensitive',
@@ -153,7 +153,8 @@ dictionary = \
     'delete_record':                    u'Delete record?',
     'server_request_error':             u'Server request error',
     'cant_delete_used_record':          u"Can't delete record. It's being used.",
-    'website_maintenance':              u"Web site currently under maintenance.",
+    'website_maintenance':              u"The server is temporarily unavailable.",
+    'apply_changes':                    u"Changed version. Press F5 to apply the changes",
     'items_selected':                   u"selected: %d",
 #rights messages
     'cant_view':                        u'%s: you are not allowed to view',
