@@ -1,0 +1,43 @@
+===========
+Code editor
+===========
+
+For every item of the project :doc:`task tree </programming/task_tree>` there 
+are two buttons in the upper-right corner of Administrator: **Client module** 
+and **Server module**.
+
+
+.. image:: _images/module_btns.png
+	:align: center
+	:alt: Invoke code editor buttons
+
+
+By clicking on these buttons the Code Editor for the client or server 
+module of the item will be opened. 
+(See :doc:`Working with modules </programming/modules>`)
+
+.. image:: _images/editor.png
+	:align: center
+	:alt: code editor
+
+In the event editor to the right there is an information pane with four tabs: 
+
+* **Module** - this tab displays all events and functions defined in the editor, 
+  double-click on one of them to move the cursor to the proper function. 
+* **Events** - displays all the published event of the item, double-click to 
+  generated a wrapper for the event (see the on_before_post event on the 
+  figure above).
+* **Task** - the 
+  :doc:`task tree </programming/task_tree>`, 
+  double-click on the node to print it's item_name under the cursor.
+* **Fields** - the field list of the current item, double-click on one of the 
+  fields to print it's field_name under the cursor.
+  
+Jam.py uses the `ace editor`_  editor to implement its code editor.
+
+`Hear are keyboard shortcuts for the ace editor`_.
+
+.. _ace editor: https://ace.c9.io
+
+.. _Hear are Keyboard Shortcuts for the ace editor: https://github.com/ajaxorg/ace/wiki/Default-Keyboard-Shortcuts
+

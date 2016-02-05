@@ -6,7 +6,7 @@ Server side is implemented in Python and uses Web.py library, the client side in
 JavaScript and uses JQuery and Bootstrap 2 
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
 
-    client/client
-    server/server
+    client/index
+    server/index

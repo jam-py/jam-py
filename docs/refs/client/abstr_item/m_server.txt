@@ -1,0 +1,88 @@
+======
+server
+======
+
+.. js:function:: server(func_name, params, callback)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`AbstractItem </refs/client/abstractitem_api>`
+
+Description
+===========
+
+Use **sever** method to execute a function defined in the server module of an item.
+
+**Sever** method executes a function with a name **func_name** defined in the server 
+module of an item with parameters specified in **params**. 
+
+If callback is specified, the function on the server is executed asynchronously, 
+after which the **callback** is executed with parameter that is the result of 
+the server function execution, otherwise the function is executed synchronously 
+and returns the result of the server function. 
+
+When exception is raised during the server function execution, the application 
+on the client throws exception with the server exception text. The first 
+parameter of the function on the server must be **item**, it must be followed by 
+the parameters specified in the function on the client.
+
+**Params** is a list of parameters. If there is only one parameter it can be 
+passed as it is (not a list). If there are not parameters, the **params** can be 
+omitted. 
+
+
+Example
+=======
+
+The function defined in the **Invoices** journal server module:
+
+.. code-block:: py
+
+    def get_total(item, id_value):
+        result = 0;
+        copy = item.copy()
+        copy.set_where(id=id_value)
+        copy.open()
+        if copy.record_count():
+            result = copy.total.value
+        else:
+            raise Exception, 'Journal "invoices" does not have a record with id  %s' % id_value
+        return result;
+        
+the following code will execute this server function synchronously:
+
+.. code-block:: js
+
+    var total;
+    try {
+        total = task.invoices.server('get_total', [17]);
+        console.log(total);
+    }
+    catch (e) {
+        console.log(e);
+    }
+
+and this is asynchronous execution:
+
+.. code-block:: js
+
+    try {
+        task.invoices.server('get_total', [17], function(total) {
+            console.log(total);
+        });
+    }
+    catch (e) {
+        console.log(e);    
+    }
+
+
+
+
+
+
+
+
+
+

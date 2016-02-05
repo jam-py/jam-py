@@ -1,9 +1,0 @@
-========================
-AbstractItem attributes
-========================
-
-.. toctree::
-    :maxdepth: 1
-    :glob:
-    
-    abstr_item/at_*

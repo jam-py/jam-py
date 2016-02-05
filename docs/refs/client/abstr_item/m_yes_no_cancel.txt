@@ -1,0 +1,55 @@
+=============
+yes_no_cancel
+=============
+
+.. js:function:: yes_no_cancel(mess, yes_callback, no_callback, cancel_callback)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`AbstractItem </refs/client/abstractitem_api>`
+
+Description
+===========
+
+
+Use **yes_no_cancel** to create a modal form with **Yes** **No**, **Cancel** buttons. 
+
+The **mess** parameter specifies the text or html content that will appear in the 
+body of the form.
+
+If **yes_callback**, **no_callback**, **cancel_callback**  functions are 
+specified they will be executed when user clicks on the **Yes**, **No** or 
+**Cancel** button, respectively, and then the form will be closed.
+
+Example
+=======
+
+The following code is executed when user clicks on the close button in the upper 
+right corner of an item edit form. 
+
+.. code-block:: js
+
+    function on_edit_form_close_query(item) {
+        var result = true;
+        if (item.is_changing()) {
+            if (item.is_modified()) {
+                item.yes_no_cancel('Data has been modified. Save changes?',
+                    function() {
+                        item.apply_record();
+                    },
+                    function() {
+                        item.cancel_edit();
+                    }
+                );
+                result = false;
+            }
+            else {
+                item.cancel();
+            }
+        }
+        return result;
+    }
+    
+

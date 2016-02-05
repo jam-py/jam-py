@@ -2,7 +2,7 @@
 Project managment
 =================
 
-Here the buttons on the right panel of the Administrator page will be described 
+We'll describe here the buttons on the right panel of the Administrator page
 after the project node is selected.
 
 
@@ -21,7 +21,6 @@ AFter clicking on the Parameters button the following dialog will appear:
 * **Debugging** - If this button is checked, compressed project javascript and 
   css files are send to the client.
 * **Connection pool size** — the size of the server database connection pool. 
-  If zero no connection pool is created.
 * **Multiprocessing connection pool** - if this checkbox is checked the framework 
   creates connection pool by using multiprocessing python module
 * **Persistent connection** - if this checkbox is checked and multiprocessing 

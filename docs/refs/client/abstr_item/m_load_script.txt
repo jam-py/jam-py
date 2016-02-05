@@ -1,0 +1,54 @@
+===========
+load_script
+===========
+
+.. js:function:: load_script(js_filename, callback, onload)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`AbstractItem </refs/client/abstractitem_api>`
+
+Description
+===========
+
+Use **load_script** method to load javascript file from the server, before 
+executing callback.
+
+The method checks whether the file has been loaded, if not, loads 
+it from the server, executes (if specified) onload function and then executes 
+the **callback**, otherwise just the **callback** function is executed. The item 
+is passed to the callback function as a parameter. 
+
+The **js_filename** should specify the path to javascript file relative to the 
+server directory.
+
+The request to the sever is executed asyncroniously.
+
+Example
+=======
+
+Bellow, the do_some_work function is executed only when *lib.js* file from server 
+*js* directory has been loaded.
+
+loaded: 
+
+.. code-block:: js
+
+    function some_work(item) {
+        item.load_script('js/lib.js', do_some_work);
+    }
+    
+    function do_some_work(item) {
+        // some code
+    }
+
+See also
+========
+
+:doc:`Working with modules </programming/modules>`
+
+:doc:`load_module <m_load_module>`
+
+:doc:`load_modules <m_load_modules>`

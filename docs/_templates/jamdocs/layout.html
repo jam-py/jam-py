@@ -9,17 +9,26 @@
 {% if builder != "htmlhelp" %}
 {{ super() }}
 
-<!--
-<script type="text/javascript" src="{{ pathto('bootstrap.js', 1) }}"></script>
--->
 <script type="text/javascript">
     $( document ).ready(function() {
-        $("#doc-content").css("min-height", $(window).height() - 122);
-        $(window).resize(function() {        
-            $("#doc-content").css("min-height", $(window).height() - 122);
+        $("#doc-layout").css("min-height", $(window).height() - 121);
+        $(window).resize(function() {
+            $("#doc-layout").css("min-height", $(window).height() - 121);
+        });
+        $('a.reference, a.internal').on('click', function(e){
+            var target = this.hash,
+                element;
+            if (target[0] === "#") {
+                e.preventDefault();
+                element = $('a[href=' + target + ']');
+                $('html, body').animate({
+                    scrollTop: element.offset().top - 60
+                }, 500);
+            }
         });
     });
 </script>
+
 {% endif %}
 {% endblock %}
 
@@ -31,11 +40,11 @@
                     <span class="sr-only">Toggle navigation</span>
                     <span class="icon-bar"></span>
                     {% if prev %}
-                    <span class="icon-bar"></span>                    
-                    {% endif %}                    
+                    <span class="icon-bar"></span>
+                    {% endif %}
                     {% if next %}
-                    <span class="icon-bar"></span>                    
-                    {% endif %}                    
+                    <span class="icon-bar"></span>
+                    {% endif %}
                 </button>
                 <a class="navbar-brand" href="http://jam-py.com/">Jam.py framework</a>
             </div>
@@ -63,9 +72,17 @@
         </div>
     </nav>
 
-    <div class=".container-fluid">
+    <div id="doc-layout" class=".container-fluid">
+        <div>
+            <h3 class="title">Jam.py documentation</h3>
+        </div>
         <div id="doc-content" class="row">
+          {% if pagename != 'index' %}
           <div id="doc-body" class="col-md-9">
+          {% else %}
+          <div id="doc-body" class="col-md-12">
+          {% endif %}
+                <div id="dev-warning" class="small text-danger">Documentation is under development</div>
                 {% block body %}{% endblock %}
           </div>
           {% block sidebarwrapper %}
@@ -91,9 +108,7 @@
             </div>
         </div>
     </footer>
-<!--
-  </div>
--->
+
 {% endblock %}
 
 {% block sidebarrel %}
@@ -105,6 +120,9 @@
     {% if next %}
       <li>Next: <a href="{{ next.link }}">{{ next.title }}</a></li>
     {% endif %}
+    <li>
+        <a href="{{ pathto('contents') }}">Table of contents</a>
+    </li>
   </ul>
   <h3>You are here:</h3>
   <ul>

@@ -1,0 +1,17 @@
+====
+task
+====
+
+Indicates the root of the :doc:`task tree </programming/task_tree>` that owns this item. 
+
+.. py:attribute:: task
+
+**domain**: server
+
+**language**: python
+
+Description
+===========
+
+Use task attribute to find the root of the :doc:`task tree </programming/task_tree>` 
+of which the item is a member.

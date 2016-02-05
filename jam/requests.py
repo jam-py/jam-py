@@ -33,33 +33,10 @@ class Server(object):
         if self.task is None:
             with self.task_lock:
                 if self.task is None:
-                    self.task = adm_server.create_task(self)
+                    adm_server.create_task(self)
         return self.task
 
     def stop(self, sigvalue):
-        print sigvalue, self._busy
-        #~ self.app.stop()
-        #~ return
-        self.kill()
-        return
-        if sigvalue == 2 and self._busy:
-            self.under_maintenance = True
-            print 'waiting for %s request(s) to be processed' % self._busy
-            sys.stdout.flush()
-            i = 0
-            while True:
-                if self._busy:
-                    if i == 50:
-                        user_input = raw_input('%s request(s) is(are) active. To kill processes press y, any other key to continue:' \
-                            % self._busy)
-                        if user_input == 'y':
-                            break
-                        else:
-                            i = 0
-                    time.sleep(0.1)
-                else:
-                    break
-                i += 1
         self.kill()
 
     def kill(self):

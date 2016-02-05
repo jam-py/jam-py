@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys, os
-import signal
 
-import cPickle
 import json
 import traceback
 try:

@@ -39,7 +39,9 @@ Creating a project
     By default, the port is 8080. If you will specify another port, you need to 
     use it in a browser in the next steps.
 
-5. Go to a browser. Type in the browser address bar:
+5. Open a Web browser and go to “/admin.html” on your local domain – e.g., 
+http://127.0.0.1:8080/admin.html. You should see the select language dialog. 
+
 
 .. code-block:: console
 
@@ -55,14 +57,15 @@ Creating a project
 
 * **Caption** - the project name that appears to users
 * **Name** - name of project (task) that will be used in programming code to 
-  get access to the task object . Should be a short valid python identifier. 
+  get access to the task object. Should be a short valid python identifier. 
 * **DB type** — select database type. If database is not Sqlite, it must be 
   created in advance and its attributes should be entered in the 
   corresponding form fields. 
 
-.. image:: _images/params.png
-	:width: 560px
-	:alt: Jam.py new project dialog
+.. image:: _images/new_project_setup.png
+	:width: 560
+	:align: center
+	:alt: New project setup
 
 When you press OK, the connection to the database will be checked, and in case 
 of failure 	an error message will be displayed.

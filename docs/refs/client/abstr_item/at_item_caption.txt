@@ -2,7 +2,15 @@
 item_caption
 ============
 
-Specifies the name of the item that appears to users
-
 .. js:attribute:: item_caption
 
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`AbstractItem </refs/client/abstractitem_api>`
+
+Description
+===========
+
+Item_caption attribute specifies the name of the item that appears to users

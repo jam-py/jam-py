@@ -1,8 +1,13 @@
-================
-Detail class API
-================
+============
+Detail class
+============
+
+.. js:class:: Detail
+
+**domain**: client 
+
+**language**: javascript
 
 Detail class inherits attributes, methods and events of 
 :doc:`Item class <item_api>`
 
-.. js:class:: Detail

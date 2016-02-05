@@ -14,9 +14,6 @@ FILTER_DEF = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, \
 class DatasetException(Exception):
     pass
 
-class AbortException(Exception):
-    pass
-
 class DBField(object):
     def __init__(self, owner, field_def):
         self.owner = owner
@@ -51,6 +48,7 @@ class DBField(object):
         if self.owner._records:
             return self.owner._records[self.owner.rec_no]
         else:
+            print traceback.format_exc()
             raise Exception, u'An attempt to get a field value in the empty dataset - item: %s, field: %s ' % (self.owner.item_name, self.field_name)
 
     def get_data(self):
@@ -221,7 +219,7 @@ class DBField(object):
             if not self.owner.item_state in (common.STATE_INSERT, common.STATE_EDIT):
                 raise DatasetException, u'%s is not in edit or insert mode' % self.owner.item_name
             if self.owner.on_before_field_changed:
-                return self.owner.on_before_field_changed(self, new_value, new_lookup_value)
+                self.owner.on_before_field_changed(self, new_value, new_lookup_value)
 
     def set_value(self, value, lookup_value=None, slave_field_values=None, lookup_item=None):
         if ((self.field_name == 'id' and self.value) or self.field_name == 'deleted') and \
@@ -241,7 +239,7 @@ class DBField(object):
                 if not (self.filter and self.filter.filter_type == common.FILTER_IN):
                     self.new_value = int(value)
         if self.raw_value != self.new_value:
-            if self.do_before_changed(self.new_value, lookup_value) != False:
+                self.do_before_changed(self.new_value, lookup_value)
                 try:
                     self.set_data(self.new_value)
                 except Exception, e:
@@ -618,8 +616,8 @@ class ChangeLog(object):
             details = record_log['details']
             if details:
                 result = details.get(detail_ID)
-            if result is None and self.item.is_delta:
-                result = {'records': [], 'fields': [], 'expanded': False}
+            if result is None and self.item._is_delta:
+                result = {'records': [], 'fields': [], 'expanded': False, 'logs': {}}
             return result
 
     def remove_record_log(self):
@@ -829,10 +827,20 @@ class ChangeLog(object):
 
 
     def prepare(self):
-        self.records = [];
-        self.logs = {};
-        self.fields = [field.field_name for field in self.item.fields if not field.master_field]
-        self.expanded = self.item.expanded
+        if self.item.master:
+            log = self.item.master.change_log.get_detail_log(str(self.item.ID))
+            if log:
+                log['records'] = []
+                log['logs'] = {}
+                log['fields'] = []
+                log['fields'] = [field.field_name for field in self.item.fields if not field.master_field]
+                log['expanded'] = self.item.expanded
+        else:
+            self.records = []
+            self.logs = {}
+            self.fields = []
+            self.fields = [field.field_name for field in self.item.fields if not field.master_field]
+            self.expanded = self.item.expanded
 
     def update(self, updates):
         if updates:
@@ -895,7 +903,7 @@ class AbstractDataSet(object):
         self.post_local = False
         self._disabled_count = 0
         self.open_params = {}
-        self.is_delta = False
+        self._is_delta = False
         self.parent_read_only = True
         self.on_before_append = None
         self.on_after_append = None
@@ -1163,7 +1171,7 @@ class AbstractDataSet(object):
             if self.item_state in (common.STATE_INSERT, common.STATE_EDIT):
                 self.post()
             if self.on_before_scroll:
-                return self.on_before_scroll(self)
+                self.on_before_scroll(self)
 
     def skip(self, value):
         if self.record_count() == 0:
@@ -1185,9 +1193,8 @@ class AbstractDataSet(object):
             self._eof = eof
             self._bof = bof
             if old_row != new_row:
-                if self.do_before_scroll() != False:
-                    self._cur_row = new_row
-                    self.do_after_scroll()
+                self._cur_row = new_row
+                self.do_after_scroll()
             elif (eof or bof) and self.is_new() and self.record_count() == 1:
                 self.do_before_scroll()
                 self.do_after_scroll()
@@ -1397,7 +1404,6 @@ class AbstractDataSet(object):
         return result
 
     def set_select_fields(self, field_list):
-        print 999999999999
         self._select_field_list = field_list;
 
     def set_where(self, **fields):
@@ -1484,8 +1490,7 @@ class AbstractDataSet(object):
             self._where_list = []
             self._open_params = params
         if self.on_before_open:
-             result = self.on_before_open(self, params)
-        return result
+             self.on_before_open(self, params)
 
     def do_after_open(self):
         if self.on_after_open:
@@ -1495,21 +1500,21 @@ class AbstractDataSet(object):
         offset, limit, funcs, group_by):
         if not params:
             params = {}
-        if self.do_before_open(expanded, fields, where, order_by, open_empty,
-            params, offset, limit, funcs, group_by) != False:
-            self.change_log.prepare()
-            self.bind_fields(expanded)
-            self._records = []
-            if not open_empty:
-                self.do_open(params)
-            self._active = True
-            self._cur_row = None
-            self.item_state = common.STATE_BROWSE
-            self.first()
-            self.do_after_open()
-            self.update_controls(common.UPDATE_OPEN)
-            if self.on_filter_applied:
-                self.on_filter_applied(self)
+        self.do_before_open(expanded, fields, where, order_by, open_empty,
+            params, offset, limit, funcs, group_by)
+        self.change_log.prepare()
+        self.bind_fields(expanded)
+        self._records = []
+        if not open_empty:
+            self.do_open(params)
+        self._active = True
+        self._cur_row = None
+        self.item_state = common.STATE_BROWSE
+        self.first()
+        self.do_after_open()
+        self.update_controls(common.UPDATE_OPEN)
+        if self.on_filter_applied:
+            self.on_filter_applied(self)
 
     def do_open(self, params=None):
         if not params:
@@ -1535,12 +1540,11 @@ class AbstractDataSet(object):
         result = [None for field in self.fields if not field.master_field]
         if self.expanded:
             result += [None for field in self.fields if field.lookup_item]
-#        result.append([None, {}, None])
         return result
 
     def do_before_append(self):
         if self.on_before_append:
-            return self.on_before_append(self)
+            self.on_before_append(self)
 
     def do_after_append(self):
         if self.on_after_append:
@@ -1551,60 +1555,34 @@ class AbstractDataSet(object):
             raise DatasetException(u"Can't insert record in %s: %s is not active" % (self.item_name, self.item_name))
         if self.item_state != common.STATE_BROWSE:
             raise DatasetException(u"Can't insert record in %s: %s is not in browse state" % (self.item_name, self.item_name))
-        if self.do_before_append() != False:
-            if self.do_before_scroll() != False:
-                self._old_row = self.rec_no
-                self.item_state = common.STATE_INSERT
-                self._records.append(self.new_record())
-                self._cur_row = len(self._records) - 1
-                self._modified = False
-                self.record_status = common.RECORD_INSERTED
-                self.update_controls(common.UPDATE_APPEND)
-                self.do_after_scroll()
-                self.do_after_append()
+        self.do_before_append()
+        self.do_before_scroll()
+        self._old_row = self.rec_no
+        self.item_state = common.STATE_INSERT
+        self._records.append(self.new_record())
+        self._cur_row = len(self._records) - 1
+        self._modified = False
+        self.record_status = common.RECORD_INSERTED
+        self.update_controls(common.UPDATE_APPEND)
+        self.do_after_scroll()
+        self.do_after_append()
 
     def insert(self):
         if not self.active:
             raise DatasetException(u"Can't insert record in %s: %s is not active" % (self.item_name, self.item_name))
         if self.item_state != common.STATE_BROWSE:
             raise DatasetException(u"Can't insert record in %s: %s is not in browse state" % (self.item_name, self.item_name))
-        if self.do_before_append() != False:
-            if self.do_before_scroll() != False:
-                self._old_row = self.rec_no
-                self.item_state = common.STATE_INSERT
-                self._records.insert(0, self.new_record())
-                self._cur_row = 0
-                self._modified = False
-                self.record_status = common.RECORD_INSERTED
-                self.update_controls(common.UPDATE_INSERT)
-                self.do_after_scroll()
-                self.do_after_append()
-
-    def copy_rec(self):
-        if not self.active:
-            raise DatasetException(u"Can't copy record in %s: %s is not active" % (self.item_name, self.item_name))
-        if self.item_state != common.STATE_BROWSE:
-            raise DatasetException(u"Can't copy record in %s: %s is not in browse state" % (self.item_name, self.item_name))
-        if self.record_count() == 0:
-            raise DatasetException(u"Can't copy record in %s: %s' record list is empty" % (self.item_name, self.item_name))
-        if self.record_count() > 0:
-            if self.do_before_append() != False:
-                if self.do_before_scroll() != False:
-                    self._old_row = self.rec_no
-                    self.item_state = common.STATE_INSERT
-                    self._buffer = list(self._records[self.rec_no])
-                    self._records.append(self.new_record())
-                    self._cur_row = len(self._records) - 1
-                    for i, it in enumerate(self._records[self.rec_no]):
-                        if i < self._record_info_index:
-                            self._records[self.rec_no][i] = self._buffer[i]
-                    self._records[self.rec_no][self.field_by_name('id').bind_index] = None
-                    self._buffer = None
-                    self._modified = False
-                    self.record_status = common.RECORD_INSERTED
-                    self.update_controls(common.UPDATE_APPEND)
-                    self.do_after_scroll()
-                    self.do_after_append()
+        self.do_before_append()
+        self.do_before_scroll()
+        self._old_row = self.rec_no
+        self.item_state = common.STATE_INSERT
+        self._records.insert(0, self.new_record())
+        self._cur_row = 0
+        self._modified = False
+        self.record_status = common.RECORD_INSERTED
+        self.update_controls(common.UPDATE_INSERT)
+        self.do_after_scroll()
+        self.do_after_append()
 
     def rec_inserted(self):
         return self.record_status == common.RECORD_INSERTED
@@ -1632,7 +1610,7 @@ class AbstractDataSet(object):
 
     def do_before_edit(self):
         if self.on_before_edit:
-            return self.on_before_edit(self)
+            self.on_before_edit(self)
 
     def do_after_edit(self):
         if self.on_after_edit:
@@ -1645,18 +1623,18 @@ class AbstractDataSet(object):
             raise DatasetException(u"Can't edit record in %s: %s is not in browse state" % (self.item_name, self.item_name))
         if self.record_count() == 0:
             raise DatasetException(u"Can't edit record in %s: %s' record list is empty" % (self.item_name, self.item_name))
-        if self.do_before_edit() != False:
-            self.change_log.log_change()
-            self._buffer = self.change_log.store_record_log()
-            self.item_state = common.STATE_EDIT
-            self._old_row = self.rec_no
-            self._old_status = self.record_status
-            self._modified = False
-            self.do_after_edit()
+        self.do_before_edit()
+        self.change_log.log_change()
+        self._buffer = self.change_log.store_record_log()
+        self.item_state = common.STATE_EDIT
+        self._old_row = self.rec_no
+        self._old_status = self.record_status
+        self._modified = False
+        self.do_after_edit()
 
     def do_before_delete(self):
         if self.on_before_delete:
-            return self.on_before_delete(self)
+            self.on_before_delete(self)
 
     def do_after_delete(self):
         if self.on_after_delete:
@@ -1665,63 +1643,60 @@ class AbstractDataSet(object):
     def delete(self):
         if not self.active:
             raise DatasetException(u"Can't delete record in %s: %s is not active" % (self.item_name, self.item_name))
-        #~ if self.item_state != common.STATE_BROWSE:
-            #~ raise DatasetException(u"Can't delete record in %s: %s is not in browse state" % (self.item_name, self.item_name))
         if self.record_count() == 0:
             raise DatasetException(u"Can't delete record in %s: %s' record list is empty" % (self.item_name, self.item_name))
         self.item_state = common.STATE_DELETE
         try:
-            if self.record_count() > 0:
-                if self.do_before_delete() != False:
-                    if self.do_before_scroll() != False:
-                        self.update_controls(common.UPDATE_DELETE)
-                        self.change_log.log_change()
-                        if self.master:
-                            self.master.modified = True
-                        self._records.remove(self._records[self.rec_no])
-                        self.rec_no = self.rec_no
-                        self.do_after_scroll()
-                        self.item_state = common.STATE_BROWSE
-                        self.do_after_delete()
+            self.do_before_delete()
+            self.do_before_scroll()
+            self.update_controls(common.UPDATE_DELETE)
+            self.change_log.log_change()
+            if self.master:
+                self.master.modified = True
+            self._records.remove(self._records[self.rec_no])
+            self.rec_no = self.rec_no
+            self.do_after_scroll()
+            self.item_state = common.STATE_BROWSE
+            self.do_after_delete()
         finally:
             self.item_state = common.STATE_BROWSE
 
     def do_before_cancel(self):
         if self.on_before_cancel:
-            return self.on_before_cancel(self)
+            self.on_before_cancel(self)
 
     def do_after_cancel(self):
         if self.on_after_cancel:
             self.on_after_cancel(self)
 
     def cancel(self):
-        if self.do_before_cancel() != False:
-            if self.item_state == common.STATE_EDIT:
-                self.change_log.restore_record_log(self._buffer)
-                self.update_controls(common.UPDATE_CANCEL)
-                for detail in self.details:
-                    detail.update_controls(common.UPDATE_OPEN)
-            elif self.item_state == common.STATE_INSERT:
-                self.change_log.remove_record_log()
-                self.update_controls(common.UPDATE_DELETE)
-                del self._records[self.rec_no]
-            else:
-                raise Exception, '%s cancel error: invalid item state' % self.item_name
-            prev_state = self.item_state
-            self.item_state = common.STATE_BROWSE
-            if prev_state in [common.STATE_INSERT]:
-                self.do_before_scroll()
-            self._cur_row = self._old_row
-            if prev_state in [common.STATE_EDIT]:
-                self.record_status = self._old_status
-            self.modified = False
-            if prev_state in [common.STATE_INSERT]:
-                self.do_after_scroll()
-            self.do_after_cancel()
+        self.do_before_cancel()
+        if self.item_state == common.STATE_EDIT:
+            self.change_log.restore_record_log(self._buffer)
+            self.update_controls(common.UPDATE_CANCEL)
+            for detail in self.details:
+                detail.update_controls(common.UPDATE_OPEN)
+        elif self.item_state == common.STATE_INSERT:
+            self.change_log.remove_record_log()
+            self.update_controls(common.UPDATE_DELETE)
+            del self._records[self.rec_no]
+        else:
+            raise Exception, '%s cancel error: invalid item state' % self.item_name
+        prev_state = self.item_state
+        self.item_state = common.STATE_BROWSE
+        if prev_state in [common.STATE_INSERT]:
+            self.do_before_scroll()
+        self._cur_row = self._old_row
+        if prev_state in [common.STATE_EDIT]:
+            self.record_status = self._old_status
+        self.modified = False
+        if prev_state in [common.STATE_INSERT]:
+            self.do_after_scroll()
+        self.do_after_cancel()
 
     def do_before_post(self):
         if self.on_before_post:
-            return self.on_before_post(self)
+            self.on_before_post(self)
 
     def do_after_post(self):
         if self.on_after_post:
@@ -1731,21 +1706,20 @@ class AbstractDataSet(object):
         if not self.is_changing():
             raise DatasetException, u'%s: dataset is not in edit or insert mode' % self.item_name
         self.check_record_valid()
-        if self.do_before_post() != False:
-            for detail in self.details:
-                if detail.is_changing():
-                    detail.post()
-            if self.item_state == common.STATE_INSERT or \
-                (self.item_state == common.STATE_EDIT and self.get_modified()):
-                self.change_log.log_change()
-            self.modified = False
-            if self.master:
-                self.master.modified = True
-            self.item_state = common.STATE_BROWSE
-            if not self.valid_record():
-                self.update_controls(common.UPDATE_DELETE)
-                self.search_record(self.rec_no, 0)
-            self.do_after_post()
+        self.do_before_post()
+        for detail in self.details:
+            if detail.is_changing():
+                detail.post()
+        if self.modified or self.is_new():
+            self.change_log.log_change()
+        elif self.record_status == common.RECORD_UNCHANGED:
+            self.change_log.remove_record_log()
+        self._modified = False
+        self.item_state = common.STATE_BROWSE
+        self.do_after_post()
+        if not self.valid_record():
+            self.update_controls(common.UPDATE_DELETE)
+            self.search_record(self.rec_no, 0)
 
     def check_record_valid(self):
         for field in self.fields:
@@ -1835,9 +1809,6 @@ class AbstractDataSet(object):
     def round(self, value, dec):
         return round(value, dec)
 
-    def abort(self):
-        raise AbortException
-
 class MasterDataSet(AbstractDataSet):
     def __init__(self):
         AbstractDataSet.__init__(self)
@@ -1865,6 +1836,8 @@ class MasterDataSet(AbstractDataSet):
 
     def apply(self, params=None):
         result = None
+        if self.is_changing():
+            self.post()
         if self.on_before_apply:
             result = self.on_before_apply(self)
         if result != False:
@@ -1885,10 +1858,10 @@ class MasterDataSet(AbstractDataSet):
             self.change_log.get_changes(changes)
         result = self.copy(filters=False, details=True, handlers=False)
         result.expanded = False
-        result.is_delta = True
+        result._is_delta = True
         for detail in result.details:
             detail.expanded = False
-            detail.is_delta = True
+            detail._is_delta = True
         result.details_active = True
         result.change_log.set_changes(changes)
         result._records = result.change_log.records
@@ -1911,11 +1884,11 @@ class MasterDataSet(AbstractDataSet):
                 detail.open()
 
     def do_after_scroll(self):
-        super(MasterDataSet, self).do_after_scroll()
         if self.details_active:
             self.open_details()
         else:
             self.close_details()
+        super(MasterDataSet, self).do_after_scroll()
 
     def set_read_only(self, value):
         super(MasterDataSet, self).set_read_only(value)
@@ -1954,15 +1927,17 @@ class MasterDetailDataset(MasterDataSet):
                         fields = log['fields']
                         expanded = log['expanded']
                 if not records is None:
-                    if self.do_before_open(expanded, fields, where, order_by,
-                        open_empty, params, offset, limit, funcs, group_by) != False:
-                        self.bind_fields(expanded)
-                        self._records = records
-                        self._active = True
-                        self.item_state = common.STATE_BROWSE
-                        self.first()
-                        self.do_after_open()
-                        self.update_controls(common.UPDATE_OPEN)
+                    self.do_before_open(expanded, fields, where, order_by,
+                        open_empty, params, offset, limit, funcs, group_by)
+                    self.bind_fields(expanded)
+                    if self.master.is_new():
+                        self.change_log.prepare()
+                    self._records = records
+                    self._active = True
+                    self.item_state = common.STATE_BROWSE
+                    self.first()
+                    self.do_after_open()
+                    self.update_controls(common.UPDATE_OPEN)
                 else:
                     params['__owner_id'] = self.master.ID
                     params['__owner_rec_id'] = self.master.id.value
@@ -1976,14 +1951,11 @@ class MasterDetailDataset(MasterDataSet):
                 fields, where, order_by, open_empty, params, offset, limit,
                 funcs, group_by)
 
-    def open_for_ids(self, ids, expanded=None, fields=None, where=None, order_by=None, open_empty=False, params=None, offset=None, limit=None):
+    def open__in(self, ids, expanded=None, fields=None, where=None, order_by=None, open_empty=False, params=None, offset=None, limit=None):
 
         def slice_ids(ids):
             MAX_IN_LIST = 999
             result = []
-            if type(ids) == dict:
-                ids = ids.keys()
-            ids = [int(i) for i in ids]
             while True:
                 result.append(ids[0:MAX_IN_LIST])
                 ids = ids[MAX_IN_LIST:]
@@ -2037,11 +2009,6 @@ class MasterDetailDataset(MasterDataSet):
         if self.master and not self.master.is_changing():
             raise DatasetException, u"%s: can't edit record - master item is not in edit or insert mode" % self.owner.item_name
         super(MasterDetailDataset, self).edit()
-
-    def copy_rec(self):
-        if self.master and not self.master.is_changing():
-            raise DatasetException, u"%s: can't copy record - master item is not in edit or insert mode" % self.owner.item_name
-        super(MasterDetailDataset, self).copy_rec()
 
     def delete(self):
         if self.master and not self.master.is_changing():

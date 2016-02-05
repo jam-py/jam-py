@@ -2,9 +2,17 @@
 items
 =====
 
-Lists all items owned by the item.
+.. js:attribute:: items
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`AbstractItem </refs/client/abstractitem_api>`
 
 Description
 ===========
+
+Lists all items owned by the item.
 
 Use items to access any of the item owned by this object. 

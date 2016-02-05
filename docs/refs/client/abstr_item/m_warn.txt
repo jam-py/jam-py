@@ -1,0 +1,31 @@
+=======
+warning
+=======
+
+.. js:function:: warning(mess, callback)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`AbstractItem </refs/client/abstractitem_api>`
+
+Description
+===========
+
+Use **warning** to create a modal form with the **Ok** button. 
+
+The **mess** parameter specifies the text or html content that will appear in the 
+body of the form.
+
+If **callback** function are specified it will be executed when user 
+clicks the button and then the form will be closed.
+
+Example
+=======
+
+.. code-block:: js
+
+    item.warning('No record selected.'); 
+
+

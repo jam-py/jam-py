@@ -82,7 +82,7 @@ def create_items(task):
     task.sys_catalogs = Group(task, 'catalogs', task.lang['catalogs'])
     task.sys_tables = Group(task, 'tables', task.lang['tables'], visible=False)
 
-    task.sys_params = task.sys_catalogs.add_ref('sys_params', u'', 'SYS_PARAMS')
+    task.sys_params = task.sys_catalogs.add_catalog('sys_params', u'', 'SYS_PARAMS')
 
     task.sys_params.add_field(1, 'id', u'ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_params.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
@@ -110,8 +110,10 @@ def create_items(task):
     task.sys_params.add_field(24, 'f_version', u'Version', common.TEXT, size = 15)
     task.sys_params.add_field(25, 'f_mp_pool', u'Multiprocessing connection pool', common.BOOLEAN)
     task.sys_params.add_field(26, 'f_persist_con', u'Persistent connection', common.BOOLEAN)
+    task.sys_params.add_field(27, 'f_single_file_js', u'All JS modules in a single file', common.BOOLEAN)
+    task.sys_params.add_field(28, 'f_dynamic_js', u'Dynamic JS modules loading', common.BOOLEAN)
 
-    task.sys_items = task.sys_catalogs.add_ref('sys_items', u'Items', 'SYS_ITEMS')
+    task.sys_items = task.sys_catalogs.add_catalog('sys_items', u'Items', 'SYS_ITEMS')
 
     task.sys_items.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_items.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
@@ -125,15 +127,15 @@ def create_items(task):
     task.sys_items.add_field(10, 'f_item_name', task.lang['name'], common.TEXT, required=True, expand=True, size=256)
     task.sys_items.add_field(11, 'f_table_name', task.lang['table_name'], common.TEXT, size=256)
     task.sys_items.add_field(12, 'f_view_template', task.lang['view_template'], common.TEXT, size=256)
-    task.sys_items.add_field(13, 'f_edit_template', u'edit_template', common.TEXT, size=256)
-    task.sys_items.add_field(14, 'f_filter_template', u'filter_template', common.TEXT, size=256)
-    task.sys_items.add_field(15, 'f_visible', task.lang['visible'], common.BOOLEAN)
-    task.sys_items.add_field(16, 'f_soft_delete', u'Soft delete', common.BOOLEAN)
-    task.sys_items.add_field(17, 'f_client_module', task.lang['client_module'], common.BLOB, visible=False, edit_visible=False)
-    task.sys_items.add_field(18, 'f_web_client_module', task.lang['web_client_module'], common.BLOB, visible=False, edit_visible=False)
-    task.sys_items.add_field(19, 'f_server_module', task.lang['server_module'], common.BLOB, visible=False, edit_visible=False)
-    task.sys_items.add_field(20, 'f_info', u'Info', common.BLOB, visible=False, edit_visible=False)
-    task.sys_items.add_field(21, 'f_virtual_table', u'Virtual table', common.BOOLEAN)
+    task.sys_items.add_field(13, 'f_visible', task.lang['visible'], common.BOOLEAN)
+    task.sys_items.add_field(14, 'f_soft_delete', u'Soft delete', common.BOOLEAN)
+    task.sys_items.add_field(15, 'f_client_module', task.lang['client_module'], common.BLOB, visible=False, edit_visible=False)
+    task.sys_items.add_field(16, 'f_web_client_module', task.lang['web_client_module'], common.BLOB, visible=False, edit_visible=False)
+    task.sys_items.add_field(17, 'f_server_module', task.lang['server_module'], common.BLOB, visible=False, edit_visible=False)
+    task.sys_items.add_field(18, 'f_info', u'Info', common.BLOB, visible=False, edit_visible=False)
+    task.sys_items.add_field(19, 'f_virtual_table', u'Virtual table', common.BOOLEAN)
+    task.sys_items.add_field(20, 'f_js_external', u'External js module', common.BOOLEAN)
+    task.sys_items.add_field(21, 'f_js_filename', u'js_file_name', common.TEXT, size=1024)
 
     task.sys_items.add_filter('id', u'ID', 'id', common.FILTER_EQ, visible=False)
     task.sys_items.add_filter('not_id', u'ID', 'id', common.FILTER_NE, visible=False)
@@ -143,7 +145,7 @@ def create_items(task):
     task.sys_items.add_filter('table_id', u'Type', 'table_id', common.FILTER_EQ, visible=False)
     task.sys_items.add_filter('type_id_gt', u'Type', 'type_id', common.FILTER_GT, visible=False)
 
-    task.sys_tasks = task.sys_catalogs.add_ref('sys_tasks', u'', 'SYS_TASKS')
+    task.sys_tasks = task.sys_catalogs.add_catalog('sys_tasks', u'', 'SYS_TASKS')
     task.sys_tasks.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_tasks.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_tasks.add_field(3, 'task_id', u'Task ID', common.INTEGER, visible=False, edit_visible=False)
@@ -247,8 +249,8 @@ def create_items(task):
     task.sys_filters.add_filter('owner_rec_id', u'Owner rec ID ', 'owner_rec_id', common.FILTER_EQ, visible=False)
     task.sys_filters.add_filter('task_id', u'Task ID', 'task_id', common.FILTER_EQ, visible=False)
 
-    task.sys_users = task.sys_catalogs.add_ref('sys_users', task.lang['users'], 'SYS_USERS')
-    task.sys_roles = task.sys_catalogs.add_ref('sys_roles', task.lang['roles'], 'SYS_ROLES')
+    task.sys_users = task.sys_catalogs.add_catalog('sys_users', task.lang['users'], 'SYS_USERS')
+    task.sys_roles = task.sys_catalogs.add_catalog('sys_roles', task.lang['roles'], 'SYS_ROLES')
 
     task.sys_users.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_users.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
@@ -283,14 +285,14 @@ def create_items(task):
 
     task.role_privileges = task.sys_roles.add_detail(task.sys_privileges)
 
-    task.sys_code_editor = task.sys_catalogs.add_ref('sys_code_editor', u'Editor', '')
+    task.sys_code_editor = task.sys_catalogs.add_catalog('sys_code_editor', u'Editor', '')
 
     task.sys_code_editor.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_code_editor.add_field(2, 'parent', u'parent', common.INTEGER)
     task.sys_code_editor.add_field(3, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_code_editor.add_field(4, 'name', task.lang['caption'], common.TEXT, expand=True, size = 256)
 
-    task.sys_fields_editor = task.sys_catalogs.add_ref('sys_fields_editor', u'Editor', '')
+    task.sys_fields_editor = task.sys_catalogs.add_catalog('sys_fields_editor', u'Editor', '')
 
     task.sys_fields_editor.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_fields_editor.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
@@ -299,7 +301,7 @@ def create_items(task):
     task.sys_fields_editor.add_field(5, 'param2', u'param2', common.BOOLEAN)
     task.sys_fields_editor.add_field(6, 'param3', u'param3', common.BOOLEAN)
 
-    task.sys_search = task.sys_catalogs.add_ref('sys_search', u'Find in task', '')
+    task.sys_search = task.sys_catalogs.add_catalog('sys_search', u'Find in task', '')
 
     task.sys_search.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_search.add_field(2, 'parent', u'parent', common.INTEGER)
@@ -523,7 +525,7 @@ def create_task(server):
     it_task.open()
     if it_task.f_db_type.value:
         result = Task(it.f_item_name.value, it.f_name.value, it.f_view_template.value,
-            it.f_edit_template.value, it_task.f_db_type.value, it_task.f_alias.value,
+            it.f_js_filename.value, it_task.f_db_type.value, it_task.f_alias.value,
             it_task.f_login.value, it_task.f_password.value, it_task.f_host.value,
             it_task.f_port.value, it_task.f_encoding.value, task.task_con_pool_size,
             task.task_mp_pool, task.task_persist_con
@@ -628,7 +630,7 @@ def load_task(target, server, first_build=True):
                 item = None
                 add_item = None
                 if group_type_id == common.CATALOGS_TYPE:
-                    add_item = group.add_ref
+                    add_item = group.add_catalog
                 elif group_type_id == common.JOURNALS_TYPE:
                     add_item = group.add_journal
                 elif group_type_id == common.TABLES_TYPE:
@@ -641,8 +643,7 @@ def load_task(target, server, first_build=True):
                         rec.f_table_name.value,
                         rec.f_visible.value,
                         rec.f_view_template.value,
-                        rec.f_edit_template.value,
-                        rec.f_filter_template.value,
+                        rec.f_js_filename.value,
                         rec.f_soft_delete.value)
                     if item:
                         item.ID = rec.id.value
@@ -665,12 +666,12 @@ def load_task(target, server, first_build=True):
             if rec.id.value == parent:
                 target.table_name = rec.f_table_name.value
                 target.template = rec.f_view_template.value
-                target.edit_template = rec.f_edit_template.value
+                target.js_filename = rec.f_js_filename.value
                 common.load_interface(sys_items)
                 target.server_code = rec.f_server_module.value
             if rec.parent.value == parent:
                 group = Group(target, rec.f_item_name.value, rec.f_name.value, rec.f_view_template.value,
-                    rec.f_edit_template.value, rec.f_filter_template.value, rec.f_visible.value, rec.type_id.value)
+                    rec.f_js_filename.value, rec.f_visible.value, rec.type_id.value)
                 group.ID = rec.id.value
                 group.server_code = rec.f_server_module.value
                 groups.append((group, rec.id.value, rec.type_id.value))
@@ -687,8 +688,7 @@ def load_task(target, server, first_build=True):
                     detail.ID = it.id.value
                     detail.visible = it.f_visible.value
                     detail.view_template = it.f_view_template.value
-                    detail.edit_template = it.f_edit_template.value
-                    detail.filter_template = it.f_filter_template.value
+                    detail.js_filename = it.f_js_filename.value
                     detail.server_code = it.f_server_module.value
                     detail.item_type = common.ITEM_TYPES[detail.item_type_id - 1]
                     common.load_interface(sys_items)
@@ -762,6 +762,7 @@ def load_task(target, server, first_build=True):
     target.language = task.language
 
     target.server = server
+    target.server.task = target
     target.admin = server.admin
     target.admin.task = target
 
@@ -1178,55 +1179,60 @@ def server_import_task(task, task_id, file_name, from_client=False):
     db_type = get_db_type(task_id)
     if db_type == db_modules.SQLITE:
         return 'Import operation is not allowed for SQLITE database'
-    request_count = 0
-    if from_client:
-        request_count = 1
-    file_name = os.path.join(os.getcwd(), os.path.normpath(file_name))
-    print 'Import: reading changes'
-    dir = copy_tmp_files(file_name)
+    task.server.under_maintenance = True
     try:
-        task.server.under_maintenance = True
-        try:
-            print 'Import: analyzing changes'
-            new_dict, old_dict = get_items(dir)
-            error, db_sql, adm_sql = analize(dir)
-            if not error:
-                print 'Import: waiting for connections to close'
-                while True:
-                    if task.server._busy > request_count:
-                        time.sleep(0.1)
-                    else:
+        request_count = 0
+        if from_client:
+            request_count = 1
+        file_name = os.path.join(os.getcwd(), os.path.normpath(file_name))
+        print 'Import: reading changes'
+        dir = copy_tmp_files(file_name)
+        print 'Import: analyzing changes'
+        new_dict, old_dict = get_items(dir)
+        error, db_sql, adm_sql = analize(dir)
+        if not error:
+            print 'Import: waiting for connections to close'
+            while True:
+                i = 0
+                if task.server._busy > request_count:
+                    time.sleep(0.1)
+                    i += 1
+                    if i > 1800:
                         break
-                if len(db_sql):
-                    print 'Import: applying changes to database'
-                    error = execute(task_id, db_sql)
-                if not error:
-                    print 'Import: applying changes to admin.sqlite'
-                    result, error = task.execute(adm_sql)
-                    print 'Import: copying files'
-                    copy_files(dir)
-                if not error:
-                    print 'Import: deleteing tmp files'
-                    try:
-                        delete_tmp_files(dir)
-                    except:
-                        pass
+                else:
+                    break
+            if len(db_sql):
+                print 'Import: applying changes to database'
+                error = execute(task_id, db_sql)
+            if not error:
+                print 'Import: applying changes to admin.sqlite'
+                result, error = task.execute(adm_sql)
+                print 'Import: copying files'
+                copy_files(dir)
+            if not error:
+                read_setting()
+                if task.server.task:
+                    reload_utils()
                     read_setting()
-                    if task.server.task:
-                        reload_utils()
-                        read_setting()
-                        load_task(task.server.task, task.server, first_build=False)
-                        task.server.task.mod_count += 1
-                        update_events_code()
-        except Exception, e:
-            error = str(e)
-            print u'Import error:', error
-            if os.name != 'nt':
-                print u'Import error traceback:', traceback.format_exc()
-        finally:
-            task.server.under_maintenance = False
+                    load_task(task.server.task, task.server, first_build=False)
+                    task.server.task.mod_count += 1
+                    update_events_code()
+    except Exception, e:
+        error = str(e)
+        if os.name != 'nt':
+            print u'Import error traceback:', traceback.format_exc()
+        print u'Import error:', error
     finally:
-        pass
+        print 'Import: deleteing tmp files'
+        try:
+            delete_tmp_files(dir)
+        except:
+            pass
+        try:
+            os.remove(file_name)
+        except:
+            pass
+        task.server.under_maintenance = False
     return error
 
 task.register(server_import_task)
@@ -1384,9 +1390,10 @@ def update_events_code():
                 result.append(key.name)
         return result
 
-    def process_events(code, ID, script):
+    def process_events(code, ID, path):
+        script = ''
         if code:
-            script += '\nfunction Events%s() { // %s \n\n' % (ID, names_dict[ID])
+            script += '\nfunction Events%s() { // %s \n\n' % (ID, path)
             code = '\t' + code.replace('\n', '\n\t')
             code = code.replace('    ', '\t')
             script += code
@@ -1398,29 +1405,86 @@ def update_events_code():
             else:
                 script += '\n'
             script += '}\n\n'
-            script += 'window.task_events.events%s = new Events%s();\n' % (ID, ID)
+            script += 'task.events.events%s = new Events%s();\n' % (ID, ID)
         return script
 
-    it = task.sys_items.copy(handlers=False)
+    def get_js_path(it):
+
+        def get_parent_name(id_value, l):
+            tp = name_dict.get(id_value)
+            if tp:
+                parent, type_id, name, external = tp
+                l.insert(0, name)
+                get_parent_name(parent, l)
+        l = []
+        l.append(it.f_item_name.value)
+        get_parent_name(it.parent.value, l)
+        return '.'.join(l)
+
+    def get_external(it):
+        external = it.f_js_external.value
+        if it.type_id.value == common.DETAIL_TYPE:
+            parent, type_id, name, parent_external = name_dict.get(it.parent.value)
+            external = parent_external
+        return external
+
+
+    single_file = common.SETTINGS['SINGLE_FILE_JS']
+    name_dict = {}
+    js_filenames = {}
+
+    it = task.sys_items.copy(handlers=False, details=False)
     it.set_where(type_id=common.TASK_TYPE)
+    it.set_order_by('type_id')
     it.open()
     task_id = it.task_id.value
-    names_dict = get_module_names_dict(task_id)
     it.set_where(task_id=task_id)
-    it.open(fields=['id', 'f_name', 'f_web_client_module'])
-    script = '(function(window, undefined) {\n"use strict";\nvar $ = window.$;\n\nfunction TaskEvents() {}\n\nwindow.task_events = new TaskEvents();\n'
+    it.open(fields=['id', 'parent', 'type_id', 'f_name', 'f_item_name', 'f_js_filename', 'f_js_external', 'f_web_client_module'])
+    script_start = '(function($, task) {\n"use strict";\n'
+    script_end = '\n})(jQuery, task)'
+    script_common = ''
     for it in it:
+        js_path = get_js_path(it)
+        js_filename = js_path + '.js'
+        file_name = os.path.join(os.getcwd().decode('utf-8'), 'js', js_filename)
+        if os.path.exists(file_name):
+            os.remove(file_name)
+        min_file_name = get_minified_name(file_name)
+        if os.path.exists(min_file_name):
+            os.remove(min_file_name)
+        name_dict[it.id.value] = [it.parent.value, it.type_id.value, it.f_item_name.value, it.f_js_external.value]
         code = it.f_web_client_module.value
+        cur_js_filename = ''
         if code:
             code = code.strip()
             if code:
-                script = process_events(code, it.id.value, script)
-    script += '\n})( window )'
-    file_name = os.path.join(os.getcwd().decode('utf-8'), 'js', 'events.js')
-    with open(file_name, 'w') as f:
-        f.write(script)
-    if not common.SETTINGS['DEBUGGING']:
-        minify(file_name)
+                script = process_events(code, it.id.value, js_path)
+                external = get_external(it)
+                if single_file and not external:
+                    script_common += script
+                else:
+                    script = script_start + script + script_end
+                    cur_js_filename = js_filename
+                    with open(file_name, 'w') as f:
+                        f.write(script)
+                    if not common.SETTINGS['DEBUGGING']:
+                        minify(file_name)
+            js_filenames[it.id.value] = cur_js_filename
+    if single_file:
+        it.first()
+        js_file_name = it.f_item_name.value + '.js'
+        js_filenames[it.id.value] = js_file_name
+        script = script_start + script_common + script_end
+        file_name = os.path.join(os.getcwd().decode('utf-8'), 'js', js_file_name)
+        with open(file_name, 'w') as f:
+            f.write(script)
+        if not common.SETTINGS['DEBUGGING']:
+            minify(file_name)
+    sql = []
+    for key,value in js_filenames.iteritems():
+        sql.append("UPDATE %s SET F_JS_FILENAME = '%s' WHERE ID = %s" % (it.table_name, value, key))
+    it.task.execute(sql)
+
 
 def get_minified_name(file_name):
     result = file_name
@@ -1605,7 +1669,7 @@ def get_templates(text):
                 edits.append(class_str)
             elif class_str.find('-filter') > 0:
                 filters.append(class_str)
-            elif class_str.find('-params') > 0:
+            elif class_str.find('-param') > 0:
                 params.append(class_str)
             start = index + 6 + len(class_str)
     all = views + edits + filters + params
@@ -1662,14 +1726,19 @@ task.register(server_get_db_options)
 def do_on_apply_sys_changes(item, delta, params, priv, user_info, env):
     debugging = common.SETTINGS['DEBUGGING']
     safe_mode = common.SETTINGS['SAFE_MODE']
+    single_file_js = common.SETTINGS['SINGLE_FILE_JS']
 
-    task.task_client_modified = True
+#    task.task_client_modified = True
     sql = delta.apply_sql()
     result = item.task.execute(sql)
 
     read_setting()
     if debugging != common.SETTINGS['DEBUGGING']:
         task.server.task_client_modified = True
+    if single_file_js != common.SETTINGS['SINGLE_FILE_JS']:
+        task.server.task_client_modified = True
+        task.server.task_server_modified = True
+
     if safe_mode != common.SETTINGS['SAFE_MODE']:
         task.safe_mode = common.SETTINGS['SAFE_MODE']
         task.server.users = {}
@@ -1974,8 +2043,7 @@ def server_update_details(item, item_id, dest_list):
         items = item.copy()
         items.set_where(id=table_id)
         items.open()
-        return items.f_name.value, items.f_item_name.value, items.f_table_name.value, \
-            items.f_view_template.value, items.f_edit_template.value, items.f_filter_template.value
+        return items.f_name.value, items.f_item_name.value, items.f_table_name.value
 
     items = item.copy(handlers=False)
     items.set_where(parent=item_id)
@@ -1993,7 +2061,7 @@ def server_update_details(item, item_id, dest_list):
     item.open()
     for row in dest_list:
         table_id = row[0]
-        name, obj_name, table_name, view_template, edit_template, filter_template = get_table_info(table_id)
+        name, obj_name, table_name = get_table_info(table_id)
         items.append()
         items.task_id.value = item.task_id.value
         items.type_id.value = common.DETAIL_TYPE
@@ -2002,9 +2070,6 @@ def server_update_details(item, item_id, dest_list):
         items.f_name.value = name
         items.f_item_name.value = obj_name
         items.f_table_name.value = table_name
-        items.f_view_template.value = view_template
-        items.f_edit_template.value = edit_template
-        items.f_filter_template.value = filter_template
         items.f_visible.value = True
         items.f_info.value = ''
         items.post()

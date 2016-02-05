@@ -1,0 +1,37 @@
+======
+insert
+======
+
+Inserts a new, empty record in the item dataset.
+
+.. js:function:: insert()
+
+**domain**: client 
+
+**language**: javascript
+
+Description
+===========
+
+Checks if item dataset is active, otherwise raises exception.
+
+if item is a detail checks if the master item is in edit or insert 
+:doc:`state <at_item_state>`, otherwise raises exception.
+
+Checks if item is in browse :doc:`state <at_item_state>`, otherwise raises exception.
+
+Triggers the :doc:`on_before_append <on_before_append>` event handler if one is 
+defined for the item. 
+
+Inserts a new, empty record in the item dataset.
+
+Puts the item into :doc:`state <at_item_state>` state.
+
+Triggers the :doc:`on_after_append <on_after_append>` event handler if one is 
+defined for the item.
+
+After a call to insert, an application can enable users to enter data in the 
+fields of the record, and can then post those changes to the item dataset using 
+:doc:`post <m_post>` method, and then apply them to database using 
+:doc:`apply <m_apply>` method. 
+

@@ -1,0 +1,97 @@
+=====
+Forms
+=====
+
+One of the key concepts of the framework is the concept of form. The forms are 
+based on html templates. 
+
+For each element, working with data (:doc:`Item class </refs/client/item_api>`), 
+you can specify form templates for viewing and editing data, as well as form 
+template for specifying filters. For reports, a form templates for editing 
+the report parameters.
+
+Form templates of the project are located in the div with the **template** class
+inside the **body** tag in the index.html file of the project directory. 
+
+.. image:: /admin/_images/index.png
+	:align: center
+	:alt: index.html
+
+When 
+:doc:`load </refs/client/task/m_load>` 
+method is executed, it cuts out the **template** div from the **body** and stores 
+it the
+:doc:`templates </refs/client/task/at_templates>`
+attribute as a JQuery object.
+
+To add a form template for an item you should add a div with the **name-suffix** 
+class in the templates div, where name is the name of the item and suffix is the 
+form type: view, edit, filter, param. 
+
+For example:
+
+.. code-block:: html
+
+	<div class="invoices-edit">
+		...
+	</div>
+	
+is an edit form template of the Invoices journal. 
+
+For a detail item before its name should be the name of its owner (master) 
+separated by a hyphen: 
+
+.. code-block:: html
+
+	<div class="invoices-invoice_table-edit">
+		...
+	</div>
+	
+If an item doesn't have a form template then its owner form template will be used. 
+
+So the template
+
+.. code-block:: html
+
+	<div class="journals-edit">
+		...
+	</div>
+
+will be used to create edit form of the journals, that do not have its own 
+edit form template. When a new project is created the index.html contains only 
+such templates.
+
+Bellow is the view form template of the Invoices journal:
+
+.. code-block:: html
+
+    <div class="invoices-view">
+        <div class="modal-body">
+            <div class="view-title">
+                <div class="row-fluid">
+                    <div id="title-left" class="span4"></div>
+                    <div id="title-right" class="span8"></div>
+                </div>
+            </div>
+            <div class="view-table">
+            </div>
+            <div class="view-detail">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="delete-btn" class="btn pull-left" type="button"> Delete</button>
+            <button id="new-btn" class="btn pull-right" type="button"> New</button>
+            <button id="edit-btn" class="btn pull-right" type="button"> Edit</button>
+            <button id="filter-btn" class="btn pull-right" type="button"> Filter</button>
+            <div id="report-btn" class="btn-group dropup pull-right">
+                <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
+                    <i class="icon-print"></i> Reports
+                    <span class="caret"></span>
+                </a>
+                <ul class="dropdown-menu bottom-up">
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    

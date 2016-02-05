@@ -34,7 +34,9 @@ DEFAULT_SETTINGS = {
     'D_T_FMT': '%X',
     'CON_POOL_SIZE': 4,
     'MP_POOL': False,
-    'PERSIST_CON': False
+    'PERSIST_CON': False,
+    'SINGLE_FILE_JS': False,
+    'DYNAMIC_JS': False
 }
 
 LOCALE_SETTINGS = (

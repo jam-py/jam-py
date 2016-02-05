@@ -1,15 +1,26 @@
-=========
-Group API
-=========
+===========
+Group class
+===========
 
 .. js:class:: Group
 
-Group class inherits attributes and methods of 
+**domain**: client 
+
+**language**: javascript
+
+Group class is used to create group objects of the 
+:doc:`task tree </programming/task_tree>`
+
+Below the events of the class are listed.
+
+It, as well, inherits attributes and methods of its ancestor class
 :doc:`AbstractItem class <abstractitem_api>`
+
+Events
+======
 
 .. toctree::
     :maxdepth: 1
-
-    item_group_attributes
-    item_group_methods
-    item_group_events
+    :glob:
+    
+    group/on_*

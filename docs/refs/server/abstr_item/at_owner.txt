@@ -1,0 +1,16 @@
+=====
+owner
+=====
+
+Indicates the item that owns this item. 
+
+.. py:attribute:: owner
+
+**domain**: server
+
+**language**: python
+
+Description
+===========
+
+Use owner to find the owner of an item. 

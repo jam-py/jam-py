@@ -1,0 +1,29 @@
+====================
+on_view_form_created
+====================
+
+on_view_form_created(item)
+
+**domain**: client 
+
+**language**: javascript
+
+Description
+===========
+
+The **on_view_form_created** event is triggered by the 
+:doc:`view <m_view>`
+method of the item.
+
+The **item** parameter is the item that triggered the event.
+
+See also
+========
+
+:doc:`Forms </programming/interface/forms>`
+
+:doc:`Creating view forms </programming/interface/view_forms>`
+
+:doc:`view <m_view>`
+
+:doc:`view_form <at_view_form>`

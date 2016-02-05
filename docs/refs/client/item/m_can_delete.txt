@@ -1,0 +1,39 @@
+==========
+can_delete
+==========
+
+.. js:function:: can_delete()
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item </refs/client/item_api>`
+
+Description
+===========
+
+Use **can_delete** method to determine if a user have a right to delete a record 
+in an item dataset when the project 
+:doc:`safe mode parameter </admin/project>`
+is set. If the project project :doc:`safe mode parameter </admin/project>`
+is not set the method always returns true.
+
+The user privileges are set in the :doc:`roles node </admin/roles>` of the project 
+tree.
+
+Example
+=======
+
+.. code-block:: js
+
+    if (item.can_delete()) {
+        item.view_form.find("#delete-btn").on('click', 
+            function() {
+                item.delete_record();
+            }
+        );
+    }
+    else {
+        item.view_form.find("#delete-btn").prop("disabled", true);
+    }

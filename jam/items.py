@@ -6,17 +6,21 @@ import logging
 import lang.langs as langs
 import common
 
-ITEM_INFO = ITEM_ID, ITEM_NAME, ITEM_CAPTION, ITEM_VISIBLE, ITEM_TYPE, \
-    ITEM_ITEMS, ITEM_FIELDS, ITEM_FILTERS, ITEM_REPORTS = range(9)
+ITEM_INFO = ITEM_ID, ITEM_NAME, ITEM_CAPTION, ITEM_VISIBLE, ITEM_TYPE, ITEM_JS_FILENAME, \
+    ITEM_ITEMS, ITEM_FIELDS, ITEM_FILTERS, ITEM_REPORTS = range(10)
+
+class AbortException(Exception):
+    pass
 
 class AbstractItem(object):
-    def __init__(self, owner, name='', caption='', visible = True, item_type_id=0):
+    def __init__(self, owner, name='', caption='', visible = True, item_type_id=0, js_filename=''):
         self.owner = owner
         self.item_name = name
         self.items = []
         self.ID = None
         self._events = []
         self.master = None
+        self.js_filename = js_filename
         if owner:
             if not owner.find(name):
                 owner.items.append(self)
@@ -46,6 +50,7 @@ class AbstractItem(object):
         info[ITEM_CAPTION] = self.item_caption
         info[ITEM_VISIBLE] = self.visible
         info[ITEM_TYPE] = self.item_type_id
+        info[ITEM_JS_FILENAME] = self.js_filename
 
     def read_info(self, info):
         self.ID = info[ITEM_ID]
@@ -53,6 +58,7 @@ class AbstractItem(object):
         self.item_caption = info[ITEM_CAPTION]
         self.visible = info[ITEM_VISIBLE]
         self.item_type_id = info[ITEM_TYPE]
+        self.js_filename = info[ITEM_JS_FILENAME]
 
     def get_info(self):
         result = [None for i in range(len(ITEM_INFO))]
@@ -107,6 +113,10 @@ class AbstractItem(object):
             if field.ID == master_field:
                 return field
 
+    def abort(self, message=''):
+        message = u'execution aborted: %s %s' % (self.item_name, message)
+        raise AbortException, message
+
     def register(self, func):
         setattr(self, func.__name__, func)
 
@@ -117,8 +127,8 @@ class AbstrGroup(AbstractItem):
 
 
 class AbstrTask(AbstractItem):
-    def __init__(self, owner, name, caption, visible = True, item_type_id=0):
-        AbstractItem.__init__(self, owner, name, caption, visible, item_type_id)
+    def __init__(self, owner, name, caption, visible = True, item_type_id=0, js_filename=''):
+        AbstractItem.__init__(self, owner, name, caption, visible, item_type_id, js_filename)
         self.task = self
         self.__language = None
         self.item_type_id = common.TASK_TYPE
@@ -204,8 +214,8 @@ class AbstrTask(AbstractItem):
         common.SETTINGS['D_T_FMT'] = '%s %s' % (common.D_FMT, '%H:%M')
 
 class AbstrItem(AbstractItem):
-    def __init__(self, owner, name, caption, visible = True, item_type_id=0):
-        AbstractItem.__init__(self, owner, name, caption, visible, item_type_id)
+    def __init__(self, owner, name, caption, visible = True, item_type_id=0, js_filename=''):
+        AbstractItem.__init__(self, owner, name, caption, visible, item_type_id, js_filename)
         if not hasattr(self.task, self.item_name):
             setattr(self.task, self.item_name, self)
 
@@ -237,8 +247,8 @@ class AbstrDetail(AbstrItem):
 
 
 class AbstrReport(AbstractItem):
-    def __init__(self, owner, name, caption, visible = True, item_type_id=0):
-        AbstractItem.__init__(self, owner, name, caption, visible, item_type_id)
+    def __init__(self, owner, name, caption, visible = True, item_type_id=0, js_filename=''):
+        AbstractItem.__init__(self, owner, name, caption, visible, item_type_id, js_filename)
         if not hasattr(self.task, self.item_name):
             setattr(self.task, self.item_name, self)
 

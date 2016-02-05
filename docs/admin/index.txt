@@ -38,3 +38,4 @@ To see the changes made in Administrator go to the Project page and reload it
    project
    roles
    users
+   code_editor

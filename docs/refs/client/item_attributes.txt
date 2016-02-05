@@ -1,9 +1,0 @@
-==============================
-Item attributes and properties
-==============================
-
-.. toctree::
-    :maxdepth: 1
-    :glob:
-    
-    item/db/at_*

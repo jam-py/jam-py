@@ -1,0 +1,49 @@
+===========
+load_module
+===========
+
+.. js:function:: load_module(callback)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`AbstractItem </refs/client/abstractitem_api>`
+
+Description
+===========
+
+Use **load_module** method to dynamically load javascript file of an item 
+module, before executing callback.
+
+The method checks whether the module has been loaded, if not, loads the 
+module from the server, initializes the item and then executes the **callback** 
+function, otherwise just the **callback** function is executed. The item is 
+passed to the callback function as a parameter. 
+
+The request to the sever is executed asyncroniously.
+
+Example
+=======
+
+Bellow, the do_some_work function is executed only when an item module has been 
+loaded: 
+
+.. code-block:: js
+
+    function some_work(item) {
+        item.load_module(do_some_work);
+    }
+    
+    function do_some_work(item) {
+        // some code
+    }
+
+See also
+========
+
+:doc:`Working with modules </programming/modules>`
+
+:doc:`load_modules <m_load_modules>`
+
+:doc:`load_script <m_load_script>`

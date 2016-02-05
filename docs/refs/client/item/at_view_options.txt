@@ -1,0 +1,57 @@
+============
+view_options
+============
+
+.. js:attribute:: view_options
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Use the **view_options** attribute to specify parameters of the modal view form.
+
+**view_options** is an object that has the following attributes:
+
+* **width** - the width of the modal form, the default value is 560 px,
+* **title** - the title of the modal form, the default value is the value of a
+  :doc:`item_caption </refs/client/abstr_item/at_item_caption>`
+  attribute,
+* **fields** - specify the list of field names that
+  :doc:`create_table <m_create_table>`
+  method will use, if it is not specified, the field list, set in Administrator 
+  for viewing will be used (the default value),
+* **close_button** - if true, the close button will be created in the upper-right 
+  corner of the form, the default value is true,
+* **close_caption** - if true and close_button is true, will display 'Close - [Esc]'
+  near the button
+* **close_on_escape** - if true, pressing on the Escape key will trigger the 
+  :doc:`close_view_form <m_close_view_form>`
+  method.
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        item.view_options.width = 800;
+        item.view_options.close_button = false;
+        item.view_options.close_on_escape = false;    
+    }
+
+See also
+========
+
+:doc:`Forms </programming/interface/forms>`
+
+:doc:`Creating view forms </programming/interface/view_forms>`
+
+:doc:`view <m_view>`
+
+:doc:`close_view_form <m_close_view_form>`
+

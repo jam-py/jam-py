@@ -1,0 +1,46 @@
+==========
+Task class
+==========
+
+.. py:class:: Task
+
+**domain**: server
+
+**language**: python
+
+Task class is used to create the root of the 
+:doc:`Task tree </programming/task_tree>`
+of the project.
+
+Below the attributes, methods and events of the class are listed.
+
+It, as well, inherits attributes and methods of its ancestor class
+:doc:`AbstractItem class <abstractitem_api>`
+
+Attrubutes
+==========
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+    
+    task/at_*
+
+Mehods 
+======
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+    
+    task/m_*
+
+Events
+======
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+    
+    task/on_*
+

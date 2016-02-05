@@ -1,0 +1,21 @@
+============
+hide_message
+============
+
+.. js:function:: hide_message(form)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`AbstractItem </refs/client/abstractitem_api>`
+
+Description
+===========
+
+Use **hide_message** method to close a modal form created by 
+:doc:`message <m_message>` method
+
+The **form** parameter is a JQuery object returned by 
+:doc:`message <m_message>` method.
+

@@ -1,0 +1,48 @@
+===================
+Data-aware controls
+===================
+
+To create a table to display an item's dataset use 
+:doc:`create_table </refs/client/item/m_create_table>`
+method:
+
+.. code-block:: js
+
+    item.create_table(item.view_form.find(".view-table"), table_options);
+    
+To create data controls to edit fields of the of the dataset use
+:doc:`create_inputs </refs/client/item/m_create_inputs>`
+method:
+
+.. code-block:: js
+
+    item.create_inputs(item.edit_form.find(".edit-body"), input_options);
+    
+These methods have two parameters - **container** and **options**. The first 
+parameter is a JQuery container in wich the controls will be placed. The second 
+- options, scesifying the way the data will be displayed. For detailed 
+information see their API reference.
+
+The methods are usially used in the **on_view_form_created** and  
+**on_edit_form_created** event handlers.
+
+All visual controls (tables, inputs, checkboxes), created by this methods
+are data-aware. This means that they immediately reflect any data 
+changes of the item.
+
+Sometimes it is necessary to disable this interaction. To do so use the 
+:doc:`disable_controls </refs/client/item/m_disable_controls>`
+and 
+:doc:`enable_controls </refs/client/item/m_enable_controls>`
+methods respectively. 
+
+To update visual controls use the 
+:doc:`update_controls </refs/client/item/m_update_controls>`
+method. 
+
+To learn about the state of visual controls use the 
+:doc:`controls_disabled </refs/client/item/m_controls_disabled>`
+method.
+
+
+

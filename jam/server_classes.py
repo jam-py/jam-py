@@ -20,14 +20,10 @@ from dataset import *
 from sql import *
 
 class ServerDataset(Dataset, SQL):
-    def __init__(self, table_name='', view_template='', edit_template='', filter_template='', soft_delete=True):
+    def __init__(self, table_name='', soft_delete=True):
         Dataset.__init__(self)
         self.ID = None
         self.table_name = table_name
-        self.view_template = view_template
-        self.edit_template = edit_template
-        self.filter_template = filter_template
-        self.filter_template = filter_template
         self._order_by = []
         self.values = None
         self.on_select = None
@@ -177,7 +173,7 @@ class ServerDataset(Dataset, SQL):
         return {'error': error, 'result': result}
 
     def update_deleted(self):
-        if self.is_delta and len(self.details):
+        if self._is_delta and len(self.details):
             rec_no = self.rec_no
             try:
                 for it in self:
@@ -224,9 +220,9 @@ class ServerDataset(Dataset, SQL):
 
 class Item(AbstrItem, ServerDataset):
     def __init__(self, owner, name, caption, visible = True,
-            table_name='', view_template='', edit_template='', filter_template='', soft_delete=True):
-        AbstrItem.__init__(self, owner, name, caption, visible)
-        ServerDataset.__init__(self, table_name, view_template, edit_template, filter_template, soft_delete)
+            table_name='', view_template='', js_filename='', soft_delete=True):
+        AbstrItem.__init__(self, owner, name, caption, visible, js_filename=js_filename)
+        ServerDataset.__init__(self, table_name, soft_delete)
         self.item_type_id = None
         self.reports = []
 
@@ -290,8 +286,8 @@ class Param(DBField):
 
 class Report(AbstrReport):
     def __init__(self, owner, name='', caption='', visible = True,
-            table_name='', view_template='', edit_template='', filter_template=''):
-        AbstrReport.__init__(self, owner, name, caption, visible)
+            table_name='', view_template='', js_filename=''):
+        AbstrReport.__init__(self, owner, name, caption, visible, js_filename=js_filename)
         self.param_defs = []
         self.params = []
         self.template = view_template
@@ -356,7 +352,7 @@ class Report(AbstrReport):
 
     def copy(self):
         result = self.__class__(self.owner, self.item_name, self.item_caption, self.visible,
-            '', self.template, '', '');
+            '', self.template, '');
         result.on_before_generate_report = self.on_before_generate_report
         result.on_generate_report = self.on_generate_report
         result.on_report_generated = self.on_report_generated
@@ -395,9 +391,6 @@ class Report(AbstrReport):
             self.content_name = os.path.join(self.task.work_dir, 'reports', 'content%s.xml' % time.time())
             self.content = open(self.content_name, 'wb')
             try:
-                #~ file_name = self.item_caption + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.ods'
-                #~ file_name = escape(file_name, {':': '-', '/': '_', '\\': '_'})
-                #~ self.report_filename = os.path.abspath(os.path.join(self.task.work_dir, 'static', 'reports', file_name))
                 self.report_filename = self.get_report_file_name()
                 file_name = os.path.basename(self.report_filename)
                 static_dir = os.path.dirname(self.report_filename)
@@ -442,7 +435,8 @@ class Report(AbstrReport):
             self.report_filename = os.path.join(self.task.work_dir, 'static', 'reports', file_name)
             self.report_url = self.report_filename
             if self.url:
-                self.report_url = '%s/static/reports/%s' % (self.url, file_name)
+#                self.report_url = '%s/static/reports/%s' % (self.url, file_name)
+                self.report_url = os.path.join(self.url, 'static', 'reports', file_name)
         else:
             if self.on_generate_report:
                 self.on_generate_report(self)
@@ -606,10 +600,13 @@ def execute_sql(db_module, db_database, db_user, db_password,
     params=None, result_set=None, call_proc=False, commit=True):
 
     def execute_command(cursor, command, params=None):
+        print_command = False
+        log_command = False
         try:
-            #~ print ''
-            #~ print command
-            #~ print params
+            if print_command:
+                print ''
+                print command
+                print params
 
             result = None
             if params:
@@ -621,14 +618,15 @@ def execute_sql(db_module, db_database, db_user, db_password,
             elif result_set == 'ALL':
                 result = cursor.fetchall()
 
-            #~ if command.upper().find('SELECT') == -1:
-                #~ try:
-                    #~ with open("sql_log.txt", "a") as f:
-                        #~ f.write('\n')
-                        #~ f.write(command + '\n')
-                        #~ f.write(json.dumps(params, default=common.json_defaul_handler) + '\n')
-                #~ except:
-                    #~ pass
+            if log_command and command.upper().find('SELECT') == -1:
+                try:
+                    with open("sql_log.txt", "a") as f:
+                        f.write('\n')
+                        f.write(command + '\n')
+                        f.write(json.dumps(params, default=common.json_defaul_handler) + '\n')
+                except:
+                    pass
+
             return result
         except Exception, x:
             print '\nError: %s\n command: %s\n params: %s' % (str(x), command, params)
@@ -823,7 +821,7 @@ class Consts(object):
 
 
 class AbstractServerTask(AbstrTask):
-    def __init__(self, name, caption, template, edit_template, db_type,
+    def __init__(self, name, caption, template, js_filename, db_type,
         db_database = '', db_user = '', db_password = '', host='', port='',
         encoding='', con_pool_size=1, mp_pool=False, persist_con=False):
         AbstrTask.__init__(self, None, None, None, None)
@@ -833,6 +831,7 @@ class AbstractServerTask(AbstrTask):
         self.item_name = name
         self.item_caption = caption
         self.template = template
+        self.js_filename = js_filename
         self.db_type = db_type
         self.db_database = db_database
         self.db_user = db_user
@@ -1063,11 +1062,11 @@ class AbstractServerTask(AbstrTask):
 
 
 class Task(AbstractServerTask):
-    def __init__(self, name, caption, template, edit_template,
+    def __init__(self, name, caption, template, js_filename,
         db_type, db_database = '', db_user = '', db_password = '',
         host='', port='', encoding='', con_pool_size=4, mp_pool=True,
         persist_con=True):
-        AbstractServerTask.__init__(self, name, caption, template, edit_template,
+        AbstractServerTask.__init__(self, name, caption, template, js_filename,
             db_type, db_database, db_user, db_password,
             host, port, encoding, con_pool_size, mp_pool, persist_con)
         self.on_created = None
@@ -1084,41 +1083,40 @@ class Task(AbstractServerTask):
 
 
 class AdminTask(AbstractServerTask):
-    def __init__(self, name, caption, template, edit_template,
+    def __init__(self, name, caption, template, js_filename,
         db_type, db_database = '', db_user = '', db_password = '',
         host='', port='', encoding=''):
-        AbstractServerTask.__init__(self, name, caption, template, edit_template,
+        AbstractServerTask.__init__(self, name, caption, template, js_filename,
             db_type, db_database, db_user, db_password, host, port, encoding, 2)
         filepath, filename = os.path.split(__file__)
         self.cur_path = filepath
 
 class Group(AbstrGroup):
-    def __init__(self, owner, name, caption, view_template = None, edit_template = None, filter_template = None, visible = True, item_type_id=0):
-        AbstrGroup.__init__(self, owner, name, caption, True, item_type_id)
+    def __init__(self, owner, name, caption, view_template = None, js_filename = None, visible = True, item_type_id=0):
+        AbstrGroup.__init__(self, owner, name, caption, True, item_type_id, js_filename)
         self.ID = None
         self.view_template = view_template
-        self.edit_template = edit_template
-        self.filter_template = filter_template
+        self.js_filename = js_filename
         if item_type_id == common.REPORTS_TYPE:
             self.on_convert_report = None
 
-    def add_ref(self, name, caption, table_name, visible = True, view_template = '', edit_template = '', filter_template='', soft_delete=True):
-        result = Item(self, name, caption, visible, table_name, view_template, edit_template, filter_template, soft_delete)
+    def add_catalog(self, name, caption, table_name, visible = True, view_template = '', js_filename = '', soft_delete=True):
+        result = Item(self, name, caption, visible, table_name, view_template, js_filename, soft_delete)
         result.item_type_id = common.CATALOG_TYPE
         return result
 
-    def add_journal(self, name, caption, table_name, visible = True, view_template = '', edit_template = '', filter_template='', soft_delete=True):
-        result = Item(self, name, caption, visible, table_name, view_template, edit_template, filter_template, soft_delete)
+    def add_journal(self, name, caption, table_name, visible = True, view_template = '', js_filename = '', soft_delete=True):
+        result = Item(self, name, caption, visible, table_name, view_template, js_filename, soft_delete)
         result.item_type_id = common.JOURNAL_TYPE
         return result
 
-    def add_table(self, name, caption, table_name, visible = True, view_template = '', edit_template = '', filter_template='', soft_delete=True):
-        result = Item(self, name, caption, visible, table_name, view_template, edit_template, filter_template, soft_delete)
+    def add_table(self, name, caption, table_name, visible = True, view_template = '', js_filename = '', soft_delete=True):
+        result = Item(self, name, caption, visible, table_name, view_template, js_filename, soft_delete)
         result.item_type_id = common.TABLE_TYPE
         return result
 
-    def add_report(self, name, caption, table_name, visible = True, view_template = '', edit_template = '', filter_template='', soft_delete=True):
-        result = Report(self, name, caption, visible, table_name, view_template, edit_template, filter_template)
+    def add_report(self, name, caption, table_name, visible = True, view_template = '', js_filename = '', soft_delete=True):
+        result = Report(self, name, caption, visible, table_name, view_template, js_filename)
         result.item_type_id = common.REPORT_TYPE
         return result
 

@@ -1,0 +1,27 @@
+=============
+Reports class
+=============
+
+.. py:class:: Reports
+
+**domain**: server
+
+**language**: python
+
+Reports class is used to create the group object of the 
+:doc:`task tree </programming/task_tree>` 
+that owns the reports of a project.
+
+Below the events of the class are listed.
+
+It, as well, inherits attributes and methods of its ancestor class
+:doc:`AbstractItem class <abstractitem_api>`
+
+Events
+======
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+    
+    reports/on_*

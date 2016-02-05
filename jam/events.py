@@ -6,63 +6,65 @@ import common
 
 task_client_events = \
     {
-#        'on_before_show_main_form': 'task',
         'on_page_loaded': 'task',
-        'on_before_show_view_form': 'item',
-        'on_before_show_edit_form': 'item',
-        'on_before_show_filter_form': 'item',
-        'on_before_show_params_form': 'item',
-        'on_after_show_view_form': 'item',
-        'on_after_show_edit_form': 'item',
-        'on_after_show_filter_form': 'item',
-        'on_after_show_params_form': 'item',
+        'on_view_form_created': 'item',
+        'on_edit_form_created': 'item',
+        'on_filter_form_created': 'item',
+        'on_param_form_created': 'item',
+        'on_view_form_shown': 'item',
+        'on_edit_form_shown': 'item',
+        'on_filter_form_shown': 'item',
+        'on_param_form_shown': 'item',
         'on_view_form_close_query': 'item',
         'on_edit_form_close_query': 'item',
-        'on_params_form_close_query': 'report',
-        'on_view_keyup': 'item, event',
-        'on_view_keydown': 'item, event',
-        'on_edit_keyup': 'item, event',
-        'on_edit_keydown': 'item, event'
+        'on_filter_form_close_query': 'item',
+        'on_param_form_close_query': 'report',
+        'on_view_form_keyup': 'item, event',
+        'on_view_form_keydown': 'item, event',
+        'on_edit_form_keyup': 'item, event',
+        'on_edit_form_keydown': 'item, event'
     }
 
 group_client_events = \
     {
-        'on_before_show_view_form': 'item',
-        'on_before_show_edit_form': 'item',
-        'on_before_show_filter_form': 'item',
-        'on_after_show_view_form': 'item',
-        'on_after_show_edit_form': 'item',
-        'on_after_show_filter_form': 'item',
+        'on_view_form_created': 'item',
+        'on_edit_form_created': 'item',
+        'on_filter_form_created': 'item',
+        'on_view_form_shown': 'item',
+        'on_edit_form_shown': 'item',
+        'on_filter_form_shown': 'item',
         'on_view_form_close_query': 'item',
         'on_edit_form_close_query': 'item',
-        'on_view_keyup': 'item, event',
-        'on_view_keydown': 'item, event',
-        'on_edit_keyup': 'item, event',
-        'on_edit_keydown': 'item, event'
+        'on_filter_form_close_query': 'item',
+        'on_view_form_keyup': 'item, event',
+        'on_view_form_keydown': 'item, event',
+        'on_edit_form_keyup': 'item, event',
+        'on_edit_form_keydown': 'item, event'
     }
 
 reports_client_events = \
     {
-        'on_before_show_params_form': 'report',
-        'on_after_show_params_form': 'report',
-        'on_params_form_close_query': 'report',
+        'on_param_form_created': 'item',
+        'on_param_form_shown': 'item',
+        'on_param_form_close_query': 'report',
+        'on_open_report': 'report, url',
         'on_before_print_report': 'report'
     }
 
 detail_client_events = \
     {
-        'on_before_show_view_form': 'item',
-        'on_before_show_edit_form': 'item',
-        'on_before_show_filter_form': 'item',
-        'on_after_show_view_form': 'item',
-        'on_after_show_edit_form': 'item',
-        'on_after_show_filter_form': 'item',
+        'on_view_form_created': 'item',
+        'on_edit_form_created': 'item',
+        'on_filter_form_created': 'item',
+        'on_view_form_shown': 'item',
+        'on_edit_form_shown': 'item',
+        'on_filter_form_shown': 'item',
         'on_view_form_close_query': 'item',
         'on_edit_form_close_query': 'item',
-        'on_view_keyup': 'item, event',
-        'on_view_keydown': 'item, event',
-        'on_edit_keyup': 'item, event',
-        'on_edit_keydown': 'item, event',
+        'on_view_form_keyup': 'item, event',
+        'on_view_form_keydown': 'item, event',
+        'on_edit_form_keyup': 'item, event',
+        'on_edit_form_keydown': 'item, event',
         'on_before_append': 'item',
         'on_after_append': 'item',
         'on_before_edit': 'item',
@@ -94,10 +96,11 @@ item_client_events['on_after_apply'] = 'item'
 
 report_client_events = \
     {
-        'on_before_show_params_form': 'report',
-        'on_after_show_params_form': 'report',
-        'on_params_form_close_query': 'report',
+        'on_param_form_created': 'item',
+        'on_param_form_shown': 'item',
+        'on_param_form_close_query': 'report',
         'on_before_print_report': 'report',
+        'on_open_report': 'report, url',
         'on_param_lookup_item_show': 'param, lookup_item'
     }
 

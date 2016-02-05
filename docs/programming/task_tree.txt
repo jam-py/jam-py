@@ -2,6 +2,8 @@
 Task tree
 =========
 
+    
+
 All objects of the framework represent a tree::
 
     /task/
@@ -51,7 +53,31 @@ For example the task tree of the demo project is::
             purchases_report
             customers_report
 
-All items of this trees have a common ancestor AbstractItem and common attributes:
+The following table lists description of all item types and the classes that are 
+used to create them:
+
+.. csv-table:: 
+   :header: Item type, Example from Demo, Server class, Client class, Description
+   :widths: 10, 10, 10, 10, 40
+
+    task, demo, :doc:`Task </refs/server/task_api>`, :doc:`Task </refs/client/task_api>`, "Root of the task tree."
+    catalogs, catalogs, :doc:`Group </refs/server/item_group_api>`, :doc:`Group </refs/client/item_group_api>`, "Group item that owns all catalogs of the project."
+    journals, journals, :doc:`Group </refs/server/item_group_api>`, :doc:`Group </refs/client/item_group_api>`, "Group item that owns all journals of the project."
+    tables, tables, :doc:`Group </refs/server/item_group_api>`, :doc:`Group </refs/client/item_group_api>`, "Group item that owns all tables of the project."
+    reports, reports, :doc:`Reports </refs/server/report_group_api>`, :doc:`Reports </refs/client/report_group_api>`, "Group item that owns all reports of the project."
+    catalog, customers, :doc:`Item </refs/server/item_api>`, :doc:`Item </refs/client/item_api>`, "Catalogs are data items that contain information of catalog type such as customers, organizations, tracks, etc. When creating other data items, we can create a field that is a reference to the record in a catalog."
+    journal, invoices, :doc:`Item </refs/server/item_api>`, :doc:`Item </refs/client/item_api>`, "Journals are the structures that store information about events recorded in some documents, such as invoices, purchase orders, etc."
+    table, invoice_table, :doc:`Item </refs/server/item_api>`, :doc:`Item </refs/client/item_api>`, "Tables are essentially similar to journals. But besides that they could be embedded into data items."
+    report, customers_report, :doc:`Report </refs/server/report_api>`, :doc:`Report </refs/client/report_api>`, "Reports are items designed to created report."
+    detail, invoices/invoice_table, :doc:`Detail </refs/server/detail_api>`, :doc:`Detail </refs/client/detail_api>`, "Details are copies of tables designed to store records that are ownered by a record of another data item. Such as a list of tracks in an invoice."
+    
+Items of the type **catalog**, **journal**, **table** and **detail** may have a 
+database table associated with them.
+
+All items of the task tree have a common ancestor 
+:doc:`AbstractItem on client</refs/client/abstractitem_api>` and 
+:doc:`AbstractItem on server</refs/server/abstractitem_api>` and common attributes:.
+
 
 * **ID**  - unique in the framework ID of the item
 	
@@ -70,18 +96,11 @@ All items of this trees have a common ancestor AbstractItem and common attribute
 	  
 * **item_caption** — the item name that appears to users
 	
-and methods:
-
-* **find(name)** — looks among immediate children for an item with item_name 
-  that equals name parameter and returns it if it's found, otherwise return 
-  None for python or undefined for JavaScript
-	  
-* **item_by_ID(ID)** - looks among all its children for an item with ID that 
-  equals ID parameter and returns it if it's found, otherwise return None 
-  for python or undefined for JavaScript
 
 So the following code in the task server module that is executed when task is 
-created::
+created:
+
+.. code-block:: py
 
     def print_item(item, ident):
         owner_name = None
@@ -122,7 +141,9 @@ will print::
                     
 In addition every item is an attribute of its owner and all journals, catalogs, 
 tables and reports are attibutes not only of their owner item group but of the 
-task (they all have a unique item_name). So::
+task (they all have a unique item_name). So
+
+.. code-block:: py
 
     albums = task.catalogs.albums
     print_item(task.journals.invoices.invoice_table)
@@ -136,4 +157,4 @@ will print::
     invoice_table - item_type: "detail", ID: 18, item_caption: "InvoiceTable", owner: invoices
     invoice_table - item_type: "table", ID: 17, item_caption: "InvoiceTable", owner: tables
     invoices - item_type: "journal", ID: 16, item_caption: "Invoices", owner: journals
-    
+

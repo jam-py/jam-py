@@ -1,0 +1,41 @@
+========
+question
+========
+
+Creates a modal form with **OK**, **Cancel** buttons
+
+.. js:function:: question(mess, yes_callback, no_callback)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`AbstractItem </refs/client/abstractitem_api>`
+
+Description
+===========
+
+Use **question** to create a modal form with **Ok** and **Cancel** buttons. 
+
+The **mess** parameter specifies the text or html content that will appear in the 
+body of the form.
+
+If **yes_callback**, **no_callback** functions are specified they will 
+be executed when user clicks on the **Ok** or **Cancel** button, respectively, 
+and then the form will be closed.
+
+Example
+=======
+
+The following code creates a modal form, and delete selected record
+record when the user clicks the OK button:
+
+.. code-block:: js
+
+    item.question('Delete record?', 
+        function() {
+            item.delete();
+        }
+    );
+    
+

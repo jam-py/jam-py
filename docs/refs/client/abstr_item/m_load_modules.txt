@@ -1,0 +1,47 @@
+============
+load_modules
+============
+
+.. js:function:: load_modules(module_array, callback)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`AbstractItem </refs/client/abstractitem_api>`
+
+Description
+===========
+
+Use **load_modules** method to dynamically load specified modules before 
+executing the **callback**.
+
+The method works the same way as 
+:doc:`load_module <m_load_module>`,
+only loads and initializes all modules of items specified in the 
+**module_array**.
+
+Example
+=======
+
+Bellow, the do_some_work function is executed only when modules of the item and 
+its owner has been loaded: 
+
+.. code-block:: js
+
+    function some_work(item) {
+        item.load_modules([item, item.owner], do_some_work);
+    }
+    
+    function do_some_work(item) {
+        // some code
+    }
+
+See also
+========
+
+:doc:`Working with modules </programming/modules>`
+
+:doc:`load_module <m_load_module>`
+
+:doc:`load_script <m_load_script>`

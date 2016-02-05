@@ -1,0 +1,82 @@
+====================
+Working with modules
+====================
+
+For every item of the project :doc:`task tree <task_tree>` a developer can write 
+code that will be executed on the client or server. In Administrator for every 
+item there is two upper-right buttons **Client module** and **Server module**. 
+Clicking on these will open the
+:doc:`code editor </admin/code_editor>`.
+
+Every item has a predefined set of events that could be triggered by  
+application. An event is a function defined in the module of an item that starts 
+with the "on_" prefix. All published events are listed in the Events tab of the 
+information pane of the
+:doc:`code editor </admin/code_editor>`
+
+In the 
+:doc:`code editor </admin/code_editor>`
+the developer 
+can write code for these events as well as define some functions. 
+
+For example the following code means that immediately after adding a new record 
+to the Invoices journal of the Demo project, the value of the invoicedate field 
+will be equal to the current date.
+
+.. code-block:: js
+
+    function on_after_append(item) { 
+        item.invoicedate.value = new Date(); 
+    } 
+
+
+.. note::
+    These events and functions became attributes of the item and could be 
+    accessed anywhere in the project code.
+
+For example in the Invoices client module of the Demo application there is the
+init_table function:
+
+.. code-block:: js
+
+    function init_table(item, table_options) {
+        table_options.height = $(window).height() - $('body').height() - 200 - 10;
+        if (table_options.height < 200) {
+            table_options.height = 200;
+        }
+        table_options.show_footer = true;    
+        table_options.row_callback = function(row, it) {
+            var font_weight = 'normal';
+            if (it.total.value > 10) {
+                font_weight = 'bold';
+            }
+            row.find('td.total').css('font-weight', font_weight);
+        };
+    }
+
+And in the Demo task client module there is the 
+:doc:`on_view_form_created </refs/client/task/on_view_form_created>` 
+event that is triggered for every item whose 
+:doc:`view </refs/client/item/m_view>` 
+method is called. 
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        var table_options = {
+                height: 480,
+                word_wrap: false,
+                sortable: true
+            };
+            
+    //  code that defines click events of the view form buttons
+    
+        if (item.init_table) {
+            item.init_table(item, table_options);
+        }
+        item.view_table = item.create_table(item.view_form.find(".view-table"), table_options);
+    }
+
+This way we define the basic code for the initialization of all view forms of project
+items that can be specified for some of them later. This example demonstrates the
+**don't repeat yourself** principle underlying the framework.

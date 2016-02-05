@@ -8,5 +8,4 @@ Getting started
    install
    new_project
    demo_project
-   simple_project
-   test
+   first_project

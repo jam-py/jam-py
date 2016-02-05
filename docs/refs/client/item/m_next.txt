@@ -1,0 +1,17 @@
+====
+next
+====
+
+Positions the cursor on the next record in the item dataset.
+
+.. js:function:: next() 
+
+**domain**: client 
+
+**language**: javascript
+
+Description
+===========
+
+Call next to position the cursor on the next record in the item dataset and make 
+it the active record. Next posts any changes to the active record.

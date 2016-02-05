@@ -1,0 +1,27 @@
+====================
+on_filter_form_shown
+====================
+
+on_filter_form_shown(item)
+
+The item parameter is the item that triggered the event.
+
+**domain**: client 
+
+**language**: javascript
+
+Description
+===========
+
+The event is triggered by the 
+:doc:`create_filter_form <m_create_filter_form>`
+method of the item.
+
+See also
+========
+
+:doc:`Forms </programming/interface/forms>`
+
+:doc:`create_filter_form <m_create_filter_form>`
+
+:doc:`filter_form <at_filter_form>`

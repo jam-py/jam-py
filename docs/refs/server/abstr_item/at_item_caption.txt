@@ -1,0 +1,13 @@
+============
+item_caption
+============
+
+Specifies the name of the item that appears to users
+
+.. py:attribute:: item_caption
+
+**domain**: server
+
+**language**: python
+
+

@@ -1,0 +1,16 @@
+=====
+items
+=====
+
+Lists all items owned by the item.
+
+.. py:attribute:: items
+
+**domain**: server
+
+**language**: python
+
+Description
+===========
+
+Use items to access any of the item owned by this object. 

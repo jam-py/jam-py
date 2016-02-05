@@ -1,0 +1,21 @@
+=========
+templates
+=========
+
+.. js:attribute:: templates
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Task </refs/client/task_api>`
+
+Description
+===========
+
+The **templates** attribute stores the form templates of the project.
+
+See also
+========
+
+:doc:`Forms </programming/interface/forms>`

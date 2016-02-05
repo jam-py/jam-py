@@ -1,16 +1,27 @@
-===========
-Reports API
-===========
+=============
+Reports class
+=============
 
 .. js:class:: Reports
 
-Reports class inherits attributes and methods of 
+**domain**: client 
+
+**language**: javascript
+
+Reports class is used to create the group object of the 
+:doc:`task tree </programming/task_tree>` 
+that owns the reports of a project.
+
+Below the events of the class are listed.
+
+It, as well, inherits attributes and methods of its ancestor class
 :doc:`AbstractItem class <abstractitem_api>`
+
+Events
+======
 
 .. toctree::
     :maxdepth: 1
-
-    reports_attributes
-    reports_methods
-    reports_events
-
+    :glob:
+    
+    reports/on_*

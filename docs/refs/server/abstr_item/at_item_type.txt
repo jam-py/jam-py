@@ -1,0 +1,28 @@
+=========
+item_type
+=========
+
+Specifies the type of the item.
+
+.. py:attribute:: item_type
+
+**domain**: server
+
+**language**: python
+
+Description
+===========
+
+Use the type attribute to get the type of the item. It can have one of the 
+following values 
+
+* “task”, 
+* “catalogs”, 
+* “journals”, 
+* “tables”, 
+* “reports”, 
+* “catalog”, 
+* “journal”, 
+* “table”, 
+* “report”, 
+* “detail”

@@ -1,0 +1,34 @@
+==================
+AbstractItem class
+==================
+
+.. py:class:: AbstractItem
+
+**domain**: server
+
+**language**: python
+
+AbstractItem class is the ancestor for all item objects of the 
+:doc:`task tree </programming/task_tree>`
+
+Below the attributes and methods of the class are listed.
+
+
+Attrubutes
+==========
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+    
+    abstr_item/at_*
+
+Mehods 
+======
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+    
+    abstr_item/m_*
+

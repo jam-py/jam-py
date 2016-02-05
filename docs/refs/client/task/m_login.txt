@@ -1,0 +1,32 @@
+=====
+login
+=====
+
+.. js:function:: login(callback)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Task </refs/client/task_api>`
+
+Description
+===========
+
+The **login** method creates a login form using the login form div defined in the 
+templates of the index.html file. It is called by the :doc:`load <m_load>` method 
+when the project :doc:`safe mode </admin/project>` parameter is set.
+
+
+See also
+========
+
+:doc:`load <m_load>`
+
+:doc:`logout <m_logout>`
+
+:doc:`user_info <at_user_info>`
+
+:doc:`Users </admin/users>`
+
+:doc:`Roles </admin/roles>`

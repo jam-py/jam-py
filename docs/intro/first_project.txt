@@ -1,0 +1,381 @@
+==============
+First project
+==============
+
+Now, we’ll walk you through the creation of a basic to-do list application.
+
+We'll assume that jam.py is already installed. If not, see 
+:doc:`installation <install>` guide how to do it.
+
+
+Creating project
+----------------
+
+Let's create a new folder. Then in this folder run jam-project.py script.
+
+.. code-block:: console
+
+    $ jam-project.py
+
+and after that start application.py script that jam-project.py have created:
+
+.. code-block:: console
+
+    $ ./application.py
+
+Now, open a Web browser and go to 127.0.0.1:8080/admin.html to open 
+Administrator. You should see the select language dialog. 
+
+.. image:: _images/lang.png
+	:width: 560
+	:align: center
+	:alt: Select language dialog
+
+Select **English** and click **OK** button. The project parameters dialog will 
+appear.
+
+.. image:: _images/todo_params.png
+	:width: 560
+	:align: center
+	:alt: Todo params
+
+After filling in the form, click OK button. Now you should see the project tree 
+in the left panel. Let's select **Journals** node and click **New** button in the
+bottom panel of the page
+
+.. image:: _images/todo_admin.png
+	:align: center
+	:alt: Todo admin
+
+
+Creating tasks journal
+----------------------
+
+Now we'll create **Tasks** jounal where we store the tasks of our to-do list. 
+In the following dialog fill in the caption and name of the journal and click
+the **New** button in the bottom right corner of the dialog.
+
+.. image:: _images/tasks.png
+	:align: center
+	:alt: New journal tasks
+
+The **New field** dialog will appear. Type the caption and name of the 
+**Created** field, select its type and click **OK** button.
+
+.. image:: _images/todo_new_field.png
+	:width: 560
+	:align: center
+	:alt: New field
+
+The same way add the **Description** and **Completed** fields and click **OK**
+
+.. image:: _images/tasks_fields.png
+	:width: 800
+	:align: center
+	:alt: Tasks fields
+
+We created **Tasks** journal. If we open todo.sqlite database in the SQLite 
+manager, we'll see that jam.py created todo_tasks table in the database as well.
+
+
+Creating Priorities catalog and filling its records
+---------------------------------------------------
+
+Now the same way we'll create **Priorities** catalog. Select **Catalogs** node 
+in the project tree. Click **New** button, input the caption and name of the 
+catalog and add the **Priority** field.
+
+.. image:: _images/priorities.png
+	:align: center
+	:alt: Priorities
+
+Let's open a new page in the browser and enter 127.0.0.1:8080 in the address bar.
+We should see the project that we've just created. It uses the default interface. 
+We'll change it later. 
+
+.. image:: _images/project_page.png
+	:align: center
+	:alt: Project page
+
+Let's open the **Priority** catalog and add three records for the Low, Normal 
+and High priority values:
+
+.. image:: _images/new_priority.png
+	:align: center
+	:alt: New priority
+
+
+Creating lookup field
+---------------------
+
+Now go back to **Tasks** journal and add a **Priority** lookup field that will 
+store a reference to the record in the **Priorities** catalog
+
+.. image:: _images/priority_field.png
+	:width: 560
+	:align: center
+	:alt: Adding priority field
+
+To create a lookup field we need to select lookup item. Click on the to the right 
+of a lookup item input and double click on the record.
+
+.. image:: _images/select_priority.png
+	:width: 560
+	:align: center
+	:alt: Select priority lokkup item
+
+The same way select lookup field and save the changes.
+
+.. image:: _images/priority_finished.png
+	:width: 560
+	:align: center
+	:alt: Priority finished
+
+Let's change the **Decription** field. Open it for edit and check the required 
+checkbox. So the user won't be able to save a new record if the description is 
+not defined.
+
+.. image:: _images/description_required.png
+	:width: 560
+	:align: center
+	:alt: Set description required
+
+Setting up how the fields will be displayed
+-------------------------------------------
+
+When we opened the **Task** journal in the browser the fields in the table and 
+in the edit form were displayed in the order they've been created. To change the 
+way fields are displayed in a view form click on the **View** button to change 
+the default order of the fields and to hide/show some of them.
+
+.. image:: _images/tasks_view.png
+	:width: 680
+	:align: center
+	:alt: Tasks view
+
+To change the way fields are displayed in an edit form click on the **Edit** 
+button.
+
+.. image:: _images/tasks_edit.png
+	:width: 680
+	:align: center
+	:alt: Tasks edit
+
+
+Adding filters
+--------------
+
+Filters are used to select records from a database table by specified criteria.
+Click on the **Filters** button. 
+
+.. image:: _images/tasks_filters.png
+	:align: center
+	:alt: Tasks filters dialog
+
+In the **Filters** dialog that will be displayed click on the **New** button and 
+fill in a new filter form:
+
+.. image:: _images/tasks_new_filter.png
+	:width: 560
+	:align: center
+	:alt: Tasks new filter
+
+The same way we'll created another three filters:
+
+.. image:: _images/tasks_filters_ready.png
+	:width: 680
+	:align: center
+	:alt: Tasks filters ready
+	
+This filters we'be displayed in the project the following way:
+
+.. image:: _images/tasks_filter_ready.png
+	:align: center
+	:alt: Set tasks filter
+
+Creating a journal index and setting a default order
+----------------------------------------------------
+
+To create an index to the **Tasks** jounal database table click on the 
+**Indices** button:
+
+.. image:: _images/indices.png
+	:align: center
+	:alt: Tasks indices
+
+then click on the **New** button and specify fields and order of the index:
+
+.. image:: _images/new_index.png
+	:width: 680
+	:align: center
+	:alt: Tasks new index
+
+To set a default order the records of the jourbal will be displayed use the 
+**Order** button:
+
+.. image:: _images/order.png
+	:width: 680
+	:align: center
+	:alt: Tasks order
+
+
+Writing some code
+--------------------------
+
+Let's change the application interface. We'll remove the menu and make so, that 
+the journal will open when a user opens an apllication Web page. 
+
+Select **Task** node in the project tree and click on the **Client module** 
+button:
+
+.. image:: _images/tasks_client.png
+	:align: center
+	:alt: Todo client code button
+
+The code editor will be displayed with the **todo** task client module.
+
+.. image:: _images/todo_client_code.png
+	:align: center
+	:alt: Todo task client code
+
+In the on_page_loaded event handler let's remove code that creates the main menu
+and add the following line:
+
+.. code-block:: console
+
+    task.tasks.view($("#content"));
+
+
+.. image:: _images/todo_client_changed.png
+	:align: center
+	:alt: Todo task client code changed
+
+Now select **Tasks** journal in the project tree and click on the **Client module** 
+button. Select **Events** in the left panel of the code editor and double click
+on the on_after_append item in the list. The following lines of code appear in 
+the editor:
+
+.. code-block:: console
+
+    function on_after_append(item) {
+    
+    }
+    
+On_after_append event is triggered after append method of the **Tasks** journal 
+will be executed. Let's add two lines of code to this event handler: 
+
+.. code-block:: console
+
+    function on_after_append(item) {
+        item.date.value = new Date();
+        item.priority.set_value(2, 'Normal')
+    }
+
+The the code in the first line sets a value of the date field of a new task 
+to the current date, the code in the second line sets priority of the task to 
+'Normal'.
+
+.. image:: _images/tasks_client_code.png
+	:align: center
+	:alt: Tasks journal client code
+
+
+Preliminary results
+-------------------
+
+Let's see the result of our work. Go to the project page in the browser and 
+press F5. The empty **Tasks** jounal will be displayed. Click on the **New** 
+button and in the edit form click **OK**:
+
+.. image:: _images/todo_new_task.png
+	:align: center
+	:alt: Creating new task
+
+
+Changing interface
+------------------
+
+Now we'll change the **Tasks** journal interface. We'll add **Done** button.
+Select **Task** node in the project tree and click on the **index html** 
+button:
+
+.. image:: _images/index_html.png
+	:align: center
+	:alt: Index.html button
+
+The 'index.html' file from the project folder will be displayed in the 
+**Editor**.
+
+.. image:: _images/index_html_editor.png
+	:align: center
+	:alt: Index.html editor
+	
+There is a div with the 'templates' class. It contains the default templates of 
+catalogs, journals, their filters and so on. By default, the template of view 
+forms of jounals of a project is defined in div with class 'journals-view'
+
+Let's make a copy this div and replace 'journals-view' with 'tasks-view'. This 
+div will now be used as the template of our **Tasks** journal. We'll add the 
+**Done** button by inserting the following line in the template:
+
+.. code-block:: console
+
+    <button id="done-btn" class="btn pull-right" type="button"><i class="icon-remove-sign"></i> Done</button>
+
+.. image:: _images/index_html_tasks_view.png
+	:align: center
+	:alt: Tasks view template
+
+To write a code that will be executed when the button is clicked open client
+module of the **Tasks** journal in the code editor. Add a 
+on_view_form_created event handler and the following lines of code:
+    
+.. image:: _images/on_view_form_created.png
+	:align: center
+	:alt: Done btn code
+
+The following figure shows the result of pressing the **Done** button in the 
+project:
+
+.. image:: _images/tasks_done_executed.png
+	:align: center
+	:alt: Done btn clicked
+
+
+Setting privileges
+------------------
+
+So far we developed the application with the **Safe mode** project parameter 
+turned off. Before we set it on so that application will require authentication 
+we should define the the user role. Let's click on the **Roles** node of the 
+project tree set the administrator role privileges as on the figure bellow:
+
+.. image:: _images/todo_roles.png
+	:align: center
+	:alt: Setting roles
+
+
+By default there is a single users with a login: 'admin' and password: '111'. 
+
+.. image:: _images/todo_users.png
+	:align: center
+	:alt: Todo users
+
+Now we'll turn on the **Safe mode** parameter:
+
+.. image:: _images/todo_parameters.png
+	:align: center
+	:alt: Setting patameters
+
+
+After that if we press F5 in the project web page the application will require user
+to log in.
+
+.. image:: _images/login_dialod.png
+	:align: center
+	:alt: Login dialog
+
+
+.. image:: _images/todo_finished.png
+	:align: center
+	:alt: Done

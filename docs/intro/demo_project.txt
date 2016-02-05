@@ -2,4 +2,25 @@
 Demo project
 ============
 
-There is a demo project of Jam.py. To see it you should go to the demo folder
+The framework has a full fledged demo application that demonstrates programming 
+techniques used in the framework. 
+
+To see it you should go to the demo folder and run **application.py** script.
+
+.. code-block:: console
+
+    $ ./application.py
+
+
+Open a Web browser and in the address bar enter 127.0.0.1. To see Administrator
+open a new page in a browser and enter 127.0.0.1/admin.html
+
+
+.. image:: _images/demo.png
+	:align: center
+	:alt: Demo application
+
+
+.. image:: _images/demo_admin.png
+	:align: center
+	:alt: Administrator of demo project

@@ -1,9 +1,8 @@
 
-(function(window, undefined) {
+(function($) {
     "use strict";
 
-    var $ = window.$,
-        settings,
+    var settings,
         language,
         consts = {
             "RESPONSE": 1,
@@ -81,7 +80,7 @@
     /*                        AbsrtactItem class                          */
     /**********************************************************************/
 
-    function AbsrtactItem(owner, ID, item_name, caption, visible, type) {
+    function AbsrtactItem(owner, ID, item_name, caption, visible, type, js_filename) {
         if (visible === undefined) {
             visible = true;
         }
@@ -91,9 +90,12 @@
         this.visible = visible;
         this.ID = ID || undefined;
         this.item_type_id = type;
-        this.item_type = "";
+        this.item_type = '';
         if (type) {
             this.item_type = this.types[type - 1];
+        }
+        if (js_filename) {
+            this.js_filename = 'js/' + js_filename;
         }
         this.modal_options = {
             width: 560,
@@ -135,7 +137,7 @@
             }
         },
 
-        eachItem: function(callback) {
+        each_item: function(callback) {
             var i = 0,
                 len = this.items.length,
                 value;
@@ -144,6 +146,15 @@
                 if (value === false) {
                     break;
                 }
+            }
+        },
+
+        all: function(func) {
+            var i = 0,
+                len = this.items.length;
+            func.call(this, this);
+            for (; i < len; i++) {
+                this.items[i].all(func);
             }
         },
 
@@ -172,12 +183,12 @@
             }
         },
 
-        addChild: function(ID, item_name, caption, visible, type) {
+        addChild: function(ID, item_name, caption, visible, type, js_filename) {
             var NewClass;
             if (this.getChildClass) {
                 NewClass = this.getChildClass();
                 if (NewClass) {
-                    return new NewClass(this, ID, item_name, caption, visible, type);
+                    return new NewClass(this, ID, item_name, caption, visible, type, js_filename);
                 }
             }
         },
@@ -188,14 +199,14 @@
 
         init: function(info) {
             var i = 0,
-                items = info[5],
+                items = info[6],
                 child,
                 len = items.length,
                 item_info;
             for (; i < len; i++) {
                 item_info = items[i][1];
                 child = this.addChild(item_info[0], item_info[1],
-                    item_info[2], item_info[3], item_info[4]);
+                    item_info[2], item_info[3], item_info[4], item_info[5]);
                 if (child.initAttr) {
                     child.initAttr(item_info);
                 }
@@ -203,21 +214,113 @@
             }
         },
 
-        bindItems: function() {
+        bind_items: function() {
             var i = 0,
                 len = this.items.length;
-            if (this.bindItem) {
-                this.bindItem();
+            if (this.bind_item) {
+                this.bind_item();
             }
             for (; i < len; i++) {
-                this.items[i].bindItems();
+                this.items[i].bind_items();
             }
         },
 
-        bindEvents: function() {
-            var i = 0,
-                len = this.items.length,
-                events = window.task_events['events' + this.ID];
+        script_loaded: function() {
+            if (this.js_filename) {
+                return this.task._script_cache[this.js_filename];
+            }
+            else {
+                return true
+            }
+        },
+
+        load_script: function(js_filename, callback, onload) {
+            var self = this,
+                url,
+                s = document.createElement('script');
+
+            if (js_filename && !this.task._script_cache[js_filename]) {
+                url = location.protocol + '//' +
+                location.hostname + (location.port ? ':' + location.port: '') +
+                '/' + js_filename;
+
+                s.src = url;
+                s.type = "text/javascript";
+                document.getElementsByTagName('head')[0].appendChild(s);
+                s.onload = function() {
+                    self.task._script_cache[js_filename] = true;
+                    if (onload) {
+                        onload.call(self, self);
+                    }
+                    if (callback) {
+                        callback.call(self, self);
+                    }
+                }
+            }
+            else {
+                if (callback) {
+                    callback.call(self, self);
+                }
+            }
+        },
+
+        load_module: function(callback) {
+            this.load_modules([this], callback);
+        },
+
+        load_modules: function(item_list, callback) {
+            var self = this,
+                i = 0,
+                len = item_list.length,
+                item,
+                list = [],
+                mutex = 0,
+                calcback_executing = false,
+                load_script = function(item) {
+                    item.load_script(
+                        item.js_filename,
+                        function() {
+                            if (--mutex === 0) {
+                                if (callback && !calcback_executing) {
+                                    calcback_executing = true;
+                                    callback.call(self, self);
+                                }
+                            }
+                        },
+                        function() {
+                            item.bind_handlers();
+                        }
+                    )
+                };
+            for (; i < len; i++) {
+                item = item_list[i];
+                if (!item.script_loaded()) {
+                    list.push(item)
+                }
+                if (item.details && item.each_detail) {
+                    item.each_detail(function(d) {
+                        if (!d.script_loaded()) {
+                            list.push(d);
+                        }
+                    })
+                }
+            }
+            len = list.length;
+            mutex = len;
+            if (len) {
+                for (i = 0; i < len; i++) {
+                    load_script.call(list[i], list[i]);
+                }
+            }
+            else {
+                if (callback) {
+                    callback.call(this, this);
+                }
+            }
+        },
+
+        bind_handlers: function() {
+            var events = task.events['events' + this.ID];
 
             this._events = [];
             for (var event in events) {
@@ -226,25 +329,21 @@
                     this._events.push([event, events[event]]);
                 }
             }
+        },
+
+        bind_events: function() {
+            var i = 0,
+                len = this.items.length;
+
+            this.bind_handlers();
+
             for (; i < len; i++) {
-                this.items[i].bindEvents();
+                this.items[i].bind_events();
             }
         },
 
         can_view: function() {
             return this.task.has_privilege(this, 'can_view');
-        },
-
-        can_create: function() {
-            return this.task.has_privilege(this, 'can_create');
-        },
-
-        can_edit: function() {
-            return this.task.has_privilege(this, 'can_edit');
-        },
-
-        can_delete: function() {
-            return this.task.has_privilege(this, 'can_delete');
         },
 
         findTemplate: function(suffix, options) {
@@ -279,8 +378,15 @@
 
         server: function(func_name, params, callback) {
             var result;
+            if (arguments.length == 2 && typeof arguments[1] === "function") {
+                callback = arguments[1];
+                params = [];
+            }
             if (!params) {
                 params = [];
+            }
+            else if (!$.isArray(params)) {
+                params = [params]
             }
             if (callback) {
                 result = this.send_request('server_function', [func_name, params], function(result) {
@@ -301,10 +407,6 @@
                     return result.result
                 }
             }
-        },
-
-        server_function: function(func_name, params, callback) { //depricated
-            return this.server(func_name, params, callback);
         },
 
         makeFormModal: function(form, options) {
@@ -368,7 +470,6 @@
             });
 
             $form.append(form);
-            $form.isModal = true;
             return $form;
         },
 
@@ -412,14 +513,37 @@
             });
         },
 
-        create_form: function(formName, options) {
-            //~ container, form, beforeShow,
-            //~ onShown, onHide, onHidden, onKeyDown, onKeyUp
-            var self = this,
-                keySuffix = formName + '.' + this.item_name;
+        _close_modeless_form: function(formName) {
+            var self = this;
             if (this[formName]) {
+                this.close_form(formName)
+            }
+            if (this[formName]) {
+                this[formName].bind('destroyed', function() {
+                    self._close_modeless_form(formName);
+                });
+                throw this.item_name + " - can't close form";
+            }
+        },
+
+        create_form: function(suffix, options) {
+            var self = this,
+                formName = suffix + '_form',
+                keySuffix = formName + '.' + this.item_name;
+
+            if (this[formName] && options.container) {
+                this._close_modeless_form(formName);
+            }
+            options.item_options = this[suffix + '_options'];
+            this[formName] = $("<div></div>").append(this.findTemplate(suffix, options.item_options));
+            if (!options.container) {
+                this[formName] = this.makeFormModal(this[formName], options.item_options);
+            }
+            if (this[formName]) {
+                this[formName]._options = options;
                 this[formName].tabindex = 1;
                 if (options.container) {
+                    options.container.empty();
                     $(window).on("keyup." + keySuffix, function(e) {
                         e.stopPropagation();
                         if (options.onKeyUp) {
@@ -433,6 +557,9 @@
                         }
                     });
                     options.container.append(this[formName]);
+                    this[formName].bind('destroyed', function() {
+                        self._close_modeless_form(formName);
+                    });
                     if (options.beforeShow) {
                         options.beforeShow.call(this);
                     }
@@ -470,7 +597,7 @@
                             }
                             if (canClose === false) {
                                 e.preventDefault();
-                                self[formName].data('closing', false)
+                                self[formName].data('_closing', false)
                             }
                         });
 
@@ -490,11 +617,20 @@
                         });
 
                         this[formName].on("keyup." + keySuffix, function(e) {
+                            var datepicker,
+                                code = (e.keyCode ? e.keyCode : e.which);
                             e.stopPropagation();
-                            if (options.onKeyUp) {
+                            datepicker = self[formName].find('.datepicker')
+                            if (datepicker.length && datepicker.is(':visible') && code === 27 && !e.ctrlKey && !e.shiftKey) {
+                                e.stopImmediatePropagation();
+                                e.preventDefault();
+                                datepicker.hide();
+                            }
+                            else if (options.onKeyUp) {
                                 options.onKeyUp.call(self, e);
                             }
                         });
+
                         this[formName].modal({
                             item_options: options.item_options
                         });
@@ -505,48 +641,31 @@
 
         close_form: function(formName) {
             var self = this,
+                form = this[formName],
+                canClose,
                 keySuffix = formName + '.' + this.item_name,
                 timeOut;
-            if (this[formName]) {
-                this[formName].data('closing', true);
-                if (this[formName].isModal) {
-                    clearTimeout(timeOut);
-                    timeOut = setTimeout(function() {
-                        var form = self[formName];
-                            if (form) {
-                                form.modal('hide');
-                            }
+            if (form) {
+                form.data('_closing', true);
+                if (form.hasClass('modal')) {
+                    setTimeout(
+                        function() {
+                            form.modal('hide');
                         },
                         100
                     );
                 } else {
-                    $(window).off("keydown." + keySuffix);
-                    $(window).off("keyup." + keySuffix);
-                    this[formName].remove();
-                    this[formName] = undefined;
-                }
-            }
-        },
-
-        show_edit_form: function(form_name, options) {
-            var self = this,
-                keyup = options.onKeyUp;
-            options.onKeyUp = function(e) {
-                if (keyup) {
-                    keyup.call(self, e);
-                }
-                var datepicker,
-                    code = (e.keyCode ? e.keyCode : e.which);
-                if (self[form_name]) {
-                    datepicker = self[form_name].find('.datepicker')
-                    if (datepicker.length && datepicker.is(':visible') && code === 27 && !e.ctrlKey && !e.shiftKey) {
-                        e.stopImmediatePropagation();
-                        e.preventDefault();
-                        datepicker.hide();
+                    if (form._options && form._options.onHide) {
+                        canClose = form._options.onHide.call(self);
+                    }
+                    if (canClose !== false) {
+                        this[formName] = undefined;
+                        $(window).off("keydown." + keySuffix);
+                        $(window).off("keyup." + keySuffix);
+                        form.remove();
                     }
                 }
             }
-            this.create_form(form_name, options);
         },
 
         print_message: function(html) {
@@ -622,18 +741,17 @@
             for (key in buttons) {
                 if (buttons.hasOwnProperty(key)) {
                     $element.find(".modal-footer").append(
-                        $button.clone().attr("id", key).attr("tabindex", tab).html(key));
+                        $button.clone()
+                            .attr("id", key)
+                            .attr("tabindex", tab)
+                            .css("min-width", options.button_min_width)
+                            .html(key));
                     tab++;
                 }
             }
 
             $element.on("shown", function(e) {
                 e.stopPropagation();
-                $element.find(".modal-footer").find('button.btn').each(function() {
-                    if ($(this).outerWidth() < options.button_min_width) {
-                        $(this).outerWidth(options.button_min_width);
-                    }
-                });
             });
 
             $element.on("hide", function(e) {
@@ -684,16 +802,12 @@
             var buttons = {};
             buttons[language.yes] = yesCallback;
             buttons[language.no] = noCallback;
-            this.message(mess, {buttons: buttons, margin: "20px 20px", text_center: true, center_buttons: true});
+            return this.message(mess, {buttons: buttons, margin: "20px 20px", text_center: true, center_buttons: true});
         },
 
         warning: function(mess, callback) {
             var buttons = {"OK": callback};
-            this.message(mess, {buttons: buttons, margin: "20px 20px", text_center: true, center_buttons: true});
-        },
-
-        information: function(mess, options) {
-            return this.message(mess, options);
+            return this.message(mess, {buttons: buttons, margin: "20px 20px", text_center: true, center_buttons: true});
         },
 
         show_message: function(mess, options) {
@@ -704,12 +818,12 @@
             $element.modal('hide');
         },
 
-        yesNoCancel: function(mess, yesCallback, noCallback, cancelCallback) {
+        yes_no_cancel: function(mess, yesCallback, noCallback, cancelCallback) {
             var buttons = {};
             buttons[language.yes] = yesCallback;
             buttons[language.no] = noCallback;
             buttons[language.cancel] = cancelCallback;
-            this.message(mess, {buttons: buttons, margin: "20px 20px", text_center: true, width: 500, center_buttons: true});
+            return this.message(mess, {buttons: buttons, margin: "20px 20px", text_center: true, width: 500, center_buttons: true});
         },
 
         is_empty_obj: function(obj) {
@@ -722,8 +836,16 @@
 
         emptyFunc: function() {},
 
-        abort: function() {
-            throw 'abort';
+        abort: function(message) {
+            message = message ? ' - ' + message : ''
+            throw 'execution aborted: ' + this.item_name + message;
+        },
+
+        log_message: function(message) {
+            if (this.task.settings.DEBUGGING) {
+                message = message ? ' message: ' + message : ''
+                console.log(this.item_name + message);
+            }
         }
     };
 
@@ -738,6 +860,7 @@
         AbsrtactItem.call(this, undefined, 0, item_name, caption, true);
         this.task = this;
         this.user_info = {};
+        this._script_cache = {};
         this.gridId = 0;
         $('body').on('mousedown.context_menu', function(e) {
             if (self.$context_menu) {
@@ -825,7 +948,7 @@
                         else if (self.ID > 0 && data.result.version && self.version && data.result.version !== self.version) {
                             if (!self.task._version_changed) {
                                 self.task._version_changed = true;
-                                self.information('<h4>' + language.apply_changes + '</h4>', {margin: '50px 0px', width: 500,  text_center: true});
+                                self.message('<h4>' + language.apply_changes + '</h4>', {margin: '50px 0px', width: 500,  text_center: true});
                             }
                         }
                         if (callback) {
@@ -969,15 +1092,16 @@
             button.click();
         },
 
-        load: function(callback) {
+        load: function() {
             var logingInfo,
                 self = this,
                 info;
             if (!this.user_id) {
-                this.user_id = this.readCookie('user_id');
+                this.user_id = this.read_cookie('user_id');
             }
             this.send_request('init_client', null, function(info) {
-                var templates;
+                var templates,
+                    js_filename;
                 self.logged_in = true;
                 settings = info.settings;
                 language = info.language;
@@ -996,98 +1120,128 @@
                 if (info.task[4]) {
                     self.item_type = self.types[info.task[4] - 1];
                 }
+                if (info.task[5]) {
+                    self.js_filename = 'js/' + info.task[5];
+                }
                 self.task = self;
-                self.init(info.task);
-                self.bindItems();
-                self.bindEvents();
                 self.templates = $("<div></div>");
                 templates = $(".templates");
                 self.templates = templates.clone();
                 templates.remove();
-                if (self.on_page_loaded) {
-                    self.on_page_loaded.call(self, self);
+                self.init(info.task);
+                self.bind_items();
+                self.events = {};
+                if (self.ID === 0) {
+                    self.js_filename = 'jam/js/admin.js';
+                    self.settings.DYNAMIC_JS = false;
                 }
-                else if (self.on_before_show_main_form) {
-                    self.on_before_show_main_form.call(self, self);
-                }
-                if (callback) {
-                    callback.call(self);
-                }
+                self.init_modules();
             });
         },
 
-        login: function(callback) {
+        init_modules: function() {
             var self = this,
-                info,
-                $form;
-            if (this.on_login) {
-                info = this.on_login.call(this, this);
-                this.do_login(info, callback);
-            } else {
-                if (this.templates) {
-                    $form = this.templates.find("#login-form").clone();
-                } else {
-                    $form = $("#login-form").clone();
-                }
-
-                $form = this.makeFormModal($form, {
-                    title: $form.data('caption'),
-                    transition: false
-                })
-
-                $form.find("#login-btn").click(function(e) {
-                    var login = $form.find("#inputLoging").val(),
-                        passWord = $form.find("#inputPassword").val(),
-                        pswHash = hex_md5(passWord);
-                    self.user_id = self.send_request('login', [login, pswHash]);
-                    self.createCookie('user_id', self.user_id, 0.5);
-                    if (self.user_id) {
-                        if ($form) {
-                            $form.modal('hide');
-                        }
-                        location.reload();
+                mutex = 0,
+                calcback_executing = false,
+                calc_modules = function(item) {
+                    if (item.js_filename) {
+                        mutex++;
                     }
-                });
-
-                $form.find("#close-btn").click(function(e) {
-                    $form.modal('hide');
-                });
-
-                $form.on("shown", function(e) {
-                    $form.find("#inputLoging").focus();
-                    e.stopPropagation();
-                });
-
-                $form.find('input').keydown(function(e) {
-                    var $this = $(this),
-                        code = (e.keyCode ? e.keyCode : e.which);
-                    if (code === 40) {
-                        if ($this.attr('id') === 'inputLoging') {
-                            $form.find('#inputPassword').focus();
-                        } else {
-                            $form.find('#login-btn').focus()
-                        }
+                },
+                load_script = function(item) {
+                    if (item.js_filename) {
+                        item.load_script(
+                            item.js_filename,
+                            function() {
+                                if (--mutex === 0) {
+                                    self.bind_events();
+                                    if (self.on_page_loaded && !calcback_executing) {
+                                        calcback_executing = true;
+                                        self.on_page_loaded.call(self, self);
+                                    }
+                                }
+                            }
+                        )
                     }
-                });
+                };
 
-                $form.modal({
-                    width: 500
-                });
+            if (this.settings.DYNAMIC_JS) {
+                mutex = 1;
+                load_script(this);
+            }
+            else {
+                this.all(calc_modules);
+                this.all(load_script);
             }
         },
 
-        logout: function(callback) {
+        login: function() {
+            var self = this,
+                info,
+                $form;
+            if (this.templates) {
+                $form = this.templates.find("#login-form").clone();
+            } else {
+                $form = $("#login-form").clone();
+            }
+
+            $form = this.makeFormModal($form, {
+                title: $form.data('caption'),
+                transition: false
+            })
+
+            $form.find("#login-btn").click(function(e) {
+                var login = $form.find("#inputLoging").val(),
+                    passWord = $form.find("#inputPassword").val(),
+                    pswHash = hex_md5(passWord);
+                self.user_id = self.send_request('login', [login, pswHash]);
+                self.create_cookie('user_id', self.user_id, 0.5);
+                if (self.user_id) {
+                    if ($form) {
+                        $form.modal('hide');
+                    }
+                    location.reload();
+                }
+            });
+
+            $form.find("#close-btn").click(function(e) {
+                $form.modal('hide');
+            });
+
+            $form.on("shown", function(e) {
+                $form.find("#inputLoging").focus();
+                e.stopPropagation();
+            });
+
+            $form.find('input').keydown(function(e) {
+                var $this = $(this),
+                    code = (e.keyCode ? e.keyCode : e.which);
+                if (code === 40) {
+                    if ($this.attr('id') === 'inputLoging') {
+                        $form.find('#inputPassword').focus();
+                    } else {
+                        $form.find('#login-btn').focus()
+                    }
+                }
+            });
+
+            $form.modal({
+                width: 500
+            });
+        },
+
+        logout: function() {
             if (this.user_id) {
                 this.send_request('logout', this.user_id);
                 this.user_id = null;
-                this.eraseCookie('user_id');
+                this.erase_cookie('user_id');
                 location.reload();
             }
         },
 
         has_privilege: function(item, priv_name) {
             var priv_dic;
-            if (item.task.item_name === "admin") {
+            if (item.task.ID === 0) {
                 return true;
             }
             if (!this.user_privileges || item.master) {
@@ -1109,7 +1263,7 @@
             }
         },
 
-        createCookie: function(name, value, days) {
+        create_cookie: function(name, value, days) {
             var expires;
 
             if (days) {
@@ -1122,7 +1276,7 @@
             document.cookie = escape(name) + "=" + escape(value) + expires + "; path=/";
         },
 
-        readCookie: function(name) {
+        read_cookie: function(name) {
             var nameEQ = escape(name) + "=";
             var ca = document.cookie.split(';');
             for (var i = 0; i < ca.length; i++) {
@@ -1133,8 +1287,8 @@
             return null;
         },
 
-        eraseCookie: function(name) {
-            this.createCookie(name, "", -1);
+        erase_cookie: function(name) {
+            this.create_cookie(name, "", -1);
         },
 
         show_context_menu: function($menu, e) {
@@ -1162,8 +1316,8 @@
     Group.prototype = new AbsrtactItem();
     Group.prototype.constructor = Group;
 
-    function Group(owner, ID, item_name, caption, visible, type) {
-        AbsrtactItem.call(this, owner, ID, item_name, caption, visible, type);
+    function Group(owner, ID, item_name, caption, visible, type, js_filename) {
+        AbsrtactItem.call(this, owner, ID, item_name, caption, visible, type, js_filename);
     }
 
     Group.prototype.getChildClass = function() {
@@ -1266,7 +1420,7 @@
         },
 
         get_detail_log: function(detail_ID) {
-            var result = {'records': [], 'fields': [], 'expanded': false},
+            var result,
                 record_log,
                 details;
             if (this.log_changes()) {
@@ -1274,6 +1428,9 @@
                 details = record_log['details'];
                 if (!this.is_empty_obj(details)) {
                     result = details[detail_ID];
+                }
+                if (result === undefined && this._is_delta) {
+                    result = {'records': [], 'fields': [], 'expanded': false, 'logs': {}};
                 }
                 return result
             }
@@ -1650,17 +1807,24 @@
         },
 
         prepare: function() {
-            var i,
+            var log = this,
+                i,
                 len = this.item.fields.length;
-            this.records = [];
-            this.logs = {};
-            this.fields = [];
-            for (i = 0; i < len; i++) {
-                if (!this.item.fields[i].master_field) {
-                    this.fields.push(this.item.fields[i].field_name);
-                }
+
+            if (this.item.master) {
+                log = this.item.master.change_log.get_detail_log(this.item.ID);
             }
-            this.expanded = this.item.expanded;
+            if (log) {
+                log.records = [];
+                log.logs = {};
+                log.fields = [];
+                for (i = 0; i < len; i++) {
+                    if (!this.item.fields[i].master_field) {
+                        log.fields.push(this.item.fields[i].field_name);
+                    }
+                }
+                log.expanded = this.item.expanded;
+            }
         }
     };
 
@@ -1671,9 +1835,9 @@
 
     Item.prototype = new AbsrtactItem();
 
-    function Item(owner, ID, item_name, caption, visible, type) {
+    function Item(owner, ID, item_name, caption, visible, type, js_filename) {
         var self;
-        AbsrtactItem.call(this, owner, ID, item_name, caption, visible, type);
+        AbsrtactItem.call(this, owner, ID, item_name, caption, visible, type, js_filename);
         if (this.task && type !== 0 && !(item_name in this.task)) {
             this.task[item_name] = this;
         }
@@ -1709,8 +1873,8 @@
         this._select_field_list = [];
         this._record_lookup_index = -1
         this._record_info_index = -1
-        this.is_delta = false;
-        this._pg_limit = 100;
+        this._is_delta = false;
+        this._pg_limit = 20;
         this._pg_offset = 0;
         this.is_loaded = false;
         this.view_options = $.extend({}, this.modal_options);
@@ -1753,7 +1917,7 @@
         });
         Object.defineProperty(this, "modified", {
             get: function() {
-                return this.get_modified();
+                return this.is_modified();
             },
         });
         Object.defineProperty(this, "filtered", {
@@ -1793,14 +1957,6 @@
                 this.set_log_changes(new_value);
             }
         });
-        Object.defineProperty(this, "auto_loading", { // depricated
-            get: function() {
-                return this.paginate;
-            },
-            set: function(value) {
-                this.paginate = value;
-            }
-        });
     }
 
     // Item tree methods
@@ -1815,8 +1971,8 @@
 
         initAttr: function(info) {
             var i,
-                field_defs = info[6],
-                filter_defs = info[7],
+                field_defs = info[7],
+                filter_defs = info[8],
                 len;
             if (field_defs) {
                 len = field_defs.length;
@@ -1832,10 +1988,10 @@
                     new Filter(this, filter_defs[i]);
                 }
             }
-            this.reports = info[8  ];
+            this.reports = info[9];
         },
 
-        bindItem: function() {
+        bind_item: function() {
             var i = 0,
                 len,
                 reports;
@@ -1851,6 +2007,18 @@
             for (i = 0; i < len; i++) {
                 this.reports.push(this.task.item_by_ID(reports[i]));
             }
+        },
+
+        can_create: function() {
+            return this.task.has_privilege(this, 'can_create');
+        },
+
+        can_edit: function() {
+            return this.task.has_privilege(this, 'can_edit');
+        },
+
+        can_delete: function() {
+            return this.task.has_privilege(this, 'can_delete');
         },
 
         prepare_fields: function() {
@@ -1958,11 +2126,7 @@
             }
         },
 
-        eachRecord: function(callback) {
-            this.each(callback);
-        },
-
-        eachField: function(callback) {
+        each_field: function(callback) {
             var i = 0,
                 len = this.fields.length,
                 value;
@@ -1974,7 +2138,7 @@
             }
         },
 
-        eachFilter: function(callback) {
+        each_filter: function(callback) {
             var i = 0,
                 len = this.filters.length,
                 value;
@@ -1986,7 +2150,7 @@
             }
         },
 
-        eachDetail: function(callback) {
+        each_detail: function(callback) {
             var i = 0,
                 len = this.details.length,
                 value;
@@ -2010,14 +2174,11 @@
                 fields = this.fields;
             }
             len = fields.length;
-//            result = fields[name];
-//            if (result === undefined) {
             for (; i < len; i++) {
                 if (fields[i].field_name === name) {
                     return fields[i];
                 }
             }
-//            }
             return result;
         },
 
@@ -2067,13 +2228,6 @@
             }
         },
 
-        system_field_name: function(name) {
-            if (name === 'id' || name === 'deleted'
-                || name === 'owner_id' || name === 'owner_rec_id') {
-                return true;
-            }
-        },
-
         get_records: function() {
             var i,
                 len,
@@ -2106,7 +2260,6 @@
                 this.item_caption, this.visible, this.item_type_id);
             result.master = this.master;
             result.item_type = this.item_type;
-//            result._pg_limit = this._pg_limit;
             options = $.extend({}, defaultOptions, options);
             result.ID = this.ID;
             result.item_name = this.item_name;
@@ -2147,7 +2300,7 @@
                 }
             }
             if (options.details) {
-                this.eachDetail(function(detail, i) {
+                this.each_detail(function(detail, i) {
                     copyTable = detail.copy(options);
                     copyTable.owner = result;
                     copyTable.expanded = detail.expanded;
@@ -2259,7 +2412,7 @@
             this._log_changes = value;
         },
 
-        get_modified: function() {
+        is_modified: function() {
             return this._modified;
         },
 
@@ -2280,24 +2433,24 @@
             if (expanded === undefined) {
                 expanded = true;
             }
-            this.eachField(function(field, i) {
+            this.each_field(function(field, i) {
                 field.bind_index = null;
                 field.lookup_index = null;
             });
-            this.eachField(function(field, i) {
+            this.each_field(function(field, i) {
                 if (!field.master_field) {
                     field.bind_index = j;
                     j += 1;
                 }
             });
-            this.eachField(function(field, i) {
+            this.each_field(function(field, i) {
                 if (field.master_field) {
                     field.bind_index = field.master_field.bind_index;
                 }
             });
             this._record_lookup_index = j
             if (expanded) {
-                this.eachField(function(field, i) {
+                this.each_field(function(field, i) {
                     if (field.lookup_item) {
                         field.lookup_index = j;
                         j += 1;
@@ -2441,7 +2594,7 @@
                 } else if (this._where_list.length) {
                     filters = this._where_list.slice(0);
                 } else {
-                    this.eachFilter(function(filter, i) {
+                    this.each_filter(function(filter, i) {
                         if (filter.get_value() !== null) {
                             filters.push([filter.field.field_name, filter.filter_type, filter.get_value()]);
                         }
@@ -2471,9 +2624,8 @@
             this._sorted_desc = false;
             this._open_params = params;
             if (this.on_before_open) {
-                result = this.on_before_open.call(this, this, params);
+                this.on_before_open.call(this, this, params);
             }
-            return result
         },
 
         do_after_open: function() {
@@ -2493,29 +2645,23 @@
                 }
             }
 
-            if (!this.grid_keydown) {
-                if (callback) {
-                    this.eachDetail(function(detail, i) {
-                        if (!detail.disabled) {
-                            details += 1;
-                        }
-                    });
-                    this.eachDetail(function(detail, i) {
-                        if (!detail.disabled) {
-                            detail.open(afterOpen);
-                        }
-                    });
-                } else {
-                    this.eachDetail(function(detail, i) {
-                        if (!detail.disabled) {
-                            detail.open();
-                        }
-                    });
-                }
+            if (callback) {
+                this.each_detail(function(detail, i) {
+                    if (!detail.disabled) {
+                        details += 1;
+                    }
+                });
+                this.each_detail(function(detail, i) {
+                    if (!detail.disabled) {
+                        detail.open(afterOpen);
+                    }
+                });
             } else {
-                if (callback) {
-                    callback.call(this);
-                }
+                this.each_detail(function(detail, i) {
+                    if (!detail.disabled) {
+                        detail.open();
+                    }
+                });
             }
         },
 
@@ -2527,9 +2673,8 @@
             }
         },
 
-        open: function() {
-            var result,
-                i = 0,
+        open: function(options, callback) {
+            var i = 0,
                 len = arguments.length,
                 options,
                 expanded,
@@ -2562,6 +2707,7 @@
                         break;
                 }
             }
+
             if (options) {
                 expanded = options.expanded;
                 fields = options.fields;
@@ -2600,24 +2746,27 @@
                         }
                     }
                     if (records !== undefined) {
-                        if (this.do_before_open(expanded, fields,
+                        this.do_before_open(expanded, fields,
                             where, order_by, open_empty, params, offset,
-                            limit, funcs, group_by) !== false) {
-                            this.bind_fields(expanded);
-                            this._records = records;
-                            this._active = true;
-                            this.set_state(consts.STATE_BROWSE);
-                            this.first();
-                            this.do_after_open();
-                            this.update_controls(consts.UPDATE_OPEN);
-                            if (callback) {
-                                callback.call(this, this);
-                            }
+                            limit, funcs, group_by)
+                        this.bind_fields(expanded);
+                        if (this.master.is_new()) {
+                            this.change_log.prepare();
+                        }
+                        this._records = records;
+                        this._active = true;
+                        this.set_state(consts.STATE_BROWSE);
+                        this.first();
+                        this.do_after_open();
+                        this.update_controls(consts.UPDATE_OPEN);
+                        if (callback) {
+                            callback.call(this, this);
                         }
                         return;
                     }
                 }
                 else {
+                    this.close();
                     return;
                 }
             }
@@ -2625,42 +2774,40 @@
                 params = this._open_params;
                 params.__offset = offset;
                 if (this.on_before_open) {
-                    result = this.on_before_open.call(this, this, params);
+                    this.on_before_open.call(this, this, params);
                 }
             } else {
                 offset = 0
-                result = this.do_before_open(expanded, fields,
+                this.do_before_open(expanded, fields,
                     where, order_by, open_empty, params, offset, limit, funcs, group_by);
                 this.bind_fields(expanded);
             }
-            if (result !== false) {
-                if (this.paginate) {
-                    params.__limit = this._pg_limit;
-                }
-                this.change_log.prepare();
-                this._records = [];
-                this.do_open(offset, async, params, open_empty, function() {
-                    self.details_active = false;
-                    try {
-                        self._active = true;
-                        self.set_state(consts.STATE_BROWSE);
-                        self._cur_row = null;
-                        self.first();
-                        self.do_after_open();
-                        self.update_controls(consts.UPDATE_OPEN);
-                        if ((offset === 0) && self.on_filter_applied) {
-                            self.on_filter_applied.call(self, self);
-                        }
-                    } finally {
-                        self.details_active = details_active;
-                    }
-                    if (self.details_active) {
-                        self.open_details(callback)
-                    } else if (callback) {
-                        callback.call(self, self);
-                    }
-                });
+            if (this.paginate) {
+                params.__limit = this._pg_limit;
             }
+            this.change_log.prepare();
+            this._records = [];
+            this.do_open(offset, async, params, open_empty, function() {
+                self.details_active = false;
+                try {
+                    self._active = true;
+                    self.set_state(consts.STATE_BROWSE);
+                    self._cur_row = null;
+                    self.first();
+                    self.do_after_open();
+                    self.update_controls(consts.UPDATE_OPEN);
+                    if ((offset === 0) && self.on_filter_applied) {
+                        self.on_filter_applied.call(self, self);
+                    }
+                } finally {
+                    self.details_active = details_active;
+                }
+                if (self.details_active) {
+                    self.open_details(callback)
+                } else if (callback) {
+                    callback.call(self, self);
+                }
+            });
         },
 
         do_open: function(offset, async, params, open_empty, callback) {
@@ -2718,31 +2865,20 @@
 
         },
 
-        close: function() {
+        do_close: function() {
             this._active = false;
             this._records = null;
             this._cur_row = null;
-            this.close_details();
+        },
+
+        close: function() {
+            var len = this.details.length;
+            this.do_close();
+            for (var i = 0; i < len; i++) {
+                this.details[i].close();
+            }
             this.update_controls(consts.UPDATE_CLOSE);
         },
-
-        close_details: function() {
-            var len = this.details.length;
-            if (!this.grid_keydown) {
-                for (var i = 0; i < len; i++) {
-                    this.details[i].close();
-                }
-            }
-        },
-
-            "TEXT": 1,
-            "INTEGER": 2,
-            "FLOAT": 3,
-            "CURRENCY": 4,
-            "DATE": 5,
-            "DATETIME": 6,
-            "BOOLEAN": 7,
-            "BLOB": 8,
 
         sort: function(fields) {
             var self = this,
@@ -2854,13 +2990,13 @@
 
         new_record: function() {
             var result = [];
-            this.eachField(function(field, i) {
+            this.each_field(function(field, i) {
                 if (!field.master_field) {
                     result.push(null);
                 }
             });
             if (this.expanded) {
-                this.eachField(function(field, i) {
+                this.each_field(function(field, i) {
                     if (field.lookup_item) {
                         result.push(null);
                     }
@@ -2871,7 +3007,7 @@
 
         do_before_append: function() {
             if (this.on_before_append) {
-                return this.on_before_append.call(this, this);
+                this.on_before_append.call(this, this);
             }
         },
 
@@ -2891,19 +3027,17 @@
             if (this.get_state() !== consts.STATE_BROWSE) {
                 throw this.item_name + ": can't append record - item is not in browse mode";
             }
-            if (this.do_before_append() !== false) {
-                if (this.do_before_scroll() !== false) {
-                    this._old_row = this.get_rec_no();
-                    this.set_state(consts.STATE_INSERT);
-                    this._records.push(this.new_record());
-                    this._cur_row = this._records.length - 1;
-                    this._modified = false;
-                    this.set_record_status(consts.RECORD_INSERTED);
-                    this.update_controls(consts.UPDATE_APPEND);
-                    this.do_after_scroll();
-                    this.do_after_append();
-                }
-            }
+            this.do_before_append();
+            this.do_before_scroll();
+            this._old_row = this.get_rec_no();
+            this.set_state(consts.STATE_INSERT);
+            this._records.push(this.new_record());
+            this._cur_row = this._records.length - 1;
+            this._modified = false;
+            this.set_record_status(consts.RECORD_INSERTED);
+            this.update_controls(consts.UPDATE_APPEND);
+            this.do_after_scroll();
+            this.do_after_append();
         },
 
         insert: function() {
@@ -2916,64 +3050,22 @@
             if (this.get_state() !== consts.STATE_BROWSE) {
                 throw this.item_name + ": can't insert record - item is not in browse mode";
             }
-            if (this.do_before_append() !== false) {
-                if (this.do_before_scroll() !== false) {
-                    this._old_row = this.get_rec_no();
-                    this.set_state(consts.STATE_INSERT);
-                    this._records.splice(0, 0, this.new_record());
-                    this._cur_row = 0;
-                    this._modified = false;
-                    this.set_record_status(consts.RECORD_INSERTED);
-                    this.update_controls(consts.UPDATE_INSERT);
-                    this.do_after_scroll();
-                    this.do_after_append();
-                }
-            }
-        },
-
-        copy_rec: function() {
-            var i, len, rec;
-            if (!this._active) {
-                throw this.item_name + ": can't copy record - item is not active";
-            }
-            if (this.master && !this.master.is_changing()) {
-                throw this.item_name + ": can't copy record - master item is not in edit or insert mode";
-            }
-            if (this.get_state() !== consts.STATE_BROWSE) {
-                throw this.item_name + ": can't copy record - item is not in browse mode";
-            }
-            if (this.record_count() === 0) {
-                throw this.item_name + ": can't edit record - item record list is empty";
-            }
-            rec = this.get_rec_no();
-            if (this.do_before_append() !== false) {
-                if (this.do_before_scroll() !== false) {
-                    this._old_row = rec;
-                    this.set_state(consts.STATE_INSERT);
-                    this._buffer = this._records[rec].slice(0);
-                    this._records.push(this.new_record());
-                    this._cur_row = this._records.length - 1;
-                    rec = this.get_rec_no();
-                    len = this._records[rec].length;
-                    for (i = 0; i < len; i++) {
-                        if (i < this._record_info_index) {
-                            this._records[rec][i] = this._buffer[i];
-                        }
-                    }
-                    this._records[rec][this.id.bind_index] = null;
-                    this._buffer = null;
-                    this._modified = false;
-                    this.set_record_status(consts.RECORD_INSERTED);
-                    this.update_controls(consts.UPDATE_APPEND);
-                    this.do_after_scroll();
-                    this.do_after_append();
-                }
-            }
+            this.do_before_append();
+            this.do_before_scroll();
+            this._old_row = this.get_rec_no();
+            this.set_state(consts.STATE_INSERT);
+            this._records.splice(0, 0, this.new_record());
+            this._cur_row = 0;
+            this._modified = false;
+            this.set_record_status(consts.RECORD_INSERTED);
+            this.update_controls(consts.UPDATE_INSERT);
+            this.do_after_scroll();
+            this.do_after_append();
         },
 
         do_before_edit: function() {
             if (this.on_before_edit) {
-                return this.on_before_edit.call(this, this);
+                this.on_before_edit.call(this, this);
             }
         },
 
@@ -2996,20 +3088,19 @@
             if (this.get_state() !== consts.STATE_BROWSE) {
                 throw this.item_name + ": can't edit record - item is not in browse mode";
             }
-            if (this.do_before_edit() !== false) {
-                this.change_log.log_change();
-                this._buffer = this.change_log.store_record_log();
-                this.set_state(consts.STATE_EDIT);
-                this._old_row = this.get_rec_no();
-                this._old_status = this.get_record_status();
-                this._modified = false;
-                this.do_after_edit();
-            }
+            this.do_before_edit();
+            this.change_log.log_change();
+            this._buffer = this.change_log.store_record_log();
+            this.set_state(consts.STATE_EDIT);
+            this._old_row = this.get_rec_no();
+            this._old_status = this.get_record_status();
+            this._modified = false;
+            this.do_after_edit();
         },
 
         do_before_cancel: function() {
             if (this.on_before_cancel) {
-                return this.on_before_cancel.call(this, this);
+                this.on_before_cancel.call(this, this);
             }
         },
 
@@ -3023,40 +3114,38 @@
             var i,
                 len,
                 rec,
-                prev_state,
-                prev_modified = this._modified;
+                prev_state;
             rec = this.get_rec_no();
 
-            if (this.do_before_cancel() !== false) {
-                if (this.get_state() === consts.STATE_EDIT) {
-                    this.change_log.restore_record_log(this._buffer)
-                    this.update_controls(consts.UPDATE_CANCEL)
-                    for (var i = 0; i < this.details.length; i++) {
-                        this.details[i].update_controls(consts.UPDATE_OPEN);
-                    }
-                } else if (this.get_state() === consts.STATE_INSERT) {
-                    this.change_log.remove_record_log();
-                    this.update_controls(consts.UPDATE_DELETE);
-                    this._records.splice(rec, 1);
-                } else {
-                    throw this.item_name + ' cancel error: invalid item state';
+            this.do_before_cancel();
+            if (this.get_state() === consts.STATE_EDIT) {
+                this.change_log.restore_record_log(this._buffer)
+                this.update_controls(consts.UPDATE_CANCEL)
+                for (var i = 0; i < this.details.length; i++) {
+                    this.details[i].update_controls(consts.UPDATE_OPEN);
                 }
-
-                prev_state = this.get_state();
-                this.set_state(consts.STATE_BROWSE);
-                if (prev_state === consts.STATE_INSERT) {
-                    this.do_before_scroll();
-                }
-                this._cur_row = this._old_row;
-                if (prev_state === consts.STATE_EDIT) {
-                    this.set_record_status(this._old_status);
-                }
-                this._modified = false;
-                if (prev_state === consts.STATE_INSERT) {
-                    this.do_after_scroll();
-                }
-                this.do_after_cancel();
+            } else if (this.get_state() === consts.STATE_INSERT) {
+                this.change_log.remove_record_log();
+                this.update_controls(consts.UPDATE_DELETE);
+                this._records.splice(rec, 1);
+            } else {
+                throw this.item_name + ' cancel error: invalid item state';
             }
+
+            prev_state = this.get_state();
+            this.set_state(consts.STATE_BROWSE);
+            if (prev_state === consts.STATE_INSERT) {
+                this.do_before_scroll();
+            }
+            this._cur_row = this._old_row;
+            if (prev_state === consts.STATE_EDIT) {
+                this.set_record_status(this._old_status);
+            }
+            this._modified = false;
+            if (prev_state === consts.STATE_INSERT) {
+                this.do_after_scroll();
+            }
+            this.do_after_cancel();
         },
 
         is_browsing: function() {
@@ -3071,7 +3160,7 @@
             return this.get_state() === consts.STATE_INSERT;
         },
 
-        is_editing: function() {
+        is_edited: function() {
             return this.get_state() === consts.STATE_EDIT;
         },
 
@@ -3082,7 +3171,7 @@
 
         do_before_delete: function(callback) {
             if (this.on_before_delete) {
-                return this.on_before_delete.call(this, this);
+                this.on_before_delete.call(this, this);
             }
         },
 
@@ -3103,27 +3192,20 @@
             if (this.master && !this.master.is_changing()) {
                 throw this.item_name + ": can't delete record - master item is not in edit or insert mode";
             }
-            //~ if (this.get_state() !== consts.STATE_BROWSE) {
-                //~ throw this.item_name + ": can't edit record - item is not in browse mode";
-            //~ }
             this.set_state(consts.STATE_DELETE);
             try {
-                if (this.record_count() > 0) {
-                    if (this.do_before_delete() !== false) {
-                        if (this.do_before_scroll() !== false) {
-                            this.update_controls(consts.UPDATE_DELETE);
-                            this.change_log.log_change();
-                            if (this.master) {
-                                this.master.set_modified(true);
-                            }
-                            this._records.splice(rec, 1);
-                            this.set_rec_no(rec);
-                            this.do_after_scroll();
-                            this.set_state(consts.STATE_BROWSE);
-                            this.do_after_delete();
-                        }
-                    }
+                this.do_before_delete();
+                this.do_before_scroll();
+                this.update_controls(consts.UPDATE_DELETE);
+                this.change_log.log_change();
+                if (this.master) {
+                    this.master.set_modified(true);
                 }
+                this._records.splice(rec, 1);
+                this.set_rec_no(rec);
+                this.do_after_scroll();
+                this.set_state(consts.STATE_BROWSE);
+                this.do_after_delete();
             } finally {
                 this.set_state(consts.STATE_BROWSE);
             }
@@ -3134,7 +3216,7 @@
             if (typeof ID === "string") {
                 ID = parseInt(ID, 10);
             }
-            this.eachDetail(function(detail, i) {
+            this.each_detail(function(detail, i) {
                 if (detail.ID === ID) {
                     result = detail;
                     return false;
@@ -3147,70 +3229,41 @@
             var data,
                 i,
                 len,
-                old_state = this.get_state(),
-                on_before_result;
+                old_state = this.get_state();
+
             if (!this.is_changing()) {
                 throw this.item_name + ' post method: dataset is not in edit or insert mode';
             }
             if (this.on_before_post) {
-                on_before_result = this.on_before_post.call(this, this);
+                this.on_before_post.call(this, this);
             }
             this.check_record_valid();
-            if (on_before_result !== false) {
-                len = this.details.length;
-                for (i = 0; i < len; i++) {
-                    if (this.details[i].is_changing()) {
-                        this.details[i].post();
-                    }
+            len = this.details.length;
+            for (i = 0; i < len; i++) {
+                if (this.details[i].is_changing()) {
+                    this.details[i].post();
                 }
-                if (this.item_state === consts.STATE_INSERT ||
-                    (this.item_state === consts.STATE_EDIT && this.get_modified())) {
-                    this.change_log.log_change();
-                }
-                this.set_modified(false);
-                if (this.master) {
-                    this.master.set_modified(true);
-                }
-                this.set_state(consts.STATE_BROWSE);
-                if (!this.valid_record()) {
-                    this.update_controls(consts.UPDATE_DELETE);
-                    this.search_record(this.get_rec_no(), 0);
-                }
-                if (this.on_after_post) {
-                    this.on_after_post.call(this, this);
-                }
+            }
+            if (this.is_modified() || this.is_new()) {
+                this.change_log.log_change();
+            }
+            else if (this.get_record_status() === consts.RECORD_UNCHANGED) {
+                this.change_log.remove_record_log();
+            }
+            this._modified = false;
+            this.set_state(consts.STATE_BROWSE);
+            if (this.on_after_post) {
+                this.on_after_post.call(this, this);
+            }
+            if (!this._valid_record()) {
+                this.update_controls(consts.UPDATE_DELETE);
+                this._search_record(this.get_rec_no(), 0);
             }
         },
 
         get_change_id: function() {
             this._change_id = this._change_id + 1;
             return this._change_id;
-        },
-
-        clear_log: function(log) {
-            var rec,
-                details,
-                info,
-                detail_changes,
-                detail_expanded,
-                detail_records;
-            for (var key in log) {
-                if (log.hasOwnProperty(key)) {
-                    rec = log[key][0];
-                    details = log[key][1];
-                    info = rec[rec.length - 1];
-                    info[consts.REC_STATUS] = null;
-                    info[consts.REC_CHANGE_ID] = null;
-                    for (var detail_id in details) {
-                        if (details.hasOwnProperty(detail_id)) {
-                            detail_changes = details[detail_id][0];
-                            detail_expanded = details[detail_id][1];
-                            detail_records = details[detail_id][2];
-                            this.clear_log(detail_changes);
-                        }
-                    }
-                }
-            }
         },
 
         apply: function() {
@@ -3231,6 +3284,9 @@
                         params = arguments[i];
                         break;
                 }
+            }
+            if (this.is_changing()) {
+                this.post();
             }
             this.change_log.get_changes(changes);
             if (!this.master && !this.change_log.is_empty_obj(changes.data)) {
@@ -3276,12 +3332,15 @@
                 this.change_log.get_changes(changes);
             }
             result = this.copy({filters: false, details: true, handlers: false});
+            result.on_after_scroll = function(result) {
+                result.open_details();
+            }
             result.expanded = false;
-            result.is_delta = true;
+            result._is_delta = true;
             len = result.details.length;
             for (i = 0; i < len; i++) {
                 result.details[i].expanded = false;
-                result.details[i].is_delta = true;
+                result.details[i]._is_delta = true;
             }
             result.details_active = true;
             result.change_log.set_changes(changes);
@@ -3372,7 +3431,7 @@
             for (i = 0; i < len; i++) {
                 this.fields[i].update_controls();
             }
-            this.eachDetail(function(detail, i) {
+            this.each_detail(function(detail, i) {
                 detail.set_read_only(value);
             });
 
@@ -3405,14 +3464,14 @@
         },
 
         clear_filters: function() {
-            this.eachFilter(function(filter) {
+            this.each_filter(function(filter) {
                 filter.value = null;
             })
         },
 
         assign_filters: function(item) {
             var self = this;
-            item.eachFilter(function(f) {
+            item.each_filter(function(f) {
                 if (f.value === null) {
                     self.filter_by_name(f.filter_name).field.value = null;
                 }
@@ -3435,32 +3494,24 @@
             return this._state;
         },
 
-        disable_detail_records: function() {
+        do_after_scroll: function() {
             var len = this.details.length;
             for (var i = 0; i < len; i++) {
-                this.close_details();
+                this.details[i].do_close();
             }
-        },
-
-        do_after_scroll: function() {
             this.update_controls(consts.UPDATE_SCROLLED);
             if (this.on_after_scroll) {
                 this.on_after_scroll.call(this, this);
-            }
-            if (this.details_active) {
-                this.open_details();
-            } else {
-                this.disable_detail_records()
             }
         },
 
         do_before_scroll: function() {
             if (this._cur_row !== null) {
-                if ((this.get_state() === consts.STATE_INSERT) || (this.get_state() === consts.STATE_EDIT)) {
+                if (this.is_changing()) {
                     this.post();
                 }
                 if (this.on_before_scroll) {
-                    return this.on_before_scroll.call(this, this);
+                    this.on_before_scroll.call(this, this);
                 }
             }
         },
@@ -3491,10 +3542,9 @@
                 this._eof = eof;
                 this._bof = bof;
                 if (old_row !== new_row) {
-                    if (this.do_before_scroll() !== false) {
-                        this._cur_row = new_row;
-                        this.do_after_scroll();
-                    }
+                    this.do_before_scroll();
+                    this._cur_row = new_row;
+                    this.do_after_scroll();
                 }
                 else if (eof || bof && this.is_new() && this.record_count() === 1) {
                     this.do_before_scroll();
@@ -3506,7 +3556,7 @@
         set_rec_no: function(value) {
             if (this._active) {
                 if (this.filter_active()) {
-                    this.search_record(value, 0);
+                    this._search_record(value, 0);
                 } else {
                     this.skip(value);
                 }
@@ -3565,7 +3615,7 @@
             return this._bof;
         },
 
-        valid_record: function() {
+        _valid_record: function() {
             if (this.on_filter_record && this.filtered) {
                 return this.on_filter_record.call(this, this);
             } else {
@@ -3573,7 +3623,7 @@
             }
         },
 
-        search_record: function(start, direction) {
+        _search_record: function(start, direction) {
             var row, self = this;
             direction = direction || 1;
 
@@ -3611,14 +3661,14 @@
                 this._cur_row = start + direction;
                 update_position();
                 if (direction === 0) {
-                    if (this.valid_record()) {
+                    if (this._valid_record()) {
                         this.skip(start);
                         return
                     }
                     direction = 1;
                 }
                 while (!check_record()) {
-                    if (this.valid_record()) {
+                    if (this._valid_record()) {
                         if (start !== this._cur_row) {
                             row = this._cur_row;
                             this._cur_row = start;
@@ -3634,19 +3684,19 @@
         },
 
         find_first: function() {
-            this.search_record(-1, 1);
+            this._search_record(-1, 1);
         },
 
         find_last: function() {
-            this.search_record(this._records.length, -1);
+            this._search_record(this._records.length, -1);
         },
 
         find_next: function() {
-            this.search_record(this.get_rec_no(), 1);
+            this._search_record(this.get_rec_no(), 1);
         },
 
         find_prior: function() {
-            this.search_record(this.get_rec_no(), -1);
+            this._search_record(this.get_rec_no(), -1);
         },
 
         record_count: function() {
@@ -3738,57 +3788,30 @@
 
     $.extend(Item.prototype, {
 
-        _add_record: function(args, add_function) {
-            var was_editing;
+        insert_record: function(args) {
             if (this.can_create()) {
-                if (this.is_editing()) {
-                    was_editing = true;
-                    this.post();
+                if (!this.is_changing()) {
+                    this.insert();
                 }
-                if (!(this.is_new())) {
-                    add_function
-                    add_function.call(this);
-                }
-                if (this.is_new()) {
-                    this.create_edit_form(args);
-                }
-                else if (was_editing) {
-                    this.edit();
-                }
+                this.create_edit_form(args);
             }
         },
 
-        insert_record: function(args) {
-            var self = this;
-            this._add_record(args, function() {
-                self.insert();
-            });
-        },
-
         append_record: function(args) {
-            var self = this;
-            this._add_record(args, function() {
-                self.append();
-            });
-        },
-
-        copy_record: function(args) {
-            if (this.can_create() && this.record_count()) {
-                if (!(this.is_changing())) {
-                    this.copy_rec();
-                    this.create_edit_form(args);
+            if (this.can_create()) {
+                if (!this.is_changing()) {
+                    this.append();
                 }
+                this.create_edit_form(args);
             }
         },
 
         edit_record: function(args) {
             if (this.can_edit()) {
-                if (this.record_count() > 0) {
-                    if (!this.is_changing()) {
-                        this.edit();
-                    }
-                    this.create_edit_form(args);
+                if (!this.is_changing()) {
+                    this.edit();
                 }
+                this.create_edit_form(args);
             }
         },
 
@@ -3833,9 +3856,10 @@
         },
 
         check_record_valid: function() {
-            var result = true;
+            var error,
+                result = true;
 
-            this.eachField(function(field, j) {
+            this.each_field(function(field, j) {
                 var i,
                     len;
                 try {
@@ -3844,90 +3868,94 @@
                     len = field.controls.length;
                     for (i = 0; i < len; i++) {
                         field.controls[i].error = e;
+                        if (!error) {
+                            error = e;
+                        }
                         field.controls[i].updateState(false);
                     }
-                    field.check_valid();
+                    if (!error) {
+                        error = e;
+                    }
+                    result = false;
                 }
             });
-            return result;
+            if (!result) {
+                throw error;
+            }
         },
 
         post_record: function() {
-            try {
-                this.post();
-                this.close_edit_form();
-            } catch (e) {
-            }
+            this.post();
+            this.close_edit_form();
         },
 
         apply_record: function(params) {
-            try {
-                this.post();
-                this.apply(params)
-                this.close_edit_form();
-            } catch (e) {
-            }
+            this.post();
+            this.apply(params)
+            this.close_edit_form();
         },
 
         do_on_view_keyup: function(e) {
-            if (this.task.on_view_keyup) {
-                this.task.on_view_keyup.call(this, this, e);
+            if (this.task.on_view_form_keyup) {
+                this.task.on_view_form_keyup.call(this, this, e);
             }
-            if (this.owner.on_view_keyup) {
-                this.owner.on_view_keyup.call(this, this, e);
+            if (this.owner.on_view_form_keyup) {
+                this.owner.on_view_form_keyup.call(this, this, e);
             }
-            if (this.on_view_keyup) {
-                this.on_view_keyup.call(this, this, e);
+            if (this.on_view_form_keyup) {
+                this.on_view_form_keyup.call(this, this, e);
             }
         },
 
         do_on_view_keydown: function(e) {
-            if (this.task.on_view_keydown) {
-                this.task.on_view_keydown.call(this, this, e);
+            if (this.task.on_view_form_keydown) {
+                this.task.on_view_form_keydown.call(this, this, e);
             }
-            if (this.owner.on_view_keydown) {
-                this.owner.on_view_keydown.call(this, this, e);
+            if (this.owner.on_view_form_keydown) {
+                this.owner.on_view_form_keydown.call(this, this, e);
             }
-            if (this.on_view_keydown) {
-                this.on_view_keydown.call(this, this, e);
+            if (this.on_view_form_keydown) {
+                this.on_view_form_keydown.call(this, this, e);
             }
         },
 
 
-        view_modal: function(options) {
+        view_modal: function(container) { // depricated
             this.is_lookup_item = true;
-            this.view(options);
+            this.view(container);
         },
 
         view: function(container) {
             var self = this;
-            this.view_form = $("<div></div>").append(this.findTemplate("view", this.view_options));
-            if (!container) {
-                this.view_form = this.makeFormModal(this.view_form, this.view_options);
-            }
-            this.create_form('view_form', {
+            this.load_modules([this, this.owner], function() {
+                self._view(container);
+            })
+        },
+
+        _view: function(container) {
+            var self = this;
+            this.create_form('view', {
                 container: container,
-                item_options: this.view_options,
                 beforeShow: function() {
-                    if (this.task.on_before_show_view_form) {
-                        this.task.on_before_show_view_form.call(this, this);
+                    if (this.task.on_view_form_created) {
+                        this.task.on_view_form_created.call(this, this);
                     }
-                    if (this.owner.on_before_show_view_form) {
-                        this.owner.on_before_show_view_form.call(this, this);
+                    if (this.owner.on_view_form_created) {
+                        this.owner.on_view_form_created.call(this, this);
                     }
-                    if (this.on_before_show_view_form) {
-                        this.on_before_show_view_form.call(this, this);
+                    if (this.on_view_form_created) {
+                        this.on_view_form_created.call(this, this);
                     }
                 },
                 onShown: function() {
-                    if (self.task.on_after_show_view_form) {
-                        self.task.on_after_show_view_form.call(self, self);
+                    if (self.task.on_view_form_shown) {
+                        self.task.on_view_form_shown.call(self, self);
                     }
-                    if (self.owner.on_after_show_view_form) {
-                        self.owner.on_after_show_view_form.call(self, self);
+                    if (self.owner.on_view_form_shown) {
+                        self.owner.on_view_form_shown.call(self, self);
                     }
-                    if (self.on_after_show_view_form) {
-                        self.on_after_show_view_form.call(self, self);
+                    if (self.on_view_form_shown) {
+                        self.on_view_form_shown.call(self, self);
                     }
                 },
                 onHide: function(e) {
@@ -3945,7 +3973,6 @@
                     return canClose;
                 },
                 onHidden: function() {
-                    this.close();
                 },
                 onKeyUp: this.do_on_view_keyup,
                 onKeyDown: this.do_on_view_keydown
@@ -3957,26 +3984,26 @@
         },
 
         do_on_edit_keyup: function(e) {
-            if (this.task.on_edit_keyup) {
-                this.task.on_edit_keyup.call(this, this, e);
+            if (this.task.on_edit_form_keyup) {
+                this.task.on_edit_form_keyup.call(this, this, e);
             }
-            if (this.owner.on_edit_keyup) {
-                this.owner.on_edit_keyup.call(this, this, e);
+            if (this.owner.on_edit_form_keyup) {
+                this.owner.on_edit_form_keyup.call(this, this, e);
             }
-            if (this.on_edit_keyup) {
-                this.on_edit_keyup.call(this, this, e);
+            if (this.on_edit_form_keyup) {
+                this.on_edit_form_keyup.call(this, this, e);
             }
         },
 
         do_on_edit_keydown: function(e) {
-            if (this.task.on_edit_keydown) {
-                this.task.on_edit_keydown.call(this, this, e);
+            if (this.task.on_edit_form_keydown) {
+                this.task.on_edit_form_keydown.call(this, this, e);
             }
-            if (this.owner.on_edit_keydown) {
-                this.owner.on_edit_keydown.call(this, this, e);
+            if (this.owner.on_edit_form_keydown) {
+                this.owner.on_edit_form_keydown.call(this, this, e);
             }
-            if (this.on_edit_keydown) {
-                this.on_edit_keydown.call(this, this, e);
+            if (this.on_edit_form_keydown) {
+                this.on_edit_form_keydown.call(this, this, e);
             }
         },
 
@@ -3994,33 +4021,28 @@
                     }
                 }
             }
-            this.edit_form = $("<div></div>").append(this.findTemplate("edit", this.edit_options));
-            if (!container) {
-                this.edit_form = this.makeFormModal(this.edit_form, this.edit_options);
-            }
-            this.show_edit_form('edit_form', {
+            this.create_form('edit', {
                 container: container,
-                item_options: this.edit_options,
                 beforeShow: function() {
-                    if (self.task.on_before_show_edit_form) {
-                        self.task.on_before_show_edit_form.call(self, self);
+                    if (self.task.on_edit_form_created) {
+                        self.task.on_edit_form_created.call(self, self);
                     }
-                    if (self.owner.on_before_show_edit_form && !self.master) {
-                        self.owner.on_before_show_edit_form.call(self, self);
+                    if (self.owner.on_edit_form_created && !self.master) {
+                        self.owner.on_edit_form_created.call(self, self);
                     }
-                    if (self.on_before_show_edit_form) {
-                        self.on_before_show_edit_form.call(self, self);
+                    if (self.on_edit_form_created) {
+                        self.on_edit_form_created.call(self, self);
                     }
                 },
                 onShown: function() {
-                    if (self.task.on_after_show_edit_form) {
-                        self.task.on_after_show_edit_form.call(self, self);
+                    if (self.task.on_edit_form_shown) {
+                        self.task.on_edit_form_shown.call(self, self);
                     }
-                    if (self.owner.on_after_show_edit_form && !self.master) {
-                        self.owner.on_after_show_edit_form.call(self, self);
+                    if (self.owner.on_edit_form_shown && !self.master) {
+                        self.owner.on_edit_form_shown.call(self, self);
                     }
-                    if (self.on_after_show_edit_form) {
-                        self.on_after_show_edit_form.call(self, self);
+                    if (self.on_edit_form_shown) {
+                        self.on_edit_form_shown.call(self, self);
                     }
                     if (onReady) {
                         onReady.call(self);
@@ -4063,33 +4085,28 @@
                     }
                 }
             }
-            this.filter_form = $("<div></div>").append(this.findTemplate("filter", this.filter_options));
-            if (!container) {
-                this.filter_form = this.makeFormModal(this.filter_form, this.filter_options);
-            }
-            this.show_edit_form('filter_form', {
+            this.create_form('filter', {
                 container: container,
-                item_options: this.filter_options,
                 beforeShow: function() {
-                    if (self.task.on_before_show_filter_form) {
-                        self.task.on_before_show_filter_form.call(self, self);
+                    if (self.task.on_filter_form_created) {
+                        self.task.on_filter_form_created.call(self, self);
                     }
-                    if (self.owner.on_before_show_filter_form) {
-                        self.owner.on_before_show_filter_form.call(self, self);
+                    if (self.owner.on_filter_form_created) {
+                        self.owner.on_filter_form_created.call(self, self);
                     }
-                    if (self.on_before_show_filter_form) {
-                        self.on_before_show_filter_form.call(self, self);
+                    if (self.on_filter_form_created) {
+                        self.on_filter_form_created.call(self, self);
                     }
                 },
                 onShown: function() {
-                    if (self.task.on_after_show_filter_form) {
-                        self.task.on_after_show_filter_form.call(self, self);
+                    if (self.task.on_filter_form_shown) {
+                        self.task.on_filter_form_shown.call(self, self);
                     }
-                    if (self.owner.on_after_show_filter_form && !self.master) {
-                        self.owner.on_after_show_filter_form.call(self, self);
+                    if (self.owner.on_filter_form_shown && !self.master) {
+                        self.owner.on_filter_form_shown.call(self, self);
                     }
-                    if (self.on_after_show_filter_form) {
-                        self.on_after_show_filter_form.call(self, self);
+                    if (self.on_filter_form_shown) {
+                        self.on_filter_form_shown.call(self, self);
                     }
                 },
                 onHide: function(e) {
@@ -4122,7 +4139,7 @@
         get_status_text: function() {
             var result = '',
                 status = '';
-            this.eachFilter(function(filter, index) {
+            this.each_filter(function(filter, index) {
                 if ((filter.visible) && filter.get_value()) {
                     if (filter.field.data_type === consts.BOOLEAN) {
                         if (filter.get_value()) {
@@ -4142,7 +4159,7 @@
             return result;
         },
 
-        close_filter: function() {
+        close_filter: function() { // depricated
             this.close_filter_form();
         },
 
@@ -4189,10 +4206,6 @@
             return new DBTable(this, container, options);
         },
 
-        create_grid: function(container, options) { // deprecated
-            return this.create_table(container, options);
-        },
-
         create_tree: function(container, parent_field, text_field, parent_of_root_value, options) {
             return new DBTree(this, container, parent_field, text_field, parent_of_root_value, options);
         },
@@ -4200,7 +4213,6 @@
         create_inputs: function(container, options) {
             var default_options,
                 i, len, col,
-                //            colHeight,
                 field,
                 fields = [],
                 visible_fields = [],
@@ -4213,6 +4225,7 @@
                 col_count: 1,
                 label_on_top: false,
                 row_count: undefined,
+                autocomplete: false,
                 tabindex: undefined
             };
 
@@ -4241,7 +4254,10 @@
 
             container.empty();
 
-            form = $("<form></form>").appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
+            form = $('<form autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
+            if (options.autocomplete) {
+                form.attr("autocomplete", "on")
+            }
             if (!options.label_on_top) {
                 form.addClass("form-horizontal");
             }
@@ -4263,10 +4279,6 @@
             }
         },
 
-        create_entries: function(container, options) { // deprecated
-            this.create_inputs(container, options);
-        },
-
         create_filter_inputs: function(container, options) {
             var default_options,
                 i, len, col,
@@ -4276,11 +4288,12 @@
                 form;
 
             default_options = {
-                    filters: [],
-                    col_count: 1,
-                    label_on_top: false,
-                    tabindex: undefined
-                },
+                filters: [],
+                col_count: 1,
+                label_on_top: false,
+                autocomplete: false,
+                tabindex: undefined
+            },
 
             options = $.extend({}, default_options, options);
 
@@ -4290,14 +4303,17 @@
                     filters.push(this.filter_by_name(options.filters[i]));
                 }
             } else {
-                this.eachFilter(function(filter, i) {
+                this.each_filter(function(filter, i) {
                     if (filter.visible) {
                         filters.push(filter);
                     }
                 });
             }
             container.empty();
-            form = $("<form></form>").appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
+            form = $('<form autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
+            if (options.autocomplete) {
+                form.attr("autocomplete", "on")
+            }
             if (!options.label_on_top) {
                 form.addClass("form-horizontal");
             }
@@ -4314,10 +4330,6 @@
                 new DBInput(filters[i].field, i + 1, cols[Math.floor(i % options.col_count)],
                     options.label_on_top, filters[i].filter_caption);
             }
-        },
-
-        create_filter_entries: function(container, options) { // deprecated
-            this.create_filter_inputs(container, options);
         },
 
         set_lookup_field_value: function() {
@@ -4338,7 +4350,7 @@
                     lookup_field.set_value([this.id.value], lookup_value);
                 } else {
                     if (lookup_field_item) {
-                        lookup_field_item.eachField(function(field) {
+                        lookup_field_item.each_field(function(field) {
                             if (field.master_field === lookup_field) {
                                 object_field = self.field_by_name(field.lookup_field)
                                 if (object_field) {
@@ -4350,7 +4362,7 @@
                     lookup_field.set_value(this.id.get_value(), lookup_value, slave_field_values, this);
                 }
             }
-            if (this.is_lookup_item) {
+            if (this.lookup_field) {
                 this.close_view_form();
             }
         },
@@ -4388,7 +4400,7 @@
                     handlers: false
                 });
             if (this.id.value !== null) {
-                self.eachField(function(field) {
+                self.each_field(function(field) {
                     fields.push(field.field_name)
                 })
                 copy.open({expanded: this.expanded, fields: fields, where: {id: this.id.value}})
@@ -4412,8 +4424,8 @@
 
     Report.prototype = new AbsrtactItem();
 
-    function Report(owner, ID, item_name, caption, visible, type) {
-        AbsrtactItem.call(this, owner, ID, item_name, caption, visible, type);
+    function Report(owner, ID, item_name, caption, visible, type, js_filename) {
+        AbsrtactItem.call(this, owner, ID, item_name, caption, visible, type, js_filename);
         if (this.task && !(item_name in this.task)) {
             this.task[item_name] = this;
         }
@@ -4438,7 +4450,7 @@
 
         initAttr: function(info) {
             var i,
-                params = info[6],
+                params = info[7],
                 len;
             if (params) {
                 len = params.length;
@@ -4448,7 +4460,7 @@
             }
         },
 
-        bindItem: function() {
+        bind_item: function() {
             var i = 0,
                 param,
                 len = this.params.length;
@@ -4476,7 +4488,7 @@
             }
         },
 
-        eachField: function(callback) {
+        each_field: function(callback) {
             this.eachParam(callback);
         },
 
@@ -4490,7 +4502,7 @@
             }
         },
 
-        create_params_form: function() {
+        create_param_form: function() {
             var self = this,
                 container,
                 onReady,
@@ -4504,57 +4516,59 @@
                     }
                 }
             }
-            this.params_form = $("<div></div>").append(this.findTemplate("params", this.param_options));
-            if (!container) {
-                this.params_form = this.makeFormModal(this.params_form, this.param_options);
-            }
-            this.show_edit_form('params_form', {
+            this.create_form('param', {
                 container: container,
-                item_options: this.param_options,
                 beforeShow: function() {
-                    if (self.task.on_before_show_params_form) {
-                        self.task.on_before_show_params_form.call(self, self);
+                    if (self.task.on_param_form_created) {
+                        self.task.on_param_form_created.call(self, self);
                     }
-                    if (self.owner.on_before_show_params_form) {
-                        self.owner.on_before_show_params_form.call(self, self);
+                    if (self.owner.on_param_form_created) {
+                        self.owner.on_param_form_created.call(self, self);
                     }
-                    if (self.on_before_show_params_form) {
-                        self.on_before_show_params_form.call(self, self);
+                    if (self.on_param_form_created) {
+                        self.on_param_form_created.call(self, self);
                     }
                 },
                 onShown: function() {
-                    if (self.task.on_after_show_params_form) {
-                        self.task.on_after_show_params_form.call(self, self);
+                    if (self.task.on_param_form_shown) {
+                        self.task.on_param_form_shown.call(self, self);
                     }
-                    if (self.owner.on_after_show_params_form) {
-                        self.owner.on_after_show_params_form.call(self, self);
+                    if (self.owner.on_param_form_shown) {
+                        self.owner.on_param_form_shown.call(self, self);
                     }
-                    if (self.on_after_show_params_form) {
-                        self.on_after_show_params_form.call(self, self);
+                    if (self.on_param_form_shown) {
+                        self.on_param_form_shown.call(self, self);
                     }
                 },
                 onHide: function(e) {
                     var mess,
                         canClose;
-                    if (self.on_params_form_close_query) {
-                        canClose = self.on_params_form_close_query.call(self, self);
+                    if (self.on_param_form_close_query) {
+                        canClose = self.on_param_form_close_query.call(self, self);
                     }
-                    if (canClose === undefined && self.owner.on_params_form_close_query) {
-                        canClose = self.owner.on_params_form_close_query.call(self, self);
+                    if (canClose === undefined && self.owner.on_param_form_close_query) {
+                        canClose = self.owner.on_param_form_close_query.call(self, self);
                     }
-                    if (canClose === undefined && self.task.on_params_form_close_query) {
-                        canClose = self.task.on_params_form_close_query.call(self, self);
+                    if (canClose === undefined && self.task.on_param_form_close_query) {
+                        canClose = self.task.on_param_form_close_query.call(self, self);
                     }
                     return canClose;
                 },
             })
         },
 
-        close_params_form: function() {
-            this.close_form('params_form');
+        close_param_form: function() {
+            this.close_form('param_form');
         },
 
-        print_report: function() {
+        print: function(p1, p2) {
+            var self = this;
+            this.load_modules([this, this.owner], function() {
+                self._print(p1, p2);
+            })
+        },
+
+        _print: function() {
             var i = 0,
                 len = arguments.length,
                 showParamsForm = true,
@@ -4578,7 +4592,7 @@
                 });
             }
             if (showParamsForm) {
-                this.create_params_form();
+                this.create_param_form();
             } else {
                 this.process_report(callback);
             }
@@ -4630,20 +4644,28 @@
                         self.warning(error);
                     }
                     if (url) {
-                        ext = url.split('.').pop();
-                        if (ext === 'ods') {
-                            window.open(url, "_self");
-                        } else {
-                            win = window.open(url, "_blank")
-                            if (self.send_to_printer) {
-                                win.onload = function() {
-                                    win.print();
-                                    timeOut = setTimeout(
-                                        function() {
-                                            win.onfocus=function() { win.close();}
-                                        },
-                                        1000
-                                    );
+                        if (self.on_open_report) {
+                            self.on_open_report.call(self, self, url);
+                        }
+                        else if (self.owner.on_open_report) {
+                            self.owner.on_open_report.call(self.owner, self, url);
+                        }
+                        else {
+                            ext = url.split('.').pop();
+                            if (ext === 'ods') {
+                                window.open(url, "_self");
+                            } else {
+                                win = window.open(url, "_blank")
+                                if (self.send_to_printer) {
+                                    win.onload = function() {
+                                        win.print();
+                                        timeOut = setTimeout(
+                                            function() {
+                                                win.onfocus=function() { win.close();}
+                                            },
+                                            1000
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -4656,10 +4678,6 @@
             }
         },
 
-        create_params: function(container, options) { // deprecated
-            this.create_param_inputs(container, options);
-        },
-
         create_param_inputs: function(container, options) {
             var default_options,
                 i, len, col,
@@ -4669,18 +4687,19 @@
                 tabindex;
 
             default_options = {
-                    params: [],
-                    col_count: 1,
-                    label_on_top: false,
-                    tabindex: undefined
-                },
+                params: [],
+                col_count: 1,
+                label_on_top: false,
+                autocomplete: false,
+                tabindex: undefined
+            },
 
-                this.options = $.extend({}, default_options, options);
+            options = $.extend({}, default_options, options);
 
-            if (this.options.params.length) {
-                len = this.options.params.length;
+            if (options.params.length) {
+                len = options.params.length;
                 for (i = 0; i < len; i++) {
-                    params.push(this.param_by_name(this.options.params[i]));
+                    params.push(this.param_by_name(options.params[i]));
                 }
             } else {
                 this.eachParam(function(param) {
@@ -4700,21 +4719,24 @@
                 });
             }
             container.empty();
-            form = $("<form></form>").appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
-            if (!this.options.label_on_top) {
+            form = $('<form autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
+            if (options.autocomplete) {
+                form.attr("autocomplete", "on")
+            }
+            if (!options.label_on_top) {
                 form.addClass("form-horizontal");
             }
             len = params.length;
-            for (col = 0; col < this.options.col_count; col++) {
-                cols.push($("<div></div>").addClass("span" + 12 / this.options.col_count).appendTo(form));
+            for (col = 0; col < options.col_count; col++) {
+                cols.push($("<div></div>").addClass("span" + 12 / options.col_count).appendTo(form));
             }
-            tabindex = this.options.tabindex;
-            if (!tabindex && this.params_form) {
-                tabindex = this.params_form.tabindex;
-                this.params_form.tabindex += len;
+            tabindex = options.tabindex;
+            if (!tabindex && this.param_form) {
+                tabindex = this.param_form.tabindex;
+                this.param_form.tabindex += len;
             }
             for (i = 0; i < len; i++) {
-                new DBInput(params[i], i + tabindex, cols[Math.floor(i % this.options.col_count)], this.options.label_on_top)
+                new DBInput(params[i], i + tabindex, cols[Math.floor(i % options.col_count)], options.label_on_top)
             }
         }
     });
@@ -4726,12 +4748,9 @@
     Detail.prototype = new Item();
     Detail.prototype.constructor = Detail;
 
-    function Detail(owner, ID, item_name, caption, visible, type) {
-        Item.call(this, owner, ID, item_name, caption, visible, type);
+    function Detail(owner, ID, item_name, caption, visible, type, js_filename) {
+        Item.call(this, owner, ID, item_name, caption, visible, type, js_filename);
 
-        //~ AbsrtactItem.call(this, owner, ID, item_name, caption, visible, type);
-        //~ this.fields = [];
-        //~ this.filters = [];
         this.master = owner;
         owner.details.push(this);
         owner.details[item_name] = this;
@@ -5105,7 +5124,7 @@
                 } else {
                     this.set_lookup_data(lookup_value);
                     if (this.owner) {
-                        this.owner.eachField(function(field, i) {
+                        this.owner.each_field(function(field, i) {
                             if (self === field.master_field && slave_field_values !== undefined) {
                                 field.set_lookup_data(slave_field_values[field.field_name]);
                                 field.update_controls();
@@ -5122,7 +5141,7 @@
                     throw this.owner.item_name + ' is not in edit or insert mode';
                 }
                 if (this.owner.on_before_field_changed) {
-                    return this.owner.on_before_field_changed.call(this.owner, this, new_value, new_lookup_value);
+                    this.owner.on_before_field_changed.call(this.owner, this, new_value, new_lookup_value);
                 }
             }
         },
@@ -5171,18 +5190,17 @@
                 }
             }
             if (this.get_raw_value() !== this.new_value) {
-                if (this.do_before_changed(this.new_value, lookup_value) !== false) {
-                    try {
-                        this.set_data(this.new_value);
-                    } catch (e) {
-                        error = this.field_caption + ": " + this.type_error();
-                        this.do_on_error(error);
-                    }
-                    this.new_value = null;
-                    this.do_on_change_lookup_field(lookup_value, slave_field_values);
-                    this.set_modified(true);
-                    this.do_after_changed(lookup_item);
+                this.do_before_changed(this.new_value, lookup_value);
+                try {
+                    this.set_data(this.new_value);
+                } catch (e) {
+                    error = this.field_caption + ": " + this.type_error();
+                    this.do_on_error(error);
                 }
+                this.new_value = null;
+                this.do_on_change_lookup_field(lookup_value, slave_field_values);
+                this.set_modified(true);
+                this.do_after_changed(lookup_item);
             } else if (lookup_value && lookup_value !== this.get_lookup_value()) {
                 this.do_on_change_lookup_field(lookup_value, slave_field_values);
                 this.do_after_changed(lookup_item);
@@ -5937,7 +5955,7 @@
         form_closing: function() {
             var $modal = this.$element.closest('.modal');
             if ($modal) {
-                return $modal.data('closing')
+                return $modal.data('_closing')
             }
             return false;
         },
@@ -6292,7 +6310,6 @@
                     height: 480,
                     fields: [],
                     column_width: {},
-                    row_count: 0,
                     title_word_wrap: false,
                     row_line_count: 1,
                     expand_selected_row: 0,
@@ -6306,6 +6323,7 @@
                     tabindex: 0,
                     striped: true,
                     dblclick_edit: true,
+                    on_click: undefined,
                     on_dblclick: undefined,
                     on_pagecount_update: undefined,
                     editable: false,
@@ -6376,16 +6394,17 @@
             this.initFields();
 
             this.$element = $('<div class="dbtable ' + item.item_name + '" style="overflow-x:auto;"></div>');
-            this.$element.data('grid', this);
+            this.$element.data('dbtable', this);
             this.item.controls.push(this);
             this.$element.bind('destroyed', function() {
                 self.item.controls.splice(self.item.controls.indexOf(self), 1);
             });
+            this.$container.empty();
             this.$element.appendTo(this.$container);
             this.createTable();
             if (item.get_active()) {
                 setTimeout(function() {
-                        self.initRows();
+                        self.init_table();
                     },
                     0
                 );
@@ -6435,6 +6454,10 @@
                 }
             }
             this.initSelectedField();
+            this.colspan = this.fields.length;
+            if (this.options.multi_select) {
+                this.colspan += 1;
+            }
         },
 
         initKeyboardEvents: function() {
@@ -6480,7 +6503,7 @@
                 this.colspan += 1;
             }
             this.$element.append($(
-                '<table class="outer-table">' +
+                '<table class="outer-table" style="width: 100%;">' +
                 '   <thead>' +
                 '       <tr><th>&nbsp</th></tr>' +
                 '   </thead>' +
@@ -6489,7 +6512,7 @@
                 '   </tfoot>' +
                 '   <tr>' +
                 '       <td id="top-td" style="padding: 0; border: 0" colspan=' + this.colspan + '>' +
-                '           <div class="overlay-div" style="height:100px; width:100%; overflow-y:auto; overflow-x:hidden;">' +
+                '           <div class="overlay-div" style="height: 100px; width: 100%; overflow-y: auto; overflow-x: hidden;">' +
                 '               <table class="inner-table" style="width: 100%"></table>' +
                 '           </div>' +
                 '       </td>' +
@@ -6522,6 +6545,12 @@
 
             this.$table.on('mousedown dblclick', 'td', function(e) {
                 self.clicked(e, this);
+            });
+
+            this.$table.on('click', 'td', function(e) {
+                if (self.options.on_click) {
+                    self.options.on_click.call(self.item, self.item);
+                }
             });
 
             if (!this.options.word_wrap) {
@@ -6747,7 +6776,7 @@
                     }
                     else {
                         self.item._open_params.__order = self.item.get_order_by_list(self._sorted_fields);
-                        self.item.open({params: self.item._open_params});
+                        self.item.open({params: self.item._open_params, offset: 0});
                     }
                 }
             });
@@ -6799,7 +6828,7 @@
 
             this.$scroll_div.height(this.options.height - (elementHeight - scrollDivHeight));
 
-            if (!this.options.row_count && this.item.paginate) {
+            if (this.item.paginate) {
                 if (this.options.row_line_count > 1) {
                     this.row_count = Math.floor((this.$scroll_div.height() - 1) / (this.textHeight * this.options.row_line_count + this.td_height_margin + 1));
                 }
@@ -7185,7 +7214,7 @@
             this.cellWidths[field_name] = value;
         },
 
-        initRows: function() {
+        init_table: function() {
             if (this.item._pg_offset === 0) {
                 this.initFields();
                 if (this.item.paginate) {
@@ -7202,7 +7231,7 @@
         form_closing: function() {
             var $modal = this.$element.closest('.modal');
             if ($modal) {
-                return $modal.data('closing')
+                return $modal.data('_closing')
             }
             return false;
         },
@@ -7216,7 +7245,7 @@
             }
             switch (state) {
                 case consts.UPDATE_OPEN:
-                    this.initRows();
+                    this.init_table();
                     break;
                 case consts.UPDATE_CANCEL:
                     this.refreshRow();
@@ -7226,7 +7255,7 @@
                     this.$table.append(row);
                     this.syncronize();
                     if (this.item.controls_enabled() && this.item.record_count() === 1) {
-                        this.resize();
+                        this.build();
                     }
                     break;
                 case consts.UPDATE_INSERT:
@@ -7247,7 +7276,7 @@
                     this.$table.empty();
                     break;
                 case consts.UPDATE_REFRESH:
-                    this.resize();
+                    this.build();
                     break;
             }
         },
@@ -7269,7 +7298,7 @@
                         (this.item.is_new() && this.item.record_count() === 1);
                     if (update) {
                         if (this.item.record_count() < 100) {
-                            this.resize();
+                            this.build();
                         }
                         else {
                             this.syncColWidth();
@@ -7303,9 +7332,6 @@
 
                     $td.find('div').width($th.find('div').width());
                     $td.width($th.width());
-                    //~ if ($td.width != $th.width()) {
-                        //~ $th.width($td.width());
-                    //~ };
                 }
             }
         },
@@ -7351,7 +7377,7 @@
 
         refreshRow: function() {
             var self = this;
-            this.eachField(function(field, i) {
+            this.each_field(function(field, i) {
                 self.update_field(field, true);
             });
         },
@@ -7387,7 +7413,6 @@
             }
             this.item.set_rec_no(rec);
             if (!this.editing && !this.is_focused()) {
-//                this.$table.focus();
                 this.focus();
             }
             if (e.type === "dblclick") {
@@ -7399,7 +7424,6 @@
             if (this.selected_row) {
                 if (this.options.editable && this.selectedField) {
                     this.selected_row.removeClass("selected-focused selected");
-//                    this.selected_row.find('td').removeClass("selected-focused selected");
                     this.selected_row.find('td.' + this.selectedField.field_name)
                         .removeClass("field-selected-focused field-selected")
                 } else {
@@ -7511,7 +7535,6 @@
                     case 36:
                     case 38:
                     case 40:
-                        this.item.grid_keydown = true;
                         e.preventDefault();
                         this.flushEditor();
                         if (code === 33) {
@@ -7579,7 +7602,6 @@
                     case 36:
                     case 38:
                     case 40:
-                        this.item.grid_keydown = undefined;
                         e.preventDefault();
                         if (this.item.details_active && !this.loading) {
                             this.item.open_details();
@@ -7741,7 +7763,7 @@
             }
         },
 
-        eachField: function(callback) {
+        each_field: function(callback) {
             var i = 0,
                 len = this.fields.length,
                 value;
@@ -7871,9 +7893,12 @@
             this.$outer_table.detach();
             container.append(this.$outer_table);
 
-            clone.on_get_field_text = this.item.on_get_field_text;
-            this.$head.empty();
             this.$table.empty();
+            this.$head.empty();
+            this.$foot.hide();
+            this.$outer_table.find('#top-td').attr('colspan', this.colspan);
+
+            clone.on_get_field_text = this.item.on_get_field_text;
             rows = ''
             item_rec_no = this.item.rec_no;
             try {
@@ -7903,6 +7928,8 @@
             }
             row = this.$table.find("tr:first");
             if (this.autoFieldWidth && !this.fieldWidthUpdated) {
+                this.$table.css('table-layout', 'auto');
+                this.$outer_table.css('table-layout', 'auto');
                 tmpRow = '<tr>'
                 if (this.options.multi_select) {
                     if (this.options.multi_select_title) {
@@ -7941,7 +7968,8 @@
                     cell = row.find("td." + field.field_name);
                     this.setCellWidth(field.field_name, cell.width());
                 }
-                tmpRow.remove();
+                this.$table.css('table-layout', 'fixed');
+                this.$outer_table.css('table-layout', 'fixed');
                 this.fillTitle(container);
                 if (this.options.multi_select) {
                     cell = row.find("td." + 'multi_select');
@@ -7973,11 +8001,15 @@
                 if (this.item.record_count() > 0 && is_visible) {
                     this.fieldWidthUpdated = true;
                 }
+                tmpRow.remove();
             } else {
                 this.fillTitle(container);
                 this.syncColWidth();
             }
 
+            if (this.options.show_footer) {
+                this.$foot.show();
+            }
             this.$outer_table.detach();
             this.$element.append(this.$outer_table);
             container.remove();
@@ -8009,11 +8041,11 @@
             }
         },
 
-        resize: function() {
-            if (this.autoFieldWidth) {
-                this.fieldWidthUpdated = false;
-                this.refresh();
-            }
+        build: function() {
+            this.initFields();
+            this.fieldWidthUpdated = false;
+            this.refresh();
+            this.syncColWidth();
         },
 
         is_focused: function() {
@@ -8092,9 +8124,11 @@
                     .attr("type", "text")
                     .attr("tabindex", tabIndex + "");
             }
-            $input.addClass(field.field_name)
             $controls = $('<div></div>').addClass("controls");
             this.$input = $input;
+            this.$input.addClass(field.field_name)
+            this.$input.addClass('dbinput')
+            this.$input.data('dbinput', this);
             this.$input.focus(function(e) {
                 self.focusIn(e);
             });
@@ -8230,7 +8264,7 @@
 
         form_closing: function() {
             if (this.$modalForm) {
-                return this.$modalForm.data('closing')
+                return this.$modalForm.data('_closing')
             }
             return false;
         },
@@ -8401,33 +8435,38 @@
         change_field_text: function() {
             var result = true,
                 text;
-            this.errorValue = undefined;
-            this.error = undefined;
-            if (this.field.lookup_item) {
-                if (this.$input.val() !== this.field.get_lookup_text()) {
-                    this.$input.val(this.field.get_display_text());
-                }
-            } else {
-                try {
-                    text = this.$input.val();
-                    if (text === '') {
-                        this.field.set_value(null);
-                    } else {
-                        this.field.set_text(text);
-                        this.field.check_valid();
-                        this.$input.val(text);
+            if (!this.field.owner || !this.field.owner.is_changing ||
+                this.field.owner.is_changing()) {
+                this.errorValue = undefined;
+                this.error = undefined;
+                if (this.field.lookup_item) {
+                    if (this.$input.val() !== this.field.get_lookup_text()) {
+                        this.$input.val(this.field.get_display_text());
                     }
-                } catch (e) {
-                    this.errorValue = text;
-                    this.error = e;
-                    this.updateState(false);
-                    if (this.field.owner && this.field.owner.task.settings.DEBUGGING) {
-                        throw 'change_field_text error: ' + e
+                } else {
+                    try {
+                        text = this.$input.val();
+                        if (text === '') {
+                            this.field.set_value(null);
+                        } else {
+                            this.field.set_text(text);
+                            this.field.check_valid();
+                            if (this.$input.is(':visible')) {
+                                this.$input.val(text);
+                            }
+                        }
+                    } catch (e) {
+                        this.errorValue = text;
+                        this.error = e;
+                        this.updateState(false);
+                        if (this.field.owner && this.field.owner.task.settings.DEBUGGING) {
+                            throw 'change_field_text error: ' + e
+                        }
+                        result = false;
                     }
-                    result = false;
                 }
+                return result;
             }
-            return result;
         },
 
         focusIn: function(e) {
@@ -8464,7 +8503,9 @@
             else if (this.field.value_list) {
                 result = true;
             } else if (this.change_field_text()) {
-                this.$input.val(this.field.get_display_text());
+                if (this.$input.is(':visible')) {
+                    this.$input.val(this.field.get_display_text());
+                }
                 result = true;
             }
             this.updateState(result);
@@ -8514,6 +8555,7 @@
         DBAbstractInput.call(this, field);
         this.grid = grid;
         this.createEntry(field, 0);
+        this.$input.attr("autocomplete", "off");
     }
 
     $.extend(DBTableInput.prototype, {
@@ -8558,8 +8600,6 @@
         },
     });
 
-    //////////////////////////////////////////////
-
     $.event.special.destroyed = {
         remove: function(o) {
             if (o.handler) {
@@ -8570,8 +8610,5 @@
 
     window.task = new Task();
     window.task.constructors = {task: Task, group: Group, item: Item, detail: Detail};
-    $.ajaxSetup({
-        cache: false
-    });
 
-})(window);
+})(jQuery);

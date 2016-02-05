@@ -96,6 +96,10 @@ label, input, button, select, textarea {
     line-height: 20px;
 }
 
+.expanded-btn {
+    min-width: 100px;
+}
+
 h1,
 h2,
 h3 {
