@@ -1,0 +1,12 @@
+===================
+Preliminary results
+===================
+
+Let's see the result of our work. Go to the project page in the browser and 
+press F5. The empty **Tasks** jounal will be displayed. Click on the **New** 
+button and in the edit form click **OK**:
+
+.. image:: /intro/_images/todo_new_task.png
+	:align: center
+	:alt: Creating new task
+

@@ -1,0 +1,14 @@
+==============
+Project locale
+==============
+
+After clicking on this button you can specify how float, currency, date and time 
+values will be displayed in the project (see the
+:doc:`display_text </refs/client/field/at_display_text>`
+property of the 
+:doc:`Field class </refs/client/field_api>`
+):
+
+.. image:: /admin/_images/locale.png
+	:align: center
+	:alt: Project locale dialog

@@ -10,7 +10,14 @@ Indicates the item that owns this item.
 
 **language**: python
 
+**class** :doc:`AbstractItem class </refs/server/abstractitem_api>`
+
 Description
 ===========
 
-Use owner to find the owner of an item. 
+Use ``owner`` to find the owner of an item. 
+
+See also
+========
+
+:doc:`Task tree </programming/task_tree>`

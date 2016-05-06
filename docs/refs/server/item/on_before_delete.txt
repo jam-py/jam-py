@@ -1,0 +1,28 @@
+================
+on_before_delete
+================
+
+on_before_delete(item)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Occurs before an application deletes a record.
+
+The item parameter is the item that triggered the event.
+
+Write an on_before_delete event handler to take specific action immediately 
+before an application deletes the active record in an item. on_before_delete is 
+called by :doc:`delete <m_delete>` method before it deletes the record. If the 
+event returns false, the delete is aborted. 
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

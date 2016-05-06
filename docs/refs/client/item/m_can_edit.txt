@@ -13,10 +13,11 @@ can_edit
 Description
 ===========
 
-Use **can_edit** method to determine if a user have a right to edit a record in
+Use ``can_edit`` method to determine if a user have a right to edit a record in
 in an item dataset when the project 
-:doc:`safe mode parameter </admin/project>`
-is set. If the project project :doc:`safe mode parameter </admin/project>`
+:doc:`safe mode parameter </admin/project/parameters>`
+is set. If the project project 
+:doc:`safe mode parameter </admin/project/parameters>`
 is not set the method always returns true.
 
 The user privileges are set in the :doc:`roles node </admin/roles>` of the project 

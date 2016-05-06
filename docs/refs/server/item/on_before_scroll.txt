@@ -1,0 +1,32 @@
+================
+on_before_scroll
+================
+
+on_before_scroll(item)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Occurs before an application scrolls from one record to another.
+
+The item parameter is the item that triggered the event.
+
+Write an on_before_scroll event handler to take specific action immediately before 
+an application scrolls to another record as a result of a call to 
+the :doc:`first <m_first>`, :doc:`last <m_last>`, :doc:`next <m_next>`, 
+:doc:`prior <m_prior>`, and :doc:`locate <m_locate>` methods. on_before_scroll is 
+called before all other events triggered by these methods and any other methods 
+that switch from record to record in the item dataset.
+
+See also
+========
+
+:doc:`Navigating datasets </programming/data/navigating_datasets>`
+
+:doc:`on_after_scroll <on_after_scroll>`

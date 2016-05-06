@@ -13,9 +13,11 @@ The item parameter is the item that triggered the event.
 Description
 ===========
 
-The event is triggered by the 
+The **on_filter_form_shown** event is triggered by the 
 :doc:`create_filter_form <m_create_filter_form>`
-method of the item.
+method when the form has been shown.
+
+The ``item`` parameter is the item that triggered the event.
 
 See also
 ========

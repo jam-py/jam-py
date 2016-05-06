@@ -13,10 +13,11 @@ can_create
 Description
 ===========
 
-Use **can_create** method to determine if a user have a right to create a new 
+Use ``can_create`` method to determine if a user have a right to create a new 
 record in an item dataset when the project 
-:doc:`safe mode parameter </admin/project>`
-is set. If the project project :doc:`safe mode parameter </admin/project>`
+:doc:`safe mode parameter </admin/project/parameters>`
+is set. If the project project 
+:doc:`safe mode parameter </admin/project/parameters>`
 is not set the method always returns true.
 
 The user privileges are set in the :doc:`roles node </admin/roles>` of the project 
@@ -37,3 +38,8 @@ Example
     else {
         item.view_form.find("#new-btn").prop("disabled", true);
     }
+
+See also
+========
+
+:doc:`Parameters </admin/project/parameters>`

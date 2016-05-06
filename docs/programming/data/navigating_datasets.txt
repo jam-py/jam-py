@@ -1,0 +1,101 @@
+===================
+Navigating datasets
+===================
+
+Each active dataset has a cursor, or pointer, to the current row in the dataset. 
+The current row in a dataset is the one whose values can be manipulated by edit, 
+insert, and delete methods, and the one whose field values currently show 
+data-aware controls on a form.
+
+You can change the current row by moving the cursor to point at a different row. 
+The following table lists methods you can use in application code to move to 
+different records:
+
+.. csv-table:: 
+   :header: Client method, Server method, Description
+   :widths: 10, 10, 80
+
+   :doc:`first </refs/client/item/m_first>`, :doc:`first </refs/server/item/m_first>`, "Moves the cursor to the first row in an item dataset."
+   :doc:`last </refs/client/item/m_last>`, :doc:`last </refs/server/item/m_last>`, "Moves the cursor to the last row in an item dataset."
+   :doc:`next </refs/client/item/m_next>`, :doc:`next </refs/server/item/m_next>`, "Moves the cursor to the next row in an item dataset."
+   :doc:`prior </refs/client/item/m_prior>`, :doc:`prior </refs/server/item/m_prior>`, "Moves the cursor to the previous row in an item dataset."
+
+
+In addition to these methods, the following table describes two methods that 
+provide useful information when iterating through the records in a dataset:
+
+.. csv-table:: 
+   :header: Client method, Server method, Description
+   :widths: 10, 10, 80
+   
+   :doc:`bof </refs/client/item/m_bof>`, :doc:`bof </refs/server/item/m_bof>`,  "If the method returns true, the cursor is at the first row in the dataset, otherwise, the cursor is not known to be at the first row in the dataset."
+   :doc:`bof </refs/client/item/m_bof>`, :doc:`bof </refs/server/item/m_bof>`,  "If the method returns true, the cursor is at the last row in the dataset, otherwise, the cursor is not known to be at the last row in the dataset."
+
+Each time the cursor move to another record in the dataset the following events
+are triggered:
+
+.. csv-table:: 
+   :header: Client event, Server event, Description
+   :widths: 10, 10, 80
+   
+   :doc:`on_before_scroll </refs/client/item/on_before_scroll>`, :doc:`on_before_scroll </refs/server/item/on_before_scroll>`,  "Occurs before an application scrolls from one record to another.."
+   :doc:`on_after_scroll </refs/client/item/on_after_scroll>`, :doc:`on_after_scroll </refs/server/item/on_after_scroll>`,  "Occurs after an application scrolls from one record to another.."
+
+Using this methods we can navigate a dataset. For example,
+
+on the client:
+
+.. code-block:: js
+
+    function get_customers(customers) {
+        customers.open();
+        while (!customers.eof()) {
+            console.log(customers.firstname.value, customers.lastname.value);
+            customers.next();
+        }
+    }
+    
+on the server:
+
+.. code-block:: py
+
+    def get_customers(customers):
+        customers.open()
+        while not customers.eof():
+            print customers.firstname.value, customers.lastname.value
+            customers.next()
+
+Shorter ways to navigate dataset
+================================
+
+There is the :doc:`each </refs/client/item/m_each>` method on the client that can 
+be used to navigate a dataset:
+
+For example:
+
+.. code-block:: js
+
+    function get_customers(customers) {
+        customers.open();
+        customers.each(function(c) {
+            if (c.rec_no === 10) {
+                return false;
+            }
+            console.log(c.rec_no, c.firstname.value, c.lastname.value);
+        });
+    }
+
+On the server we can iterate dataset rows the following way:
+
+.. code-block:: py
+
+    def get_customers(customers):
+        customers.open()
+        for c in customers:
+            if c.rec_no == 10:
+                break
+            print c.firstname.value, c.lastname.value
+
+Both functions will output customer names for the first 10 records in the dataset.
+
+In both cases the **c** and **customers** are pointers to the same object.

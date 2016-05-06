@@ -1,0 +1,57 @@
+=============
+param_options
+=============
+
+.. js:attribute:: param_options
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Report class </refs/client/report_api>`
+
+Description
+===========
+
+Use the ``param_options`` attribute to specify parameters of the modal param form.
+
+``param_options`` is an object that has the following attributes:
+
+* ``width`` - the width of the modal form, the default value is 560 px,
+* ``title`` - the title of the modal form, the default value is the value of a
+  :doc:`report_caption </refs/client/abstr_item/at_item_caption>`
+  attribute,
+* ``params`` - specify the list of parameter names that the
+  :doc:`create_param_inputs <m_create_param_inputs>`
+  method will use, if it is not specified, the field list, set in Administrator 
+  for edting will be used (the default value),
+* ``close_button`` - if true, the close button will be created in the upper-right 
+  corner of the form, the default value is true,
+* ``close_caption`` - if true and close_button is true, will display 'Close - [Esc]'
+  near the button
+* ``close_on_escape`` - if true, pressing on the Escape key will trigger the 
+  :doc:`close_param_form <m_close_param_form>`
+  method.
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_param_form_created(report) {
+        report.param_options.width = 800;
+        report.param_options.close_button = false;
+        report.param_options.close_on_escape = false;    
+    }
+
+See also
+========
+
+:doc:`Forms </programming/interface/forms>`
+
+:doc:`print <m_print>`
+
+:doc:`create_param_form <m_create_param_form>`
+
+:doc:`close_param_form <m_close_param_form>`
+

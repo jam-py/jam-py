@@ -13,7 +13,7 @@ templates
 Description
 ===========
 
-The **templates** attribute stores the form templates of the project.
+The ``templates`` attribute stores the form templates of the project.
 
 See also
 ========

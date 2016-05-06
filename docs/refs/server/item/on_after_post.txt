@@ -1,0 +1,27 @@
+=============
+on_after_post
+=============
+
+on_after_post(item)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Occurs after an application posts a record to the item dataset.
+
+The **item** parameter is the item that triggered the event.
+
+Write an on_after_post event handler to take specific action immediately after 
+an application posts a record in the item dataset. on_after_post is called 
+by :doc:`post <m_post>` method.
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

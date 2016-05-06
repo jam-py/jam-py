@@ -1,0 +1,25 @@
+=====
+close
+=====
+
+.. js:function:: close() 
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Call ``сlose`` to close an item dataset. After dataset is closed the 
+:doc:`active <at_active>` 
+property is ``false``.
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`open <m_open>`

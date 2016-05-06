@@ -1,0 +1,29 @@
+=============
+field_caption
+=============
+
+.. py:attribute:: field_caption
+
+**domain**: server
+
+**language**: python
+
+:doc:`Field class </refs/server/field_api>`
+
+
+Description
+===========
+
+``Field_caption`` attribute specifies the name of the field that appears to 
+users.
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`field_name <at_field_name>`
+
+

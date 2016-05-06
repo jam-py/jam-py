@@ -2,37 +2,55 @@
 edit
 ====
 
-Enables editing of data in the dataset.
-
 .. js:function:: edit()
 
 **domain**: client 
 
 **language**: javascript
 
+**class** :doc:`Item class </refs/client/item_api>`
+
 Description
 ===========
 
-Checks if item dataset is active, otherwise raises exception.
-
-Checks if item dataset is not empty, otherwise raises exception.
-
-If item is a detail checks if the master item is in edit or insert 
-:doc:`state <at_item_state>`, otherwise raises exception.
-
-Checks if item is in browse :doc:`state <at_item_state>`, otherwise raises exception.
-
-Triggers the :doc:`on_before_edit <on_before_edit>` event handler if one is 
-defined for the item. 
-
-Puts the item into edit :doc:`state <at_item_state>`, enabling the application or 
-user to modify fields in the record.
-
-Triggers the :doc:`on_after_edit <on_after_edit>` event handler if one is 
-defined for the item.
+Enables editing of data in the dataset.
 
 After a call to edit, an application can enable users to change data in the 
 fields of the record, and can then post those changes to the item dataset using 
 :doc:`post <m_post>` method, and then apply them to database using 
 :doc:`apply <m_apply>` method. 
 
+The ``edit`` method
+
+* checks if item dataset is active, otherwise raises exception
+
+* checks if item dataset is not empty, otherwise raises exception
+
+* if item is a 
+  :doc:`detail </programming/data/details>`
+  , checks if the master item is in edit or insert 
+  :doc:`state <at_item_state>`
+  , otherwise raises exception
+
+* if item is not a 
+  :doc:`detail </programming/data/details>`
+  , checks if it is in browse 
+  :doc:`state <at_item_state>`
+  , otherwise raises exception
+
+* triggers the 
+  :doc:`on_before_edit <on_before_edit>` 
+  event handler if one is defined for the item 
+
+* puts the item into edit 
+  :doc:`state <at_item_state>`
+  , enabling the application or user to modify fields in the record
+
+* triggers the 
+  :doc:`on_after_edit <on_after_edit>` 
+  event handler if one is defined for the item
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

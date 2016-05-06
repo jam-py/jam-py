@@ -1,0 +1,40 @@
+======
+cancel
+======
+
+.. py:method:: cancel(self) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Call ``cancel`` to undo modifications made to one or more fields belonging to 
+the current record, as long as those changes are not already posted to the item 
+dataset. 
+
+``Cancel`` 
+
+* triggers the 
+  :doc:`on_before_cancel <on_before_cancel>`
+  event handler if one is defined for the item. 
+
+* to undo modifications made to the current record and its details if the record
+  has been edited or removes the new record if one was appended or inserted. 
+
+* puts the item into browse :doc:`state <at_item_state>`
+
+* triggers the 
+  :doc:`on_after_cancel <on_after_cancel>`
+  event handler if one is 
+  defined for the item.
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`
+

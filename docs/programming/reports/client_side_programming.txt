@@ -1,0 +1,107 @@
+==============================
+Client-side report programming
+==============================
+
+To print a report on the client use the 
+:doc:`print </refs/client/report/m_print>` 
+method. 
+
+As a result of calling this function, the client calls 
+:doc:`create_param_form </refs/client/report/m_create_param_form>`
+method to create a form for editing the report parameters, based on the html 
+template defined in the index.html file 
+(see :doc:`Forms </programming/interface/forms>`). 
+
+This method, after creating the form, triggers the following events:
+
+* :doc:`on_param_form_created </refs/client/task/on_param_form_created>`
+  of the task.
+
+* :doc:`on_param_form_created </refs/client/reports/on_param_form_created>`
+  of the report group that owns the report, if one is defined
+
+* :doc:`on_param_form_created </refs/client/report/on_param_form_created>`
+  of the report, if one is defined.
+
+
+The default code has the
+:doc:`on_param_form_created </refs/client/report/on_param_form_created>`
+event handler, defined for the task. In this event, the click on the **Print** 
+button is connected to the report's
+:doc:`process_report </refs/client/report/m_process_report>`
+method. 
+
+.. code-block:: js
+
+    function on_param_form_created(item) {
+        item.create_param_inputs(item.param_form.find(".edit-body"));
+        item.param_form.find("#ok-btn").on('click.task', function() {
+            item.process_report()
+        });
+        item.param_form.find("#cancel-btn").on('click.task', function() {
+            item.close_param_form()
+        });
+    }
+    
+In its turn the 
+:doc:`process_report </refs/client/report/m_process_report>`    
+method triggers 
+
+* :doc:`on_before_print_report </refs/client/reports/on_before_print_report>` 
+  event handler of the report group 
+  
+* :doc:`on_before_print_report </refs/client/report/on_before_print_report>` 
+  event handler of the report
+
+In this event handlers developer can define some common (report group
+event handler) or specific (report event handler) attributes of the report.
+
+For example, in the default code, there is the on_before_print_report event 
+handler of the report group, in which report's 
+:doc:`extension </refs/client/report/at_extension>`
+attribute is defined:
+
+.. code-block:: js
+
+    function on_before_print_report(report) {
+        var select;
+        report.extension = 'pdf';
+        if (report.param_form) {
+            select = report.param_form.find('select');
+            if (select && select.val()) {
+                report.extension = select.val();
+            }
+        }
+    }
+
+In the following event handler, defined in the client module of the 
+**invoice** report of the Demo application, the value of the report 
+**id** parameter is set:
+
+.. code-block:: js
+
+    function on_before_print_report(report) {
+        report.id.value = report.task.invoices.id.value;
+    }
+    
+After that the
+:doc:`process_report </refs/client/report/m_process_report>`    
+method sends asynchronous request to the server to generate the report
+(see :doc:`Server-side programming <server_side_programming>`). 
+
+The server returns to the method an url to a file with generated report. 
+
+The method then checks if the 
+:doc:`on_open_report </refs/client/reports/on_open_report>` event handler of
+the report group is defined. If this events handler if defined calls it, 
+otherwise checks the 
+:doc:`on_open_report </refs/client/report/on_open_report>` of the report. If it 
+is defined then calls it.
+
+If none of this events are defined, it (depending on the report 
+:doc:`extension </refs/client/report/at_extension>`
+attribute) opens the report in the browser or saves it to disc.
+
+
+
+

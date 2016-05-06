@@ -2,20 +2,25 @@
 ID
 ==
 
-The ID attibute is the unique in the framework id of the item
-
 .. py:attribute:: ID
 
 **domain**: server
 
 **language**: python
 
+**class** :doc:`AbstractItem class </refs/server/abstractitem_api>`
+
 
 Description
 ===========
 
-The ID attribute is most useful when referring to the item by number rather than 
+The ``ID`` attibute is the unique in the framework id of the item
+
+The ``ID`` attribute is most useful when referring to the item by number rather than 
 name. It is also used internally.
 
+See also
+========
 
+:doc:`Task tree </programming/task_tree>`
 

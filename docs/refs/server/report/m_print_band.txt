@@ -1,0 +1,64 @@
+==========
+print_band
+==========
+
+.. py:method:: print_band(self, band, dic=None)
+
+**domain**: client 
+
+**language**: python
+
+**class** :doc:`Report class </refs/server/report_api>`
+
+Description
+===========
+
+Use print_band method to set values of programmable cells of the band 
+defined in the report 
+:doc:`template <at_template>` 
+and add the band to the content of the report.
+
+It has the following parameters:
+
+* **band** - specifies the name of the band to be printed.
+
+* **dic** - dictionary, containing values than will be assigned to programmable 
+  cells of the band.
+
+
+Example
+=======
+
+The following code generates content of the **Customer list** report of the Demo 
+application:
+
+.. code-block:: py
+
+    def on_generate(report):
+        cust = report.task.customers.copy()
+        cust.open()
+    
+        report.print_band('title')
+    
+        for c in cust:
+            firstname = c.firstname.display_text
+            lastname = c.lastname.display_text
+            company = c.company.display_text
+            country = c.country.display_text
+            address = c.address.display_text
+            phone = c.phone.display_text
+            email = c.email.display_text
+            report.print_band('detail', locals())
+
+See also
+========
+
+:doc:`Programming reports </programming/reports/index>`
+
+:doc:`Report templates </programming/reports/templates>`
+
+:doc:`Server-side report programming </programming/reports/server_side_programming>`
+
+:doc:`generate <m_generate>`
+
+:doc:`on_generate <on_generate>`

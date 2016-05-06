@@ -1,0 +1,50 @@
+========
+on_apply
+========
+
+on_apply(self, delta, params, privileges, user_info, enviroment)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Write ``on_apply`` event handler when you need to override the standard data saving 
+procedure during the execution of the apply method: 
+
+* :doc:`apply </refs/client/item/m_apply>` - on the client
+* :doc:`apply <m_apply>` - on the server
+
+The ``on_apply`` event handler has the following parameters:
+
+* ``item`` - a reference to the item,
+* ``delta`` - a delta containing item change log (discussed in more detail below),
+* ``params`` - the parameters passed to the server by apply method,
+* ``privileges`` - a dictionary containing information about the user's permissions 
+  (``can_create``, ``can_edit``, ``can_delete``, ``can_view``),
+* ``user_info`` - a dictionary containing information about the user (``user_id``,
+  ``user_name``, ``role_id``, ``role_name``, ``admin``)
+* ``enviroment`` - a dictionary containing standard WSGI environment variables.
+
+The delta parameter contains changes that must be saved in the databae. 
+By itself, this option is an item's copy, and its dataset is the item's change 
+log. The nature of the record change can be obtained by using methods rec_inserted, 
+rec_modified or rec_deleted, each of which returns a value
+of True, if the record is added, modified or deleted, respectively. If the item 
+has a detail item, delta
+also has a corresponding detail item storing detail changes. Details_active attribute of delta is True.
+Please note that if a record is deleted from an item and this record has detail records, the delta will
+just keep this deleted record, information about the deleted records of the detail is not saved. In this
+case if you need this detail records you must get them yourself
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`
+
+
+

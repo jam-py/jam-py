@@ -1,0 +1,29 @@
+=============
+on_after_open
+=============
+
+on_after_open(item)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Occurs after an application receives a response from the server for obtaining a 
+dataset.
+
+The **item** parameter is the item that triggered the event.
+
+Write an **on_after_open** event handler to take specific action immediately 
+after an application obtains an dataset from the server. **On_after_open** is 
+called by :doc:`open <m_open>` method. 
+
+See also 
+========
+
+:doc:`Dataset </programming/data/dataset>`
+

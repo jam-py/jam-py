@@ -1,6 +1,6 @@
-====================
-Jam.py API reference
-====================
+======================
+Jam.py class reference
+======================
 
 Server side is implemented in Python and uses Web.py library, the client side in 
 JavaScript and uses JQuery and Bootstrap 2 

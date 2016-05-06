@@ -1,0 +1,37 @@
+===
+bof
+===
+
+.. py:method:: bof(self) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Test ``bof`` (beginning of file) method to determine if the cursor is positioned 
+at the first record in an item dataset.
+
+If bof returns true, the cursor is unequivocally on the first row in the dataset. 
+bof returns true when an application
+
+* Opens an item dataset.
+* Calls an item's :doc:`first <m_first>` method.
+* Call an item's :doc:`prior <m_prior>` method, and the method fails (because 
+  the cursor is already on the first row in the dataset).
+
+bof returns false in all other cases.
+
+.. note::
+    If both :doc:`eof <m_eof>` and bof return true, the item dataset is empty.
+    
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Navigating datasets </programming/data/navigating_datasets>`

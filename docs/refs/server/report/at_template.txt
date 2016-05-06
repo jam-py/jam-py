@@ -1,0 +1,30 @@
+========
+template
+========
+
+.. py:attribute:: template
+
+**domain**: client 
+
+**language**: python
+
+**class** :doc:`Report class </refs/server/report_api>`
+
+Description
+===========
+
+The **report_filename** attribute stores a file name of the report template. Usually it
+is set in the Administrator when the report is created. But it can be changed 
+dynamically on the server in the 
+:doc:`on_before_generate <on_before_generate>`
+event handler or be empty, if it's necessary to create, for exapmle, some **txt**  
+file.
+
+See also
+========
+
+:doc:`Report templates </programming/reports/templates>`
+
+:doc:`Creating a report </programming/reports/creating_report>`
+
+:doc:`Server-side report programming </programming/reports/server_side_programming>`

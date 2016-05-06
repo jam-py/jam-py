@@ -13,29 +13,29 @@ To run Administrator go to a Web browser and type in the browser address bar
 
 .. note::
 
-    Please note that application.py must be running
+    Please note that *server.py* must be running
     
-After Administrator is started in a Web browser the following page will appear:
-
+On the left side of the Administrator page there is a panel that contains the 
+project tree. When you select any node of the project tree, as a rule, we open 
+its content in the central part of the page, and the bottom and right side of 
+the page may have buttons that allow you to modify its contents.
 
 .. image:: _images/admin.png
 	:align: center
-	:alt: Jam.py Administaor
+	:alt: Admin
 
-
-On the left side of Administrator page there is a panel that contains a project 
-tree. By selecting any node of the project tree, as a rule, we open it's content 
-in the center part of Administrator page, and in the bottom and right side of 
-Administrator can be buttons that allow us to modify it's content.
-    
 
 To see the changes made in Administrator go to the Project page and reload it 
 (press F5).
 
 .. toctree::
-   :maxdepth: 0
+   :maxdepth: 1
 
-   project
+   project/index
    roles
    users
    code_editor
+   task
+   groups
+   items/index
+   details

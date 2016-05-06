@@ -43,15 +43,8 @@ to close the edit form and then cancels edit (append, insert) operation by using
 method.
 
 To save data changes use 
-:doc:`post_record </refs/client/item/m_post_record>` 
-and
 :doc:`apply_record </refs/client/item/m_apply_record>`
-methods. The
-:doc:`post_record </refs/client/item/m_post_record>` 
-method calls the
-:doc:`post </refs/client/item/m_post>`
-method to post changes to the dataset, and then closes edit form by using
-:doc:`close_edit_form </refs/client/item/m_close_edit_form>`. 
+methods. 
 The 
 :doc:`apply_record </refs/client/item/m_apply_record>`
 method after posting the record to the dataset, uses 

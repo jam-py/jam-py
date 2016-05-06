@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <title>Administrator</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/jam/img/j.png" type="image/png">
+
     <link href="/jam/css/bootstrap.css" rel="stylesheet">
     <link href="/jam/css/bootstrap-responsive.css" rel="stylesheet">
     <link href="/jam/css/bootstrap-modal.css" rel="stylesheet">
@@ -18,7 +20,7 @@
     <div class="container">
         <div class="row-fluid">
             <div class="span6">
-                <span id="project-title" style="font-weight: bold;"></span>
+                <span id="project-mode" style="font-weight: bold;"></span>
             </div>
             <div class="span6" style="text-align:right;">
                 <span id="user-info"></span>
@@ -89,7 +91,9 @@
                 <button id="delete-btn" class="btn pull-left" type="button"><i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small></button>
                 <button id="new-btn" class="btn pull-right" type="button"><i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small></button>
                 <button id="edit-btn" class="btn pull-right" type="button"><i class="icon-edit"></i> Edit</button>
+<!--
                 <button id="filter-btn" class="btn pull-right" type="button"><i class="icon-filter"></i> Filter</button>
+-->
                 <div id="report-btn" class="btn-group dropup pull-right">
                     <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
                         <i class="icon-print"></i> Reports
@@ -101,7 +105,7 @@
             </div>
         </div>
 
-        <div class="sys_items-view sys_filters-view sys_report_params-view">
+        <div class="sys_items-view sys_filters-view sys_report_params-view sys_field_lookups-view">
             <div class="modal-body">
                 <div class="row-fluid">
                     <div id="title-left" class="span6"></div>
@@ -313,7 +317,7 @@
     <script src="/jam/js/bootstrap-modalmanager.js"></script>
     <script src="/jam/js/bootstrap-datepicker.js"></script>
     <script src="/jam/js/md5.js"></script>
-    <script src="/jam/js/ace/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="/jam/js/ace/ace.js"></script>
     <script src="/jam/js/jam.js"></script>
     
 

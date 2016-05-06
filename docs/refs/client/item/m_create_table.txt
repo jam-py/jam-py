@@ -11,7 +11,7 @@ create_table
 Description
 ===========
 
-Use **create_table** method to create a data bound table that displays records of 
+Use ``create_table`` method to create a data bound table that displays records of 
 an item dataset.
 
 The behavior of the table is determined by the 
@@ -22,7 +22,7 @@ When
 is true, a paginator will be created, that will internally reopen the item 
 dataset when the page is changed.
 In this case the table, when created, calculates the number of the rows 
-displayed, based on the height options.
+displayed, based on the height parameter of the options.
 If 
 :doc:`paginate <at_paginate>`
 value is false, the table will displays all available
@@ -30,50 +30,50 @@ records of the item dataset.
 
 The following parameters are passed to the method:
 
-* **container** - an JQuery object that will contain the table. Before creating 
+* ``container`` - an JQuery object that will contain the table. Before creating 
   the table an application empties the container.
 
-* **options** - options that specify the way the table will be displayed
+* ``options`` - options that specify the way the table will be displayed
 
-The **options** parameter is an object that may have following attributes:
+The ``options`` parameter is an object that may have the following attributes:
 
-* **height** - specidies the height of the table, the default value is 480.
+* ``height`` - specidies the height of the table, the default value is 480.
 
-* **fields** - a list of field names. If specified, a column will be 
+* ``fields`` - a list of field names. If specified, a column will be 
   created for each field whose name is in this list, if not specified (the 
-  default) then the **fields** attribute of an 
+  default) then the ``fields`` attribute of an 
   :doc:`view_options <at_view_options>`
   will be used (by default it lists all view fields, specified in the 
-  Administrator (**View** button for the item)).
+  Administrator (``View`` button for the item)).
 
-* **striped** — the grid is striped if this value is true.
+* ``striped`` — the grid is striped if this value is true.
 
-* **row_line_count** - specifies the number of lines of text displayed in a 
+* ``row_line_count`` - specifies the number of lines of text displayed in a 
   table row, the default value is 1.
 
-* **expand_selected_row** - if **row_line_count** is equal 1 and 
-  **expand_selected_row** is greater that 0, specifies the minimal number of 
+* ``expand_selected_row`` - if ``row_line_count`` is equal 1 and 
+  ``expand_selected_row`` is greater that 0, specifies the minimal number of 
   lines of text displayed in the selected row of the table,
 
-* **title_word_wrap** - specifies if the column title text can be wrapped.
+* ``title_word_wrap`` - specifies if the column title text can be wrapped.
 
-* **column_width** - The width of the columns are calulated by a Web Browser. 
+* ``column_width`` - The width of the columns are calulated by a Web Browser. 
   You can use this option to force the width of some columns. The option is an 
   object, key values of which are field names, the values are column widths:
   
-* **editable** - if this option is set to true, a user can edit fields in the 
-  selected row of the table. If an **editable_fields** option is not specified,
+* ``editable`` - if this option is set to true, a user can edit fields in the 
+  selected row of the table. If an ``editable_fields`` option is not specified,
   then it is possible to edit any field in the table. The default value if false,
   
-* **editable_fields** - if an **editable** option is set, the option limits the 
+* ``editable_fields`` - if an ``editable`` option is set, the option limits the 
   fields that can be edited in the table. The option is an array 
   of field names.
 
-* **selected_field** - if an **editable** option is set, specifies the field 
+* ``selected_field`` - if an ``editable`` option is set, specifies the field 
   name whose column will be selected, when the selected row is changed.
 
-* **sortable** - if this option is specified, it is possible to sort the records 
-  by clicking on the table column header. When a **sort_fields** option is not 
+* ``sortable`` - if this option is specified, it is possible to sort the records 
+  by clicking on the table column header. When a ``sort_fields`` option is not 
   specified (default), a user can sort records on any field, otherwise, only on 
   the fields whose names are listed in this option.
   If an item is a detail the operation is performed on the client, otherwise 
@@ -81,35 +81,41 @@ The **options** parameter is an object that may have following attributes:
   :doc:`open <m_open>`
   method is used internally).
 
-* **sort_fields** - if an **sortable** option is set, the option limits the 
+* ``sort_fields`` - if an ``sortable`` option is set, the option limits the 
   sortable fields
  
-* **on_click** - specifies the function, that will be executed when a user click
+* ``on_click`` - specifies the function, that will be executed when a user click
   on a table row. The item will be passed as a parameter to the function. 
 
-* **on_dblclick** - specifies the function, that will be executed when a user 
+* ``on_dblclick`` - specifies the function, that will be executed when a user 
   double click on a table row. The item will be passed as a parameter to 
   the function. 
 
-* **dblclick_edit** - if the value of the option is set to true and the 
-  **on_dblclick** options is not set, the edit form will be shown when a user 
+* ``dblclick_edit`` - if the value of the option is set to true and the 
+  ``on_dblclick`` options is not set, the edit form will be shown when a user 
   double click on a table row. The the default value is true.
 
-* **multi_select** - if this option is set to true, a leftmost column with 
+* ``multi_select`` - if this option is set to true, a leftmost column with 
   check-boxes will be created to select records. So, if the function-option 
-  **multi_select_get_selected** returns true for the record, this record's 
+  ``multi_select_get_selected`` returns true for the record, this record's 
   check-box will be checked. When a user clicks on the check-box, the 
-  **multi_select_set_selected** function will be called with the state of the
-  check-box as a parameter. If the function-option **multi_select_select_all** 
+  ``multi_select_set_selected`` function will be called with the state of the
+  check-box as a parameter. If the function-option ``multi_select_select_all`` 
   is specified, then a check-box will be created in the leftmost column of the 
   table title and this function will be called when user clicks on this 
   check-box. 
 
+* ``row_callback`` - the callback functions called each time fields of the record
+  are changed. Two parameters are passed to the function - item, whose record has 
+  changed and Jquery object of the corresponding row of the table. Please be 
+  carefull - the item passed to the function can be not item itself, but its clone
+  that share the same dataset. 
+
 Examples
 ========
 
-The code below creates an edit form of the **Invoices** journal in the Demo 
-application:
+The code below creates an edit form of the optionsInvoices** journal in the
+:doc:`Demo project </intro/demo_project>`.
 
 .. code-block:: js
 
@@ -160,7 +166,33 @@ store values of the **id** field of records that have been selected:
             }
         );
     }
-    
+
+
+Below is the ``init_table`` function that is called before the ``create_table``
+method is executed  in the 
+:doc:`on_view_form_created </refs/client/task/on_view_form_created>`
+events handler of the task in the 
+:doc:`Demo project </intro/demo_project>`.
+The ``options`` parameter is passed to the function, that is used to 
+specify the common options used in the in the ``create_table`` method. See
+:doc:`Working with view forms </programming/interface/view_forms>`.
+
+.. code-block:: js
+
+    function init_table(item, options) {
+        options.height = $(window).height() - $('body').height() - 200 - 10;
+        if (options.height < 200) {
+            options.height = 200;
+        }
+        options.show_footer = true;    
+        options.row_callback = function(row, it) {
+            var font_weight = 'normal';
+            if (it.total.value > 10) {
+                font_weight = 'bold';
+            }
+            row.find('td.total').css('font-weight', font_weight);
+        };
+    }
 
 See also
 ========
@@ -170,9 +202,3 @@ See also
 :doc:`Visual editing of records </programming/interface/visual_editing>`
 
 :doc:`Data-aware controls </programming/interface/data_controls>`
-
-
-
-
-
-

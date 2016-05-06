@@ -1,0 +1,20 @@
+============
+Filter class
+============
+
+.. js:class:: Filter
+
+**domain**: client 
+
+**language**: javascript
+
+
+Attrubutes and properties
+=========================
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+    
+    filter/at_*
+

@@ -2,20 +2,27 @@
 on_before_edit
 ==============
 
-Occurs before an application enables editing of the active record.
-
 on_before_edit(item)
-
-The item parameter is the item that triggered the event.
 
 **domain**: client 
 
 **language**: javascript
 
+**class** :doc:`Item class </refs/client/item_api>`
+
 Description
 ===========
+
+Occurs before an application enables editing of the active record.
+
+The ``item`` parameter an the item that triggered the event.
 
 Write an on_before_edit event handler to take specific action immediately 
 before an application enables editing of the active record in an item dataset. 
 on_before_edit is called by :doc:`edit <m_edit>` method. If the event returns 
 false, the edit is aborted. 
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

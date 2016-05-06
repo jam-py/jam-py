@@ -1,0 +1,32 @@
+======
+rec_no
+======
+
+.. py:attribute:: rec_no
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Examine the ``rec_no`` property to determine the record number of the current 
+record in the item dataset. 
+
+``rec_no`` can be set to a specific record number to position the cursor on that 
+record.
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Navigating datasets </programming/data/navigating_datasets>`
+
+
+
+
+

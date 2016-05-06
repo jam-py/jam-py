@@ -1,0 +1,61 @@
+==================
+Modifying datasets
+==================
+
+When an application opens an item dataset, the dataset automatically enters 
+*browse* state. Browsing enables you to view records in a dataset, but you 
+cannot edit records or insert new records. You mainly use *browse* state to 
+scroll from record to record in a dataset. 
+
+For more information about scrolling from record to record, see 
+:doc:`Navigating datasets <navigating_datasets>`.
+
+From *browse* state all other dataset states can be set. For example, calling 
+the *insert* or *append* methods changes its state from *browse* to *insert*. 
+
+Two methods can return a dataset to *browse* state. appendCancel** ends the current 
+edit, insert, and returns a dataset to *browse* state. **Post** writes changes 
+to the dataset, and if successful, also returns a dataset to *browse* state. If 
+this operations fail, the current state remains unchanged.
+
+To check an item dataset state use **item_state** attribute or **is_new**, 
+**is_edited** or **is_changing** methods:
+
+.. csv-table:: 
+   :header: Client, Server, Description
+   :widths: 10, 10, 80
+
+   :doc:`item_state </refs/client/item/at_item_state>`, :doc:`item_state </refs/server/item/at_item_state>`, "Indicates the current operating state of the item dataset."
+   :doc:`is_new </refs/client/item/m_is_new>`, :doc:`is_new </refs/server/item/m_is_new>`, "Returns true if the item dataset is in *insert* state."
+   :doc:`is_edited </refs/client/item/m_is_editing>`, :doc:`is_edited </refs/server/item/m_is_editing>`, "Returns true if the item dataset is in *edit* state."
+   :doc:`is_changing </refs/client/item/m_is_changing>`, :doc:`is_changing </refs/server/item/m_is_changing>`, "Returns true if the item dataset is in *insert* or *edit* state."   
+
+You can use the following item methods to insert, update, and delete data in dataset:
+
+
+.. csv-table:: 
+   :header: Client, Server, Description
+   :widths: 20, 20, 100
+   
+   :doc:`edit </refs/client/item/m_edit>`, :doc:`edit </refs/server/item/m_edit>`, "Puts the item dataset into edit state."
+   :doc:`append </refs/client/item/m_append>`, :doc:`append </refs/server/item/m_append>`, "Appends a record to the end of the dataset, and puts the dataset in *insert* state."
+   :doc:`insert </refs/client/item/m_insert>`, :doc:`insert </refs/server/item/m_insert>`, "Inserts a record at the begining of the dataset, and puts the dataset in *insert* state."
+   :doc:`post </refs/client/item/m_post>`, :doc:`post </refs/server/item/m_post>`, "Saves the new or altered record, and puts the dataset in *browse* state."   
+   :doc:`cancel </refs/client/item/m_cancel>`, :doc:`cancel </refs/server/item/m_cancel>`, "Cancels the current operation and puts the dataset in *browse* state."
+   :doc:`delete </refs/client/item/m_delete>`, :doc:`delete </refs/server/item/m_delete>`, "Deletes the current record and puts the dataset in *browse* state."         
+
+All changes made to an item dataset are stored in memory. If the item 
+**log_changes** attrubute is set to true, the item logs changes. Thus, after all 
+the changes have been made, they can be stored in the assiciated database table 
+by calling the **apply** method. The **apply** method generates and executes SQL 
+query to save changes to the database.
+
+.. csv-table:: 
+   :header: Client, Server, Description
+   :widths: 20, 20, 100
+   
+   :doc:`log_changes </refs/client/item/at_log_changes>`, :doc:`log_changes </refs/server/item/at_log_changes>`, "Indicates whether to log data changes."
+   :doc:`apply </refs/client/item/m_apply>`, :doc:`apply </refs/server/item/m_apply>`, "Sends all updated, inserted, and deleted records from the item dataset to the server for writing to the database."
+
+
+

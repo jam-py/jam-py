@@ -2,20 +2,19 @@
 bof
 ===
 
-Indicates whether or not a cursor is positioned at the first record in an item 
-dataset.
-
 .. js:function:: bof() 
 
 **domain**: client 
 
 **language**: javascript
 
+**class** :doc:`Item class </refs/client/item_api>`
+
 Description
 ===========
 
-Test bof (beginning of file) to determine if the cursor is positioned at the 
-first record in an item dataset.
+Test ``bof`` (beginning of file) method to determine if the cursor is positioned 
+at the first record in an item dataset.
 
 If bof returns true, the cursor is unequivocally on the first row in the dataset. 
 bof returns true when an application
@@ -29,3 +28,10 @@ bof returns false in all other cases.
 
 .. note::
     If both :doc:`eof <m_eof>` and bof return true, the item dataset is empty.
+    
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Navigating datasets </programming/data/navigating_datasets>`

@@ -1,0 +1,28 @@
+===============
+on_after_delete
+===============
+
+on_after_delete(item)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Occurs after an application deletes a record.
+
+The **item** parameter is the item that triggered the event.
+
+Write an on_after_delete event handler to take specific action immediately after 
+an application deletes the active record in an item. on_after_delete is called 
+by :doc:`delete <m_delete>` after it deletes the record, and repositions the 
+cursor on the record prior to the one just deleted.
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

@@ -1,0 +1,23 @@
+==========
+field_size
+==========
+
+.. py:attribute:: field_size
+
+**domain**: server
+
+**language**: python
+
+:doc:`Field class </refs/server/field_api>`
+
+Description
+===========
+
+Identifies the size of the text field object.
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Fields </programming/data/fields>`

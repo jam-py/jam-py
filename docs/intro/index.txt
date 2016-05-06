@@ -7,5 +7,7 @@ Getting started
 
    install
    new_project
+   default_code
    demo_project
-   first_project
+   first_project/index
+   

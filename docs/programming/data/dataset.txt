@@ -1,0 +1,74 @@
+=======
+Dataset
+=======
+
+All catalogs, journals and tables as well as their details (items of the 
+:doc:`task tree </programming/task_tree>`
+with 
+:doc:`item_type </refs/client/abstr_item/at_item_type>`
+of "catalog", "journal", "table" and "detail") can access data from associated 
+tables from the project database and make changes to it. They all are objects of 
+the Item class
+
+* :doc:`Item class </refs/client/item_api>` (on the cient)
+* :doc:`Item class </refs/server/item_api>` (on the cient)
+
+Both of these classes have the same attributes, methods, and events associated 
+with the data handling.
+
+To get a dataset (a set of records) from the project dataset table use the open
+method. This method, based on parameters, generates an SQL query to get a dataset.
+
+After dataset is opened, the application can navigate it, change it records or 
+insert new ones and save changes to the item database table.
+
+For example, the following functions will set *support_rep_id* field values
+on the client and server respectively:
+
+.. code-block:: js
+
+    function set_support_id(customers) {
+        customers.open();
+        while (!customers.eof()) {
+            customers.edit();
+            customers.support_rep_id.value = customers.id.value;
+            customers.post();
+            customers.next();
+        }
+        customers.apply();
+    }
+    
+.. code-block:: py
+
+    def set_support_id(customers):
+        customers.open()
+        while not customers.eof():
+            customers.edit()
+            customers.support_rep_id.value = customers.id.value
+            customers.post()
+            customers.next()
+        customers.apply();
+
+These functions get the **Customers** item as a parameter. Then the *open* 
+method is used to get a list of records from the customers table and each 
+record is modified. In the end the changes are saves in the database table using
+the apply method (see
+:doc:`Modifying datasets <modifying_datasets>`
+).
+
+.. note::
+
+    There is a shorter way to navigate a dataset (see 
+    :doc:`Navigating datasets <navigating_datasets>`
+    ). For example, in python, the following loops are equivalent:
+    
+    .. code-block:: py
+    
+        while not customers.eof():
+            print customers.firstname.value
+            customers.next()
+        
+        for c in customers:
+            print c.firstname.value
+        
+    

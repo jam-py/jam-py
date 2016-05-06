@@ -1,0 +1,11 @@
+===
+app
+===
+
+.. py:attribute:: app
+
+**domain**: server
+
+**language**: python
+
+**class**: :doc:`Task class </refs/server/task_api>` 

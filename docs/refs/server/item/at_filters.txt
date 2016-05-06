@@ -1,0 +1,34 @@
+=======
+filters
+=======
+
+.. py:attribute:: filters
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Lists all 
+:doc:`filter </refs/server/filter_api>`
+objects of the item dataset.
+
+Example
+=======
+
+.. code-block:: py
+
+    def invoices_filters(invoices):
+        for f in invoices.filters:
+            print f.filter_name, f.value
+
+See also
+========
+
+:doc:`Filters </programming/data/filters>`
+
+:doc:`Filter class </refs/server/filter_api>`

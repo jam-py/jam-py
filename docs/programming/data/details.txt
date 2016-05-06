@@ -1,0 +1,11 @@
+=======
+Details
+=======
+
+Details are used in the framework to work with tabular data, pertaining to a record 
+in an item' table.
+
+For example, the **Invoices** journal in the Demo application has the 
+**InvoiceTable** detail, which keeps a list of tracks sold in an customer 
+invoice.
+

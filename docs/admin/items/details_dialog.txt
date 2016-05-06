@@ -1,0 +1,22 @@
+==============
+Details Dialog
+==============
+
+Use this dialog to setup details of an item. See 
+:doc:`Details </programming/data/details>`.
+
+.. image:: /admin/_images/details_dialog.png
+	:align: center
+	:alt: Details Dialog
+
+The **Details Dialog** has two panels. The left panel lists details that 
+have been added. The right panel have available tables that could be added as
+details.
+
+To add a table as detail, select it in the right panel and use the **Left arrow** 
+button in the center or press **Space** key on a keyboard. 
+
+To remove a detail, select it in the left panel and use the **Right arrow** 
+button in the center or press **Space** key on a keyboard.
+
+Click the **OK** button to save to result or **Cancel** to cancel the operation.

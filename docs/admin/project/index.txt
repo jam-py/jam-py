@@ -1,0 +1,25 @@
+=================
+Project managment
+=================
+
+After the Administrator is first run or when the **Project** node is selected
+in the project tree, the Administrator page will look as follows:
+
+.. image:: /admin/_images/project_node.png
+	:align: center
+	:alt: Project managment
+
+Click on the links below to see the purpose of the buttons in the right paneel of 
+the page.
+
+.. toctree::
+   :maxdepth: 1
+
+   parameters
+   project_locale
+   database
+   export
+   import
+   find
+   print
+   

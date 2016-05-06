@@ -1,0 +1,37 @@
+==========
+report_url
+==========
+
+.. py:attribute:: report_url
+
+**domain**: client 
+
+**language**: python
+
+**class** :doc:`Report class </refs/server/report_api>`
+
+Description
+===========
+
+The 
+:doc:`generate <m_generate>` 
+method sends to the client the value that is stored in this attribute as url of 
+the generated file.
+
+When the 
+:doc:`template <at_template>`
+attribute of the report is specified, this value is set by the 
+:doc:`generate <m_generate>` 
+method after it save generated content. Otherwise a developer must set it 
+himself.
+
+See also
+========
+
+:doc:`Server-side report programming </programming/reports/server_side_programming>`
+
+:doc:`generate <m_generate>`
+
+
+
+

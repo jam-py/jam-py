@@ -1,0 +1,13 @@
+==============
+Install python
+==============
+
+Jam.py requires python 2.7. If it is not installed you can get the latest 
+version of Python at https://www.python.org/download/ 
+
+You can verify that Python is installed by typing python from your shell; 
+you should see something like::
+
+    Python 2.7.5+ (default, Feb 27 2014, 19:39:55) 
+    [GCC 4.8.1] on linux2
+    Type "help", "copyright", "credits" or "license" for more information.

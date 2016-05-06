@@ -2,138 +2,130 @@
 Fields
 ======
 
-All items, working with database data have a **fields** attribute - list of 
-field objects, which are used to reprisent fields in item records. 
-
-.. code-block:: js
-
-    function tracks_fields(task) {
-        var i,
-            field,
-            tracks = task.tracks;
-        tracks.open({limit: 1});
-        for (i = 0; i < tracks.fields.length; i ++) {
-            field = tracks.fields[i];
-            console.log(field.field_name, field.field_caption, field.field_type);        
-        }
-    }
+All items, working with database data have a 
+:doc:`fields </refs/client/item/at_fields>`
+attribute - a list of field objects, which are used to represent fields in item
+table records. 
 
 Every field have the following attributes:
 
-* **ID** — unique ID of the field ID in an item framework,
-* **owner** — an item that owns this field,
-* **field_name** - the name of the field that will be used in programming code 
-  to get access to the field object,
-* **field_caption** - is the field name that appears to users,
-* **field_type** - type of the item — one of the following values: 
-  "text", "integer", "float", 'currency',  "date", "datetime", "boolean", "blob",
-* **field_size** — a size of the field with type "text",
-* **required** — specifies whether a nonblank value for a field is required,
-* **read_only** — can't be changed in the interface controls,
-* **lookup_item** — for lookup fields, that store record id of another item, 
-  reference to this item.
-* **lookup_field** — field name in lookup item.
-* **master_field** - reference to master field.
+.. csv-table:: 
+   :header: Client, Server, Description
+   :widths: 10, 10, 80
 
-To get access the data fields have the following properties: 
+   :doc:`owner </refs/client/field/at_owner>`, :doc:`owner </refs/server/field/at_owner>`, "The item that owns this field."
+   :doc:`field_name </refs/client/field/at_field_name>`, :doc:`field_name </refs/server/field/at_field_name>`, "The name of the field that will be used in programming code to get access to the field object."   
+   :doc:`field_caption </refs/client/field/at_field_caption>`, :doc:`field_caption </refs/server/field/at_field_caption>`, "The name of the field that appears to users."   
+   :doc:`field_type </refs/client/field/at_field_type>`, :doc:`field_type </refs/server/field/at_field_type>`, "Type of the field, one of the following values: **text**, **integer**, **float**, **currency**,  **date**, **datetime**, **boolean**, **blob**."      
+   :doc:`field_size </refs/client/field/at_field_size>`, :doc:`field_size </refs/server/field/at_field_size>`, "A size of the field with type **text**"   
+   :doc:`required </refs/client/field/at_required>`, :doc:`required </refs/server/field/at_required>`, "Specifies whether a nonblank value for a field is required."   
 
-* **value** — this property allows to get or set field value of the current 
-  record, the value is converted to the type of the field. So for fields of type 
-  integer, float и currency, if value for this field in database table record 
-  is NULL, value of this property is 0. To get unconverted value use property 
-  raw_value,
-* **text** - the text value of the field,
-* **lookup_value** - for lookup fields, the field value property is id value of 
-  the record in the lookup item, lookup_value is the value of lookup_field in 
-  this record,
-* **lookup_text** - the text value of the lookup_value,
-* **display_text** – if field owner have an on_get_field_text event handler and 
-  its result value is not None (undefined), then this property value is the 
-  result value. Otherwise for lookup fields it's value is the lookup_text 
-  property value and for other fields it is text property value with regard of 
-  project locale parameters. 	
-  
-.. code-block:: py
 
-    def print_field_data(field): 
-        print '%s: field_type: "%s"' % (field.field_name, field.field_type) 
-        print '            value: %s, value type: %s' % (field.value, type(field.value)) 
-        print '             text: "%s"' % field.text 
-        print '     lookup_value: %s' % field.lookup_value 
-        print '      lookup_text: "%s"' % field.lookup_text 
-        print '     display_text: "%s"' % field.display_text 
+To get access to the item dataset data, the Field class have the following properties: 
 
-    print_field_data(invoices.id) 
-    print_field_data(invoices.deleted) 
-    print_field_data(invoices.invoicedate) 
-    print_field_data(invoices.customer) 
-    print_field_data(invoices.firstname) 
-    print_field_data(invoices.taxrate) 
-    print_field_data(invoices.total)
+.. csv-table:: 
+   :header: Client, Server, Description
+   :widths: 10, 10, 80
 
-This code will output::
+   :doc:`value </refs/client/field/at_value>`, :doc:`value </refs/server/field/at_value>`, "Use this property to get or set the field's value of the current record. When reading the value is converted to the type of the field. So for fields of type integer, float и currency, if value for this field in database table record is NULL, value of this property is 0. To get unconverted value use the raw_value property."
+   :doc:`text </refs/client/field/at_text>`, :doc:`text </refs/server/field/at_text>`, "Use this property to get or set the value of the field as text."
+   :doc:`lookup_value </refs/client/field/at_lookup_value>`, :doc:`lookup_value </refs/server/field/at_lookup_value>`, "Use this property to get or set lookup value, see :doc:`Lookup fields <lookup_fields>`."
+   :doc:`lookup_text </refs/client/field/at_lookup_text>`, :doc:`lookup_text </refs/server/field/at_lookup_text>`, "Use this property to get or set the lookup value of the field as text, see :doc:`Lookup fields <lookup_fields>`."
+   :doc:`display_text </refs/client/field/at_display_text>`, :doc:`display_text </refs/server/field/at_display_text>`, "Represents the field's value as it is displayed in data-aware controls. When the field is lookup field it's value is the lookup_text value, otherwise it is the text value, with regard of project locale parameters. This behavior can be overriden by the on_get_field_text event handler of the item that owns the field."   
+   :doc:`raw_value </refs/client/field/at_raw_value>`, :doc:`raw_value </refs/server/field/at_raw_value>`, "Use this property to get field value of the current record as it is stored in database. No conversion is used."      
 
-    id: field_type: "integer" 
-                    value: 411, value type: <type 'int'> 
-                     text: "411" 
-             lookup_value: None 
-              lookup_text: "" 
-             display_text: "411" 
-    deleted: field_type: "boolean" 
-                    value: False, value type: <type 'bool'> 
-                     text: "No" 
-             lookup_value: None 
-              lookup_text: "" 
-             display_text: "No" 
-    invoicedate: field_type: "date" 
-                    value: 2014-12-14, value type: <type 'datetime.date'> 
-                     text: "12/14/2014" 
-             lookup_value: None 
-              lookup_text: "" 
-             display_text: "12/14/2014" 
-    customer: field_type: "integer" 
-                    value: 44, value type: <type 'int'> 
-                     text: "44" 
-             lookup_value: Hämäläinen 
-              lookup_text: "Hämäläinen" 
-             display_text: "Terhi Hämäläinen" 
-    firstname: field_type: "integer" 
-                    value: 44, value type: <type 'int'> 
-                     text: "44" 
-             lookup_value: Terhi 
-              lookup_text: "Terhi" 
-             display_text: "Terhi" 
-    taxrate: field_type: "float" 
-                    value: 5, value type: <type 'int'> 
-                     text: "5" 
-             lookup_value: None 
-              lookup_text: "" 
-             display_text: "5" 
-    total: field_type: "currency" 
-                    value: 14.56, value type: <type 'float'> 
-                     text: "14.56" 
-             lookup_value: None 
-              lookup_text: "" 
-             display_text: "$14.56" 
+In addition every field is an attribute of the item that owns it. So, to get 
+access to a field of an item use the following syntax: item.field_name 
 
-In the example above the lookup_text value of the field customer is 
-'Hämäläinen', while the display_text value - 'Terhi Hämäläinenand'. This is 
-because the journal Invoices has an event handler on_get_field_text:
-
-Python:
+.. code-block:: js
+    
+    invoices.total.value // is the value of the **Total** field of the **Invoices** journal
+    
+    
+The following 
+:doc:`on_created </refs/server/task/on_created>`
+events handler, when executed on the server of the Demo application
 
 .. code-block:: py
 
-    def on_get_field_text(field):
-        if field.field_name == 'customer':
-            return field.owner.firstname.lookup_text + ' ' + field.lookup_text
+    def on_created(task):
+    
+        def get_field_text(field):
+            if field.field_name == 'customer':
+                return field.owner.firstname.lookup_value + ' ' + field.lookup_value 
+            
+        invoices = task.invoices.copy()
+        invoices.open(fields=['customer', 'firstname', 'billing_address', 'id', 
+            'invoicedate', 'total'], limit=1)
+        invoices.on_get_field_text = get_field_text
+        for field in invoices.fields:
+            print field.field_name, field.field_type
+            print '   value: ', field.value
+            print '   text: ', field.text 
+            print '   lookup_value: ', field.lookup_value
+            print '   lookup_text: ', field.lookup_text
+            print '   display_text: ', field.display_text  
 
-JavaScript:
+will print::
+
+    customer integer
+       value:  44
+       text:  44
+       lookup_value:  Hämäläinen
+       lookup_text:  Hämäläinen
+       display_text:  Terhi Hämäläinen
+    firstname integer
+       value:  44
+       text:  44
+       lookup_value:  Terhi
+       lookup_text:  Terhi
+       display_text:  Terhi
+    billing_address integer
+       value:  44
+       text:  44
+       lookup_value:  Porthaninkatu 9
+       lookup_text:  Porthaninkatu 9
+       display_text:  Porthaninkatu 9
+    id integer
+       value:  411
+       text:  411
+       lookup_value:  None
+       lookup_text:  
+       display_text:  411
+    invoicedate date
+       value:  2016-12-16
+       text:  12/16/2016
+       lookup_value:  None
+       lookup_text:  
+       display_text:  12/16/2016
+    total currency
+       value:  16.64
+       text:  16.64
+       lookup_value:  None
+       lookup_text:  
+       display_text:  $16,64
+
+
+The similar code in javascript is as follows:
 
 .. code-block:: js
 
-    function on_get_field_text(field) {
-        if (field.field_name === 'customer') {
-            return field.owner.firstname.lookup_text + ' ' + field.lookup_text;
-        }
+    function on_page_loaded(task) {
+        var invoices = task.invoices.copy();
+        invoices.open({fields: ['customer', 'firstname', 'billing_address', 'id', 
+            'invoicedate', 'total'], limit: 1});
+        invoices.on_get_field_text = function(field) {
+            if (field.field_name == 'customer') {
+                return field.owner.firstname.lookup_value + ' ' + field.lookup_value; 
+            }
+        };
+        invoices.each_field(function(field) {
+            console.log(field.field_name, field.field_type);
+            console.log('   value: ', field.value);
+            console.log('   text: ', field.text);
+            console.log('   lookup_value: ', field.lookup_value);
+            console.log('   lookup_text: ', field.lookup_text);
+            console.log('   display_text: ', field.display_text);
+        });
+        //some other code
     }

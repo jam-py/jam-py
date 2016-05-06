@@ -1,0 +1,49 @@
+=====
+apply
+=====
+
+.. py:method:: apply(self, params) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Writes all updated, inserted, and deleted records from the item dataset to the 
+database.
+
+The ``apply`` method
+
+* checks whether the item is a detail, and if it is, returns 
+
+* checks whether the item is in edit or insert 
+  :doc:`state <at_item_state>`
+  , and if so, posts the record
+  
+* checks if the change log has changes, and if not, returns
+
+* triggers the 
+  :doc:`on_before_apply <on_before_apply>`
+  event handler if one is defined for the item 
+  
+* send the request to the server  
+
+* if 
+  :doc:`on_apply </refs/server/item/on_apply>`
+  event handler is defined for the item, executes it, otherwise   
+  generates and executes SQL query to write changes to database
+  
+* after writing changes to the database, updates the change log   
+
+* triggers the 
+  :doc:`on_after_apply <on_after_apply>`
+  event handler if one is defined for the item 
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

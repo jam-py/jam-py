@@ -121,6 +121,9 @@
             }
 
             if (width){
+                if (width > $(window).width()) {
+                    width = parseInt($(window).width() * 0.96);
+                }
                 this.$element.css('width', width);
 
                 var that = this;
@@ -214,7 +217,8 @@
                         curIndex;
                     if (e.target.tabIndex >= 0) {
                         key = e.charCode ? e.charCode : e.keyCode ? e.keyCode : 0;
-                        if (key === 9 || (e.target.tagName !== 'TABLE') && (key === 38 || key === 40)){
+                        if (key === 9 || ((e.target.tagName !== 'TABLE') && !$(e.target).hasClass('dbtableinput'))
+                            && (key === 38 || key === 40)){
                             tabs = that.tabList();
                             curIndex = tabs.indexOf(e.target);
                             if (curIndex !== -1) {

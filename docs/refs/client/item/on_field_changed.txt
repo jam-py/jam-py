@@ -1,3 +1,55 @@
 ================
 on_field_changed
 ================
+
+on_field_changed(field, lookup_item)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Write an ``on_field_changed`` event handler to respond to any changes in the 
+field’s data.
+
+The ``field`` parameter is the field whose data has been changed. To get the 
+item that owns the field, use the 
+:doc:`owner </refs/client/field/at_owner>` 
+attribute of the field.
+
+The ``lookup_item`` parameter is not ``undefined`` when 
+the field is a 
+:doc:`lookup field </programming/data/lookup_fields>` 
+and a change has occured 
+when a used selected a record from a lookup item dataset.
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_field_changed(field, lookup_item) {
+        var item = field.owner;
+        if (field.field_name === 'quantity' || field.field_name === 'unitprice') {
+            item.owner.calc_total(item);
+        }
+        else if (field.field_name === 'track' && lookup_item) {
+            item.quantity.value = 1;
+            item.unitprice.value = lookup_item.unitprice.value;
+        }
+    }
+
+
+See also
+========
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`value </refs/client/field/at_value>`
+
+:doc:`on_before_field_changed <on_before_field_changed>`
+

@@ -1,5 +1,0 @@
-===============
-process_request
-===============
-
-process_request(request, item, params, callback)

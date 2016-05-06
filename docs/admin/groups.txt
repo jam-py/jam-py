@@ -1,0 +1,19 @@
+======
+Groups
+======
+
+Select **Task** node to get to the root of the project
+:doc:`task tree </programming/task_tree>`.
+
+
+.. image:: _images/groups.png
+	:align: center
+	:alt: Task node
+	
+Press the **Edit** button in the bottom of the page to change captions of the
+task groups.
+
+Use buttons in the right panel of the page to edit Client and Server modules of 
+a selected group, see 
+:doc:`Working with modules </programming/modules>`, 
+:doc:`Code editor <code_editor>`

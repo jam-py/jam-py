@@ -13,7 +13,7 @@ view_form
 Description
 ===========
 
-Use **view_form** attribute to get access to a Jquery object representing the 
+Use ``view_form`` attribute to get access to a Jquery object representing the 
 view form of the item. 
 
 It is created by the 
@@ -22,7 +22,7 @@ method.
 
 The 
 :doc:`close_view_form <m_close_view_form>`
-method sets the **view_form** value to undefined.
+method sets the ``view_form`` value to undefined.
 
 Example
 =======

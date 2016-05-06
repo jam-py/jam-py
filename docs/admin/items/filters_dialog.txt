@@ -1,0 +1,37 @@
+==============
+Filters Dialog
+==============
+
+Use **Filters Dialog** to create and modify item filters. See 
+:doc:`Filters </programming/data/filters>`
+
+.. image:: /admin/_images/filters_dialog.png
+	:align: center
+	:alt: Filters Dialog
+	
+To add or edit a filter click on the appropriate button on the form. The 
+following form will appear:
+
+
+.. image:: /admin/_images/filter_editor.png
+	:align: center
+	:alt: Filter Editor
+
+Fill in the following fields:
+
+* **Field** - the field which will be used to filter records.
+
+* **Caption** - the filter name that appears to users.
+
+* **Name** - the name of the filter that will be used in programming code to 
+  get access to the filter object. It should be a valid python identifier.
+
+* **Filter type** - select filter type.
+
+* **Visible** - if this checkbox is not checked, this filter will be ommited, 
+  when filters are created by using 
+  :doc:`create_filter_inputs </refs/client/item/m_create_filter_inputs>` and 
+  the filters attribute in options is not specified.
+
+
+

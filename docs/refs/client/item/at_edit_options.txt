@@ -13,23 +13,23 @@ edit_options
 Description
 ===========
 
-Use the **edit_options** attribute to specify parameters of the modal edit form.
+Use the ``edit_options`` attribute to specify parameters of the modal edit form.
 
-**edit_options** is an object that has the following attributes:
+``edit_options`` is an object that has the following attributes:
 
-* **width** - the width of the modal form, the default value is 560 px,
-* **title** - the title of the modal form, the default value is the value of a
+* ``width`` - the width of the modal form, the default value is 560 px,
+* ``title`` - the title of the modal form, the default value is the value of a
   :doc:`item_caption </refs/client/abstr_item/at_item_caption>`
   attribute,
-* **fields** - specify the list of field names that the
+* ``fields`` - specify the list of field names that the
   :doc:`create_inputs <m_create_inputs>` 
   method will use, if it is not specified, the field list, set in Administrator 
   for edting will be used (the default value),
-* **close_button** - if true, the close button will be created in the upper-right 
+* ``close_button`` - if true, the close button will be created in the upper-right 
   corner of the form, the default value is true,
-* **close_caption** - if true and close_button is true, will display 'Close - [Esc]'
+* ``close_caption`` - if true and close_button is true, will display 'Close - [Esc]'
   near the button
-* **close_on_escape** - if true, pressing on the Escape key will trigger the 
+* ``close_on_escape`` - if true, pressing on the Escape key will trigger the 
   :doc:`close_edit_form <m_close_edit_form>`
   method.
 

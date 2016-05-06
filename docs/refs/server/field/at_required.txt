@@ -1,0 +1,27 @@
+========
+required
+========
+
+.. py:attribute:: required
+
+**domain**: server
+
+**language**: python
+
+:doc:`Field class </refs/server/field_api>`
+
+Description
+===========
+
+Specifies whether a not empty value for a field is required.
+
+Use ``required`` to find out if a field requires a value or if the field can be 
+blank. When ``required`` property is set to true, trying to post a null value 
+will cause an exception to be raised.
+
+See also
+========
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`read_only <at_read_only>`

@@ -1,0 +1,39 @@
+======
+active
+======
+
+.. js:attribute:: active
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Specifies whether or not an item dataset is open.
+
+Use ``active`` read only property to determine whether an item dataset is open. 
+
+The 
+:doc:`open <m_open>` 
+method changes the value of ``active`` to ``true``. The
+:doc:`close <m_close>`
+method sets it to ``false``.
+
+
+When the dataset is 
+open its records can be navigated and its data can be modified and the changes 
+saved in the item database table.
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Navigating datasets </programming/data/navigating_datasets>`
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`
+

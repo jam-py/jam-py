@@ -1,0 +1,59 @@
+===================
+Field Editor Dialog
+===================
+
+Use the **Field Editor Dialog** to create a new or modify an existing field.
+
+.. image:: /admin/_images/fields_editr_dialog.png
+	:align: center
+	:alt: Field Editor Dialog
+
+The **Field Editor Dialog** have the following fields:
+
+* **Caption** - the field name that appears to users.
+
+* **Name** - the name of the field that will be used in programming code to 
+  get access to the field object. It should be a valid python identifier.
+
+* **Type** - type of the field — one of the following values: 
+
+  * **TEXT**
+  * **INTEGER**
+  * **FLOAT**
+  * **CURRENCY**
+  * **DATE**
+  * **DATETIME**
+  * **BOOLEAN**
+  * **BLOB**
+
+* **Size** - the size of the field for text fields.
+
+* **Lookup item** - the lookup item for 
+  :doc:`Lookup fields </programming/data/lookup_fields>`
+
+* **Lookup field** - the lookup field for 
+  :doc:`Lookup fields </programming/data/lookup_fields>`
+
+* **Master field** - the master field for 
+  :doc:`Lookup fields </programming/data/lookup_fields>`
+
+* **Required** - if this checkbox is checked, the post method will raise an 
+  exception if this field is empty. See 
+  :doc:`Modifying datasets </programming/data/modifying_datasets>`. 
+
+* **Read only** - this checkbox is checked, the field value can not be changed 
+  in the interface controls created by the
+  :doc:`create_inputs </refs/client/item/m_create_inputs>`
+  method on the client.
+
+* **Align** - defines the alignment of the text in the interface controls 
+  created by the
+  :doc:`create_inputs </refs/client/item/m_create_inputs>`
+  method on the client.
+
+* **Default** - if this checkbox is checked, in the 
+  :doc:`Default code </intro/default_code>` a search is enabled in the table for
+  this field.
+  
+  
+  

@@ -1,0 +1,48 @@
+==========
+Parameters
+==========
+
+AFter clicking on the Parameters button the following dialog will appear:
+
+
+.. image:: /admin/_images/parameters.png
+	:align: center
+	:alt: Project parameters dialog
+
+* **Safe mode** - If safe mode is enabled, authentication  is needed for user to 
+  work in the system (See 
+  :doc:`Users </admin/users>`
+  and 
+  :doc:`Roles </admin/roles>`
+  ). 
+* **Debugging** - If this button is checked, compressed project javascript and 
+  css files are send to the client.
+* **Connection pool size** — the size of the server database connection pool. 
+* **Multiprocessing connection pool** - if this checkbox is checked the framework 
+  creates connection pool by using multiprocessing python module
+* **Persistent connection** - if this checkbox is checked and multiprocessing 
+  connection pool is selected, the framework creates connection in the main 
+  process. Before executing any statement, the framework checks if this 
+  connection is busy, if not, the statment is executed by this connection, 
+  otherwise multiprocessing connection pool is used.
+* **All JS modules in a single file** - If this checkbox is unchecked, the 
+  application will generate a javascript file in the project *js* folder for 
+  every item in the :doc:`task tree </programming/task_tree>`, that has code in
+  its Client module, with the name *item_name.js*, where *item_name* is the name 
+  of an item. 
+  Otherwise the application will generate a javascript file with the name 
+  *task_name.js*, where *task_name* is the name of the project 
+  :doc:`task </admin/task>` (for example *demo.js*) that will contain javascript
+  code of all items, except items whose **External js module** checkbox in the 
+  :doc:`Item Editor Dialog </admin/items/item_editor_dialog>`
+  is checked (separate files will be created for them). 
+* **Dynamic JS modules loading** - If this checkbox is unchecked and the 
+  application generates more than one javascript file, only file named 
+  *task_name.js* will be loaded when application is run. All other files must be 
+  loaded dynamically. See :doc:`Working with modules </programming/modules>`.
+* **Version** — specify the version of the project here.
+
+.. note::
+   When **Connection pool size**, **Multiprocessing connection pool** or
+   **Persistent connection** parameters are changed, *server.py* must be 
+   restarted for changes to take effect.

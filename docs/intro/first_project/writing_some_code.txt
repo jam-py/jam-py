@@ -1,0 +1,60 @@
+=================
+Writing some code
+=================
+
+Let's change the application interface. We'll remove the menu and make so, that 
+the journal will open when a user opens an apllication Web page. 
+
+Select **Task** node in the project tree and click on the **Client module** 
+button:
+
+.. image:: /intro/_images/tasks_client.png
+	:align: center
+	:alt: Todo client code button
+
+The code editor will be displayed with the **todo** task client module.
+
+.. image:: /intro/_images/todo_client_code.png
+	:align: center
+	:alt: Todo task client code
+
+In the on_page_loaded event handler let's remove code that creates the main menu
+and add the following line:
+
+.. code-block:: console
+
+    task.tasks.view($("#content"));
+
+
+.. image:: /intro/_images/todo_client_changed.png
+	:align: center
+	:alt: Todo task client code changed
+
+Now select **Tasks** journal in the project tree and click on the **Client module** 
+button. Select **Events** in the left panel of the code editor and double click
+on the on_after_append item in the list. The following lines of code appear in 
+the editor:
+
+.. code-block:: console
+
+    function on_after_append(item) {
+    
+    }
+    
+On_after_append event is triggered after append method of the **Tasks** journal 
+will be executed. Let's add two lines of code to this event handler: 
+
+.. code-block:: console
+
+    function on_after_append(item) {
+        item.date.value = new Date();
+        item.priority.set_value(2, 'Normal')
+    }
+
+The the code in the first line sets a value of the date field of a new task 
+to the current date, the code in the second line sets priority of the task to 
+'Normal'.
+
+.. image:: /intro/_images/tasks_client_code.png
+	:align: center
+	:alt: Tasks journal client code

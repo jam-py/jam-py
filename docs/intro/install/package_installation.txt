@@ -1,0 +1,43 @@
+====================
+Package installation
+====================
+
+Installing an official release with `pip`
+===========================================
+
+This is the recommended way to install Jam.py.
+
+1. Install pip_. The easiest is to use the `standalone pip installer`_. If your
+   distribution already has ``pip`` installed, you might need to update it if
+   it's outdated. (If it's outdated, you'll know because installation won't
+   work.)
+
+2. If you're using Linux, Mac OS X or some other flavor of Unix, enter the
+   command ``sudo pip install jam.py`` at the shell prompt. If you're using
+   Windows, start a command shell with administrator privileges and run
+   the command ``pip install jam.py``. This will install Jam.py in your Python
+   installation's ``site-packages`` directory.
+
+
+.. _pip: http://www.pip-installer.org/
+.. _standalone pip installer: http://www.pip-installer.org/en/latest/installing.html#install-pip
+
+
+Installing an official release manually
+=======================================
+
+1. Download the package archive. 
+
+2. Create a new directory and unpack the archive there. 
+
+3. Go into the directory and run the setup command from command line
+
+.. code-block:: console
+
+   $ python setup.py install
+    
+This will install Jam.py in your Python installation’s site-packages directory.
+
+.. note::
+	on some unix like systems you may need to switch to root or run: 
+	sudo python setup.py install

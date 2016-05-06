@@ -1,0 +1,50 @@
+======
+delete
+======
+
+.. py:method:: delete(self)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Deletes the active record and positions the cursor on the next record.
+
+The ``delete`` method
+
+* checks if item dataset is 
+  :doc:`active <at_active>`, otherwise raises exception
+
+* checks if item dataset is not empty, otherwise raises exception
+
+* if item is a 
+  :doc:`detail </programming/data/details>`
+  , checks if the master item is in edit or insert 
+  :doc:`state <at_item_state>`, otherwise raises exception.
+  
+* if item is not a 
+  :doc:`detail </programming/data/details>`
+  , checks if it is in browse 
+  :doc:`state <at_item_state>`, otherwise raises exception.
+  
+* triggers the :doc:`on_before_delete <on_before_delete>` event handler if one is 
+  defined for the item. 
+  
+* puts the item into delete :doc:`state <at_item_state>`
+
+* deletes the active record and positions the cursor on the next record
+
+* puts the item into browse :doc:`state <at_item_state>`
+
+* triggers the :doc:`on_after_delete <on_after_delete>` event handler if one is 
+  defined for the item
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

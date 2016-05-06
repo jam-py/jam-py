@@ -1,0 +1,94 @@
+=====
+Items
+=====
+
+Select some group node in the project tree to get access to items that this 
+group owns, see 
+:doc:`Task tree </programming/task_tree>`.
+
+.. image:: /admin/_images/items.png
+	:align: center
+	:alt: Task node
+	
+At the bottom of the page there are 3 buttons:
+
+* **New** - click on New to create a new item in the 
+  :doc:`Item Editor Dialog <item_editor_dialog>`
+
+* **Edit** - use this button to modify item's attributes as well to add, change
+  or delete fields in the 
+  :doc:`Item Editor Dialog <item_editor_dialog>`
+
+* **Delete** - click on the button to delete an item and its underlying database 
+  table. 
+
+ 
+The right panel of the page have following buttons:
+
+* **Client module** - click on this button to open the 
+  :doc:`Code editor </admin/code_editor>`
+  to edit client module of an item, see 
+  :doc:`Working with modules </programming/modules>`.
+
+* **Server module**	- click on this button to open the 
+  :doc:`Code editor </admin/code_editor>`
+  to edit server module of an item, see 
+  :doc:`Working with modules </programming/modules>`.
+
+* **View** - use this button to invoke the 
+  :doc:`View Fields Dialog <view_fields_dialog>` 
+  to set the fields to be displayed in tables on the client and their order, 
+  by default. See 
+  :doc:`create_table </refs/client/item/m_create_table>` 
+  method
+
+* **Edit** -  use this button to invoke the 
+  :doc:`Edit Fields Dialog <edit_fields_dialog>`
+  to set the fields to be displayed in edit forms on the client and their 
+  order, by default. See 
+  :doc:`create_inputs </refs/client/item/m_create_inputs>`
+  method.
+
+* **Filters** - use this button to invoke the
+  :doc:`Filters Dialog <filters_dialog>`
+  to create, modify and delete item filters. See
+  :doc:`Filters </programming/data/filters>`.
+
+* **Details** - use this button to invoke the
+  :doc:`Details Dialog <details_dialog>`
+  to add or remove details linked to the item.
+
+* **Order** - use this button to invoke the
+  :doc:`Order Dialog <order_dialog>`
+  to specify how records will be ordered by default. See
+  :doc:`open </refs/client/item/m_open>`
+  method
+
+* **Indices** - сlick this button to open the
+  :doc:`Indices Dialog <indices_dialog>`
+  to create and delete indices for the item database table.
+
+* **Foreign keys** - сlick this button to open the
+  :doc:`Foreign Keys Dialog <foreign_keys_dialog>`
+  to create foreign keys for the database table.
+
+* **Reports** - сlick this button to open the
+  :doc:`Reports Dialog <reports_dialog>`
+  to specify reports that could printed for the item. 
+  :doc:`Default code </intro/default_code>`
+  has a function that can be used to create a dropup button to print the reports.
+
+
+.. toctree::
+   :maxdepth: 1
+   
+   item_editor_dialog
+   field_editor_dialog
+   view_fields_dialog
+   edit_fields_dialog
+   filters_dialog
+   details_dialog
+   order_dialog
+   indices_dialog
+   foreign_keys_dialog
+   reports_dialog

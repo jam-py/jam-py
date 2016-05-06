@@ -1,0 +1,61 @@
+=================
+Report parameters
+=================
+
+You can specify the parameters of the report. For example, the 
+**Customer purchases** report of the Demo project have three parameters.
+
+.. image:: /programming/_images/parameters.png
+	:align: center
+	:alt: Report parameters
+
+To add or change a report parameter click **Report params** button in the left 
+panel of Administrator. A form will appear displaying the list of existing 
+parameters. Then click New or Edit button of the form to add or change the
+parameter.
+
+.. image:: /programming/_images/report_param.png
+	:align: center
+	:alt: Report param
+
+In the dialog box fill in:
+
+* **Caption** - the name of the parameter that appears to users
+
+* **Name** - the name of the parameter will be used in programming code to get 
+  access to the parameter object.
+  
+* **Type** - the data type of the parameter
+
+* **Visible** - the client application creates a form to specify the parameters 
+  before printing the report. If this checkbox is checked, the input element for 
+  this parameter will appear in the form
+
+* **Required** - if this checkbox is checked and **Visible** attribute is set, 
+  the client application will require a users to specify the parameter value 
+  before printing the report
+
+* **Align** - specifies how a value of the parameter will be aligned in the 
+  input element
+  
+You can create a lookup parameter, For example, the **Customer purchases** 
+report has a **Customer** parameter that can be selected from **Customers** 
+catalog:
+
+.. image:: /programming/_images/lookup_param.png
+	:align: center
+	:alt: Lookup parameter
+
+In this case you should specify 
+
+* **Lookup item** - the item to select the parameter value from
+
+* **Lookup field** - the field in the lookup item
+
+Form for setting the parameters of **Customer purchases** report is as follows:
+
+
+.. image:: /programming/_images/customer_purchases_params.png
+	:align: center
+	:alt: Customer purchases parameters example
+

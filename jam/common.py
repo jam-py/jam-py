@@ -4,6 +4,7 @@ import sys
 import os
 import datetime, time
 import xml.dom.minidom
+import json
 import cPickle
 import locale
 import decimal
@@ -36,7 +37,8 @@ DEFAULT_SETTINGS = {
     'MP_POOL': False,
     'PERSIST_CON': False,
     'SINGLE_FILE_JS': False,
-    'DYNAMIC_JS': False
+    'DYNAMIC_JS': False,
+    'COMPRESSED_JS': False
 }
 
 LOCALE_SETTINGS = (
@@ -78,14 +80,14 @@ ITEM_FIELD, FILTER_FIELD, PARAM_FIELD = range(1, 4)
 
 FILTER_EQ, FILTER_NE, FILTER_LT, FILTER_LE, FILTER_GT, FILTER_GE, FILTER_IN, FILTER_NOT_IN, \
 FILTER_RANGE, FILTER_ISNULL, FILTER_EXACT, FILTER_CONTAINS, FILTER_STARTWITH, FILTER_ENDWITH, \
-FILTER_SEARCH = range(1, 16)
+FILTER_CONTAINS_ALL = range(1, 16)
 FILTER_STR = ('eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in', \
 'range', 'isnull', 'exact', 'contains', 'startwith', 'endwith', \
 'search')
 FILTER_SIGN = ('', '=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN',
-    'BETWEEN', 'ISNULL', '=', 'LIKE', 'LIKE', 'LIKE', 'SEARCH')
+    'BETWEEN', 'ISNULL', '=', 'LIKE', 'LIKE', 'LIKE', 'CONTAINS_ALL')
 FILTER_STRING = ('EQ', 'NE', 'LT', 'LE', 'GT', 'GE', 'IN', 'NOT IN',
-    'RANGE', 'ISNULL', 'EXACT', 'CONTAINS', 'STARTWITH', 'ENDWITH', 'SEARCH')
+    'RANGE', 'ISNULL', 'EXACT', 'CONTAINS', 'STARTWITH', 'ENDWITH', 'CONTAINS_ALL')
 REC_STATUS, REC_CONTROLS_INFO, REC_CHANGE_ID = range(3)
 
 ORDER_ASC, ORDER_DESC = range(2)
@@ -101,100 +103,14 @@ CLIENT_MODULE, WEB_CLIENT_MODULE, SERVER_MODULE = range(3)
 TAB_FUNCS, TAB_EVENTS, TAB_TASK, TAB_FIELDS = range(4)
 editor_tabs = ("Module", "Events", "Task", "Fields")
 
-mime_types = {
-    'text/html':                             ['html', 'htm', 'shtml'],
-    'text/css':                              ['css'],
-    'text/xml':                              ['xml'],
-    'image/gif':                             ['gif'],
-    'image/jpeg':                            ['jpeg', 'jpg'],
-    'application/x-javascript':              ['js'],
-    'application/atom+xml':                  ['atom'],
-    'application/rss+xml':                   ['rss'],
-
-    'text/mathml':                           ['mml'],
-    'text/plain':                            ['txt'],
-    'text/vnd.sun.j2me.app-descriptor':      ['jad'],
-    'text/vnd.wap.wml':                      ['wml'],
-    'text/x-component':                      ['htc'],
-
-    'image/png':                             ['png'],
-    'image/tiff':                            ['tif', 'tiff'],
-    'image/vnd.wap.wbmp':                    ['wbmp'],
-    'image/x-icon':                          ['ico'],
-    'image/x-jng':                           ['jng'],
-    'image/x-ms-bmp':                        ['bmp'],
-    'image/svg+xml':                         ['svg'],
-    'image/webp':                            ['webp'],
-
-    'application/java-archive':              ['jar', 'war', 'ear'],
-    'application/mac-binhex40':              ['hqx'],
-    'application/msword':                    ['doc'],
-    'application/pdf':                       ['pdf'],
-    'application/postscript':                ['ps', 'eps', 'ai'],
-    'application/rtf':                       ['rtf'],
-    'application/vnd.ms-excel':              ['xls'],
-    'application/vnd.ms-powerpoint':         ['ppt'],
-    'application/vnd.wap.wmlc':              ['wmlc'],
-    'application/vnd.google-earth.kml+xml':  ['kml'],
-    'application/vnd.google-earth.kmz':      ['kmz'],
-    'application/x-7z-compressed':           ['7z'],
-    'application/x-cocoa':                   ['cco'],
-    'application/x-java-archive-diff':       ['jardiff'],
-    'application/x-java-jnlp-file':          ['jnlp'],
-    'application/x-makeself':                ['run'],
-    'application/x-perl':                    ['pl', 'pm'],
-    'application/x-pilot':                   ['prc', 'pdb'],
-    'application/x-rar-compressed':          ['rar'],
-    'application/x-redhat-package-manager':  ['rpm'],
-    'application/x-sea':                     ['sea'],
-    'application/x-shockwave-flash':         ['swf'],
-    'application/x-stuffit':                 ['sit'],
-    'application/x-tcl':                     ['tcl', 'tk'],
-    'application/x-x509-ca-cert':            ['der', 'pem', 'crt'],
-    'application/x-xpinstall':               ['xpi'],
-    'application/xhtml+xml':                 ['xhtml'],
-    'application/zip':                       ['zip'],
-
-    'application/octet-stream':              ['bin', 'exe', 'dll'],
-    'application/octet-stream':              ['deb'],
-    'application/octet-stream':              ['dmg'],
-    'application/octet-stream':              ['eot'],
-    'application/octet-stream':              ['iso', 'img'],
-    'application/octet-stream':              ['msi', 'msp', 'msm'],
-
-    'audio/midi':                            ['mid', 'midi', 'kar'],
-    'audio/mpeg':                            ['mp3'],
-    'audio/ogg':                             ['ogg'],
-    'audio/x-realaudio':                     ['ra'],
-
-    'video/3gpp':                            ['3gpp', '3gp'],
-    'video/mpeg':                            ['mpeg', 'mpg'],
-    'video/quicktime':                       ['mov'],
-    'video/x-flv':                           ['flv'],
-    'video/x-mng':                           ['mng'],
-    'video/x-ms-asf':                        ['asx', 'asf'],
-    'video/x-ms-wmv':                        ['wmv'],
-    'video/x-msvideo':                       ['avi'],
-    'video/mp4':                             ['m4v', 'mp4']
-}
-
-ext_mime_types = {}
-for mime, ext in mime_types.items():
-    for e in ext:
-        ext_mime_types[e] = mime
-
-def mime_type_by_ext(ext):
-    ext = ext.replace('.', '')
-    return ext_mime_types.get(ext)
-
-def get_alignment(data_type, item=None, value_list=None):
+def get_alignment(data_type, item=None, lookup_values=None):
     if (data_type == INTEGER) or (data_type == FLOAT) or (data_type == CURRENCY):
         result = ALIGN_RIGHT
     elif (data_type == DATE) or (data_type == DATETIME):
         result = ALIGN_CENTER
     else:
         result = ALIGN_LEFT
-    if item or value_list:
+    if item or lookup_values:
         result = ALIGN_LEFT
     return result
 
@@ -342,11 +258,18 @@ def store_interface(item):
                 'edit': item._edit_list,
                 'order': item._order_list,
                 'reports': item._reports_list}
-        item.f_info.value = cPickle.dumps(dic)
+        item.f_info.value = str(cPickle.dumps(dic))
         item.post()
         item.apply()
     finally:
         handlers = item.load_handlers(handlers)
+
+def store_index_fields(f_list):
+    return cPickle.dumps(f_list)
+
+def load_index_fields(value):
+    return cPickle.loads(str(value))
+
 
 def valid_identifier(name):
     if name[0].isdigit():
@@ -359,55 +282,6 @@ def valid_identifier(name):
         return True
     except:
         return False
-
-def empty_strings(text, module_type):
-
-    def find_start(line, strs, start):
-        pos = len(line)
-        char = ''
-        for c in strs:
-            p = line.find(c, start)
-            if p != -1 and p < pos:
-                pos = p
-                char = c
-        if pos == len(line):
-            pos = -1
-        return pos, char
-
-
-    if module_type == WEB_CLIENT_MODULE:
-        strings = ("'", '"')
-    else:
-        strings = ('"""', "'''", "'", '"')
-
-    result = []
-    comment = False
-    for line in text.splitlines(True):
-        if comment:
-            pos = line.find(str_ch)
-            if pos != -1:
-                comment = False
-                line = pos * ' ' + str_ch + line[pos + len(str_ch):]
-            else:
-                line = ' ' * len(line)
-        else:
-            start = 0
-            while True:
-                pos, str_ch = find_start(line, strings, start)
-                if pos != -1:
-                    end = line.find(str_ch, pos + len(str_ch))
-                    if end != -1:
-                        line = line[0:pos] + str_ch + ' ' * (end - pos - len(str_ch)) + line[end:]
-                        start = end + len(str_ch) + 1
-                    else:
-                        comment = True
-                        line = line[0:pos + len(str_ch)] + ' ' * (len(line) - (pos + len(str_ch)))
-                        break;
-                else:
-                    break;
-        result.append(line)
-    result = ''.join(result)
-    return result
 
 def remove_comments(text, module_type, comment_sign):
     result = []

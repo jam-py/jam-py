@@ -6,10 +6,13 @@ import logging
 import lang.langs as langs
 import common
 
-ITEM_INFO = ITEM_ID, ITEM_NAME, ITEM_CAPTION, ITEM_VISIBLE, ITEM_TYPE, ITEM_JS_FILENAME, \
-    ITEM_ITEMS, ITEM_FIELDS, ITEM_FILTERS, ITEM_REPORTS = range(10)
+#~ ITEM_INFO = ITEM_ID, ITEM_NAME, ITEM_CAPTION, ITEM_VISIBLE, ITEM_TYPE, ITEM_JS_FILENAME, \
+    #~ ITEM_ITEMS, ITEM_FIELDS, ITEM_FILTERS, ITEM_REPORTS = range(10)
 
 class AbortException(Exception):
+    pass
+
+class DebugException(Exception):
     pass
 
 class AbstractItem(object):
@@ -30,6 +33,7 @@ class AbstractItem(object):
         self.item_caption = caption
         self.visible = visible
         self.item_type_id = item_type_id
+        self._loader = TracebackLoader(self)
 
     def find(self, name):
         for item in self.items:
@@ -45,27 +49,27 @@ class AbstractItem(object):
                 return result
 
     def write_info(self, info):
-        info[ITEM_ID] = self.ID
-        info[ITEM_NAME] = self.item_name
-        info[ITEM_CAPTION] = self.item_caption
-        info[ITEM_VISIBLE] = self.visible
-        info[ITEM_TYPE] = self.item_type_id
-        info[ITEM_JS_FILENAME] = self.js_filename
+        info['id'] = self.ID
+        info['name'] = self.item_name
+        info['caption'] = self.item_caption
+        info['visible'] = self.visible
+        info['type'] = self.item_type_id
+        info['js_filename'] = self.js_filename
 
     def read_info(self, info):
-        self.ID = info[ITEM_ID]
-        self.item_name = info[ITEM_NAME]
-        self.item_caption = info[ITEM_CAPTION]
-        self.visible = info[ITEM_VISIBLE]
-        self.item_type_id = info[ITEM_TYPE]
-        self.js_filename = info[ITEM_JS_FILENAME]
+        self.ID = info['id']
+        self.item_name = info['name']
+        self.item_caption = info['caption']
+        self.visible = info['visible']
+        self.item_type_id = info['type']
+        self.js_filename = info['js_filename']
 
     def get_info(self):
-        result = [None for i in range(len(ITEM_INFO))]
-        result[ITEM_ITEMS] = []
+        result = {}
+        result['items'] = []
         self.write_info(result)
         for item in self.items:
-            result[ITEM_ITEMS].append((item.item_type_id, item.get_info()))
+            result['items'].append((item.item_type_id, item.get_info()))
         return result
 
     def get_child_class(self, item_type_id):
@@ -73,7 +77,7 @@ class AbstractItem(object):
 
     def set_info(self, info):
         self.read_info(info)
-        for item_type_id, item_info in info[ITEM_ITEMS]:
+        for item_type_id, item_info in info['items']:
             child = self.get_child_class(item_type_id)(self)
             child.item_type_id = item_type_id
             child.set_info(item_info)
@@ -114,13 +118,13 @@ class AbstractItem(object):
                 return field
 
     def abort(self, message=''):
-        message = u'execution aborted: %s %s' % (self.item_name, message)
         raise AbortException, message
 
     def register(self, func):
         setattr(self, func.__name__, func)
 
-
+    def load_code(self):
+        return self.item_name
 
 class AbstrGroup(AbstractItem):
     pass
@@ -221,15 +225,17 @@ class AbstrItem(AbstractItem):
 
     def write_info(self, info):
         super(AbstrItem, self).write_info(info)
-        info[ITEM_FIELDS] = self.field_defs
-        info[ITEM_FILTERS] = self.filter_defs
-        info[ITEM_REPORTS] = self.get_reports_info()
+        info['fields'] = self.field_defs
+        info['filters'] = self.filter_defs
+        info['reports'] = self.get_reports_info()
+        info['default_order'] = self._order_by
 
     def read_info(self, info):
         super(AbstrItem, self).read_info(info)
-        self.create_fields(info[ITEM_FIELDS])
-        self.create_filters(info[ITEM_FILTERS])
-        self.reports = info[ITEM_REPORTS]
+        self.create_fields(info['fields'])
+        self.create_filters(info['filters'])
+        self.reports = info['reports']
+        self._order_by = info['default_order']
 
     def bind_item(self):
         self.prepare_fields()
@@ -254,11 +260,11 @@ class AbstrReport(AbstractItem):
 
     def write_info(self, info):
         super(AbstrReport, self).write_info(info)
-        info[ITEM_FIELDS] = self.param_defs
+        info['fields'] = self.param_defs
 
     def read_info(self, info):
         super(AbstrReport, self).read_info(info)
-        self.create_params(info[ITEM_FIELDS])
+        self.create_params(info['fields'])
 
     def param_by_name(self, name):
         for param in self.params:
@@ -268,3 +274,13 @@ class AbstrReport(AbstractItem):
     def bind_item(self):
         self.prepare_params()
 
+class TracebackLoader(object):
+    def __init__(self, item):
+        self.item = item
+
+    def get_source(self, source):
+        admin = self.item.task.app.admin
+        sys_items = admin.sys_items.copy()
+        sys_items.set_where(id=self.item.ID)
+        sys_items.open(fields=['f_server_module'])
+        return sys_items.f_server_module.value

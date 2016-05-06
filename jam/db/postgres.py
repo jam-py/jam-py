@@ -2,10 +2,12 @@
 
 import psycopg2
 
+psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
+
 NEED_DATABASE_NAME = True
 NEED_LOGIN = True
 NEED_PASSWORD = True
-NEED_ENCODING = False
+NEED_ENCODING = True
 NEED_HOST = True
 NEED_PORT = True
 CAN_CHANGE_TYPE = False

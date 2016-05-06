@@ -26,7 +26,7 @@ class ServerDataset(Dataset, SQL):
         self.table_name = table_name
         self._order_by = []
         self.values = None
-        self.on_select = None
+        self.on_open = None
         self.on_apply = None
         self.on_record_count = None
         self.on_get_field_text = None
@@ -49,9 +49,11 @@ class ServerDataset(Dataset, SQL):
     def add_field(self, field_id, field_name, field_caption, data_type, required = False,
         item = None, object_field = None,
         visible = True, index=0, edit_visible = True, edit_index = 0, read_only = False, expand = False,
-        word_wrap = False, size = 0, default = False, calculated = False, editable = False, master_field = None, alignment=None, value_list=None):
+        word_wrap = False, size = 0, default = False, calculated = False, editable = False,
+        master_field = None, alignment=None, lookup_values=None, enable_typeahead=False):
         field_def = self.add_field_def(field_id, field_name, field_caption, data_type, required, item, object_field, visible,
-            index, edit_visible, edit_index, read_only, expand, word_wrap, size, default, calculated, editable, master_field, alignment, value_list)
+            index, edit_visible, edit_index, read_only, expand, word_wrap, size, default, calculated, editable, master_field,
+            alignment, lookup_values, enable_typeahead)
         field = DBField(self, field_def)
         self._fields.append(field)
         return field
@@ -73,25 +75,12 @@ class ServerDataset(Dataset, SQL):
             changes = {}
             self.change_log.get_changes(changes)
             if changes['data']:
-                data = self.apply_changes((changes, params),
+                data, error = self.apply_changes((changes, params),
                     {'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': True})
-                if data:
-                    if data['error']:
-                        raise Exception, data['error']
-                    else:
-                        self.change_log.update(data['result'])
-        return result
-
-    def get_fields_info(self):
-        result = []
-        for field in self._fields:
-            result.append(field.get_info())
-        return result
-
-    def get_filters_info(self):
-        result = []
-        for fltr in self.filters:
-            result.append(fltr.get_info())
+                if error:
+                    raise Exception, error
+                else:
+                    self.change_log.update(data)
         return result
 
     def add_detail(self, table):
@@ -129,24 +118,18 @@ class ServerDataset(Dataset, SQL):
             error_mes = ''
             result = 0
             sql = self.get_record_count_query(params)
-            try:
-                rows = self.task.execute_select(sql)
-                result = rows[0][0]
-            except Exception, e:
-                error_mes = e.message
+            rows = self.task.execute_select(sql)
+            result = rows[0][0]
         return result, error_mes
 
     def select_records(self, params, user_info=None, enviroment=None):
-        if self.on_select:
-            rows, error_mes = self.on_select(self, params, user_info, enviroment)
+        if self.on_open:
+            rows, error_mes = self.on_open(self, params, user_info, enviroment)
         else:
             sql = self.get_select_statement(params)
             error_mes = ''
             rows = []
-            try:
-                rows = self.task.execute_select(sql)
-            except Exception, e:
-                error_mes = e.message
+            rows = self.task.execute_select(sql)
         return rows, error_mes
 
     def apply_delta(self, delta, privileges):
@@ -156,21 +139,15 @@ class ServerDataset(Dataset, SQL):
     def apply_changes(self, data, privileges, user_info=None, enviroment=None):
         error = None
         result = None
-        try:
-            changes, params = data
-            if not params:
-                params = {}
-            delta = self.delta(changes)
-            if self.on_apply:
-                result, error = self.on_apply(self, delta, params, privileges, user_info, enviroment)
-            else:
-                result, error = self.apply_delta(delta, privileges)
-        except Exception, e:
-            error = e.message
-            if not error:
-                error = '%s: apply_changes error' % self.item_name
-            print traceback.format_exc()
-        return {'error': error, 'result': result}
+        changes, params = data
+        if not params:
+            params = {}
+        delta = self.delta(changes)
+        if self.on_apply:
+            result, error = self.on_apply(self, delta, params, privileges, user_info, enviroment)
+        else:
+            result, error = self.apply_delta(delta, privileges)
+        return result, error
 
     def update_deleted(self):
         if self._is_delta and len(self.details):
@@ -263,7 +240,7 @@ class Param(DBField):
     def set_lookup_data(self, value):
         self._lookup_value = value
 
-    def do_before_changed(self, new_value, new_lookup_value):
+    def do_before_changed(self):
         pass
 
     def do_on_change_lookup_field(self, lookup_value=None, slave_field_values=None):
@@ -291,13 +268,13 @@ class Report(AbstrReport):
         self.param_defs = []
         self.params = []
         self.template = view_template
-        self.band_tags = []
-        self.bands = {}
-        self.header = None
-        self.footer = None
-        self.on_before_generate_report = None
-        self.on_generate_report = None
-        self.on_report_generated = None
+        self.template_name = None
+        self.template_content = {}
+
+        self.on_before_generate = None
+        self.on_generate = None
+        self.on_after_generate = None
+        self.on_parsed = None
         self.on_before_save_report = None
 
         self.on_before_append = None
@@ -318,7 +295,7 @@ class Report(AbstrReport):
         self.on_after_scroll = None
         self.on_filter_record = None
         self.on_field_changed = None
-        self.on_filter_applied = None
+        self.on_filters_applied = None
         self.on_before_field_changed = None
         self.on_filter_value_changed = None
         self.on_field_validate = None
@@ -353,11 +330,14 @@ class Report(AbstrReport):
     def copy(self):
         result = self.__class__(self.owner, self.item_name, self.item_caption, self.visible,
             '', self.template, '');
-        result.on_before_generate_report = self.on_before_generate_report
-        result.on_generate_report = self.on_generate_report
-        result.on_report_generated = self.on_report_generated
+        result.on_before_generate = self.on_before_generate
+        result.on_generate = self.on_generate
+        result.on_after_generate = self.on_after_generate
         result.on_before_save_report = self.on_before_save_report
+        result.on_parsed = self.on_parsed
         result.param_defs = self.param_defs
+        result.template_content = self.template_content.copy()
+        result.template_name = self.template_name
         for param_def in result.param_defs:
             param = Param(result, param_def)
             result.params.append(param)
@@ -365,62 +345,68 @@ class Report(AbstrReport):
         return  result
 
     def print_report(self, param_values, url, ext=None):
+        if not self.template_content:
+            self.parse_template()
         copy_report = self.copy()
         return copy_report.generate(param_values, url, ext)
 
-    def get_report_file_name(self, ext=None):
+    def generate_file_name(self, ext=None):
         if not ext:
             ext = 'ods'
-        if os.name == "nt":
-            file_name = self.item_name + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
-        else:
-            file_name = self.item_caption + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
+        file_name = self.item_name + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
+        #~ if os.name == "nt":
+            #~ file_name = self.item_name + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
+        #~ else:
+            #~ file_name = self.item_caption + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
         file_name = escape(file_name, {':': '-', '/': '_', '\\': '_'})
         return os.path.abspath(os.path.join(self.task.work_dir, 'static', 'reports', file_name))
 
     def generate(self, param_values, url, ext):
         self.extension = ext
         self.url = url
+        template = self.template
         for i, param in enumerate(self.params):
             param.value = param_values[i]
-        if self.on_before_generate_report:
-            self.on_before_generate_report(self)
+        if self.on_before_generate:
+            self.on_before_generate(self)
+        if template != self.template:
+            self.template_content = None
         if self.template:
-            if not len(self.bands):
+            if not self.template_content:
                 self.parse_template()
+            if self.on_parsed:
+                self.on_parsed(self)
             self.content_name = os.path.join(self.task.work_dir, 'reports', 'content%s.xml' % time.time())
             self.content = open(self.content_name, 'wb')
             try:
-                self.report_filename = self.get_report_file_name()
+                self.report_filename = self.generate_file_name()
                 file_name = os.path.basename(self.report_filename)
                 static_dir = os.path.dirname(self.report_filename)
                 if not os.path.exists(static_dir):
                     os.makedirs(static_dir)
-                if self.header:
-                    self.content.write(self.header)
-                if self.on_generate_report:
-                    self.on_generate_report(self)
-                if self.footer:
-                    self.content.write(self.footer)
+                self.content.write(self.template_content['header'])
+                self.content.write(self.template_content['columns'])
+                self.content.write(self.template_content['rows'])
+                if self.on_generate:
+                    self.on_generate(self)
+                self.content.write(self.template_content['footer'])
                 self.save()
             finally:
                 if not self.content.closed:
                     self.content.close()
-                os.remove(self.content_name)
+                if os.path.exists(self.content_name):
+                    os.remove(self.content_name)
             if ext and (ext != 'ods'):
                 converted = False
                 if self.owner.on_convert_report:
-                    try:
-                        self.owner.on_convert_report(self)
-                        converted = True
-                    except:
-                        pass
+                    self.owner.on_convert_report(self)
+                    converted = True
                 #~ if not converted:
                     #~ # OpenOffice must be running in server mode
                     #~ # soffice --headless --accept="socket,host=127.0.0.1,port=2002;urp;"
                     #~ ext_file_name = self.report_filename.replace('.ods', '.' + ext)
                     #~ try:
-                        #~ from third_party.DocumentConverter import DocumentConverter
+                        #~ from DocumentConverter import DocumentConverter
                         #~ converter = DocumentConverter()
                         #~ converter.convert(self.report_filename, ext_file_name)
                         #~ converted = True
@@ -435,13 +421,12 @@ class Report(AbstrReport):
             self.report_filename = os.path.join(self.task.work_dir, 'static', 'reports', file_name)
             self.report_url = self.report_filename
             if self.url:
-#                self.report_url = '%s/static/reports/%s' % (self.url, file_name)
                 self.report_url = os.path.join(self.url, 'static', 'reports', file_name)
         else:
-            if self.on_generate_report:
-                self.on_generate_report(self)
-        if self.on_report_generated:
-            self.on_report_generated(self)
+            if self.on_generate:
+                self.on_generate(self)
+        if self.on_after_generate:
+            self.on_after_generate(self)
         return self.report_url
 
     def delete_report(self, file_name):
@@ -449,15 +434,22 @@ class Report(AbstrReport):
         os.remove(report_name)
 
     def parse_template(self):
-        self.template_name = os.path.join(self.task.work_dir, 'reports', self.template)
+        if not os.path.isabs(self.template):
+            self.template_name = os.path.join(self.task.work_dir, 'reports', self.template)
+        else:
+            self.template_name = self.template
         z = zipfile.ZipFile(self.template_name, 'r')
         try:
-            data = unicode(z.read('content.xml'), 'utf-8')
+            data = z.read('content.xml')
         finally:
             z.close()
-
-        self.band_tags = []
-        self.bands = {}
+        band_tags = []
+        bands = {}
+        colum_defs = []
+        header = ''
+        columns = ''
+        rows = ''
+        footer = ''
         repeated_rows = None
         if data:
             dom = parseString(data)
@@ -466,21 +458,38 @@ class Report(AbstrReport):
                 if len(tables) > 0:
                     table = tables[0]
                     for child in table.childNodes:
+                        if child.nodeName == 'table:table-column':
+                            repeated = child.getAttribute('table:number-columns-repeated')
+                            if not repeated:
+                                repeated = 1
+                            colum_defs.append(['', repeated])
                         if child.nodeName == 'table:table-row':
                             repeated = child.getAttribute('table:number-rows-repeated')
                             if repeated and repeated.isdigit():
-                                repeated_rows = repeated
+                                repeated_rows = str(repeated)
                             for row_child in child.childNodes:
                                 if row_child.nodeName == 'table:table-cell':
                                     text = row_child.getElementsByTagName('text:p')
                                     if text.length > 0:
-                                        self.band_tags.append(text[0].childNodes[0].nodeValue)
+                                        band_tags.append(text[0].childNodes[0].nodeValue)
                                     break
-
-                assert len(self.band_tags) > 0, u'No bands in report template'
+                start = 0
+                columns_start = 0
+                for col in colum_defs:
+                    start = data.find('<table:table-column', start)
+                    if columns_start == 0:
+                        columns_start = start
+                    end = data.find('/>', start)
+                    col_text = data[start: end + 2]
+                    columns += col_text
+                    col[0] = data[start: end + 2]
+                    start = end + 2
+                columns_end = start
+                header = data[0:columns_start]
+                assert len(band_tags) > 0, u'No bands in report template'
                 positions = []
                 start = 0
-                for tag in self.band_tags:
+                for tag in band_tags:
                     text = str('>%s<' % tag)
                     i = data.find(text)
                     i = data.rfind('<table:table-row', start, i)
@@ -489,77 +498,131 @@ class Report(AbstrReport):
                 if repeated_rows and int(repeated_rows) > 1000:
                     i = data.find(repeated_rows)
                     i = data.rfind('<table:table-row', start, i)
-                    self.band_tags.append('$$$end_of_report')
+                    band_tags.append('$$$end_of_report')
                     positions.append(i)
-                self.header = data[0:positions[0]]
-                for i, tag in enumerate(self.band_tags):
+                rows = data[columns_end:positions[0]]
+                for i, tag in enumerate(band_tags):
                     start = positions[i]
                     try:
                         end = positions[i + 1]
                     except:
                         end = data.find('</table:table>', start)
-                    self.bands[tag] = data[start: end].replace(str(tag), '')
-                self.footer = data[end:len(data)]
+                    bands[tag] = data[start: end].replace(str(tag), '')
+                footer = data[end:len(data)]
+                self.template_content = {}
+                self.template_content['bands'] = bands
+                self.template_content['colum_defs'] = colum_defs
+                self.template_content['header'] = header
+                self.template_content['columns'] = columns
+                self.template_content['rows'] = rows
+                self.template_content['footer'] = footer
             finally:
                 dom.unlink()
                 del(dom)
 
+    def hide_columns(self, col_list):
+
+        def convert_str_to_int(s):
+            base = ord('A')
+            mult = ord('Z') - base + 1
+            result = s
+            if type(s) == str:
+                result = 0
+                chars = []
+                for i in range(len(s)):
+                    chars.append(s[i])
+                for i in range(len(chars) - 1, -1, -1):
+                    result += (ord(chars[i]) - base + 1) * mult ** i
+            return result
+
+        def remove_repeated(col, repeated):
+            result = col
+            p = col.find('table:number-columns-repeated')
+            if p != -1:
+                r = col.find(str(repeated), p)
+                if r != -1:
+                    for i in xrange(r, 100):
+                        if col[i] in ("'", '"'):
+                            result = col.replace(col[p:i+1], '')
+                            break
+            return result
+
+        if self.template_content:
+            ints = []
+            for i in col_list:
+                ints.append(convert_str_to_int(i))
+            colum_defs = self.template_content['colum_defs']
+            columns = ''
+            index = 1
+            for col, repeated in colum_defs:
+                repeated = int(repeated)
+                if repeated > 1:
+                    col = remove_repeated(col, repeated)
+                for i in range(repeated):
+                    cur_col = col
+                    if index in ints:
+                        cur_col = cur_col[0:-2] + ' table:visibility="collapse"/>'
+                    columns += cur_col
+                    index += 1
+            self.template_content['colum_defs'] = colum_defs
+            self.template_content['columns'] = columns
+
     def print_band(self, band, dic=None, update_band_text=None):
-        text = self.bands[band]
+        text = self.template_content['bands'][band]
         if dic:
             d = dic.copy()
             for key, value in d.items():
                 if type(value) in (str, unicode):
                     d[key] = escape(value)
-            try:
-                cell_start = 0
-                cell_start_tag = '<table:table-cell'
-                cell_type_tag = 'office:value-type="string"'
-                calcext_type_tag = 'calcext:value-type="string"'
-                start_tag = '<text:p>'
-                end_tag = '</text:p>'
-                while True:
-                    cell_start = text.find(cell_start_tag, cell_start)
-                    if cell_start == -1:
-                        break
-                    else:
-                        start = text.find(start_tag, cell_start)
-                        if start != -1:
-                            end = text.find(end_tag, start + len(start_tag))
-                            if end != -1:
-                                text_start = start+len(start_tag)
-                                text_end = end
-                                cell_text = text[text_start:text_end]
-                                cell_text_start = cell_text.find('%(', 0)
-                                if cell_text_start != -1:
-                                    end = cell_text.find(')s', cell_text_start + 2)
-                                    if end != -1:
-                                        end += 2
-                                        val = cell_text[cell_text_start:end]
-                                        key = val[2:-2]
-                                        value = d.get(key)
-                                        if not value is None:
-                                            val = val % d
-                                            if type(value) == float:
-                                                val = val.replace('.', common.DECIMAL_POINT)
-                                        else:
-                                            if not key in d.keys():
-                                                print 'Report: "%s" band: "%s" key "%s" not found in the dictionary' % (self.item_name, band, key)
-                                        cell_text = cell_text[:cell_text_start] + val + cell_text[end:]
-                                        text = text[:text_start] + cell_text + text[text_end:]
-                                        if type(value) in (int, float):
-                                            start_text = text[cell_start:start]
-                                            office_value = str(value)
-                                            start_text = start_text.replace(cell_type_tag, 'office:value-type="float" office:value="%s"' % office_value)
-                                            start_text = start_text.replace(calcext_type_tag, 'calcext:value-type="float"')
-                                            text = text[:cell_start] + start_text + text[start:]
-                        cell_start += 1
-                if update_band_text:
-                    text = update_band_text(text)
-            except Exception, e:
-                print traceback.format_exc()
-                print ('Report: "%s" band: "%s" error: "%s"') % (self.item_name, band, e)
-        self.content.write(text.encode('utf-8'))
+            cell_start = 0
+            cell_start_tag = '<table:table-cell'
+            cell_type_tag = 'office:value-type="string"'
+            calcext_type_tag = 'calcext:value-type="string"'
+            start_tag = '<text:p>'
+            end_tag = '</text:p>'
+            while True:
+                cell_start = text.find(cell_start_tag, cell_start)
+                if cell_start == -1:
+                    break
+                else:
+                    start = text.find(start_tag, cell_start)
+                    if start != -1:
+                        end = text.find(end_tag, start + len(start_tag))
+                        if end != -1:
+                            text_start = start+len(start_tag)
+                            text_end = end
+                            cell_text = text[text_start:text_end]
+                            cell_text_start = cell_text.find('%(', 0)
+                            if cell_text_start != -1:
+                                end = cell_text.find(')s', cell_text_start + 2)
+                                if end != -1:
+                                    end += 2
+                                    val = cell_text[cell_text_start:end]
+                                    key = val[2:-2]
+                                    value = d.get(key)
+                                    if not value is None:
+                                        val = val % d
+                                        if type(value) == float:
+                                            val = val.replace('.', common.DECIMAL_POINT)
+                                    else:
+                                        if not key in d.keys():
+                                            print 'Report: "%s" band: "%s" key "%s" not found in the dictionary' % (self.item_name, band, key)
+                                    if  isinstance(cell_text, unicode):
+                                        cell_text = cell_text.encode('utf8')
+                                    if  isinstance(val, unicode):
+                                        val = val.encode('utf8')
+                                    cell_text = cell_text[:cell_text_start] + val + cell_text[end:]
+                                    text = text[:text_start] + cell_text + text[text_end:]
+                                    if type(value) in (int, float):
+                                        start_text = text[cell_start:start]
+                                        office_value = str(value)
+                                        start_text = start_text.replace(cell_type_tag, 'office:value-type="float" office:value="%s"' % office_value)
+                                        start_text = start_text.replace(calcext_type_tag, 'calcext:value-type="float"')
+                                        text = text[:cell_start] + start_text + text[start:]
+                    cell_start += 1
+            if update_band_text:
+                text = update_band_text(text)
+        self.content.write(text)
 
     def save(self):
         self.content.close()
@@ -590,7 +653,6 @@ class Report(AbstrReport):
 
     def datetime_to_str(self, value):
         return common.datetime_to_str(value)
-
 
 
 delta_result = None
@@ -738,8 +800,8 @@ def execute_sql(db_module, db_database, db_user, db_password,
 
     global delta_result
     delta_result = None
-    if not db_host:
-        db_host = 'localhost'
+    #~ if not db_host:
+        #~ db_host = 'localhost'
     if connection is None:
         connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
     return execute(connection)
@@ -801,7 +863,7 @@ class Consts(object):
         self.FILTER_CONTAINS = common.FILTER_CONTAINS
         self.FILTER_STARTWITH = common.FILTER_STARTWITH
         self.FILTER_ENDWITH = common.FILTER_ENDWITH
-        self.FILTER_SEARCH = common.FILTER_SEARCH
+        self.FILTER_CONTAINS_ALL = common.FILTER_CONTAINS_ALL
 
         self.ALIGN_LEFT = common.ALIGN_LEFT
         self.ALIGN_CENTER = common.ALIGN_CENTER
@@ -821,7 +883,7 @@ class Consts(object):
 
 
 class AbstractServerTask(AbstrTask):
-    def __init__(self, name, caption, template, js_filename, db_type,
+    def __init__(self, name, caption, js_filename, db_type,
         db_database = '', db_user = '', db_password = '', host='', port='',
         encoding='', con_pool_size=1, mp_pool=False, persist_con=False):
         AbstrTask.__init__(self, None, None, None, None)
@@ -830,7 +892,6 @@ class AbstractServerTask(AbstrTask):
         self.ID = None
         self.item_name = name
         self.item_caption = caption
-        self.template = template
         self.js_filename = js_filename
         self.db_type = db_type
         self.db_database = db_database
@@ -945,7 +1006,7 @@ class AbstractServerTask(AbstrTask):
             return result
 
     def get_module_name(self):
-        return str(self.item_name + '_' + 'server')
+        return str(self.item_name)
 
     def compile_item(self, item):
         item.module_name = None
@@ -954,6 +1015,7 @@ class AbstractServerTask(AbstrTask):
         item_module = type(sys)(item.module_name)
         item_module.__dict__['this'] = item
         sys.modules[item.module_name] = item_module
+
         item.task.modules.append(item.module_name)
         if item.owner:
             sys.modules[item.owner.get_module_name()].__dict__[item.module_name] = item_module
@@ -962,11 +1024,10 @@ class AbstractServerTask(AbstrTask):
                 code = code.encode('utf-8')
             except Exception, e:
                 print e
-            try:
-                comp_code = compile(code, item.module_name, "exec")
-            except Exception, e:
-                print e
+            comp_code = compile(code, item.module_name, "exec")
             exec comp_code in item_module.__dict__
+
+            item_module.__dict__['__loader__'] = item._loader
             funcs = inspect.getmembers(item_module, inspect.isfunction)
             item._events = []
             for func_name, func in funcs:
@@ -1006,67 +1067,62 @@ class AbstractServerTask(AbstrTask):
                 print e
         return converted
 
-    def copy_database_data(self, db_type, db_database=None, db_user=None, db_password=None,
-        db_host=None, db_port=None, db_encoding=None):
+    def copy_database(self, dbtype, database=None, user=None, password=None,
+        host=None, port=None, encoding=None):
         connection = None
         limit = 1024
-        db_module = db_modules.get_db_module(db_type)
+        db_module = db_modules.get_db_module(dbtype)
         for group in self.items:
-            for item in group.items:
-                handlers = item.store_handlers()
-                item.clear_handlers()
-                try:
-                    if item.item_type != 'report':
-                        self.execute(self.db_module.set_case('DELETE FROM %s' % item.table_name))
-                        item.open(expanded=False, open_empty=True)
-                        params = {'__fields': [], '__filters': [], '__expanded': False, '__offset': 0, '__limit': 0}
-                        sql = item.get_record_count_query(params, db_module)
-                        connection, (result, error) = \
-                        execute_sql(db_module, db_database, db_user, db_password,
-                            db_host, db_port, db_encoding, connection, sql, None, 'ALL')
-                        record_count = result[0][0]
-                        loaded = 0
-                        max_id = 0
-                        if record_count:
-                            while True:
-                                params['__offset'] = loaded
-                                params['__limit'] = limit
-                                sql = item.get_select_statement(params, db_module)
-                                connection, (result, error) = \
-                                execute_sql(db_module, db_database, db_user, db_password,
-                                    db_host, db_port, db_encoding, connection, sql, None, 'ALL')
-                                if not error:
-                                    for i, r in enumerate(result):
-                                        item.append()
-                                        j = 0
-                                        for field in item.fields:
-                                            if not field.master_field:
-                                                field.value = r[j]
-                                                j += 1
-                                        if item.id.value > max_id:
-                                            max_id = item.id.value
-                                        item.post()
-                                    item.apply()
-                                else:
-                                    raise Exception, error
-                                records = len(result)
-                                loaded += records
-                                print 'coping table %s: %d%%' % (item.item_name, int(loaded * 100 / record_count))
-                                if records == 0 or records < limit:
-                                    break
-                            if self.db_module.restart_sequence_sql:
-                                sql = self.db_module.restart_sequence_sql(item.table_name, max_id + 1)
-                                self.execute(sql)
-                finally:
-                    item.load_handlers(handlers)
-
+            for it in group.items:
+                if it.item_type != 'report':
+                    item = it.copy(handlers=False, filters=False, details=False)
+                    self.execute(self.db_module.set_case('DELETE FROM %s' % item.table_name))
+                    item.open(expanded=False, open_empty=True)
+                    params = {'__fields': [], '__filters': [], '__expanded': False, '__offset': 0, '__limit': 0}
+                    sql = item.get_record_count_query(params, db_module)
+                    connection, (result, error) = \
+                    execute_sql(db_module, database, user, password,
+                        host, port, encoding, connection, sql, None, 'ALL')
+                    record_count = result[0][0]
+                    loaded = 0
+                    max_id = 0
+                    if record_count:
+                        while True:
+                            params['__offset'] = loaded
+                            params['__limit'] = limit
+                            sql = item.get_select_statement(params, db_module)
+                            connection, (result, error) = \
+                            execute_sql(db_module, database, user, password,
+                                host, port, encoding, connection, sql, None, 'ALL')
+                            if not error:
+                                for i, r in enumerate(result):
+                                    item.append()
+                                    j = 0
+                                    for field in item.fields:
+                                        if not field.master_field:
+                                            field.value = r[j]
+                                            j += 1
+                                    if item.id.value > max_id:
+                                        max_id = item.id.value
+                                    item.post()
+                                item.apply()
+                            else:
+                                raise Exception, error
+                            records = len(result)
+                            loaded += records
+                            print 'coping table %s: %d%%' % (item.item_name, int(loaded * 100 / record_count))
+                            if records == 0 or records < limit:
+                                break
+                        if self.db_module.restart_sequence_sql:
+                            sql = self.db_module.restart_sequence_sql(item.table_name, max_id + 1)
+                            self.execute(sql)
 
 class Task(AbstractServerTask):
-    def __init__(self, name, caption, template, js_filename,
+    def __init__(self, name, caption, js_filename,
         db_type, db_database = '', db_user = '', db_password = '',
         host='', port='', encoding='', con_pool_size=4, mp_pool=True,
         persist_con=True):
-        AbstractServerTask.__init__(self, name, caption, template, js_filename,
+        AbstractServerTask.__init__(self, name, caption, js_filename,
             db_type, db_database, db_user, db_password,
             host, port, encoding, con_pool_size, mp_pool, persist_con)
         self.on_created = None
@@ -1083,10 +1139,10 @@ class Task(AbstractServerTask):
 
 
 class AdminTask(AbstractServerTask):
-    def __init__(self, name, caption, template, js_filename,
+    def __init__(self, name, caption, js_filename,
         db_type, db_database = '', db_user = '', db_password = '',
         host='', port='', encoding=''):
-        AbstractServerTask.__init__(self, name, caption, template, js_filename,
+        AbstractServerTask.__init__(self, name, caption, js_filename,
             db_type, db_database, db_user, db_password, host, port, encoding, 2)
         filepath, filename = os.path.split(__file__)
         self.cur_path = filepath

@@ -1,0 +1,24 @@
+======
+is_new
+======
+
+.. py:function:: is_new(self) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Checks if an item is in insert state and returns true if it is.
+
+An application calls :doc:`append <m_append>` or :doc:`insert <m_insert>` methods 
+to put an item into insert state.
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

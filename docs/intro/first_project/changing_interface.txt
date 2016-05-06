@@ -1,0 +1,49 @@
+==================
+Changing interface
+==================
+
+Now we'll change the **Tasks** journal interface. We'll add **Done** button.
+Select **Task** node in the project tree and click on the **index html** 
+button:
+
+.. image:: /intro/_images/index_html.png
+	:align: center
+	:alt: Index.html button
+
+The 'index.html' file from the project folder will be displayed in the 
+**Editor**.
+
+.. image:: /intro/_images/index_html_editor.png
+	:align: center
+	:alt: Index.html editor
+	
+There is a div with the 'templates' class. It contains the default templates of 
+catalogs, journals, their filters and so on. By default, the template of view 
+forms of jounals of a project is defined in div with class 'journals-view'
+
+Let's make a copy this div and replace 'journals-view' with 'tasks-view'. This 
+div will now be used as the template of our **Tasks** journal. We'll add the 
+**Done** button by inserting the following line in the template:
+
+.. code-block:: console
+
+    <button id="done-btn" class="btn pull-right" type="button"><i class="icon-remove-sign"></i> Done</button>
+
+.. image:: /intro/_images/index_html_tasks_view.png
+	:align: center
+	:alt: Tasks view template
+
+To write a code that will be executed when the button is clicked open client
+module of the **Tasks** journal in the code editor. Add a 
+on_view_form_created event handler and the following lines of code:
+    
+.. image:: /intro/_images/on_view_form_created.png
+	:align: center
+	:alt: Done btn code
+
+The following figure shows the result of pressing the **Done** button in the 
+project:
+
+.. image:: /intro/_images/tasks_done_executed.png
+	:align: center
+	:alt: Done btn clicked

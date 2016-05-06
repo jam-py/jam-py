@@ -1,0 +1,44 @@
+==========
+set_fields
+==========
+
+.. py:method:: set_fields(self, *fields)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Use the ``set_fields`` method to define and store internally the ``fields``
+parameter that will be used by the 
+:doc:`open <m_open>` 
+method, when its own ``fields`` parameter is not specified. The 
+:doc:`open <m_open>` 
+method clears internally stored parameter value. 
+
+The ``fields`` is arbitrary argument list of field names.
+
+Example
+=======
+
+The result of the execution of following code snippets wil be the same:
+
+.. code-block:: py
+
+    item.open(fields=['id', 'invoicedate'])
+
+.. code-block:: py
+
+    item.set_fields('id', 'invoicedate')
+    item.open()
+    
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`open <m_open>`

@@ -13,11 +13,11 @@ view
 Description
 ===========
 
-Use **view** method to create a view form of the item.
+Use ``view`` method to create a view form of the item.
 
 The method check if the javascript modules of the item and its owner are loaded,
 and if not (the **Dynamic JS modules loading** 
-:doc:`parameter of the project </admin/project>`
+:doc:`parameter of the project </admin/project/parameters>`
 is set) then loads them.
 
 Then it searches for an item html template in the task 
@@ -29,7 +29,7 @@ clone of the template and assigns it to the item
 :doc:`view_form <at_view_form>`
 attribute.
 
-If **container** parameter is specified the method empties it and appends the 
+If ``container`` parameter is specified the method empties it and appends the 
 html template to it. Otherwise it creates a modal form and appends the 
 html to it.
 
@@ -45,9 +45,9 @@ Triggers the
 :doc:`on_view_form_created <on_view_form_created>`
 of the item, if one is defined.
 
-Assigns the JQuery keyup and keydown events to the **view_form** so 
-that when an JQuery event of the window occurs, the **on_view_form_keyup** and 
-**on_view_form_keydown** events are triggered. They are triggered (if defined) 
+Assigns the JQuery keyup and keydown events to the view_form so 
+that when an JQuery event of the window occurs, the ``on_view_form_keyup`` and 
+``on_view_form_keydown`` events are triggered. They are triggered (if defined) 
 in the same way: first the task event handler, the group event handler and 
 then the event handler of the item itself. After that the JQuery stopPropagation 
 method of the event is called.

@@ -18,15 +18,16 @@ Creating a project
         js/
         img/
         reports/
+        static/
         admin.sqlite
-        application.py
+        server.py
         index.html
 
-4. To start Jam.py web application run **application.py** script.
+4. To start Jam.py web server run **server.py** script.
 
 .. code-block:: console
 
-    $ ./application.py
+    $ ./server.py
 
 
 .. note::
@@ -34,7 +35,7 @@ Creating a project
     
     .. code-block:: console
     
-        $ ./application.py 8081. 
+        $ ./server.py 8081. 
         
     By default, the port is 8080. If you will specify another port, you need to 
     use it in a browser in the next steps.
@@ -50,7 +51,6 @@ http://127.0.0.1:8080/admin.html. You should see the select language dialog.
 6. In the dialog that will appear, select the language and press OK button.
 
 .. image:: _images/lang.png
-	:width: 560px
 	:alt: Jam.py language dialog
 
 7. In the New project dialog box fill in:
@@ -63,7 +63,6 @@ http://127.0.0.1:8080/admin.html. You should see the select language dialog.
   corresponding form fields. 
 
 .. image:: _images/new_project_setup.png
-	:width: 560
 	:align: center
 	:alt: New project setup
 

@@ -13,7 +13,7 @@ the report parameters.
 Form templates of the project are located in the div with the **template** class
 inside the **body** tag in the index.html file of the project directory. 
 
-.. image:: /admin/_images/index.png
+.. image:: /admin/_images/index_html.png
 	:align: center
 	:alt: index.html
 

@@ -1,5 +1,5 @@
 Jam.py is an event-driven framework for developing web database applications.
-The Server side uses Python and web.py library, the client side - JavaScript, 
+The Server side uses Python and werkzeug library, the client side - JavaScript,
 JQuery and Bootstrap.
 
 The don't repeat yourself (DRY) principle underlying the framework allows

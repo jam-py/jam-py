@@ -1,0 +1,74 @@
+=====
+value
+=====
+
+.. js:attribute:: value
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Field class </refs/client/field_api>`
+
+
+Description
+===========
+
+Use **value** property to get or set the value of the field. 
+
+Getting value
+-------------
+
+When field data is **null**, the field converts it to **0**, if 
+the field_type is "integer", "float" or "currency", or to empty string if 
+field_type is "text".
+
+For 
+:doc:`lookup fields </programming/data/lookup_fields>` the value of this 
+property is an integer that is the value of the id field of the corresponding 
+record in the lookup item. To get lookup value of the field use the 
+:doc:`lookup_value <at_lookup_value>`
+property.
+
+Setting value
+-------------
+
+When a new value is assigned, the field checks if the current value is not equal
+to the new one. If so it 
+
+* sets its **new_value** attribute to this value, 
+* triggers the
+  :doc:`on_before_field_changed </refs/client/item/on_before_field_changed>`
+  event if one is defined for the field, 
+* changes the field data to the **new_value** attribute and sets it to **null**, 
+* mark item as modified, so the 
+  :doc:`is_modified </refs/client/item/m_is_modified>`
+  method will return **true**
+* triggers the
+  :doc:`on_field_changed </refs/client/item/on_field_changed>`
+  event if one is defined for the field 
+* updates data-aware controls
+  
+Example
+=======
+
+.. code-block:: js
+
+    function calc_total(item) {
+        item.amount.value = item.round(item.quantity.value * item.unitprice.value, 2);
+        item.tax.value = item.round(item.amount.value * item.owner.taxrate.value / 100, 2);
+        item.total.value = item.amount.value + item.tax.value;
+    }
+
+See also
+========
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`Lookup fields </programming/data/lookup_fields>`
+
+:doc:`lookup_value <at_lookup_value>`
+
+:doc:`text <at_text>`
+
+:doc:`lookup_text <at_lookup_text>`

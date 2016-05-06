@@ -1,0 +1,62 @@
+====
+copy
+====
+
+.. py:method:: copy(self, filters=True, details=True, handlers=True)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Use copy to create a copy of an item. The created copy is not added to the 
+:doc:`task tree </programming/task_tree>`
+and will be destroyed by Python garbage collector when no longer needed.
+
+All attributes of the copy object are defined as they were at the time of creating
+of the task tree. See 
+:doc:`Workflow </programming/workflow>`
+
+The method can have the following parameters:
+
+* ``handlers`` - if the value of this parameter is ``true``, all the functions and 
+  events defined in the server module of the item will also be available in the 
+  copy. The default value is ``true``.
+* ``filters`` - if the value of this parameter is ``true``, the filters will be 
+  created for the copy, otherwise there will be no filters. The default value 
+  is ``true``.
+* ``details`` - if the value of this parameter is ``true``, the details will be 
+  created for the copy, otherwise there will be no details. The default value 
+  is ``true``.
+
+Example
+=======
+
+.. code-block:: py
+
+    def on_generate(report):
+        cust = report.task.customers.copy()
+        cust.open()
+    
+        report.print_band('title')
+    
+        for c in cust:
+            firstname = c.firstname.display_text
+            lastname = c.lastname.display_text
+            company = c.company.display_text
+            country = c.country.display_text
+            address = c.address.display_text
+            phone = c.phone.display_text
+            email = c.email.display_text
+            report.print_band('detail', locals())
+
+See also
+========
+
+:doc:`Task tree </programming/task_tree>`
+
+:doc:`Workflow </programming/workflow>`

@@ -1,3 +1,79 @@
 =====
 apply
 =====
+
+.. js:function:: apply(callback, params) 
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Sends all updated, inserted, and deleted records from the item dataset to the 
+application server for writing to the database.
+
+The ``apply`` method can have the following parameters:
+
+* ``callback``: if the parameter is not present, the request to the server is 
+  sent synchronously, otherwise, the request is executed asynchronously and 
+  after the responce is received, the callback is executed
+
+* ``params`` - an object specifying user defined params, that can be used 
+  on the server in the
+  :doc:`on_apply </refs/server/item/on_apply>`
+  event handler for some additional processing
+  
+The order of parameters doesn't matter.
+
+The ``apply`` method
+
+* checks whether the item is a detail, and if it is, returns 
+
+* checks whether the item is in edit or insert 
+  :doc:`state <at_item_state>`
+  , and if so, posts the record
+  
+* checks if the change log has changes, and if not, returns
+
+* triggers the 
+  :doc:`on_before_apply <on_before_apply>`
+  event handler if one is defined for the item 
+
+* sends changes to the server 
+
+* server on receiving the request checks whether
+  :doc:`on_apply </refs/server/item/on_apply>`
+  event handler is defined for the item, and if it is, executes it, otherwise   
+  generates and executes SQL query to write changes to the database
+  
+* when generating an SQL query, check whether a user, that send the request, has 
+  rights to make these changes, if not raises an exception
+  
+* writes changes to the database  
+  
+* after writing changes to the database, server sends to to the client results
+  of the execution
+  
+* the client, based on the results, updates the change log   
+
+* triggers the 
+  :doc:`on_after_apply <on_after_apply>`
+  event handler if one is defined for the item 
+
+.. note::
+    The server, before writing new records to the database table, generates 
+    values for the ``id`` fields. The client updates these fields, based on 
+    information received from the server. If you change values of some other 
+    fields in the 
+    :doc:`on_apply </refs/server/item/on_apply>`
+    event handler, these changes will not be reflected on the client. You must
+    update them yourself.
+    
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

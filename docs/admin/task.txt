@@ -1,0 +1,28 @@
+====
+Task
+====
+
+Select **Task** node to get to the root of the project
+:doc:`task tree </programming/task_tree>`.
+
+
+.. image:: _images/task.png
+	:align: center
+	:alt: Task node
+	
+Press the **Edit** button in the bottom of the page to change the name and caption
+of the task.
+
+Use buttons in the right panel of the page to edit
+    
+* Client and Server modules of the task, see 
+  :doc:`Working with modules </programming/modules>`, 
+  :doc:`Code editor <code_editor>`
+  
+* *index.html* file from the project root folder that contains project page and 
+  templates of the forms, see
+  :doc:`Forms </programming/interface/forms>`
+  
+* *project.css* file from **css** directory the project root folder
+  
+  

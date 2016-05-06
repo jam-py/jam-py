@@ -1,0 +1,42 @@
+====
+text
+====
+
+.. py:attribute:: text
+
+**domain**: server
+
+**language**: python
+
+:doc:`Field class </refs/server/field_api>`
+
+Description
+===========
+
+Use ``text`` property to get or set the text value of the field. 
+
+Getting text property value
+---------------------------
+
+Gets the value of the 
+:doc:`value <at_value>`
+property and converts it to text.
+
+Setting text property value
+---------------------------
+
+Converts the text to the type of the field and assigns its :doc:`value <at_value>`
+property to this value
+
+See also
+========
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`Lookup fields </programming/data/lookup_fields>`
+
+:doc:`lookup_value <at_lookup_value>`
+
+:doc:`text <at_text>`
+
+:doc:`lookup_text <at_lookup_text>`

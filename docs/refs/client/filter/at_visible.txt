@@ -1,0 +1,30 @@
+=======
+visible
+=======
+
+.. js:attribute:: visible
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Filter class </refs/client/filter_api>`
+
+
+Description
+===========
+
+
+If the value of this property is **true** the input control for this filter will
+be created by the
+:doc:`create_filter_inputs </refs/client/item/m_create_filter_inputs>`
+method, if the **filters** option in not specidied.
+
+See also
+========
+
+:doc:`Filters </programming/data/filters>`
+
+:doc:`value <at_value>`
+
+:doc:`Dataset </programming/data/dataset>`

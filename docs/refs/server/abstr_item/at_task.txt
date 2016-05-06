@@ -2,16 +2,26 @@
 task
 ====
 
-Indicates the root of the :doc:`task tree </programming/task_tree>` that owns this item. 
-
 .. py:attribute:: task
 
 **domain**: server
 
 **language**: python
 
+**class** :doc:`AbstractItem class </refs/server/abstractitem_api>`
+
 Description
 ===========
 
-Use task attribute to find the root of the :doc:`task tree </programming/task_tree>` 
+Indicates the root of the 
+:doc:`task tree </programming/task_tree>` 
+that owns this item. 
+
+Use ``task`` attribute to find the root of the 
+:doc:`task tree </programming/task_tree>` 
 of which the item is a member.
+
+See also
+========
+
+:doc:`Task tree </programming/task_tree>`

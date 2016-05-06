@@ -1,0 +1,51 @@
+====
+post
+====
+
+.. py:method:: post(self)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Writes a modified record to the item dataset. Call post to save changes made to 
+a record after :doc:`append <m_append>`, :doc:`insert <m_insert>` or 
+:doc:`edit <m_edit>` method was called. 
+
+The ``post`` method
+
+* checks if an item is in edit or insert 
+  :doc:`state <at_item_state>`
+  , otherwise raises exception
+
+* triggers the 
+  :doc:`on_before_post <on_before_post>` 
+  event handler if one is defined for the item
+
+* checks if a record is valid, if not raises exception
+
+* If an item has 
+  :doc:`details </programming/data/details>`
+  , post current record in details
+
+* if item attribute
+  :doc:`log_changes <at_log_changes>`
+  is set (default), add changes to an item change log.
+
+* puts the item into browse 
+  :doc:`state <at_item_state>`
+
+* triggers the 
+  :doc:`on_after_post <on_after_post>`
+  event handler if one is defined for the item.
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`
+

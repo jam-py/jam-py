@@ -13,23 +13,23 @@ view_options
 Description
 ===========
 
-Use the **view_options** attribute to specify parameters of the modal view form.
+Use the ``view_options`` attribute to specify parameters of the modal view form.
 
-**view_options** is an object that has the following attributes:
+``view_options`` is an object that has the following attributes:
 
-* **width** - the width of the modal form, the default value is 560 px,
-* **title** - the title of the modal form, the default value is the value of a
+* ``width`` - the width of the modal form, the default value is 560 px,
+* ``title`` - the title of the modal form, the default value is the value of a
   :doc:`item_caption </refs/client/abstr_item/at_item_caption>`
   attribute,
-* **fields** - specify the list of field names that
+* ``fields`` - specify the list of field names that
   :doc:`create_table <m_create_table>`
   method will use, if it is not specified, the field list, set in Administrator 
   for viewing will be used (the default value),
-* **close_button** - if true, the close button will be created in the upper-right 
+* ``close_button`` - if true, the close button will be created in the upper-right 
   corner of the form, the default value is true,
-* **close_caption** - if true and close_button is true, will display 'Close - [Esc]'
+* ``close_caption`` - if true and close_button is true, will display 'Close - [Esc]'
   near the button
-* **close_on_escape** - if true, pressing on the Escape key will trigger the 
+* ``close_on_escape`` - if true, pressing on the Escape key will trigger the 
   :doc:`close_view_form <m_close_view_form>`
   method.
 

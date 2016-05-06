@@ -1,0 +1,73 @@
+============
+display_text
+============
+
+.. py:attribute:: display_text
+
+**domain**: server
+
+**language**: python
+
+:doc:`Field class </refs/server/field_api>`
+
+Description
+===========
+
+Represents the field's value as a string.
+
+``Display_text`` property is a read-only string representation of a field's value 
+to display it to users. If an 
+:doc:`on_get_field_text </refs/client/item/on_get_field_text>` 
+event handler is assigned, **display_text** is the value returned by this event 
+handler. Otherwise, display_text is the value of the 
+:doc:`lookup_text <at_lookup_text>` 
+property for 
+:doc:`lookup fields </programming/data/lookup_fields>`
+and 
+:doc:`text <at_text>` 
+property converted according to the
+:doc:`project locale </admin/project/project_locale>`
+settings
+for other fields.
+
+``Display_text`` is the string representation of the field's value property when 
+it is not being edited. When the field is being edited, the 
+:doc:`text <at_text>`
+property is used.
+
+Example
+=======
+
+.. code-block:: py
+
+    def on_generate(report):
+        cust = report.task.customers.copy()
+        cust.open()
+    
+        report.print_band('title')
+    
+        for c in cust:
+            firstname = c.firstname.display_text
+            lastname = c.lastname.display_text
+            company = c.company.display_text
+            country = c.country.display_text
+            address = c.address.display_text
+            phone = c.phone.display_text
+            email = c.email.display_text
+            report.print_band('detail', locals())
+
+See also
+========
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`Lookup fields </programming/data/lookup_fields>`
+
+:doc:`on_get_field_text </refs/client/item/on_get_field_text>`
+
+:doc:`text <at_text>`
+
+:doc:`lookup_text <at_lookup_text>`
+
+
+

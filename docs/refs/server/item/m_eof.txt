@@ -1,0 +1,35 @@
+===
+eof
+===
+
+.. py:method:: eof(self) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Test ``eof`` (end-of-file) to determine if the cursor is positioned at the last 
+record in an item dataset. If eof returns true, the cursor is unequivocally on 
+the last row in the dataset. eof returns true when an application:
+
+* Opens an empty dataset.
+* Calls an item's :doc:`last <m_last>` method.
+* Call an item's :doc:`next <m_next>` method, and the method fails (because the 
+  cursor is already on the last row in the dataset).
+
+eof returns false in all other cases.
+
+.. note::
+    If both eof and :doc:`bof <m_bof>` return true, the item dataset is empty.
+    
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Navigating datasets </programming/data/navigating_datasets>`

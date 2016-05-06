@@ -1,0 +1,13 @@
+===================
+Foreign Keys Dialog
+===================
+
+If an item has a lookup field, and in the definition of lookup item the soft 
+delete attribute is not set, in order to preserve the integrity of the data, 
+we can create a foreign key.
+
+.. image:: /admin/_images/foreign_keys_dialog.png
+	:align: center
+	:alt: Foreign Keys Dialog
+
+To do so click the **New** button, select the field and click **OK**.

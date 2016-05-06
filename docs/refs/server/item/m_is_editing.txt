@@ -1,0 +1,23 @@
+==========
+is_edited
+==========
+
+.. py:function:: is_edited(self) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Checks if an item is in edit state and returns true if it is.
+
+An application calls :doc:`edit <m_edit>` to put an item into edit state.
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

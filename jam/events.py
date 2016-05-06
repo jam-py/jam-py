@@ -81,13 +81,13 @@ detail_client_events = \
         'on_after_scroll': 'item',
         'on_filter_record': 'item',
         'on_field_changed': 'field, lookup_item',
-        'on_before_field_changed': 'field, new_value, new_lookup_value',
-        'on_filter_applied': 'item',
+        'on_field_select_value': 'field, lookup_item',
+        'on_before_field_changed': 'field',
+        'on_filters_applied': 'item',
         'on_filter_changed': 'filter',
+        'on_filter_select_value': 'field, lookup_item',
         'on_field_validate': 'field',
-        'on_get_field_text': 'field',
-        'on_field_lookup_item_show': 'field, lookup_item',
-        'on_filter_lookup_item_show': 'filter, lookup_item'
+        'on_get_field_text': 'field'
     }
 
 item_client_events = detail_client_events
@@ -101,7 +101,7 @@ report_client_events = \
         'on_param_form_close_query': 'report',
         'on_before_print_report': 'report',
         'on_open_report': 'report, url',
-        'on_param_lookup_item_show': 'param, lookup_item'
+        'on_param_select_value': 'param, lookup_item'
     }
 
 # Server events
@@ -109,11 +109,11 @@ report_client_events = \
 task_server_events = \
     {
         'on_created': 'task',
-        'on_login': 'task, env, admin, login, password_hash',
-        'on_get_user_info': 'task, user_uuid, env',
-        'on_logout': 'task, user_uuid, env',
-        'on_ext_request': 'task, request, params, env',
-        'on_request': 'task, user_info, env, request, item, params, ext'
+        #~ 'on_login': 'task, env, admin, login, password_hash',
+        #~ 'on_get_user_info': 'task, user_uuid, env',
+        #~ 'on_logout': 'task, user_uuid, env',
+        #~ 'on_ext_request': 'task, request, params, env',
+        #~ 'on_request': 'task, user_info, env, request, item, params, ext'
     }
 
 group_server_events = \
@@ -127,7 +127,7 @@ reports_server_events = \
 
 detail_server_events = \
     {
-        'on_select': 'item, params, user_info, enviroment',
+        'on_open': 'item, params, user_info, enviroment',
         'on_record_count': 'item, params, user_info, enviroment',
         'on_get_field_text': 'field'
 
@@ -138,10 +138,10 @@ item_server_events['on_apply'] = 'item, delta, params, privileges, user_info, en
 
 report_server_events = \
     {
-        'on_before_generate_report': 'report',
-        'on_generate_report': 'report',
-        'on_report_generated': 'report',
-        'on_before_save_report': 'report'
+        'on_before_generate': 'report',
+        'on_generate': 'report',
+        'on_after_generate': 'report',
+        'on_parsed': 'report'
     }
 
 def get_events(item_type_id, server):

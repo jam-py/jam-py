@@ -8,14 +8,16 @@ on_view_form_created(item)
 
 **language**: javascript
 
+**class** :doc:`Item class </refs/client/item_api>`
+
 Description
 ===========
 
 The **on_view_form_created** event is triggered by the 
 :doc:`view <m_view>`
-method of the item.
+method when form has been created but not shown yet.
 
-The **item** parameter is the item that triggered the event.
+The ``item`` parameter is the item that triggered the event.
 
 See also
 ========

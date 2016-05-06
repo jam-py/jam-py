@@ -1,0 +1,27 @@
+=============
+on_after_edit
+=============
+
+on_after_edit(item)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Occurs after an application starts editing a record.
+
+The **item** parameter is the item that triggered the event.
+
+Write an on_after_delete event handler to take specific action immediately after 
+an application starts editing a record. on_after_edit is called 
+by :doc:`edit <m_edit>`.
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

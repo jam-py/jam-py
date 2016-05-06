@@ -1,0 +1,48 @@
+=========
+set_where
+=========
+
+.. py:method:: set_where(self, **where)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Use the ``set_where`` method to define and store internally the where
+parameter that will be used by the 
+:doc:`open <m_open>` 
+method, when its own where parameter is not specified. The 
+:doc:`open <m_open>` 
+method clears internally stored parameter value. 
+
+Example
+=======
+
+The result of the execution of following code snippets wil be the same:
+
+.. code-block:: py
+
+    import datetime
+    
+    date = datetime.datetime.now() - datetime.timedelta(days=3*365)
+    item.open(where={'customer': 44, 'invoicedate__gt': date})
+
+.. code-block:: py
+
+    import datetime
+    
+    date = datetime.datetime.now() - datetime.timedelta(days=3*365)
+    item.set_where(customer=44, invoicedate__gt=date)
+    item.open()
+    
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`open <m_open>`

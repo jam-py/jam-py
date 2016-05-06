@@ -1,0 +1,38 @@
+======
+locate
+======
+
+.. py:method:: locate(self, fields, values)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Implements a method for searching an item dataset for a specified record and 
+makes that record the active record.
+
+Arguments:
+
+* ``fields``: a field name, or list of field names
+* ``values``: a field value of list of field values
+
+This method locates the record where the fields specified by ``fields`` parameter 
+have the values specified by ``values`` parameter.
+
+``locate`` returns true if a record is found that matches the specified criteria and 
+the cursor repositioned to that record.
+
+If a matching record was not found and the cursor is not repositioned, this 
+method returns false.
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Navigating datasets </programming/data/navigating_datasets>`

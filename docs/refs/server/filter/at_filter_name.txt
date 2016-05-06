@@ -1,0 +1,28 @@
+===========
+filter_name
+===========
+
+.. py:attribute:: filter_name
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Filter class </refs/server/filter_api>`
+
+
+Description
+===========
+
+Specifies the name of the filter as referenced in code.
+Use ``filter_name`` to refer to the field in code.
+
+See also
+========
+
+:doc:`Filters </programming/data/filters>`
+
+:doc:`Dataset </programming/data/dataset>`
+
+
+

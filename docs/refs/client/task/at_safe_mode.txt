@@ -13,8 +13,8 @@ safe_mode
 Description
 ===========
 
-Check the **safe_mode** attribute to determine if the 
-:doc:`Safe mode </admin/project>`
+Check the ``safe_mode`` attribute to determine if the 
+:doc:`safe mode </admin/project/parameters>`
 parameter of the project is set.
 
 Example
@@ -42,7 +42,7 @@ Example
 See also
 ========
 
-:doc:`Project managment </admin/project>`
+:doc:`Parameters </admin/project/parameters>`
 
 :doc:`user_info <at_user_info>`
 

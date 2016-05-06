@@ -1,0 +1,36 @@
+=========
+on_parsed
+=========
+
+.. py:function:: on_parsed(report)
+
+**domain**: client 
+
+**language**: python
+
+**class** :doc:`Report class </refs/server/report_api>`
+
+Description
+===========
+
+The **on_parsed** event is triggered by the 
+:doc:`generate <m_generate>` 
+method, after the report 
+:doc:`template </programming/reports/templates>` have been parsed.
+
+Use this event handler you hide some columns in the report template by calling
+:doc:`hide_columns <m_hide_columns>`
+
+The **report** parameter is the report that triggered the event.
+
+See also
+========
+
+:doc:`Programming reports </programming/reports/index>`
+
+:doc:`Server-side report programming </programming/reports/server_side_programming>`
+
+:doc:`Report templates </programming/reports/templates>`
+
+:doc:`hide_columns <m_hide_columns>`
+

@@ -2,18 +2,20 @@
 item_type
 =========
 
-Specifies the type of the item.
-
 .. py:attribute:: item_type
 
 **domain**: server
 
 **language**: python
 
+**class**: :doc:`AbstractItem class </refs/server/abstractitem_api>`
+
 Description
 ===========
 
-Use the type attribute to get the type of the item. It can have one of the 
+Specifies the type of the item.
+
+Use the ``item_type`` attribute to get the type of the item. It can have one of the 
 following values 
 
 * “task”, 
@@ -26,3 +28,8 @@ following values
 * “table”, 
 * “report”, 
 * “detail”
+
+See also
+========
+
+:doc:`Task tree </programming/task_tree>`

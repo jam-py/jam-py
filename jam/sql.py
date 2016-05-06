@@ -2,7 +2,6 @@
 
 from __future__ import with_statement
 import sys
-import cPickle
 
 import common, db.db_modules as db_modules
 from dataset import *
@@ -29,7 +28,9 @@ class SQL(object):
             if not (field.calculated or field.master_field):
                 fields += '"%s", ' % field.field_name
                 values +=  '%s, ' % db_module.param_literal()
-                row.append(field.raw_value)
+                value = field.raw_value
+#                value = db_module.store_value(value, field.data_type)
+                row.append(value)
         fields = fields[:-2]
         values = values[:-2]
         sql = db_module.set_case('INSERT INTO "%s" (%s) VALUES ' % (self.table_name, fields)) + '(' + values + ')'
@@ -42,9 +43,10 @@ class SQL(object):
         for field in self.fields:
             if not (field.calculated or field.master_field):
                 fields += '"%s"=%s, ' % (db_module.set_case(field.field_name), db_module.param_literal())
-                value = field.get_raw_value()
+                value = field.raw_value
                 if field.field_name.lower() == 'deleted':
                     value = 0
+#                value = db_module.store_value(value, field.data_type)
                 row.append(value)
         fields = fields[:-2]
         id_field_name = 'id'
@@ -165,7 +167,12 @@ class SQL(object):
         if query['__expanded']:
             for field in fields:
                 if field.lookup_item:
-                    sql += '"%s"."%s" AS "%s_LOOKUP", ' % (self.ref_table_alias(field), field.lookup_field, field.field_name)
+                    field_sql = '"%s"."%s" AS "%s_LOOKUP"' % (self.ref_table_alias(field), field.lookup_field, field.field_name)
+                    if funcs:
+                        func = functions.get(field.field_name.upper())
+                        if func:
+                            field_sql = '%s("%s"."%s") AS "%s_LOOKUP"' % (func, self.ref_table_alias(field), field.lookup_field, field.field_name)
+                    sql += field_sql + ', '
         sql = sql[:-2]
         return db_module.set_case(sql)
 
@@ -262,6 +269,8 @@ class SQL(object):
                 for it in value:
                     lst += convert_field_value(field, it) + ', '
                 value = lst[:-2] + ')'
+            elif filter_type == common.FILTER_RANGE:
+                value = convert_field_value(field, value[0]) + ' AND ' + convert_field_value(field, value[1])
             elif filter_type == common.FILTER_ISNULL:
                 value = ''
             else:
@@ -313,7 +322,7 @@ class SQL(object):
                 if valid_filter(filter_type, value):
                     if field_name == 'deleted':
                         deleted_in_filters = True
-                    if filter_type == common.FILTER_SEARCH:
+                    if filter_type == common.FILTER_CONTAINS_ALL:
                         values = value.split()
                         for val in values:
                             conditions.append(get_condition(field_name, common.FILTER_CONTAINS, val))
@@ -331,11 +340,14 @@ class SQL(object):
     def group_clause(self, query, fields, db_module=None):
         if db_module is None:
             db_module = self.task.db_module
-        group_fields = query.get('__group')
+        group_fields = query.get('__group_by')
         result = ''
         if group_fields:
             for field_name in group_fields:
+                field = self.field_by_name(field_name)
                 result += '"%s"."%s", ' % (self.table_name, field_name)
+                if field.lookup_item:
+                    result += '"%s_LOOKUP", ' % field.field_name
             if result:
                 result = result[:-2]
                 result = ' GROUP BY ' + result
@@ -344,14 +356,12 @@ class SQL(object):
             return ''
 
     def order_clause(self, query, db_module=None):
+        result = ''
+        if query.get('__funcs') and not query.get('__group_by'):
+            return result
         if db_module is None:
             db_module = self.task.db_module
-        result = ''
-        order_list = query.get('__order')
-        if order_list:
-            order_list = query['__order']
-        else:
-            order_list = self._order_by
+        order_list = query.get('__order', [])
         for order in order_list:
             field = self._field_by_ID(order[0])
             if field:
@@ -575,7 +585,7 @@ class SQL(object):
             desc = ''
             if index_desc:
                 desc = 'DESC'
-            fields = cPickle.loads(str(index_fields))
+            fields = common.load_index_fields(index_fields)
             if new_fields:
                 fields = [new_field_name_by_id(field[0]) for field in fields]
             else:

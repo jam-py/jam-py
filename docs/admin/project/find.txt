@@ -1,0 +1,11 @@
+====
+Find
+====
+
+Press this button to to search for the character string in all modules of 
+the project.
+
+.. image:: /admin/_images/find.png
+	:align: center
+	:alt: Find in project dialog
+	

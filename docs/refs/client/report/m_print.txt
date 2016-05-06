@@ -1,0 +1,41 @@
+=====
+print
+=====
+
+.. js:function:: print(create_form)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Report class </refs/client/report_api>`
+
+Description
+===========
+
+Use ``print`` to print the report.
+
+If ``create_form`` parameter is omitted or equals true, the method calls the
+:doc:`create_param_form <m_create_param_form>`
+method to create a form based on the html template defined in the index.html
+file.
+
+If ``create_form`` parameter is set to ``false`` and the report has no visible
+parameters, it calls 
+:doc:`process_report <m_process_report>` to send request to server to generate
+the report, otherwise it calls
+:doc:`create_param_form <m_create_param_form>`
+method.
+
+See also
+========
+
+:doc:`Forms </programming/interface/forms>`
+
+:doc:`Report parameters </programming/reports/report_parameters>`
+
+:doc:`Client-side report programming </programming/reports/client_side_programming>`
+
+:doc:`create_param_form <m_create_param_form>`
+
+:doc:`process_report <m_process_report>`

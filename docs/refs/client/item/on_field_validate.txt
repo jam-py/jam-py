@@ -1,3 +1,45 @@
 =================
 on_field_validate
 =================
+
+on_field_validate(field)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Write an ``on_field_validate`` event handler to validate changes made to the 
+data in the field.
+
+The ``field`` parameter is the field whose data has been changed. To get the 
+item that owns the field, use the 
+:doc:`owner </refs/client/field/at_owner>` 
+attribute of the field.
+
+the event handler should return a string is the field value is invalid.
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_field_validate(field) {
+        if (field.field_name === 'sum' && field.value > 10000000) {
+                return 'The sum is too big.';
+        }
+    }
+
+
+See also
+========
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`value </refs/client/field/at_value>`
+
+

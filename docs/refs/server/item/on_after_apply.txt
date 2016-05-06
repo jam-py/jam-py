@@ -1,0 +1,30 @@
+==============
+on_after_apply
+==============
+
+on_after_apply(item)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Occurs after an application saves the change log to the project database.
+
+The item parameter is the item that triggered the event.
+
+Write an **on_after_apply** event handler to take specific action immediately after 
+an application saves data changes to the project database.
+
+**On_after_apply** is triggered by
+:doc:`apply <m_apply>`
+method.
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

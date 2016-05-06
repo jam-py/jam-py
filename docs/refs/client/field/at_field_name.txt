@@ -1,0 +1,29 @@
+==========
+field_name
+==========
+
+.. js:attribute:: field_name
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Field class </refs/client/field_api>`
+
+
+Description
+===========
+
+Specifies the name of the field as referenced in code.
+Use **field_name** to refer to the field in code.
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`field_caption <at_field_caption>`
+
+

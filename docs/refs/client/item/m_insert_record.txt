@@ -1,3 +1,46 @@
 =============
 insert_record
 =============
+
+.. js:function:: insert_record() 
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Open a new, empty record at the begining of the dataset and creates an 
+:doc:`edit_form <at_edit_form>`
+for visuall editing of the record.
+
+The ``insert_record`` method 
+
+* calls the 
+  :doc:`can_create <m_can_create>`
+  method to check whether a user have a right to insert a record, and if not,
+  returns
+  
+* checks whether the item is in edit or insert 
+  :doc:`state <at_item_state>`
+  , and if not, calls the 
+  :doc:`insert <m_insert>`
+  method to insert a record
+  
+* calls the
+  :doc:`create_edit_form <m_create_edit_form>`
+  method to create a form for visuall editing of the record
+
+See also
+========
+
+:doc:`Visual editing of records </programming/interface/visual_editing>`
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`
+
+:doc:`insert <m_insert>`
+
+:doc:`can_create <m_can_create>`

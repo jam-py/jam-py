@@ -2,28 +2,34 @@
 item_state
 ==========
 
-Indicates the current operating state of the item.
-
 .. js:attribute:: item_state
 
 **domain**: client 
 
 **language**: javascript
 
+**class** :doc:`Item </refs/client/item_api>`
+
 Description
 ===========
 
-Examine item_state to determine the current operating mode of the item. 
+Examine ``item_state`` to determine the current operating mode of the item. 
 Item_state determines what can be done with data in an item dataset, such as 
-editing existing records or inserting new ones. The item state constantly 
+editing existing records or inserting new ones. The ``item_state`` constantly 
 changes as an application processes data. 
 
-Opening a item changes State from inactive to browse. An application can call 
-edit to put an item into edit state, or call insert to put an item into 
+Opening a item changes state from inactive to browse. An application can call 
+:doc:`edit <m_edit>`
+to put an item into edit state, or call 
+:doc:`insert <m_insert>`
+or
+:doc:`append <m_append>`
+to put an item into 
 insert state. 
 
-Posting or canceling edits, insertions, or deletions, changes item_state from 
-its current state to browse. Closing a dataset changes its state to inactive.
+Posting or canceling edits, insertions, or deletions, changes ``item_state`` 
+from its current state to browse. Closing a dataset changes its state to 
+inactive.
 
 To check item_state value use the following methods:
 
@@ -40,8 +46,8 @@ item_state value can be:
 * 3 - edit state,
 * 4 - delete state
 
-item :doc:`task </refs/client/abstr_item/at_task>` attribute have consts object that defines following 
-attributes:
+item :doc:`task </refs/client/abstr_item/at_task>` attribute have consts object 
+that defines following attributes:
 
 * "STATE_INACTIVE": 0,
 * "STATE_BROWSE": 1,
@@ -52,13 +58,17 @@ attributes:
 so if the item is in edit state can be checked the following way:
 ::
 
-    item.item_state === 3
+    item.item_state === 2
 
 or:: 
 
-    item.item_state === item.task.consts.STATE_EDIT
+    item.item_state === item.task.consts.STATE_INSERT
  
 or:: 
 
-    item.is_editing() 
+    item.is_new() 
 
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

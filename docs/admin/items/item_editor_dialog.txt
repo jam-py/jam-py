@@ -1,0 +1,76 @@
+==================
+Item Editor Dialog
+==================
+
+**Item Editor dialog** opens when a developer selects a Group node in the project 
+tree of the Administrator and click on the **New** or **Edit** button to create 
+a new item or modify the selected one. See 
+:doc:`Items <index>`.
+
+.. image:: /admin/_images/item_editor_dialog.png
+	:align: center
+	:alt: Item Editor Dialog
+	
+The upper part of the **Item Editor dialog** have the following fields:
+
+* **Caption** - the item name that appears to users.
+
+* **Name** - the name of the item that will be used in programming code to 
+  get access to the item object. It should be unique in the project and should 
+  be a valid python identifier.
+
+* **Table** - the name of the table that will be created in the project 
+  database. This name is specified when creating an item, and can not be 
+  changed later.
+  
+* **Virtual table** - if this checkbox is checked, no database table will be 
+  created. Use this options to create an in memory item or to get access to the 
+  data in some table from another dataset (see 
+  :doc:`open </refs/server/item/m_open>`
+  and
+  :doc:`on_apply </refs/server/item/on_apply>`
+  methods
+  ). This checkbox must be set when creating an item and can not be changed 
+  later.
+  
+* **Soft delete** - when this check-box is checked, the delete method does not 
+  erase a record physically from the table, but uses this field to mark the 
+  record as deleted. See
+  :doc:`Common fields </programming/data/common_fields>`,
+  :doc:`delete </refs/server/item/m_delete>`
+  method (server),
+  :doc:`delete </refs/client/item/m_delete>`
+  method (client).
+  
+* **External js module** - if this checkbox is checked, a separate javascript 
+  file will be created for the them. See 
+  :doc:`Parameters </admin/project/parameters>`.
+  
+* **Visible** - use this checkbox to set item's visible attribute. The value of 
+  this attribute can be used in code on the client to create menu items and so 
+  on.
+  
+In the center part of the **Item Editor dialog** there is a table containing a
+list of fields, defined for the item. To add, modify or delete a field use the 
+following buttons:
+
+* **New** - click this button to invoke the 
+  :doc:`Field Editor Dialog <field_editor_dialog>`
+  to create a new field.
+
+* **Edit** - click this button to invoke the 
+  :doc:`Field Editor Dialog <field_editor_dialog>`
+  to modify a selected field.
+
+* **Delete** - click this button to delete a field selected in in the field list.
+
+In the bottom-right corner of the Dialog form there are two buttons:
+
+* **OK** - click this button to save change you made. If the **Virtual table** 
+  checkbox is not checked and **DB manual update** parameter in the project 
+  :doc:`Database Dialog</admin/project/database>` is not set, the application
+  will generate and execute SQL quesry to update the item table in the project
+  Database (changes made to the fields will be applied to the table). 
+
+* **Cancel** - click this buttons to cancel the operation.
+

@@ -1,0 +1,54 @@
+==========
+param_form
+==========
+
+.. js:attribute:: param_form
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Report class </refs/client/report_api>`
+
+Description
+===========
+
+Use ``param_form`` attribute to get access to a Jquery object representing the 
+param form of the report. 
+
+It is created by the 
+:doc:`create_param_form <m_create_param_form>`
+method, that, usually, is called by then
+:doc:`print <m_print>` 
+method.
+
+The 
+:doc:`close_param_form <m_close_param_form>`
+method sets the ``param_form`` value to undefined.
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_param_form_created(report) {
+        report.create_param_inputs(report.param_form.find(".edit-body"));
+        report.param_form.find("#cancel-btn").on('click.task', function() {
+            report.close_param_form();
+        });
+        report.param_form.find("#ok-btn").on('click.task', function() {
+            report.process_report()
+        });
+    }
+
+See also
+========
+
+:doc:`Forms </programming/interface/forms>`
+
+:doc:`print <m_print>`
+
+:doc:`create_param_form <m_create_param_form>`
+
+:doc:`close_param_form <m_close_param_form>`
+    

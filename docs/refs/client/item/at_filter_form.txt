@@ -13,7 +13,7 @@ filter_form
 Description
 ===========
 
-Use **filter_form** attribute to get access to a Jquery object representing the 
+Use ``filter_form`` attribute to get access to a Jquery object representing the 
 filter form of the item. 
 
 It is created by the 
@@ -22,7 +22,7 @@ method.
 
 The 
 :doc:`close_filter_form <m_close_filter_form>`
-method sets the **filter_form** value to undefined.
+method sets the ``filter_form`` value to undefined.
 
 Example
 =======

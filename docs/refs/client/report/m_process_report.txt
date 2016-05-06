@@ -1,0 +1,72 @@
+==============
+process_report
+==============
+
+.. js:function:: process_report()
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Report class </refs/client/report_api>`
+
+Description
+===========
+
+The 
+:doc:`process_report </refs/client/report/m_process_report>`    
+method sends the report to the server to generate its content and accepts the 
+report file that the server returns to the client and opens or saves it.
+
+It is called by the
+:doc:`print <m_print>`
+method direclly, if its ``create_form`` parameter equals false and there are no 
+visible parameters. If there are visible parameters, the 
+:doc:`print <m_print>` method creates a form to specify parameter values and the 
+form should call it (for example, by some button onclick event ).
+
+The checks if parameter values are valid and the triggers the following events:
+
+* :doc:`on_before_print_report </refs/client/reports/on_before_print_report>` 
+  event handler of the report group 
+  
+* :doc:`on_before_print_report </refs/client/report/on_before_print_report>` 
+  event handler of the report
+
+In this event handlers developer can define some common (report group
+event handler) or specific (report event handler) attributes of the report.
+
+After that the
+:doc:`process_report </refs/client/report/m_process_report>`    
+method sends asynchronous request to the server to generate a report content.
+(see 
+:doc:`Server-side report programming </programming/reports/server_side_programming>`
+). 
+
+The server returns to the method an url to a file with the generated report 
+content. 
+
+The method then checks if the 
+:doc:`on_open_report </refs/client/reports/on_open_report>` event handler of
+the report group is defined. If this events handler if defined calls it, 
+otherwise checks the 
+:doc:`on_open_report </refs/client/report/on_open_report>` of the report. If it 
+is defined then calls it.
+
+If none of this events are defined, it (depending on the report 
+:doc:`extension </refs/client/report/at_extension>`
+attribute) opens the report in the browser or saves it to disc.
+
+Example
+=======
+
+In the following event handler, defined in the client module of the 
+**invoice** report of the Demo application, the value of the report 
+**id** parameter is set:
+
+.. code-block:: js
+
+    function on_before_print_report(report) {
+        report.id.value = report.task.invoices.id.value;
+    }
+

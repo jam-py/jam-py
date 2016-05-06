@@ -4,10 +4,15 @@ Data programming
 
 .. toctree::
     :maxdepth: 1
-
-    open
-    fields
-    filters
-    navigate
     
+    dataset
+    navigating_datasets
+    modifying_datasets
+    fields
+    common_fields
+    lookup_fields
+    filtering_records
+    filters
+    details
+
     

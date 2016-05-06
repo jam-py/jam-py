@@ -10,7 +10,7 @@ Clicking on these will open the
 
 Every item has a predefined set of events that could be triggered by  
 application. An event is a function defined in the module of an item that starts 
-with the "on_" prefix. All published events are listed in the Events tab of the 
+with the **on_** prefix. All published events are listed in the Events tab of the 
 information pane of the
 :doc:`code editor </admin/code_editor>`
 

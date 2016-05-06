@@ -1,0 +1,44 @@
+==========
+set_fields
+==========
+
+.. js:function:: set_fields(field_list)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Use the ``set_fields`` method to define and store internally the ``fields``
+option that will be used by the 
+:doc:`open <m_open>` 
+method, when its own ``fields`` option is not specified. The 
+:doc:`open <m_open>` 
+method clears internally stored parameter value. 
+
+The ``field_list`` parameter is a list of field names.
+
+Example
+=======
+
+The result of the execution of following code snippets wil be the same:
+
+.. code-block:: js
+
+    item.open({fields: ['id', 'invoicedate']});
+
+.. code-block:: js
+
+    item.set_fields(['id', 'invoicedate']);
+    item.open();
+    
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`open <m_open>`

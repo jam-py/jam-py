@@ -1,0 +1,94 @@
+==============================
+Server-side report programming
+==============================
+
+When a server gets a request from a client to generate report, it first of all 
+creates a copy of the report and then this copy calls the 
+:doc:`generate </refs/server/report/m_generate>` 
+method. 
+
+This method triggers the
+:doc:`on_before_generate </refs/server/report/on_before_generate>` 
+event. In this event handler developer should write a code that generates the 
+content of the report.
+
+For example for the **invoice** report of the Demo application this event is as 
+follows:
+
+.. code-block:: py
+
+    def on_generate(report):
+        invoices = report.task.invoices.copy()
+        invoices.set_where(id=report.id.value)
+        invoices.open()
+    
+        customer = invoices.firstname.display_text + ' ' + invoices.customer.display_text
+        address = invoices.billing_address.display_text
+        city = invoices.billing_city.display_text + ' ' + invoices.billing_state.display_text + ' ' + \
+            invoices.billing_country.display_text
+        date = invoices.invoicedate.display_text
+        shipped = invoices.billing_address.display_text + ' ' + invoices.billing_city.display_text + ' ' + \
+            invoices.billing_state.display_text + ' ' + invoices.billing_country.display_text
+        taxrate = invoices.taxrate.display_text
+        report.print_band('title', locals())
+    
+        tracks = invoices.invoice_table
+        tracks.open()
+        for t in tracks:
+            quantity = t.quantity.display_text
+            track = t.track.display_text
+            unitprice = t.unitprice.display_text
+            sum = t.amount.display_text
+            report.print_band('detail', locals())
+    
+        subtotal = invoices.subtotal.display_text
+        tax = invoices.tax.display_text
+        total = invoices.total.display_text
+        report.print_band('summary', locals())
+    
+First, we use the
+:doc:`copy </refs/server/item/m_copy>`
+method to create a copy of the invoices journal.
+
+.. code-block:: py
+
+    invoices = report.task.invoices.copy()
+
+We create the copiy because multiple users can simultaneously generate the same 
+report in parallel threads.
+
+Then we call the set_where method of the copy:
+
+.. code-block:: py
+
+    invoices.set_where(id=report.id.value)
+
+where report.id.value is report id parameter, the value of which we set in the 
+:doc:`on_before_print_report </refs/client/report/on_before_print_report>`
+event handler on the client and which is equal to the current **id** field 
+value of the **invoice** journal.
+
+Then, using the 
+:doc:`open </refs/server/item/m_open>`
+method, we obtain the records on the server. After that the 
+:doc:`print_band </refs/server/report/m_print_band>`
+method is used to print title band:
+
+.. code-block:: py
+
+    report.print_band('title', locals())
+
+But before that we assign values to four local variables: customer, address, 
+city and date that correspond to programmable cells in the title band in the 
+report template.
+
+Then the same way we generate detail and summary bands.
+
+When the report is generated and the value of report 
+:doc:`extension </refs/client/report/at_extension>`
+attribute, set on the client, is not equals 'pdf' the server converts the ods 
+file using **LibreOffice**.
+
+Once the report is generated it is stored in a report folder of the static 
+directory and the server sends the client the report file url.
+

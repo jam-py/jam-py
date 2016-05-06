@@ -1,0 +1,28 @@
+==============
+on_before_open
+==============
+
+on_before_open(item)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Occurs before an application sends a request to the server for obtaining a 
+dataset.
+
+The item parameter is the item that triggered the event.
+
+Write an on_before_open event handler to take specific action immediately 
+before an application obtains an dataset from the server. on_before_open is 
+called by :doc:`open <m_open>` method. 
+
+See also 
+========
+
+:doc:`Dataset </programming/data/dataset>`

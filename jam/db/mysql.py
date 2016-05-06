@@ -7,7 +7,7 @@ NEED_LOGIN = True
 NEED_PASSWORD = True
 NEED_ENCODING = True
 NEED_HOST = True
-NEED_PORT = False
+NEED_PORT = True
 CAN_CHANGE_TYPE = True
 CAN_CHANGE_SIZE = True
 
@@ -29,8 +29,12 @@ def connect(database, user, password, host, port, encoding):
     if encoding:
         charset = encoding
         use_unicode = True
-    connection = MySQLdb.connect(db=database, user=user, passwd=password, host=host,
-        charset=charset, use_unicode=use_unicode)
+    if port:
+        connection = MySQLdb.connect(db=database, user=user, passwd=password, host=host,
+            port=int(port), charset=charset, use_unicode=use_unicode)
+    else:
+        connection = MySQLdb.connect(db=database, user=user, passwd=password, host=host,
+            charset=charset, use_unicode=use_unicode)
     connection.autocommit(False)
     cursor = connection.cursor()
     cursor.execute("SET SESSION SQL_MODE=ANSI_QUOTES")
@@ -96,8 +100,8 @@ def del_field_sql(table_name, field):
 
 def change_field_sql(table_name, old_field, new_field):
     result = 'ALTER TABLE "%s" CHANGE  "%s" "%s" %s' % (table_name, old_field['field_name'], new_field['field_name'], FIELD_TYPES[new_field['data_type']])
-    if field['size']:
-        result += '(%d)' % field['size']
+    if old_field['size'] and old_field['size'] != new_field['size']:
+        result += '(%d)' % new_field['size']
     return result
 
 def set_case(string):

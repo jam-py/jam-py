@@ -1,0 +1,24 @@
+==================
+on_filters_applied
+==================
+
+on_filters_applied(item)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Write an ``on_filters_applied`` event handler to make special processing when 
+filters have been applied to the item dataset.
+
+See also
+========
+
+:doc:`Filters </programming/data/filters>`
+
+

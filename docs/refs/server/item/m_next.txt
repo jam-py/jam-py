@@ -1,0 +1,17 @@
+====
+next
+====
+
+.. py:method:: next(self)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Call ``next`` to position the cursor on the next record in the item dataset and 
+make it the active record. Next posts any changes to the active record.

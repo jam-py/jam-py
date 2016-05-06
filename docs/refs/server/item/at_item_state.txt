@@ -1,0 +1,74 @@
+==========
+item_state
+==========
+
+.. py:attribute:: item_state
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Examine ``item_state`` to determine the current operating mode of the item. 
+Item_state determines what can be done with data in an item dataset, such as 
+editing existing records or inserting new ones. The ``item_state`` constantly 
+changes as an application processes data. 
+
+Opening a item changes state from inactive to browse. An application can call 
+:doc:`edit <m_edit>`
+to put an item into edit state, or call 
+:doc:`insert <m_insert>`
+or
+:doc:`append <m_append>`
+to put an item into 
+insert state. 
+
+Posting or canceling edits, insertions, or deletions, changes ``item_state`` 
+from its current state to browse. Closing a dataset changes its state to 
+inactive.
+
+To check item_state value use the following methods:
+
+* :doc:`is_new <m_is_new>` - indicates whether the item is in insert state
+* :doc:`is_edited <m_is_editing>` - indicates whether the item is in edit state
+* :doc:`is_changing <m_is_changing>` - indicates whether the item is in edit or 
+  insert state
+
+item_state value can be:
+
+* 0 - inactive state,
+* 1 - browse state,
+* 2 - insert state,
+* 3 - edit state,
+* 4 - delete state
+
+item :doc:`task </refs/server/abstr_item/at_task>` attribute have consts object 
+that defines following attributes:
+
+* "STATE_INACTIVE": 0,
+* "STATE_BROWSE": 1,
+* "STATE_INSERT": 2,
+* "STATE_EDIT": 3,
+* "STATE_DELETE": 4
+
+so if the item is in edit state can be checked the following way:
+::
+
+    item.item_state == 2
+
+or:: 
+
+    item.item_state == item.task.consts.STATE_INSERT
+ 
+or:: 
+
+    item.is_new() 
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

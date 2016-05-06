@@ -1,0 +1,25 @@
+=====
+close
+=====
+
+.. py:function:: close(self) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Call ``сlose`` to close an item dataset. After dataset is closed the 
+:doc:`active <at_active>` 
+property is ``false``.
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`open <m_open>`

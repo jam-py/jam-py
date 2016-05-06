@@ -1,0 +1,38 @@
+==================
+Setting privileges
+==================
+
+So far we developed the application with the **Safe mode** project parameter 
+turned off. Before we set it on so that application will require authentication 
+we should define the the user role. Let's click on the **Roles** node of the 
+project tree set the administrator role privileges as on the figure bellow:
+
+.. image:: /intro/_images/todo_roles.png
+	:align: center
+	:alt: Setting roles
+
+
+By default there is a single users with a login: 'admin' and password: '111'. 
+
+.. image:: /intro/_images/todo_users.png
+	:align: center
+	:alt: Todo users
+
+Now we'll turn on the **Safe mode** parameter:
+
+.. image:: /intro/_images/todo_parameters.png
+	:align: center
+	:alt: Setting patameters
+
+
+After that if we press F5 in the project web page the application will require user
+to log in.
+
+.. image:: /intro/_images/login_dialod.png
+	:align: center
+	:alt: Login dialog
+
+
+.. image:: /intro/_images/todo_finished.png
+	:align: center
+	:alt: Done

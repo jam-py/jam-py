@@ -11,11 +11,11 @@ on_filter_form_close_query(item)
 Description
 ===========
 
-The **on_filter_form_close_query** event is triggered by the 
+The ``on_filter_form_close_query`` event is triggered by the 
 :doc:`close_filter_form <m_close_filter_form>`
 method of the item.
 
-The **item** parameter is the item that triggered the event.
+The ``item`` parameter is the item that triggered the event.
 
 See also
 ========

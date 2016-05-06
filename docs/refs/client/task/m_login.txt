@@ -13,10 +13,10 @@ login
 Description
 ===========
 
-The **login** method creates a login form using the login form div defined in the 
+The ``login`` method creates a login form using the login form div defined in the 
 templates of the index.html file. It is called by the :doc:`load <m_load>` method 
-when the project :doc:`safe mode </admin/project>` parameter is set.
-
+when the project 
+:doc:`Safe mode parameter </admin/project/parameters>`
 
 See also
 ========

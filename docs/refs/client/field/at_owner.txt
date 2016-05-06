@@ -1,0 +1,43 @@
+=====
+owner
+=====
+
+.. js:attribute:: owner
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Field class </refs/client/field_api>`
+
+
+Description
+===========
+
+Identifies the item to which a field object belongs.
+
+Check the value of the owner attribute to determine the item that uses the field 
+object to represent one of its fields. 
+
+Example
+=======
+
+.. code-block:: js
+
+    function calculate(item) {
+
+    }
+
+    function on_field_changed(field, lookup_item) {
+        if (field.field_name === 'taxrate') {
+            calculate(field.owner);
+        }
+    }
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Fields </programming/data/fields>`
+

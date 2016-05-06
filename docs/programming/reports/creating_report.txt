@@ -1,0 +1,14 @@
+=================
+Creating a report
+=================
+
+To add a new report to Jam.py project, choose the Reports node in the project 
+tree, the click the New button and fill in the caption, name and the template file 
+name of the report.
+
+.. image:: /programming/_images/new_report.png
+	:align: center
+	:alt: Creating a report
+
+If a **visible** checkbox is set, the default code adds the report to the 
+**Reports** menu of the project.

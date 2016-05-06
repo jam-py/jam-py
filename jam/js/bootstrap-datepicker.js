@@ -115,6 +115,15 @@
                 type: 'show',
                 date: this.date
             });
+            this.picker.on("keyup", function(e) {
+                if (e.keyCode === 27) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    that.hide();
+                }
+            });
+//            this.picker.find('.datepicker-days').focus();
+            this.picker.focus();
         },
 
         hide: function(){
@@ -125,6 +134,7 @@
             if (!this.isInput) {
                 $(document).off('mousedown', this.hide);
             }
+            this.picker.off("keyup");
             //this.set();
             this.element.trigger({
                 type: 'hide',
@@ -456,8 +466,8 @@
                         '</thead>',
         contTemplate: '<tbody><tr><td colspan="7"></td></tr></tbody>'
     };
-    DPGlobal.template = '<div class="datepicker dropdown-menu">'+
-                            '<div class="datepicker-days">'+
+    DPGlobal.template = '<div class="datepicker dropdown-menu" tabindex="0">'+
+                            '<div class="datepicker-days" tabindex="0">'+
                                 '<table class=" table-condensed">'+
                                     DPGlobal.headTemplate+
                                     '<tbody></tbody>'+

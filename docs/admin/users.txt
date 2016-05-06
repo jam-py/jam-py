@@ -15,7 +15,6 @@ select Users node, click New and fill in the form that appears:
 
 
 .. image:: _images/users_new.png
-	:width: 560
 	:align: center
 	:alt: New users dialog
 

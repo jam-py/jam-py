@@ -1,0 +1,142 @@
+====
+open
+====
+
+.. py:method:: open(self, expanded=None, fields=None, where=None, order_by=None,
+        open_empty=False, params=None, offset=None, limit=None, funcs=None,
+        group_by=None)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Call ``open`` to generate and execute a SELECT SQL query to the item database 
+table for obtaining a dataset. 
+
+The method initializes the item 
+:doc:`fields <at_fields>`,
+formulates parameters of a request, and triggers the 
+:doc:`on_before_open <on_before_open>` event 
+handler if one is defined for the item.
+
+If there is a
+:doc:`on_open </refs/server/item/on_open>`
+event handler defined for the item, ``open`` executes this event handler and 
+assigns a dataset to the result, returned by it, 
+otherwise generates a SELECT SQL query, based on parameters of the request, 
+executes this query using the
+:doc:`execute_select </refs/server/task/m_execute_select>`
+method of the task and assigns a dataset to the result of the execution.
+
+After that it sets 
+:doc:`active <at_active>`
+to true, the
+:doc:`item_state <at_item_state>` 
+to browse mode, goes to the first record of the dataset, triggers 
+:doc:`on_after_open <on_after_open>` 
+, if it is defined for the item.
+
+Parameters
+----------
+
+* ``expanded`` - if the value of this parameter is true, the SELECT query will 
+  have JOIN clauses to get lookup values of the 
+  :doc:`lookup fields </programming/data/lookup_fields>`
+  , otherwise there will be no lookup values. The default value if ``true``.
+  
+* ``fields`` - use this parameter to specify the WHERE clause of the SELECT 
+  query. This parameter is a list of field names. If it is omitted, the fields 
+  defined by the
+  :doc:`set_fields <m_set_fields>`
+  method will be used. If the
+  :doc:`set_fields <m_set_fields>`
+  method was not called before the ``open`` method execution, all available fields 
+  will be used.
+
+* ``where`` - use this parameter to specify how records will be filtered in the 
+  SQL query. This parameter is a dictionary, whose keys are
+  field names, that are followed, after double underscore, by a filtering symbols
+  (see
+  :doc:`Filtering records </programming/data/filtering_records>`
+  ). If this parameter is omitted, values
+  defined by the
+  :doc:`set_where <m_set_where>`
+  method will be used. If the
+  :doc:`set_where <m_set_where>`
+  method was not called before the ``open`` method execution, and ``where`` 
+  parameter is omitted, then the values of 
+  :doc:`filters </programming/data/filters>` 
+  defined for the item will be used to filter records.
+  
+* ``order_by`` - use ``order_by`` to specify sort order of the records. This 
+  parameter is a list of field names. If there is a sign '-' before the field 
+  name, then on this field records will be sorted in decreasing order. If this 
+  parameter is omitted, a list defined by the   
+  :doc:`set_order_by <m_set_order_by>`
+  method will be used.
+
+* ``offset`` -  use ``offset`` to specify the offset of the first row to get.
+
+* ``limit`` - use ``limit`` to limit the output of a SQL query to the first 
+  so-many rows.
+
+* ``funcs`` - this parameter can be a a dictionary, whose keys are
+  a field names and values are function names that will be applied to the fields 
+  in the SELECT Query
+
+* ``group_by`` - use ``group_by`` to specify fields to group the result of the 
+  query by. This parameter must be a list of field names.
+
+* ``open_empty`` - if this parameter is set to ``true``, the application does 
+  not send a request to the server but just initializes an empty dataset. 
+  The default value  if ``false``.
+
+* ``params`` - use the parameter to pass some user defined options to be used in
+  the 
+  :doc:`on_open </refs/server/item/on_open>`
+  event handler. This parameter must be an object of key-value pairs
+
+Examples
+========
+
+.. code-block:: py
+    
+    import datetime
+    
+    def get_customer_sales(task, customer_id):
+        date1 = datetime.datetime.now() - datetime.timedelta(days=3*365)
+        date2 = datetime.datetime.now()
+        invoices = task.invoices.copy()
+    
+        invoices.open(fields=['customer', 'invoicedate', 'total'], 
+            where={customer: customer_id, invoicedate__ge: date1, invoicedate__le: date2},
+            order_by=['invoicedate'])
+
+.. code-block:: py
+    
+    import datetime
+    
+    def get_customer_sales(task, customer_id):
+        date1 = new Date(new Date().setYear(new Date().getFullYear() - 5))
+        date2 = new Date()
+        invoices = task.invoices.copy()
+    
+        invoices.set_fields(['customer', 'invoicedate', 'total'])
+        invoices.set_where(customer=customer_id, invoicedate__ge=date1, invoicedate__le=date2);
+        invoices.set_order_by(['invoicedate']);
+        invoices.open();
+
+.. code-block:: py
+
+    def get_sales(task) {
+        sales = task.invoices.copy()
+
+        sales.open(fields=['customer', 'id', 'total'], 
+            funcs={'id': 'count', 'total': 'sum'}, 
+            group_by=['customer'], 
+            order_by=['customer'])

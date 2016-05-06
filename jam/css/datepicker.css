@@ -180,3 +180,8 @@
   width: 16px;
   height: 16px;
 }
+
+.datepicker,
+.datepicker .datepicker-days, .datepicker-months, .datepicker-years {
+    outline: none;
+}

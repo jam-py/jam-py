@@ -7,7 +7,7 @@ are two buttons in the upper-right corner of Administrator: **Client module**
 and **Server module**.
 
 
-.. image:: _images/module_btns.png
+.. image:: _images/item_btns.png
 	:align: center
 	:alt: Invoke code editor buttons
 

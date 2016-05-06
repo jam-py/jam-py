@@ -1,0 +1,36 @@
+==========
+field_type
+==========
+
+.. py:attribute:: field_type
+
+**domain**: server
+
+**language**: python
+
+:doc:`Field class </refs/server/field_api>`
+
+Description
+===========
+
+Identifies the data type of the field object.
+
+Use the ``field_type`` attribute to learn the type of the data the field contains. 
+It is one of the following values: 
+
+* "text", 
+* "integer", 
+* "float",
+* "currency", 
+* "date", 
+* "datetime", 
+* "boolean", 
+* "blob"
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Fields </programming/data/fields>`
+

@@ -5,11 +5,11 @@ Demo project
 The framework has a full fledged demo application that demonstrates programming 
 techniques used in the framework. 
 
-To see it you should go to the demo folder and run **application.py** script.
+To see it you should go to the demo folder and run *server.py* script.
 
 .. code-block:: console
 
-    $ ./application.py
+    $ ./server.py
 
 
 Open a Web browser and in the address bar enter 127.0.0.1. To see Administrator

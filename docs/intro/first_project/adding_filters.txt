@@ -1,0 +1,29 @@
+==============
+Adding filters
+==============
+
+Filters are used to select records from a database table by specified criteria.
+Click on the **Filters** button. 
+
+.. image:: /intro/_images/tasks_filters.png
+	:align: center
+	:alt: Tasks filters dialog
+
+In the **Filters** dialog that will be displayed click on the **New** button and 
+fill in a new filter form:
+
+.. image:: /intro/_images/tasks_new_filter.png
+	:align: center
+	:alt: Tasks new filter
+
+The same way we'll created another three filters:
+
+.. image:: /intro/_images/tasks_filters_ready.png
+	:align: center
+	:alt: Tasks filters ready
+	
+This filters we'be displayed in the project the following way:
+
+.. image:: /intro/_images/tasks_filter_ready.png
+	:align: center
+	:alt: Set tasks filter

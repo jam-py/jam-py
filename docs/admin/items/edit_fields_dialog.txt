@@ -1,0 +1,30 @@
+==================
+Edit Fields Dialog
+==================
+
+The **Edit Fields Dialog** opens when a developer selects the item in the 
+Administrator (see 
+:doc:`Items <index>`
+) and clicks on the **Edit** button to set the fields to be 
+displayed in edit forms on the client and their order. These fields are used by 
+default by the
+:doc:`create_inputs </refs/client/item/m_create_inputs>`
+method, if its **fields** parameter is not specified.
+
+
+.. image:: /admin/_images/edit_fields_dialog.png
+	:align: center
+	:alt: Edit Fields Dialog
+
+The **Edit Fields Dialog** has two panels. The left panel lists the fields that 
+have been selected. The right panel have available fields that could be selected.
+
+To select a field, select it in the right panel and use the **Left arrow** 
+button in the center or press **Space** key on a keyboard. 
+
+To unselect a field, select it in the left panel and use the **Right arrow** 
+button in the center or press **Space** key on a keyboard.
+
+To order the selected fields use the buttons that located below left panel.
+
+Click the **OK** button to save to result or **Cancel** to cancel the operation.

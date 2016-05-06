@@ -1,0 +1,21 @@
+=====
+owner
+=====
+
+.. js:attribute:: owner
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Filter class </refs/server/filter_api>`
+
+
+Description
+===========
+
+Identifies the item to which a filter object belongs.
+
+Check the value of the owner attribute to determine the item that uses the filter 
+object to represent one of its filters. 
+

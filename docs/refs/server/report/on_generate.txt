@@ -1,0 +1,38 @@
+===========
+on_generate
+===========
+
+.. py:function:: on_generate(report)
+
+**domain**: client 
+
+**language**: python
+
+**class** :doc:`Report class </refs/server/report_api>`
+
+Description
+===========
+
+The **on_generate** event is triggered by the 
+:doc:`generate <m_generate>` 
+method.
+
+Write the on_generate event handler to generate the content of the report.
+Use the 
+:doc:`print_band <m_print_band>`
+method to print bands, defined in the report 
+:doc:`template </programming/reports/templates>`.
+
+The **report** parameter is the report that triggered the event.
+
+See also
+========
+
+:doc:`Programming reports </programming/reports/index>`
+
+:doc:`Server-side report programming </programming/reports/server_side_programming>`
+
+:doc:`Report templates </programming/reports/templates>`
+
+:doc:`generate <m_generate>`
+

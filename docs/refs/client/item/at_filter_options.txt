@@ -13,17 +13,17 @@ filter_options
 Description
 ===========
 
-Use the **filter_options** attribute to specify parameters of the modal filter form.
+Use the ``filter_options`` attribute to specify parameters of the modal filter form.
 
-**filter_options** is an object that has the following attributes:
+``filter_options`` is an object that has the following attributes:
 
-* **width** - the width of the modal form, the default value is 560 px,
-* **title** - use it to get or set the title of the filter form,
-* **close_button** - if true, the close button will be created in the upper-right 
+* ``width`` - the width of the modal form, the default value is 560 px,
+* ``title`` - use it to get or set the title of the filter form,
+* ``close_button`` - if true, the close button will be created in the upper-right 
   corner of the form, the default value is true,
-* **close_caption** - if true and close_button is true, will display 'Close - [Esc]'
+* ``close_caption`` - if true and close_button is true, will display 'Close - [Esc]'
   near the button
-* **close_on_escape** - if true, pressing on the Escape key will trigger the 
+* ``close_on_escape`` - if true, pressing on the Escape key will trigger the 
   :doc:`close_filter_form <m_close_filter_form>`
   method.
 

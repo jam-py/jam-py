@@ -97,3 +97,10 @@ th {
 table {
     margin-bottom: 20px;
 }
+
+.docutils.literal {
+    color: #076654;
+    font-weight: bold;
+    font-size: 14px;
+    background-color: #ffffff;
+}

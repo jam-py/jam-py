@@ -1,0 +1,42 @@
+================
+Creating project
+================
+
+We'll assume that jam.py is already installed. If not, see 
+:doc:`Installation </intro/install>`
+guide how to do it.
+
+Let's create a new folder. Then in this folder run *jam-project.py* script.
+
+.. code-block:: console
+
+    $ jam-project.py
+
+and after that start *server.py* script that *jam-project.py* have created:
+
+.. code-block:: console
+
+    $ ./server.py
+
+Now, open a Web browser and go to 127.0.0.1:8080/admin.html to open 
+Administrator. You should see the select language dialog. 
+
+
+.. image:: /intro/_images/lang.png
+	:align: center
+	:alt: Select language dialog
+
+Select **English** and click **OK** button. The project parameters dialog will 
+appear.
+
+.. image:: /intro/_images/todo_params.png
+	:align: center
+	:alt: Todo params
+
+After filling in the form, click OK button. Now you should see the project tree 
+in the left panel. Let's select **Journals** node and click **New** button in the
+bottom panel of the page
+
+.. image:: /intro/_images/todo_admin.png
+	:align: center
+	:alt: Todo admin

@@ -4,9 +4,9 @@
 function Events1() { // demo 
 
 	function on_page_loaded(task) {
-		var groups = [task.journals, task.reports, task.catalogs];
-			
-		$("#title").html(task.item_caption);
+		var groups = [task.journals, task.reports, task.catalogs]; 
+	
+		$("#title").text(task.item_caption);
 		if (task.safe_mode) {
 			$("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
 			$('#log-out')
@@ -28,8 +28,8 @@ function Events1() { // demo
 				var submenu = $("#submenu"),
 					group = $(this).data('group'),
 					item;
-				e.preventDefault();
 				if (group) {
+					e.preventDefault();
 					submenu.empty();
 					$("#menu > li" ).removeClass('active');
 					$(this).parent().addClass('active');
@@ -64,10 +64,15 @@ function Events1() { // demo
 				'<h3>Demo application</h3>' +
 				' with <a href="http://chinookdatabase.codeplex.com/" target="_blank">Chinook Database</a>' +
 				'<p>by Andrew Yushev</p>' +
-				'<p>2015</p>',
+				'<p>2016</p>',
 				{title: 'Jam.py framework', margin: 0, text_center: true, buttons: {"OK": undefined}, center_buttons: true}
 			);
 		})));
+		$("#menu").append($('<li><a href="http://jam-py.com/" target="_blank">Jam.py</a></li>'));	
+		
+		$('#menu').children(":first").find('a').click();
+		$('#submenu').children(":first").find('a').click();	
+	
 	
 		$(window).on('resize', function() {
 			resize(task);
@@ -116,6 +121,7 @@ function Events1() { // demo
 		if (!item.master) {
 			item.paginate = true;
 		}
+		item.clear_filters();
 	
 		if (item.view_form.hasClass('modal')) {
 			item.view_options.width = 960;
@@ -289,7 +295,7 @@ function Events1() { // demo
 				  }
 			});
 		},
-		100);
+		200);
 	}
 	this.on_page_loaded = on_page_loaded;
 	this.create_print_btns = create_print_btns;
@@ -405,10 +411,21 @@ task.events.events5 = new Events5();
 
 function Events15() { // demo.catalogs.tracks 
 
-	function init_table(item, table_options) {
-		table_options.sortable = false;
+	function init_table(item, options) {
+		options.sortable = false;
+	}
+	
+	function on_before_post(item) {
+	   item.track.value = item.name.value;
+	   if (item.album.value) {
+		   item.track.value += '; album: ' + item.album.display_text;
+	   }
+	   if (item.composer.value) {
+		   item.track.value += '; composer: ' + item.composer.display_text;
+	   }
 	}
 	this.init_table = init_table;
+	this.on_before_post = on_before_post;
 }
 
 task.events.events15 = new Events15();
@@ -443,10 +460,10 @@ function Events16() { // demo.journals.invoices
 			{height: 200 - 4, dblclick_edit: false, column_width: {"track": "60%"}});
 	}
 	
-	function on_filter_applied(item) {
+	function on_filters_applied(item) {
 		if (item.view_form) {
 			item.view_form.find(".view-title #title-right")
-				.html('<h5 class="pull-right">' + item.get_status_text() + '<h5>');
+				.html('<h5 class="pull-right">' + item.get_filter_text() + '<h5>');
 			calc_footer(item);
 		}
 	}
@@ -579,10 +596,15 @@ function Events16() { // demo.journals.invoices
 			100
 		);
 	}
+	
+	
+	function on_view_form_shown(item) {
+		item.view_form.find(".dbtable.invoices .inner-table").focus();
+	}
 	this.on_after_append = on_after_append;
 	this.init_table = init_table;
 	this.on_view_form_created = on_view_form_created;
-	this.on_filter_applied = on_filter_applied;
+	this.on_filters_applied = on_filters_applied;
 	this.calc_footer = calc_footer;
 	this.init_inputs = init_inputs;
 	this.on_edit_form_created = on_edit_form_created;
@@ -593,6 +615,7 @@ function Events16() { // demo.journals.invoices
 	this.on_edit_form_keyup = on_edit_form_keyup;
 	this.on_after_apply = on_after_apply;
 	this.on_after_scroll = on_after_scroll;
+	this.on_view_form_shown = on_view_form_shown;
 }
 
 task.events.events16 = new Events16();
@@ -641,16 +664,9 @@ function Events18() { // demo.journals.invoices.invoice_table
 	function on_after_delete(item) {
 		item.owner.calculate(item.owner);
 	}
-	
-	function on_edit_form_shown(item) {
-		if (item.is_new()) {
-			item.track.select_from_view_form();
-		}
-	}
 	this.on_after_post = on_after_post;
 	this.on_field_changed = on_field_changed;
 	this.on_after_delete = on_after_delete;
-	this.on_edit_form_shown = on_edit_form_shown;
 }
 
 task.events.events18 = new Events18();

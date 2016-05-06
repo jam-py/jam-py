@@ -1,0 +1,25 @@
+=====
+first
+=====
+
+.. py:method:: first(self)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Call ``first`` to position the cursor on the first record in the item dataset and 
+make it the active record. ``First`` posts any changes to the active record.
+
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Navigating datasets </programming/data/navigating_datasets>`

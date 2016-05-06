@@ -1,0 +1,28 @@
+==========
+field_name
+==========
+
+.. py:attribute:: field_name
+
+**domain**: server
+
+**language**: python
+
+:doc:`Field class </refs/server/field_api>`
+
+Description
+===========
+
+Specifies the name of the field as referenced in code.
+Use ``field_name`` to refer to the field in code.
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`field_caption <at_field_caption>`
+
+

@@ -1,0 +1,29 @@
+=========
+read_only
+=========
+
+.. py:attribute:: read_only
+
+**domain**: server
+
+**language**: python
+
+:doc:`Field class </refs/server/field_api>`
+
+Description
+===========
+
+Determines whether the field can be modified in data-aware controls.
+
+Set ``read_only`` to ``true`` to prevent a field from being modified in 
+data-aware controls.
+
+See also
+========
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`required <at_required>`
+
+
+

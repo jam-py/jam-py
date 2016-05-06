@@ -1,0 +1,34 @@
+=====
+value
+=====
+
+.. py:attribute:: value
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Filter class </refs/server/filter_api>`
+
+Description
+===========
+
+Use ``value`` property to get or set the value of the filter. 
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        item.filters.invoicedate1.value = new Date(new Date().setYear(new Date().getFullYear() - 1));
+    }
+
+
+See also
+========
+
+:doc:`Filters </programming/data/filters>`
+
+:doc:`Dataset </programming/data/dataset>`
+

@@ -1,0 +1,27 @@
+===============
+on_after_append
+===============
+
+on_after_append(item)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Occurs after an application inserts or appends a record.
+
+The **item** parameter is an item that triggered the event.
+
+Write an on_after_append event handler to take specific action immediately after 
+an application inserts or appends a record in an item. on_after_append is called 
+by :doc:`insert <m_insert>` or :doc:`append <m_append>` method.
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

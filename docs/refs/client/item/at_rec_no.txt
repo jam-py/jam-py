@@ -1,0 +1,70 @@
+======
+rec_no
+======
+
+.. js:attribute:: rec_no
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Examine the ``rec_no`` property to determine the record number of the current 
+record in the item dataset. 
+``rec_no`` can be set to a specific record number to position the cursor on that 
+record.
+
+Example
+=======
+
+.. code-block:: js
+
+    function calculate(item) {
+        var subtotal,
+            tax,
+            total,
+            rec;
+        if (!item.calculating) {
+            item.calculating = true;
+            try {
+                subtotal = 0;
+                tax = 0;
+                total = 0;
+                item.invoice_table.disable_controls();
+                rec = item.invoice_table.rec_no;
+                try {
+                    item.invoice_table.each(function(d) {
+                        subtotal += d.amount.value;
+                        tax += d.tax.value;
+                        total += d.total.value;
+                    });
+                }
+                finally {
+                    item.invoice_table.rec_no = rec;
+                    item.invoice_table.enable_controls();
+                }
+                item.subtotal.value = subtotal;
+                item.tax.value = tax;
+                item.total.value = total;
+            }
+            finally {
+                item.calculating = false;
+            }
+        }
+    }
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Navigating datasets </programming/data/navigating_datasets>`
+
+
+
+
+

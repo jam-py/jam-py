@@ -3,7 +3,6 @@ include AUTHORS
 include INSTALL
 include LICENSE
 include MANIFEST.in
-include jam/third_party/web/wsgiserver/LICENSE.txt
 recursive-include demo *
 recursive-include docs *
 prune docs/_build

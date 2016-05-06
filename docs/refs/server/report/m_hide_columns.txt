@@ -1,0 +1,46 @@
+============
+hide_columns
+============
+
+.. py:method:: hide_columns(self, col_list)
+
+**domain**: client 
+
+**language**: python
+
+**class** :doc:`Report class </refs/server/report_api>`
+
+Description
+===========
+
+Use **hide_columns** method to hide some columns defined in the report 
+:doc:`template <at_template>`.
+
+The **col_list** parameter specifies which columns should be hidden. This is a 
+list of integers or letters, defining the position of the report columns.
+
+Use this method in the 
+:doc:`on_parsed <on_parsed>`
+event handler.
+
+Example
+=======
+
+.. code-block:: py
+
+    def on_parsed(report):
+        report.hide_columns(['A', 'C')
+    #    report.hide_columns([1, 3])
+
+See also
+========
+
+:doc:`Programming reports </programming/reports/index>`
+
+:doc:`Report templates </programming/reports/templates>`
+
+:doc:`Server-side report programming </programming/reports/server_side_programming>`
+
+:doc:`on_parsed <on_parsed>`
+
+:doc:`on_generate <on_generate>`

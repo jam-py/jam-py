@@ -1,0 +1,31 @@
+===============
+on_before_apply
+===============
+
+on_before_apply(item)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Occurs before an application saves the change log to the project 
+database.
+
+The item parameter is the item that triggered the event.
+
+Write an on_before_apply event handler to take specific action immediately before 
+an application saves the change log to the project database.
+
+**On_after_apply** is triggered by
+:doc:`apply <m_apply>`
+method.
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

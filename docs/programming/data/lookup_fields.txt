@@ -1,0 +1,53 @@
+=============
+Lookup fields
+=============
+
+In the framework you can add a field to an item to look up information in another 
+item's table. For example in the Demo application **Albums** catalog there is the
+**Artist** field.
+
+.. image:: /programming/_images/artist_field.png
+	:align: center
+	:alt: Lookup field
+
+This field stores the value of the **id** field of the record in the **Artists** 
+item table, that have information about the artist of the current album.
+
+This define such fields *Lookup item* and *Lookup field* must be specified.
+
+The SQL query that is generated on the server, when the open method is called, 
+uses **JOIN** clause to get lookup values for such fields. Thus each such field
+has a pair of values: a first value, which stores a reference to a record in the 
+lookup item table (the value of its **id** field), and the second value, which
+have the value of the lookup field in this record.
+
+To get access to this values use the following properties of lookup fields:
+
+.. csv-table:: 
+   :header: Client, Server, Description
+   :widths: 10, 10, 80
+
+   :doc:`value </refs/client/field/at_value>`, :doc:`value </refs/server/field/at_value>`, "A value, that is stored in the item table, that is a reference to a record in the lookup item table."
+   :doc:`lookup_value </refs/client/field/at_lookup_value>`, :doc:`lookup_value </refs/server/field/at_lookup_value>`, "A value of the lookup field in the lookup item table."
+
+Sometimes there is a need to have two or more values from the same record in the
+lookup item table. For example, the **Invoices** journal in Demo has several 
+lookup fields (**Customer**, **Billing Address**, **Billing City**, and so on) 
+that have information about a customer, all stored in one record in the 
+**Customers** item table, describing that customer. In order to avoid creating 
+unnecessary fields in the **Invoices** item table, storing the same reference 
+to a record, and creating **JOIN** s for each such field, all lookup fields 
+except **Customers** have *Master field* value pointing to the **Customers** 
+field. These fields don't have corresponding fields in the items' underlying 
+database table. Their value property is always equal to the value property of 
+the master field and the SQL query that is generated on the server, when the 
+open method is called, uses one **JOIN** clause for all this fields.
+
+
+.. image:: /programming/_images/master_field_example.png
+	:align: center
+	:alt: Master field example
+	
+
+
+

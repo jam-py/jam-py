@@ -1,0 +1,46 @@
+============
+set_order_by
+============
+
+.. py:method:: set_order_by(self, , *fields)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Use the ``set_order_by`` method to define and store internally the ``order_by``
+parameter that will be used by the 
+:doc:`open <m_open>` 
+method, when its own ``order_by`` parameter is not specified. The 
+:doc:`open <m_open>` 
+method clears internally stored parameter value. 
+
+The ``fields`` is arbitrary argument list of field names. If there is a sign '-' 
+before a field name, then on this field records will be sorted in decreasing 
+order.
+  
+Example
+=======
+
+The result of the execution of following code snippets wil be the same:
+
+.. code-block:: py
+
+    item.open(order_by=['customer', '-invoicedate'])
+
+.. code-block:: js
+
+    item.set_order_by('customer', '-invoicedate')
+    item.open();
+    
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`open <m_open>`

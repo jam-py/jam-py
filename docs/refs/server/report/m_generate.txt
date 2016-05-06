@@ -1,0 +1,80 @@
+========
+generate
+========
+
+.. py:method:: generate(self)
+
+**domain**: client 
+
+**language**: python
+
+**class** :doc:`Report class </refs/server/report_api>`
+
+Description
+===========
+
+The method is used internally to generate the content of the report.
+
+When a server gets a request from a client to generate report, it first of all 
+creates a copy of the report and then this copy calls the method. 
+
+This method triggers the
+:doc:`on_before_generate </refs/server/report/on_before_generate>` 
+event. 
+
+If the report 
+:doc:`template </refs/server/report/at_template>`
+is defined, parses it and triggers
+:doc:`on_parsed <on_parsed>`
+and 
+:doc:`on_generate <on_generate>`
+events. 
+
+In the
+:doc:`on_generate <on_generate>`
+event handler developer should write a code that generates the 
+content of the report and saves it in the **ods** file, by using the
+:doc:`print_band <m_print_band>`
+method to print bands .
+
+When the report is generated and the value of report 
+:doc:`extension </refs/client/report/at_extension>`
+attribute, set on the client, is not equal **ods**, the server tries to convert 
+the **ods** file. 
+
+To convert the file, it first checks if the 
+report group (owner of the report) has 
+:doc:`on_convert_report </refs/server/reports/on_convert_report>`
+event handler. If this handler is defined it uses it to convert the report. 
+Otherwise it uses for conversion the **LibreOffice** installed on the server in
+**headless** mode.
+
+After that the application saves generated report to a file in a report folder 
+of the static directory, set the value of the
+:doc:`report_filename </refs/server/report/at_report_filename>`
+attribute to the name of the saved file, generates the value of the
+:doc:`report_url </refs/server/report/at_report_url>`
+attribute and triggers
+:doc:`on_after_generate </refs/server/report/on_after_generate>` 
+event.
+
+Once the report is generated it is saved in a **report** folder of the 
+**static** directory and the server sends the client the report file url.
+
+If the report 
+:doc:`template </refs/server/report/at_template>`
+attribute is not set, the server triggers the 
+:doc:`on_generate </refs/server/report/on_generate>`
+and after that
+:doc:`on_after_generate </refs/server/report/on_after_generate>` 
+events. In this case you should save the generated content to a file yourself and
+and set a value of the
+:doc:`report_url </refs/server/report/at_report_url>` 
+attribute.
+
+See also
+========
+
+:doc:`Programming reports </programming/reports/index>`
+
+:doc:`Server-side programming </programming/reports/server_side_programming>`

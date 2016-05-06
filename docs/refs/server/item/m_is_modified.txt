@@ -1,0 +1,23 @@
+===========
+is_modified
+===========
+
+.. py:function:: is_modified(self) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Checks if the current record of an item dataset has been modified during edit or
+insert opertaions. The method returns ``false`` after the
+:doc:`post <m_post>` method is executed.
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

@@ -1,0 +1,27 @@
+==================
+on_before_generate
+==================
+
+.. py:function:: on_before_generate(report)
+
+**domain**: client 
+
+**language**: python
+
+**class** :doc:`Report class </refs/server/report_api>`
+
+Description
+===========
+
+The **on_before_generate** event is triggered by the 
+:doc:`generate <m_generate>` 
+method, before generating the report. 
+
+The **report** parameter is the report that triggered the event.
+
+See also
+========
+
+:doc:`Programming reports </programming/reports/index>`
+
+:doc:`generate <m_generate>`

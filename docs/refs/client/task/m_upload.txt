@@ -1,5 +1,0 @@
-======
-upload
-======
-
-upload(path, options)

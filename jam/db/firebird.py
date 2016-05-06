@@ -10,7 +10,7 @@ NEED_LOGIN = True
 NEED_PASSWORD = True
 NEED_ENCODING = True
 NEED_HOST = True
-NEED_PORT = False
+NEED_PORT = True
 CAN_CHANGE_TYPE = False
 CAN_CHANGE_SIZE = False
 
@@ -29,6 +29,10 @@ FIELD_TYPES = {
 def connect(database, user, password, host, port, encoding):
     if not encoding:
         encoding = None
+    if not port:
+        port = None
+    else:
+        port = int(port)
     return fdb.connect(database=database, user=user, password=password, charset=encoding, host=host, port=port)
 
 def get_lastrowid(cursor):
@@ -108,7 +112,7 @@ def get_sequence_name(table_name):
 def next_sequence_value_sql(table_name):
     return set_case('SELECT NEXT VALUE FOR "%s" FROM RDB$DATABASE' % get_sequence_name(table_name))
 
-def restart_sequence_value_sql(table_name, value):
+def restart_sequence_sql(table_name, value):
     return set_case('ALTER SEQUENCE %s RESTART WITH %d' % (get_sequence_name(table_name), value))
 
 

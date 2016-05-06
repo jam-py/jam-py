@@ -1,0 +1,37 @@
+===============
+report_filename
+===============
+
+.. py:attribute:: report_filename
+
+**domain**: client 
+
+**language**: python
+
+**class** :doc:`Report class </refs/server/report_api>`
+
+Description
+===========
+
+When the 
+:doc:`template <at_template>`
+attribute of the report is specified, the
+:doc:`generate <m_generate>`
+method saves the content of the generated report to a file in a report folder 
+of the static directory and set the value of the
+**report_filename** attribute to the name of the saved file.
+
+Its value can be used in the
+:doc:`on_after_generate <on_after_generate>` 
+event handler.
+
+See also
+========
+
+:doc:`Server-side report programming </programming/reports/server_side_programming>`
+
+:doc:`generate <m_generate>`
+
+
+
+

@@ -2,15 +2,22 @@
 item_name
 =========
 
-Specifies the name of the item as referenced in code.
-
 .. py:attribute:: item_name
 
 **domain**: server
 
 **language**: python
 
+**class** :doc:`AbstractItem class </refs/server/abstractitem_api>`
+
 Description
 ===========
 
-Use item_name to refer to the item in code.
+Specifies the name of the item as referenced in code.
+
+Use ``item_name`` to refer to the item in code.
+
+See also
+========
+
+:doc:`Task tree </programming/task_tree>`

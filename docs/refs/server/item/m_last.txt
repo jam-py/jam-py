@@ -1,0 +1,24 @@
+====
+last
+====
+
+.. py:method:: last(self)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Call ``last`` to position the cursor on the last record in the item dataset and 
+make it the active record. 
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Navigating datasets </programming/data/navigating_datasets>`

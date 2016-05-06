@@ -1,0 +1,28 @@
+==============
+Reports Dialog
+==============
+
+The **Reports Dialog** opens when a developer selects the item in the 
+Administrator (see 
+:doc:`Items <index>`
+) and clicks on the **Order** button to specify reports that could printed for 
+the item. 
+:doc:`Default code </intro/default_code>`
+has a function that can be used to print the reports.
+
+.. image:: /admin/_images/reports_dialog.png
+	:align: center
+	:alt: Reports Dialog
+
+The **Reports Dialog** has two panels. The left panel lists the reports that 
+have been selected. The right panel have available reports that could be selected.
+
+To select a report, select it in the right panel and use the **Left arrow** 
+button in the center or press **Space** key on a keyboard. 
+
+To unselect a report, select it in the left panel and use the **Right arrow** 
+button in the center or press **Space** key on a keyboard.
+
+To order the selected reports use the buttons that located below left panel.
+
+Click the **OK** button to save to result or **Cancel** to cancel the operation.

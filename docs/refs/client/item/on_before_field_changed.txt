@@ -1,0 +1,48 @@
+=======================
+on_before_field_changed
+=======================
+
+on_before_field_changed(field)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Write an ``on_before_field_changed`` event handler to implement any special 
+processing before field’s data has been changed.
+
+The ``field`` parameter is the field whose data is about to be changed. To get the 
+item that owns the field, use the 
+:doc:`owner </refs/client/field/at_owner>` 
+attribute of the field.
+
+Before triggering this event handler the application assigns the new value that is 
+about to be set to the ``new_value`` attribute to of the field. You can change 
+the value of this attribute. This value will be used to change field’s data. 
+
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_before_field_changed(field) {
+        if (field.field_name === 'quantity' && field.new_value < 0) {
+            field.new_value = 0;
+        }
+    }
+
+See also
+========
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`value </refs/client/field/at_value>`
+
+:doc:`on_before_field_changed <on_before_field_changed>`
+

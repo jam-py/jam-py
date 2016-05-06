@@ -1,0 +1,43 @@
+=========
+extension
+=========
+
+.. js:attribute:: extension
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Report class </refs/client/report_api>`
+
+Description
+===========
+
+Use ``extension`` attribute to specify a report type. The server, based on the 
+report template, first generates **ods** file. And if report extention is other 
+that **ods** performs convertion using the LibreOffice.
+
+The attribute value can be any extension that LibreOffice supports convertion to.
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_before_print_report(report) {
+         report.extension = 'html';
+    }
+
+See also
+========
+
+:doc:`Client-side report programming </programming/reports/client_side_programming>`
+
+:doc:`Server-side report programming </programming/reports/server_side_programming>`
+
+:doc:`print <m_print>`
+
+:doc:`create_param_form <m_create_param_form>`
+
+:doc:`on_before_print_report <on_before_print_report>`
+

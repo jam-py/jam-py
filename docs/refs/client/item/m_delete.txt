@@ -8,30 +8,46 @@ delete
 
 **language**: javascript
 
+**class** :doc:`Item class </refs/client/item_api>`
+
 Description
 ===========
 
 Deletes the active record and positions the cursor on the next record.
 
-Checks if item dataset is active, otherwise raises exception.
+The ``delete`` method
 
-Checks if item dataset is not empty, otherwise raises exception.
+* checks if item dataset is 
+  :doc:`active <at_active>`, otherwise raises exception
 
-If item is a detail checks if the master item is in edit or insert 
-:doc:`state <at_item_state>`, otherwise raises exception.
+* checks if item dataset is not empty, otherwise raises exception
 
-Checks if item is in browse :doc:`state <at_item_state>`, otherwise raises exception.
+* if item is a 
+  :doc:`detail </programming/data/details>`
+  , checks if the master item is in edit or insert 
+  :doc:`state <at_item_state>`, otherwise raises exception.
+  
+* if item is not a 
+  :doc:`detail </programming/data/details>`
+  , checks if it is in browse 
+  :doc:`state <at_item_state>`, otherwise raises exception.
+  
+* triggers the :doc:`on_before_delete <on_before_delete>` event handler if one is 
+  defined for the item. 
+  
+* puts the item into delete :doc:`state <at_item_state>`
 
-Triggers the :doc:`on_before_delete <on_before_delete>` event handler if one is 
-defined for the item. 
+* deletes the active record and positions the cursor on the next record
 
-Puts the item into delete :doc:`state <at_item_state>`.
+* puts the item into browse :doc:`state <at_item_state>`
 
-Deletes the active record and positions the cursor on the next record.
+* triggers the :doc:`on_after_delete <on_after_delete>` event handler if one is 
+  defined for the item
 
-Puts the item into browse :doc:`state <at_item_state>`.
+* updates 
+  :doc:`data-aware controls </programming/interface/data_controls>`
 
-Triggers the :doc:`on_after_delete <on_after_delete>` event handler if one is 
-defined for the item.
+See also
+========
 
-
+:doc:`Modifying datasets </programming/data/modifying_datasets>`

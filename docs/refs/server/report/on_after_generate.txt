@@ -1,0 +1,29 @@
+=================
+on_after_generate
+=================
+
+.. py:function:: on_after_generate(report)
+
+**domain**: client 
+
+**language**: python
+
+**class** :doc:`Report class </refs/server/report_api>`
+
+Description
+===========
+
+The **on_after_generate** event is triggered by the 
+:doc:`generate <m_generate>` method, when the report has been generated and saved 
+to a file with the name that is stored in the
+:doc:`report_filename <at_report_filename>`
+attribute.
+
+The **report** parameter is the report that triggered the event.
+
+See also
+========
+
+:doc:`Programming reports </programming/reports/index>`
+
+:doc:`generate <m_generate>`

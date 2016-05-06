@@ -1,0 +1,23 @@
+==============
+First project
+==============
+
+Now, we’ll walk you through the creation of a basic to-do list application.
+
+Please follow the steps below:
+
+.. toctree::
+   :maxdepth: 1
+
+   creating_project
+   creating_journal
+   creating_catalog
+   creating_lookup_field
+   setting_fields_displayed
+   adding_filters
+   creating_index
+   writing_some_code
+   preliminary_results
+   changing_interface
+   setting_privileges
+

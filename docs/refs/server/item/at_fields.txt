@@ -1,0 +1,36 @@
+======
+fields
+======
+
+.. py:attribute:: fields
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Lists all 
+:doc:`field </refs/client/field_api>`
+objects of the item dataset.
+
+Example
+=======
+
+.. code-block:: py
+
+    def customer_fields(customers):
+        customers.open(limit=1)
+        for f in customers.fields:
+            print f.field_caption, f.display_text
+
+See also
+========
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`Field class </refs/server/field_api>`
+

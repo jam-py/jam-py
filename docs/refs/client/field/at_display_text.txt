@@ -1,0 +1,64 @@
+============
+display_text
+============
+
+.. js:attribute:: display_text
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Field class </refs/client/field_api>`
+
+
+Description
+===========
+
+Represents the field's value as a string.
+
+**Display_text** property is a read-only string representation of a field's value 
+to display in a data-aware control. If an 
+:doc:`on_get_field_text </refs/client/item/on_get_field_text>` 
+event handler is assigned, **display_text** is the value returned by this event 
+handler. Otherwise, display_text is the value of the 
+:doc:`lookup_text <at_lookup_text>` 
+property for 
+:doc:`lookup fields </programming/data/lookup_fields>`
+and 
+:doc:`text <at_text>` 
+property converted according to the
+:doc:`project locale </admin/project/project_locale>`
+settings
+for other fields.
+
+**Display_text** is the string representation of the field's value property when 
+it is not being edited. When the field is being edited, the 
+:doc:`text <at_text>`
+property is used.
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_get_field_text(field) {
+        if (field.field_name === 'customer') {
+            return field.owner.firstname.lookup_text + ' ' + field.lookup_text;
+        }
+    }
+
+See also
+========
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`Lookup fields </programming/data/lookup_fields>`
+
+:doc:`on_get_field_text </refs/client/item/on_get_field_text>`
+
+:doc:`text <at_text>`
+
+:doc:`lookup_text <at_lookup_text>`
+
+
+

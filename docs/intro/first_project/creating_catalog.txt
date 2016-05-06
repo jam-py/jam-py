@@ -1,0 +1,26 @@
+================
+Creating catalog
+================
+
+Now the same way we'll create **Priorities** catalog. Select **Catalogs** node 
+in the project tree. Click **New** button, input the caption and name of the 
+catalog and add the **Priority** field.
+
+.. image:: /intro/_images/priorities.png
+	:align: center
+	:alt: Priorities
+
+Let's open a new page in the browser and enter 127.0.0.1:8080 in the address bar.
+We should see the project that we've just created. It uses the default interface. 
+We'll change it later. 
+
+.. image:: /intro/_images/project_page.png
+	:align: center
+	:alt: Project page
+
+Let's open the **Priority** catalog and add three records for the Low, Normal 
+and High priority values:
+
+.. image:: /intro/_images/new_priority.png
+	:align: center
+	:alt: New priority

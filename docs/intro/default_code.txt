@@ -1,0 +1,25 @@
+============
+Default code
+============
+
+The newly created project already contains some code. 
+
+This code is located in the task client 
+:doc:`module </programming/modules>`
+, and catalogs client 
+:doc:`module </programming/modules>`. 
+
+The *index.html* file also have html tags for creating the application menu and 
+default 
+:doc:`templates of project forms </programming/interface/forms>`.
+
+This default code is used to create the same interface as in the 
+:doc:`Demo project <demo_project>` and these module are just copies of these 
+Demo modules. 
+
+The purpose of this code is to give you a quick start. These client 
+modules and template definitions do not impose any restrictions. 
+They can be altered or totally removed later in the development process to
+create your own interface and business logic of the application.
+
+

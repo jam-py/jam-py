@@ -1,0 +1,31 @@
+==============
+Indices Dialog
+==============
+
+The **Indices Dialog** lists the indices that were created for the item table in 
+the project database.
+
+.. image:: /admin/_images/indices_dialog.png
+	:align: center
+	:alt: Indices Dialog
+	
+To delete an index click the **Delete** button. The application will generate the 
+SQL query to drop the index and execute it on the server.
+
+To create a new index click the **New** button. The following dialog will 
+appear:
+
+.. image:: /admin/_images/index_dialog.png
+	:align: center
+	:alt: Index Dialog
+
+Specify the fields to create an index on, by using left and right arrow buttons.
+Check the **Descending** checkbox if you want to create a descending index.
+If necessary, change the name of the index.
+
+Click the **OK** button to create the index. The application will generate the 
+SQL query to create the index and execute it on the server.
+
+Click **Cancel** button to cancel the operation.
+	
+	

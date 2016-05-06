@@ -2,8 +2,6 @@
 Task tree
 =========
 
-    
-
 All objects of the framework represent a tree::
 
     /task/

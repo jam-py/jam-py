@@ -1,0 +1,30 @@
+===========
+filter_name
+===========
+
+.. js:attribute:: filter_name
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Filter class </refs/client/filter_api>`
+
+
+Description
+===========
+
+Specifies the name of the filter as referenced in code.
+Use **filter_name** to refer to the field in code.
+
+See also
+========
+
+:doc:`Filters </programming/data/filters>`
+
+:doc:`filter_caption <at_filter_caption>`
+
+:doc:`Dataset </programming/data/dataset>`
+
+
+

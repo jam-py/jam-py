@@ -1,0 +1,35 @@
+============
+lookup_value
+============
+
+.. py:attribute:: lookup_value
+
+**domain**: server
+
+**language**: python
+
+:doc:`Field class </refs/server/field_api>`
+
+Description
+===========
+
+Use ``lookup_value`` property to get the lookup value of the 
+:doc:`lookup field </programming/data/lookup_fields>`
+
+If the field is 
+:doc:`lookup field </programming/data/lookup_fields>` 
+gives its lookup value, 
+otherwise gives the value of the 
+:doc:`value <at_value>`
+property
+
+See also
+========
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`Lookup fields </programming/data/lookup_fields>`
+
+:doc:`lookup_value <at_lookup_value>`
+
+:doc:`lookup_text <at_lookup_text>`
