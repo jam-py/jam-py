@@ -212,9 +212,9 @@ function Events1() { // demo
 		item.filter_options.title = item.item_caption + ' - filter';
 		item.create_filter_inputs(item.filter_form.find(".edit-body"));
 		item.filter_form.find("#cancel-btn").attr("tabindex", 101)
-			.on('click.task', function() {item.close_filter()});
+			.on('click.task', function() {item.close_filter_form()});
 		item.filter_form.find("#ok-btn").attr("tabindex", 100)
-			.on('click.task', function() {item.apply_filter()});
+			.on('click.task', function() {item.apply_filters()});
 	}
 	
 	function on_param_form_created(item) {
@@ -324,7 +324,7 @@ function Events2() { // demo.catalogs
 		if (item.default_field) {
 			if (item.lookup_field && item.lookup_field.value) {
 				item.view_form.find(".view-title #title-left")
-					.append($('<p><a href="#" id="cur_value">' + item.lookup_field.lookup_text + '</a></p>'))
+					.append($('<p><a href="#" id="cur_value" tabindex="-1">' + item.lookup_field.lookup_text + '</a></p>'))
 					.css('padding-top', '12px');
 				item.view_form.find("#cur_value").click(function() {
 					var text = item.view_form.find("#cur_value").text();
@@ -497,7 +497,8 @@ function Events16() { // demo.journals.invoices
 				height: 400,
 				tabindex: 90,
 				editable: true,
-				editable_fields: ['quantity'],
+				editable_fields: ['track', 'quantity'],
+	//			append_on_lastrow_keydown: true,
 				sortable: true,
 				column_width: {"track": "60%"}
 			});
@@ -513,7 +514,7 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_get_field_text(field) {
-		if (field.field_name === 'customer') {
+		if (field.field_name === 'customer' && field.value) {
 			return field.owner.firstname.lookup_text + ' ' + field.lookup_text;
 		}
 	}

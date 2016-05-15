@@ -72,7 +72,7 @@
         alignValue = ['', 'left', 'center', 'right'],
         filterValue = ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in',
             'range', 'isnull', 'exact', 'contains', 'startwith', 'endwith',
-            'search'
+            'contains_all'
         ];
 
 
@@ -4200,7 +4200,7 @@
             this.close_form('filter_form');
         },
 
-        apply_filter: function() {
+        apply_filters: function() {
             try {
                 this.check_filters_valid();
                 this.open();
@@ -4211,12 +4211,15 @@
         },
 
         get_filter_text: function() {
-            var result = result = language.filter + ' -';
+            var result = '';
             this.each_filter(function(filter) {
                 if (filter.text) {
                     result += ' ' + filter.text;
                 }
             });
+            if (result) {
+                result = language.filter + ' -' + result;
+            }
             return result;
         },
 
@@ -5222,10 +5225,9 @@
 
         set_value: function(value, lookup_value, slave_field_values, lookup_item) {
             var error;
-            if (this.field_kind === consts.ITEM_FIELD) {
-                if (((this.field_name === 'id' && this.value) || this.field_name === 'deleted') && (self.value !== value)) {
-                    throw this.owner.item_name + ': can not change value of the system field - ' + this.field_name;
-                }
+            if (((this.field_name === 'id' && this.value) || this.field_name === 'deleted') &&
+                (this.field_kind === consts.ITEM_FIELD) && (self.value !== value)) {
+                throw this.owner.item_name + ': can not change value of the system field - ' + this.field_name;
             }
             this.new_value = null;
             if (value !== null) {
@@ -6515,7 +6517,6 @@
                     on_dblclick: undefined,
                     on_pagecount_update: undefined,
                     editable: false,
-                    always_show_editor: false,
                     keypress_edit: true,
                     editable_fields: undefined,
                     selected_field: undefined,
@@ -6535,7 +6536,7 @@
             this.id = item.task.gridId++;
             this.$container = container;
             this.options = $.extend({}, default_options, options);
-            this.editMode = this.options.always_show_editor;
+            this.editMode = false;
             this._sorted_fields = [];
             this._multiple_sort = false;
             this.on_dblclick = this.options.on_dblclick;
@@ -7176,9 +7177,7 @@
             $td;
             if (this.editing) {
                 try {
-                    if (!this.options.always_show_editor) {
-                        this.editMode = false;
-                    }
+                    this.editMode = false;
                     $td = this.editor.$controlGroup.parent();
                     field = this.editor.field
                     $div = $td.find('div.' + field.field_name);
@@ -7716,6 +7715,7 @@
                     case 40:
                         e.preventDefault();
                         this.flushEditor();
+                        this.hideEditor();
                         if (code === 33) {
                             this.priorPage();
                         } else if (code === 34) {
@@ -7734,14 +7734,8 @@
                         } else if (code === 40) {
                             this.item.next();
                             if (this.item.eof()) {
-                                if (this.options.editable && this.editMode && this.options.append_on_lastrow_keydown) {
-                                    if (!this.item.is_edited()) {
-                                        this.item.edit();
-                                    }
-                                    this.item.post();
-                                    if (!this.item.is_new()) {
-                                        this.item.append();
-                                    }
+                                if (this.options.editable && this.options.append_on_lastrow_keydown) {
+                                    this.item.append();
                                 } else {
                                     this.nextPage();
                                 }
@@ -7773,6 +7767,7 @@
             if (e.target === this.$table.get(0) && !e.ctrlKey && !e.shiftKey) {
                 switch (code) {
                     case 13:
+                        e.preventDefault();
                         this.do_on_edit(false);
                         break;
                     case 33:
@@ -8343,7 +8338,7 @@
                 this.$lastBtn = $btn;
                 $btnCtrls.append($btn);
                 $controls.append($btnCtrls);
-                $input.addClass("input-item");
+                $input.addClass("input-lookupitem");
                 if (this.field.enable_typeahead) {
                     $input.jamtypeahead(this.field.get_typeahead_defs($input));
                 }
@@ -8537,7 +8532,14 @@
         },
 
         keyup: function(e) {
-            var code = (e.keyCode ? e.keyCode : e.which);
+            var typeahead,
+                code = (e.keyCode ? e.keyCode : e.which);
+            if (this.field.enable_typeahead) {
+                typeahead = this.$input.data('jamtypeahead')
+                if (typeahead && typeahead.shown) {
+                    return;
+                }
+            }
             if (code === 13 && !e.ctrlKey && !e.shiftKey) {
                 if (this.grid && this.grid.editMode) {
                     e.stopPropagation();
@@ -8619,38 +8621,39 @@
         change_field_text: function() {
             var result = true,
                 text;
-            if (!this.field.owner || !this.field.owner.is_changing() ||
-                this.field.owner.is_changing()) {
-                this.errorValue = undefined;
-                this.error = undefined;
-                if (this.field.lookup_item) {
-                    if (this.$input.val() !== this.field.get_lookup_text()) {
-                        this.$input.val(this.field.get_display_text());
-                    }
-                } else {
-                    try {
-                        text = this.$input.val();
-                        if (text === '') {
-                            this.field.set_value(null);
-                        } else {
-                            this.field.set_text(text);
-                            this.field.check_valid();
-                            if (this.$input.is(':visible')) {
-                                this.$input.val(text);
-                            }
-                        }
-                    } catch (e) {
-                        this.errorValue = text;
-                        this.error = e;
-                        this.updateState(false);
-                        if (this.field.owner && this.field.owner.task.settings.DEBUGGING) {
-                            throw 'change_field_text error: ' + e
-                        }
-                        result = false;
-                    }
-                }
-                return result;
+            if (this.field.owner && this.field.owner.is_changing &&
+                !this.field.owner.is_changing()) {
+                this.field.owner.edit();
             }
+            this.errorValue = undefined;
+            this.error = undefined;
+            if (this.field.lookup_item) {
+                if (this.$input.val() !== this.field.get_lookup_text()) {
+                    this.$input.val(this.field.get_display_text());
+                }
+            } else {
+                try {
+                    text = this.$input.val();
+                    if (text === '') {
+                        this.field.set_value(null);
+                    } else {
+                        this.field.set_text(text);
+                        this.field.check_valid();
+                        if (this.$input.is(':visible')) {
+                            this.$input.val(text);
+                        }
+                    }
+                } catch (e) {
+                    this.errorValue = text;
+                    this.error = e;
+                    this.updateState(false);
+                    if (this.field.owner && this.field.owner.task.settings.DEBUGGING) {
+                        throw 'change_field_text error: ' + e
+                    }
+                    result = false;
+                }
+            }
+            return result;
         },
 
         focusIn: function(e) {

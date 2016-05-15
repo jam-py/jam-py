@@ -1,3 +1,32 @@
 ==========
 on_created
 ==========
+
+on_created(task)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Task class </refs/server/task_api>`
+
+Description
+===========
+
+Use ``on_created`` to initialize the application project task.
+
+The event is triggered when the project 
+:doc:`task tree </programming/task_tree>`
+have just been created. See
+:doc:`Workflow </programming/workflow>`
+
+The ``task`` parameter is a reference to the 
+:doc:`task tree </programming/task_tree>`
+
+See also
+========
+
+:doc:`Workflow </programming/workflow>`
+
+:doc:`Task tree </programming/task_tree>`
+

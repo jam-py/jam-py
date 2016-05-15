@@ -18,7 +18,7 @@ setup(
         'jam.third_party.slimit.visitors'],
     package_data={'jam': ['admin.html', 'js/*.js', 'js/ace/*.js',
         'img/*.*', 'css/*.*', 'project/*.*', 'project/css/*.*',
-        'project/js/*.*', 'project/img/*.*']},
+        'project/js/*.*', 'project/img/*.*', 'third_party/werkzeug/debug/shared/*.*']},
     scripts=['jam/bin/jam-project.py'],
     classifiers=[
         'Development Status :: 4 - Beta',

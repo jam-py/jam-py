@@ -1,0 +1,22 @@
+==============
+filter_by_name
+==============
+
+.. py:method:: filter_by_name(self, filter_name)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Call ``filter_by_name`` to retrieve filter information for a filter when only its 
+name is known. 
+
+The ``filter_name`` parameter is the name of an existing filter. 
+
+``filter_by_name`` returns the filter object for the specified filter. If the 
+specified filter does not exist, ``filter_by_name`` returns ``None``.

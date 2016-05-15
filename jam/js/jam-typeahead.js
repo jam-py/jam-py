@@ -127,10 +127,20 @@
         },
 
         highlighter: function(item) {
-            var query = this.query.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, '\\$&')
-            return item.replace(new RegExp('(' + query + ')', 'ig'), function($1, match) {
-                return '<strong>' + match + '</strong>'
-            })
+            var i = 0,
+                query,
+                result = item,
+                strings = this.query.split(' ')
+            for ( i = 0; i < strings.length; i++) {
+                query = strings[i];
+                if (query.indexOf('strong>') === -1 && query.length) {
+                    query = query.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, '\\$&')
+                    result = result.replace(new RegExp('(' + query + ')', 'ig'), function($1, match) {
+                        return '<strong>' + match + '</strong>'
+                    })
+                }
+            }
+            return result
         },
 
         render: function(items) {

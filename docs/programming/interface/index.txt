@@ -9,3 +9,4 @@ Client side programming
     view_forms
     visual_editing
     data_controls
+    working_with_filters

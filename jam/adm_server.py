@@ -226,9 +226,10 @@ def create_items(task):
     task.sys_report_params.add_field(10, 'f_size',         task.lang['size'],  common.INTEGER, visible=False, edit_visible=False)
     task.sys_report_params.add_field(11, 'f_object',       task.lang['object'],       common.INTEGER, False, task.sys_items, 'f_name')
     task.sys_report_params.add_field(12, 'f_object_field',   task.lang['object_field'],  common.INTEGER, False, task.sys_fields, 'f_field_name')
-    task.sys_report_params.add_field(13, 'f_required',     task.lang['required'],        common.BOOLEAN)
-    task.sys_report_params.add_field(14, 'f_visible',      task.lang['visible'],    common.BOOLEAN)
-    task.sys_report_params.add_field(15, 'f_alignment',    task.lang['alignment'], common.INTEGER, lookup_values=get_value_list(common.ALIGNMENT))
+    task.sys_report_params.add_field(13, 'f_enable_typehead', u'Typeahead',  common.BOOLEAN)    
+    task.sys_report_params.add_field(14, 'f_required',     task.lang['required'],        common.BOOLEAN)
+    task.sys_report_params.add_field(15, 'f_visible',      task.lang['visible'],    common.BOOLEAN)
+    task.sys_report_params.add_field(16, 'f_alignment',    task.lang['alignment'], common.INTEGER, lookup_values=get_value_list(common.ALIGNMENT))
 
     task.sys_report_params.add_filter('owner_rec_id', u'Owner rec ID ', 'owner_rec_id', common.FILTER_EQ, visible=False)
     task.sys_report_params.add_filter('task_id', u'Task ID', 'task_id', common.FILTER_EQ, visible=False)
@@ -656,7 +657,8 @@ def load_task(target, app, first_build=True):
                         params.f_object_field.value,
                         params.f_required.value,
                         params.f_visible.value,
-                        params.f_alignment.value)
+                        params.f_alignment.value,
+                        params.f_enable_typehead.value)
 
     def create_items(group, group_id, group_type_id):
         for rec in sys_items:

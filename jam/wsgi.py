@@ -252,7 +252,7 @@ class App(object):
         result = {
             'task': task.get_info(),
             'settings': self.admin.get_settings(),
-            'language': self.admin.get_lang(),
+            'language': self.admin.lang,
             'user_info': user_info,
             'privileges': priv
         }

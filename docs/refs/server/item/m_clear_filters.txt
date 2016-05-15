@@ -1,0 +1,23 @@
+=============
+clear_filters
+=============
+
+.. py:method:: clear_filters(self) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Use ``clear_filters`` to set filter values of the item to ``None``.
+
+See also
+========
+
+:doc:`Filtering records </programming/data/filtering_records>`
+
+:doc:`Filters </programming/data/filters>`

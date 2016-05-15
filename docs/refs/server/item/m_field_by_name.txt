@@ -1,0 +1,22 @@
+=============
+field_by_name
+=============
+
+.. py:method:: field_by_name(self, field_name)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Call ``field_by_name`` to retrieve field information for a field when only its 
+name is known. 
+
+The ``field_name`` parameter is the name of an existing field. 
+
+``field_by_name`` returns the field object for the specified field. If the 
+specified field does not exist, ``field_by_name`` returns ``None``.

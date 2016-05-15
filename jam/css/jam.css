@@ -191,7 +191,7 @@ h4 small {
   width: 100%;
 }
 
-.input-item {
+.input-lookupitem {
   width: 66%;
 }
 
@@ -205,6 +205,15 @@ h4 small {
 
 .input-blob {
   width: 100%;
+}
+
+@media (max-width: 767px) {
+  .input-prepend input.input-lookupitem,
+  .input-append input.input-lookupitem,
+  .input-prepend input.input-lookupitem[class*="span"],
+  .input-append input.input-lookupitem[class*="span"] {
+    width: 75%;
+  }
 }
 
 h4.title {

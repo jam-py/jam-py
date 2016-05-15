@@ -1,0 +1,23 @@
+=============
+clear_filters
+=============
+
+.. js:function:: clear_filters() 
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Use ``clear_filters`` to set filter values of the item to ``null``.
+
+See also
+========
+
+:doc:`Filtering records </programming/data/filtering_records>`
+
+:doc:`Filters </programming/data/filters>`

@@ -13,6 +13,7 @@ import codecs
 import mimetypes
 from copy import deepcopy
 from itertools import repeat
+from collections import Container, Iterable, Mapping, MutableSet
 
 from werkzeug._internal import _missing, _empty_stream
 from werkzeug._compat import iterkeys, itervalues, iteritems, iterlists, \
@@ -866,7 +867,7 @@ def _unicodify_header_value(value):
 
 
 @native_itermethods(['keys', 'values', 'items'])
-class Headers(object):
+class Headers(Mapping):
 
     """An object that stores some headers.  It has a dict-like interface
     but is ordered and can store the same keys multiple times.
@@ -1596,10 +1597,8 @@ class Accept(ImmutableList):
             list.__init__(self, values)
         else:
             self.provided = True
-            values = [(a, b) for b, a in values]
-            values.sort()
-            values.reverse()
-            list.__init__(self, [(a, b) for b, a in values])
+            values = sorted(values, key=lambda x: (x[1], x[0]), reverse=True)
+            list.__init__(self, values)
 
     def _value_matches(self, value, item):
         """Check if a value matches a given accept item."""
@@ -1955,7 +1954,7 @@ class CallbackDict(UpdateDictMixin, dict):
         )
 
 
-class HeaderSet(object):
+class HeaderSet(MutableSet):
 
     """Similar to the :class:`ETags` class this implements a set-like structure.
     Unlike :class:`ETags` this is case insensitive and used for vary, allow, and
@@ -2109,7 +2108,7 @@ class HeaderSet(object):
         )
 
 
-class ETags(object):
+class ETags(Container, Iterable):
 
     """A set that can be used to check if one etag is present in a collection
     of etags.
@@ -2673,7 +2672,7 @@ class FileStorage(object):
         return getattr(self.stream, name)
 
     def __iter__(self):
-        return iter(self.readline, '')
+        return iter(self.stream)
 
     def __repr__(self):
         return '<%s: %r (%r)>' % (

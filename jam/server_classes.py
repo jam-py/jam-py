@@ -302,12 +302,17 @@ class Report(AbstrReport):
         self.on_get_field_text = None
 
 
-    def add_param(self, caption='', name='', data_type=common.INTEGER, obj=None, obj_field=None, required=True, visible=True, value=None):
-        param_def = self.add_param_def(caption, name, data_type, obj, obj_field, required, visible, value)
+    def add_param(self, caption='', name='', data_type=common.INTEGER,
+        obj=None, obj_field=None, required=True, visible=True, alignment=None,
+        enable_typeahead=None):
+        param_def = self.add_param_def(caption, name, data_type, obj,
+            obj_field, required, visible, alignment, enable_typeahead)
         param = Param(self, param_def)
         self.params.append(param)
 
-    def add_param_def(self, param_caption='', param_name='', data_type=common.INTEGER, lookup_item=None, lookup_field=None, required=True, visible=True, alignment=0):
+    def add_param_def(self, param_caption='', param_name='', data_type=common.INTEGER,
+        lookup_item=None, lookup_field=None, required=True, visible=True,
+        alignment=0, enable_typeahead=False):
         param_def = [None for i in range(len(FIELD_DEF))]
         param_def[FIELD_NAME] = param_name
         param_def[NAME] = param_caption
@@ -317,6 +322,7 @@ class Report(AbstrReport):
         param_def[LOOKUP_FIELD] = lookup_field
         param_def[FIELD_EDIT_VISIBLE] = visible
         param_def[FIELD_ALIGNMENT] = alignment
+        param_def[FIELD_ENABLE_TYPEAHEAD] = enable_typeahead
         self.param_defs.append(param_def)
         return param_def
 

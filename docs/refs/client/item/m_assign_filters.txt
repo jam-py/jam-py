@@ -1,0 +1,47 @@
+==============
+assign_filters
+==============
+
+.. js:function:: assign_filters(item) 
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Use ``assign_filters`` to set filter values of the item to values of filters of 
+the ``item`` parameter.
+
+Example
+=======
+
+.. code-block:: js
+
+    function calc_footer(item) {
+        var copy = item.copy({handlers: false, details: false});
+        copy.assign_filters(item);
+        copy.open(
+            {fields: ['subtotal', 'tax', 'total'], 
+            funcs: {subtotal: 'sum', tax: 'sum', total: 'sum'}}, 
+            function() {
+                var footer = item.view_form.find('.dbtable.' + item.item_name + ' tfoot');
+                copy.each_field(function(f) {
+                    footer.find('div.' + f.field_name)
+                        .css('text-align', 'right')
+                        .css('color', 'black')
+                        .text(f.display_text);
+                });
+            }
+        );
+    }
+
+See also
+========
+
+:doc:`Filtering records </programming/data/filtering_records>`
+
+:doc:`Filters </programming/data/filters>`

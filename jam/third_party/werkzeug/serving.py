@@ -113,8 +113,8 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
             'QUERY_STRING':         wsgi_encoding_dance(request_url.query),
             'CONTENT_TYPE':         self.headers.get('Content-Type', ''),
             'CONTENT_LENGTH':       self.headers.get('Content-Length', ''),
-            'REMOTE_ADDR':          self.client_address[0],
-            'REMOTE_PORT':          self.client_address[1],
+            'REMOTE_ADDR':          self.address_string(),
+            'REMOTE_PORT':          self.port_integer(),
             'SERVER_NAME':          self.server.server_address[0],
             'SERVER_PORT':          str(self.server.server_address[1]),
             'SERVER_PROTOCOL':      self.request_version
@@ -125,7 +125,7 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
             if key not in ('HTTP_CONTENT_TYPE', 'HTTP_CONTENT_LENGTH'):
                 environ[key] = value
 
-        if request_url.netloc:
+        if request_url.scheme and request_url.netloc:
             environ['HTTP_HOST'] = request_url.netloc
 
         return environ
@@ -263,7 +263,10 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
         return BaseHTTPRequestHandler.version_string(self).strip()
 
     def address_string(self):
-        return self.environ['REMOTE_ADDR']
+        return self.client_address[0]
+
+    def port_integer(self):
+        return self.client_address[1]
 
     def log_request(self, code='-', size='-'):
         self.log('info', '"%s" %s %s', self.requestline, code, size)
@@ -463,7 +466,7 @@ class BaseWSGIServer(HTTPServer, object):
         self.passthrough_errors = passthrough_errors
         self.shutdown_signal = False
         self.host = host
-        self.port = port
+        self.port = self.socket.getsockname()[1]
 
         # Patch in the original socket.
         if fd is not None:
@@ -513,6 +516,7 @@ class ThreadedWSGIServer(ThreadingMixIn, BaseWSGIServer):
 
     """A WSGI server that does threading."""
     multithread = True
+    daemon_threads = True
 
 
 class ForkingWSGIServer(ForkingMixIn, BaseWSGIServer):

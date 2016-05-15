@@ -83,7 +83,7 @@ FILTER_RANGE, FILTER_ISNULL, FILTER_EXACT, FILTER_CONTAINS, FILTER_STARTWITH, FI
 FILTER_CONTAINS_ALL = range(1, 16)
 FILTER_STR = ('eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in', \
 'range', 'isnull', 'exact', 'contains', 'startwith', 'endwith', \
-'search')
+'contains_all')
 FILTER_SIGN = ('', '=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN',
     'BETWEEN', 'ISNULL', '=', 'LIKE', 'LIKE', 'LIKE', 'CONTAINS_ALL')
 FILTER_STRING = ('EQ', 'NE', 'LT', 'LE', 'GT', 'GE', 'IN', 'NOT IN',

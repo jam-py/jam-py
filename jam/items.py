@@ -176,27 +176,12 @@ class AbstrTask(AbstractItem):
     def set_language(self, value):
         self.__language = value
         self.lang = langs.get_lang_dict(value)
-        common.SETTINGS['LAGUAGE'] = value
+        common.SETTINGS['LANGUAGE'] = value
 
     language = property (get_language, set_language)
 
-    def get_lang(self):
-        return self.lang
-
-    def write_setting(self, connsection):
-        pass
-
     def get_settings(self):
         return common.SETTINGS
-
-    def set_settings(self, value):
-        common.SETTINGS = value
-        for key in common.SETTINGS.keys():
-            common.__dict__[key] = common.SETTINGS[key]
-        self.language = common.SETTINGS['LANGUAGE']
-        if common.SETTINGS['LOG_FILE'].strip():
-            sys.stdout = open(common.SETTINGS['LOG_FILE'].strip(), 'a')
-            sys.stderr = open(common.SETTINGS['LOG_FILE'].strip(), 'a')
 
     def init_locale(self):
         import locale

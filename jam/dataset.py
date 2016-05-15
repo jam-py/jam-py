@@ -6,7 +6,7 @@ import common
 
 FIELD_DEF = FIELD_ID, FIELD_NAME, NAME, FIELD_DATA_TYPE, REQUIRED, LOOKUP_ITEM, MASTER_FIELD, LOOKUP_FIELD, \
     FIELD_VISIBLE, FIELD_VIEW_INDEX, FIELD_EDIT_VISIBLE, FIELD_EDIT_INDEX, FIELD_READ_ONLY, FIELD_EXPAND, FIELD_WORD_WRAP, \
-    FIELD_SIZE, FIELD_DEFAULT, FIELD_CALCULATED, FIELD_EDITABLE, FIELD_ALIGNMENT, FIELD_LOOKUP_VALUES, FIELD_enable_typeahead = range(22)
+    FIELD_SIZE, FIELD_DEFAULT, FIELD_CALCULATED, FIELD_EDITABLE, FIELD_ALIGNMENT, FIELD_LOOKUP_VALUES, FIELD_ENABLE_TYPEAHEAD = range(22)
 
 FILTER_DEF = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, \
     FILTER_TYPE, FILTER_DATA_TYPE, FILTER_VISIBLE = range(6)
@@ -224,7 +224,7 @@ class DBField(object):
 
     def set_value(self, value, lookup_value=None, slave_field_values=None, lookup_item=None):
         if ((self.field_name == 'id' and self.value) or self.field_name == 'deleted') and \
-            self.owner and not self.filter and (self.value != value):
+            (self.field_kind == common.ITEM_FIELD) and (self.value != value):
             raise DatasetException, u'%s: can not change value of the system field - %s' % (self.owner.item_name, self.field_name)
         self.new_value = None
         if not value is None:
@@ -966,7 +966,7 @@ class AbstractDataSet(object):
         field_def[FIELD_EDITABLE] = editable
         field_def[FIELD_ALIGNMENT] = alignment
         field_def[FIELD_LOOKUP_VALUES] = lookup_values
-        field_def[FIELD_enable_typeahead] = enable_typeahead
+        field_def[FIELD_ENABLE_TYPEAHEAD] = enable_typeahead
         self.field_defs.append(field_def)
         return field_def
 

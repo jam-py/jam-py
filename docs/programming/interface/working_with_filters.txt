@@ -1,0 +1,66 @@
+====================
+Working with filters
+====================
+
+The Client module of the task of the Demo application has the following event 
+handler:
+
+.. code-block:: js
+
+    function on_filter_form_created(item) {
+        item.filter_options.title = item.item_caption + ' - filter';
+        item.create_filter_inputs(item.filter_form.find(".edit-body"));
+        item.filter_form.find("#ok-btn").on('click.task', function() {
+            item.apply_filters()
+        });
+        item.filter_form.find("#cancel-btn").on('click.task', function() {
+            item.close_filter_form()
+        });
+    }
+
+This event handler is triggered by the
+:doc:`create_filter_form </refs/client/item/m_create_filter_form>`
+method when the user clicks on the **Filter** button. 
+
+As with 
+:doc:`view </refs/client/item/m_view>`
+and 
+:doc:`create_edit_form </refs/client/item/m_create_edit_form>`
+methods this method also triggers events for the task, group and item itself.
+
+So the ``on_filter_form_created`` event handler of the task can be used to create 
+forms to specify filter values of all items of the project.
+
+In this event handler
+
+* :doc:`create_filter_inputs </refs/client/item/m_create_filter_inputs>`
+  method is called to create input controls for visible filters
+  
+* event handlers assigned to the buttons specified in the html template of the
+  filter form. One, to apply values set to filters when **Apply** button is 
+  clicked and another to close the from.
+
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`Filtering records </programming/data/filtering_records>`
+
+:doc:`Filters </programming/data/filters>`
+
+:doc:`Filter class </refs/client/filter_api>`
+
+:doc:`filter_form </refs/client/item/at_filter_form>`
+
+:doc:`filter_options </refs/client/item/at_filter_options>`
+
+:doc:`create_filter_form </refs/client/item/m_create_filter_form>`
+
+:doc:`close_filter_form </refs/client/item/m_close_filter_form>`
+
+:doc:`create_filter_inputs </refs/client/item/m_create_filter_inputs>`
+
+
+

@@ -23,7 +23,7 @@
     Otherwise you generate the page and put it into the cache. (Or a fragment
     of the page, you don't have to cache the full thing)
 
-    Here is a simple example of how to cache a sidebar for a template::
+    Here is a simple example of how to cache a sidebar for 5 minutes::
 
         def get_sidebar(user):
             identifier = 'sidebar_for/user%d' % user.id
@@ -60,6 +60,7 @@ import os
 import re
 import errno
 import tempfile
+import platform
 from hashlib import md5
 from time import time
 try:
@@ -93,9 +94,9 @@ class BaseCache(object):
     """Baseclass for the cache systems.  All the cache systems implement this
     API or a superset of it.
 
-    :param default_timeout: the default timeout (in seconds) that is used if no
-                            timeout is specified on :meth:`set`. A timeout of 0
-                            indicates that the cache never expires.
+    :param default_timeout: the default timeout (in seconds) that is used if
+                            no timeout is specified on :meth:`set`. A timeout
+                            of 0 indicates that the cache never expires.
     """
 
     def __init__(self, default_timeout=300):
@@ -149,9 +150,9 @@ class BaseCache(object):
 
         :param key: the key to set
         :param value: the value for the key
-        :param timeout: the cache timeout for the key (if not specified,
-                        it uses the default timeout). A timeout of 0 idicates
-                        that the cache never expires.
+        :param timeout: the cache timeout for the key in seconds (if not
+                        specified, it uses the default timeout). A timeout of
+                        0 idicates that the cache never expires.
         :returns: ``True`` if key has been updated, ``False`` for backend
                   errors. Pickling errors, however, will raise a subclass of
                   ``pickle.PickleError``.
@@ -165,9 +166,9 @@ class BaseCache(object):
 
         :param key: the key to set
         :param value: the value for the key
-        :param timeout: the cache timeout for the key or the default
-                        timeout if not specified. A timeout of 0 indicates
-                        that the cache never expires.
+        :param timeout: the cache timeout for the key in seconds (if not
+                        specified, it uses the default timeout). A timeout of
+                        0 idicates that the cache never expires.
         :returns: Same as :meth:`set`, but also ``False`` for already
                   existing keys.
         :rtype: boolean
@@ -178,9 +179,9 @@ class BaseCache(object):
         """Sets multiple keys and values from a mapping.
 
         :param mapping: a mapping with the keys/values to set.
-        :param timeout: the cache timeout for the key (if not specified,
-                        it uses the default timeout). A timeout of 0
-                        indicates tht the cache never expires.
+        :param timeout: the cache timeout for the key in seconds (if not
+                        specified, it uses the default timeout). A timeout of
+                        0 idicates that the cache never expires.
         :returns: Whether all given keys have been set.
         :rtype: boolean
         """
@@ -793,3 +794,63 @@ class FileSystemCache(BaseCache):
                     return False
         except (IOError, OSError, pickle.PickleError):
             return False
+
+
+class UWSGICache(BaseCache):
+    """ Implements the cache using uWSGI's caching framework.
+
+    .. note::
+        This class cannot be used when running under PyPy, because the uWSGI
+        API implementation for PyPy is lacking the needed functionality.
+
+    :param default_timeout: The default timeout in seconds.
+    :param cache: The name of the caching instance to connect to, for
+        example: mycache@localhost:3031, defaults to an empty string, which
+        means uWSGI will cache in the local instance. If the cache is in the
+        same instance as the werkzeug app, you only have to provide the name of
+        the cache.
+    """
+    def __init__(self, default_timeout=300, cache=''):
+        BaseCache.__init__(self, default_timeout)
+
+        if platform.python_implementation() == 'PyPy':
+            raise RuntimeError("uWSGI caching does not work under PyPy, see "
+                               "the docs for more details.")
+
+        try:
+            import uwsgi
+            self._uwsgi = uwsgi
+        except ImportError:
+            raise RuntimeError("uWSGI could not be imported, are you "
+                               "running under uWSGI?")
+
+        self.cache = cache
+
+    def _get_expiration(self, timeout):
+        if timeout is None:
+            timeout = self.default_timeout
+        return timeout
+
+    def get(self, key):
+        rv = self._uwsgi.cache_get(key, self.cache)
+        if rv is None:
+            return
+        return pickle.loads(rv)
+
+    def delete(self, key):
+        return self._uwsgi.cache_del(key, self.cache)
+
+    def set(self, key, value, timeout=None):
+        return self._uwsgi.cache_update(key, pickle.dumps(value),
+                                        self._get_expiration(timeout),
+                                        self.cache)
+
+    def add(self, key, value, timeout=None):
+        return self._uwsgi.cache_set(key, pickle.dumps(value),
+                                     self._get_expiration(timeout), self.cache)
+
+    def clear(self):
+        return self._uwsgi.cache_clear(self.cache)
+
+    def has(self, key):
+        return self._uwsgi.cache_exists(key, self.cache) is not None
