@@ -4417,6 +4417,9 @@
                 if (object_field) {
                     lookup_value = object_field.get_value();
                 }
+                if (lookup_field.owner && lookup_field.owner.is_changing && !lookup_field.owner.is_changing()) {
+                    lookup_field.owner.edit();
+                }
                 if (lookup_field.filter && lookup_field.filter.filter_type ===
                     consts.FILTER_IN) {
                     lookup_field.set_value([this.id.value], lookup_value);
