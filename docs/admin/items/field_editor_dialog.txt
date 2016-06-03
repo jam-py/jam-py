@@ -37,6 +37,9 @@ The **Field Editor Dialog** have the following fields:
 * **Master field** - the master field for 
   :doc:`Lookup fields </programming/data/lookup_fields>`
 
+* **Typeahead** - if this checkbox is checked, typeahead is enabled for the
+  lookup field
+
 * **Required** - if this checkbox is checked, the post method will raise an 
   exception if this field is empty. See 
   :doc:`Modifying datasets </programming/data/modifying_datasets>`. 

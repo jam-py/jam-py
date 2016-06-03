@@ -1,0 +1,23 @@
+=======
+details
+=======
+
+.. py:attribute:: details
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Lists all 
+:doc:`detail </refs/client/detail_api>`
+objects of the item.
+
+See also
+========
+
+:doc:`Details </programming/data/details>`

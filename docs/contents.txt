@@ -11,7 +11,7 @@ Jam.py documentation contents
     :maxdepth: 3
 
     intro/index
-    admin/index
     programming/index
+    admin/index    
     refs/index
     

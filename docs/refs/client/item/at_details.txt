@@ -1,0 +1,25 @@
+=======
+details
+=======
+
+.. js:attribute:: details
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Lists all 
+:doc:`detail </refs/client/detail_api>`
+objects of the item.
+
+See also
+========
+
+:doc:`Details </programming/data/details>`
+
+:doc:`each_detail <m_each_detail>`

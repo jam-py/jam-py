@@ -1,0 +1,46 @@
+=====================
+on_field_select_value
+=====================
+
+on_field_select_value(field, lookup_item)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+When user clicks on the button to the right of the field input or uses typeahead,
+the application creates a copy of the lookup item of the field and
+triggers ``on_field_select_value`` event. Use ``on_field_select_value`` to 
+specify fields that will be displayed, set up filters for the lookup item, before
+it will be opened.
+
+The ``field`` parameter is the field whose data will be selected.
+
+The ``lookup_item`` parameter is a copy of the lookup item of the field
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_field_select_value(field, lookup_item) {
+        if (field.field_name === 'customer') {
+            lookup_item.set_where({lastname__startwith: 'B'});
+            lookup_item.view_options.fields = ['firstname', 'lastname', 'address', 'phone'];
+        }
+    }
+
+
+See also
+========
+
+:doc:`Fields </programming/data/fields>`
+
+:doc:`Lookup fields </programming/data/lookup_fields>`
+
+

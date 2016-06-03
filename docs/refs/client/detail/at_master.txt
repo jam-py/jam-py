@@ -1,0 +1,22 @@
+======
+master
+======
+
+.. js:attribute:: master
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Detail class </refs/client/detail_api>`
+
+
+Description
+===========
+
+Use ``master`` attribute to get reference to the master of the detail.
+
+See also
+========
+
+:doc:`Details </programming/data/details>`

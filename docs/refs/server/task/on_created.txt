@@ -17,7 +17,7 @@ Use ``on_created`` to initialize the application project task.
 
 The event is triggered when the project 
 :doc:`task tree </programming/task_tree>`
-have just been created. See
+has just been created. See
 :doc:`Workflow </programming/workflow>`
 
 The ``task`` parameter is a reference to the 

@@ -9,8 +9,4 @@ def run(app):
         port = sys.argv[1]
     except:
         port = '8080'
-    static = {
-        '/static':  os.path.join(app.work_dir, 'static')
-    }
-    run_simple(host, port, app, threaded=True, static_files=static,
-        use_debugger=True)
+    run_simple(host, port, app, threaded=True, use_debugger=True)

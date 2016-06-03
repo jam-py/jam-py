@@ -1,0 +1,35 @@
+============
+record_count
+============
+
+.. py:method:: record_count() 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Call ``record_count`` to get the total number of records ownered by the item's 
+dataset.
+
+Example
+=======
+
+.. code-block:: py
+
+    item.open()
+    if item.record_count():
+        # some code
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`open <m_open>`
+
+

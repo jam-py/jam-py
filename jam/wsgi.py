@@ -19,10 +19,22 @@ import common
 import adm_server
 from items import AbortException
 
-class App(object):
-    def __init__(self):
-        self.admin = adm_server.task
-        self.admin.app = self
+def create_application(from_file):
+    if from_file:
+        work_dir = os.path.dirname(os.path.abspath(from_file))
+    else:
+        work_dir = os.getcwd()
+    os.chdir(work_dir)
+    static_files = {
+        '/static':  os.path.join(work_dir, 'static')
+    }
+    application = App(work_dir)
+    return SharedDataMiddleware(application, static_files)
+
+class App():
+    def __init__(self, work_dir):
+        self.work_dir = work_dir
+        self.admin = adm_server.create_admin(self)
         self.task = None
         self.task_lock = Lock()
         self.users = {}
@@ -35,11 +47,12 @@ class App(object):
         self.work_dir = self.admin.work_dir
         self.jam_dir = os.path.dirname(jam.__file__)
         self.jam_version = jam.version()
-        self.static = {
+        self.application_files = {
+            '/': self.work_dir,
             '/jam/': self.jam_dir,
-            '/': self.work_dir
+            '/static/': os.path.join(self.jam_dir, 'static'            )
         }
-        self.fileserver = SharedDataMiddleware(None, self.static, cache_timeout=0.1)
+        self.fileserver = SharedDataMiddleware(None, self.application_files, cache_timeout=0.1)
         self.url_map = Map([
             Rule('/', endpoint='root_file'),
             Rule('/<file_name>', endpoint='root_file'),
@@ -213,7 +226,7 @@ class App(object):
 
     def get_privileges(self, role_id):
         if self.roles is None:
-            self.roles = adm_server.get_roles()
+            self.roles = adm_server.get_roles(self.admin)
         return self.roles[role_id]
 
     def server_func(self, obj, func_name, params, env):
@@ -231,12 +244,12 @@ class App(object):
 
     def check_task_server_modified(self):
         if self.task_server_modified:
-            adm_server.reload_task()
+            adm_server.reload_task(self.admin)
             self.task_server_modified = False
 
     def check_task_client_modified(self):
         if self.task_client_modified:
-            adm_server.update_events_code()
+            adm_server.update_events_code(self.admin)
             self.task_client_modified = False
 
     def init_client(self, user_info, is_admin):
@@ -263,7 +276,7 @@ class App(object):
         if not admin and self.task.on_login:
             user_uuid, user_info = self.task.on_login(self.task, env, admin, log, psw_hash)
         else:
-            user_id, user_info = self.admin.login(log, psw_hash, admin)
+            user_id, user_info = self.admin.login(self.admin, log, psw_hash, admin)
             user_uuid = None
             if user_id:
                 for key in self.users.iterkeys():
@@ -290,7 +303,7 @@ class App(object):
         else:
             user = self.users.get(user_uuid)
             if user:
-                adm_server.logout(user[0])
+                adm_server.logout(self.admin, user[0])
                 del user
 
     def find_privileges(self, user_info, item):

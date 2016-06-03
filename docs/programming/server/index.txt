@@ -1,3 +1,65 @@
 =======================
 Server side programming
 =======================
+
+In most cases, the client sends a request to the server when  following methods 
+of an element are executed:
+
+* :doc:`open </refs/client/item/m_open>`
+* :doc:`apply </refs/client/item/m_apply>`
+* :doc:`print </refs/client/report/m_print>`
+* :doc:`server </refs/client/abstr_item/m_server>`
+
+In this case the client sends to the server the 
+:doc:`ID </refs/client/abstr_item/at_id>`
+of the item's task, the
+:doc:`ID </refs/client/abstr_item/at_id>`
+item, the type of the request and its parameters.
+
+The server on receiving the request, based on passed IDs, finds the task 
+(it can be Project task or Administrator task) and the item on the server, 
+executes the corresponing method with passed parameters and returns the result of
+the execution to the client. The server method can trigger events that can 
+modify its default behavior.
+
+The most common server events are:
+
+.. csv-table:: 
+   :header: Event, Description
+   :widths: 10, 80
+
+   :doc:`on_created </refs/server/task/on_created>`, "The event is triggered by the task when it has just been created by the server application. It can be used to initialize the project."
+   :doc:`on_apply </refs/server/item/on_apply>`, "The event is triggered when the ``apply`` method of the item is called on the :doc:`client </refs/client/item/m_apply>` or the :doc:`server </refs/server/item/m_apply>`"   
+   :doc:`on_open </refs/server/item/on_open>`, "The event is triggered when the ``open`` method of the item is called on the :doc:`client </refs/client/item/m_open>` or the :doc:`server </refs/server/item/m_open>`"
+   :doc:`on_generate </refs/server/report/on_generate>`, "The event is triggered when the :doc:`print </refs/client/report/m_print>` method of a report is called on the client."
+
+.. note::
+    Please do always remember that events triggered by server methods can be 
+    executed in parallel threads. Do be very carefull when modifying the 
+    attributes of the items of the tasks tree. 
+    
+    You can use the
+    :doc:`copy </refs/server/item/m_copy>`
+    method to create a copy of an item. This copy is an exact copy of an item 
+    at the time of creating of the task tree. It is not added to the 
+    :doc:`task tree </programming/task_tree>`
+    and will be destroyed by Python garbage collector when no longer needed. 
+    
+Example:
+
+.. code-block:: py
+
+    def on_generate(report):
+        cust = report.task.customers.copy()
+        cust.open()
+        report.print_band('title')
+        for c in cust:
+            firstname = c.firstname.display_text
+            lastname = c.lastname.display_text
+            company = c.company.display_text
+            country = c.country.display_text
+            address = c.address.display_text
+            phone = c.phone.display_text
+            email = c.email.display_text
+            report.print_band('detail', locals())
+

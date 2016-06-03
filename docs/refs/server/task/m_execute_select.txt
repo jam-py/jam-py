@@ -18,8 +18,16 @@ query the connection pool is used.
 
 The ``sql`` parameter is a query to execute.
 
+The method returns a list of records.
+
 Example
 =======
+
+.. code-block:: py
+
+    recs = item.task.execute_select("SELECT * FROM DEMO_CUSTOMERS WHERE ID=41")
+    for r in rec:
+        print r
 
 See also
 ========

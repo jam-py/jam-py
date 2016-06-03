@@ -14,37 +14,122 @@ Description
 ===========
 
 Write ``on_apply`` event handler when you need to override the standard data saving 
-procedure during the execution of the apply method: 
-
-* :doc:`apply </refs/client/item/m_apply>` - on the client
-* :doc:`apply <m_apply>` - on the server
+procedure during the execution of the apply method on the
+:doc:`client </refs/client/item/m_apply>`
+or
+:doc:`server <m_apply>`.
 
 The ``on_apply`` event handler has the following parameters:
 
 * ``item`` - a reference to the item,
 * ``delta`` - a delta containing item change log (discussed in more detail below),
 * ``params`` - the parameters passed to the server by apply method,
-* ``privileges`` - a dictionary containing information about the user's permissions 
-  (``can_create``, ``can_edit``, ``can_delete``, ``can_view``),
-* ``user_info`` - a dictionary containing information about the user (``user_id``,
-  ``user_name``, ``role_id``, ``role_name``, ``admin``)
+* ``privileges`` - a dictionary containing information about the user's 
+  permissions, the right to add, modify, delete and view records in the database table, 
+
+  * ``can_create`` 
+  * ``can_edit`` 
+  * ``can_delete`` 
+  * ``can_view``
+  
+* ``user_info`` - a dictionary containing information about the user ( his id,
+    name, role id, role name and right to work in the Administrator.
+
+  * ``user_id``
+  * ``user_name`` 
+  * ``role_id`` 
+  * ``role_name`` 
+  * ``admin``
+  
 * ``enviroment`` - a dictionary containing standard WSGI environment variables.
 
 The delta parameter contains changes that must be saved in the databae. 
 By itself, this option is an item's copy, and its dataset is the item's change 
-log. The nature of the record change can be obtained by using methods rec_inserted, 
-rec_modified or rec_deleted, each of which returns a value
-of True, if the record is added, modified or deleted, respectively. If the item 
-has a detail item, delta
-also has a corresponding detail item storing detail changes. Details_active attribute of delta is True.
-Please note that if a record is deleted from an item and this record has detail records, the delta will
-just keep this deleted record, information about the deleted records of the detail is not saved. In this
-case if you need this detail records you must get them yourself
+log. The nature of the record change can be obtained by using following methods: 
+
+* ``rec_inserted``
+* ``rec_modified`` 
+* ``rec_deleted``
+  
+each of which returns a value of True, if the record is added, modified or 
+deleted, respectively. 
+
+If the item has a detail item, delta also has a corresponding detail item, 
+storing detail changes. 
+
+.. note::
+    Please note that when a record is deleted from an item and this record has 
+    detail records, the change log will just keep this deleted record, 
+    information about the deleted records of the detail is not stored. 
+    To add this deleted detail records, call delta's ``update_deleted`` method. 
+
+    You do not need to open delta detail after the cursor has been moved to 
+    another record.
+    
+The following code is execute by default, when the ``on_apply`` event handler is
+not defined:
+
+.. code-block:: py
+
+    sql = delta.apply_sql()
+    return item.task.execute(sql)
+
+The ``apply_sql`` method generates a dictionary, containing SQL queries, that the
+:doc:`execute </refs/server/task/m_execute>`
+method of the task knows how to process. After processing it 
+:doc:`execute </refs/server/task/m_execute>`
+returns to the client information about the result of processing, that stores the
+id's of the new records as well. The client based on this information updates the 
+item's change log and values of ``id`` fields of new records.
+
+You can make some additional processing of the delta
+
+.. code-block:: py
+
+    import datetime
+    
+    def on_apply(item, delta, params, privileges, user_info, enviroment):
+        for d in delta:
+            d.edit()
+            d.date.value = datetime.datetime.now()
+            d.post()
+        sql = delta.apply_sql()
+        return item.task.execute(sql)
+
+.. note::
+    Please note that changes made this way are not reflected in the item dataset
+    on the client!!!
+
+In the following code, while saving the changes made to the invoices, the 
+application as well updates the value of the ``sold`` field for tracks in this 
+invoices. All this is done in one transection.
+
+.. code-block:: py
+
+    def on_apply(item, delta, params, privileges, user_info, enviroment):
+        tracks_sql = []
+        delta.update_deleted()    
+        for d in delta:
+            for t in d.invoice_table:
+                if t.rec_inserted():
+                    sql = "UPDATE DEMO_TRACKS SET SOLD = COALESCE(SOLD, 0) + %s WHERE ID = %s" % \
+                    (t.quantity.value, t.track.value)                
+                elif t.rec_deleted():
+                    sql = "UPDATE DEMO_TRACKS SET SOLD = SOLD- %s WHERE ID = %s" % \
+                    (t.quantity.value, t.track.value)
+                elif t.rec_modified():
+                    sql = "UPDATE DEMO_TRACKS SET SOLD = SOLD - \
+                    (SELECT QUANTITY FROM DEMO_INVOICE_TABLE WHERE ID=%s) + %s WHERE ID = %s" % \
+                    (t.id.value, t.quantity.value, t.track.value)
+                tracks_sql.append(sql)                
+        sql = delta.apply_sql()
+        return item.task.execute(tracks_sql + [sql])
 
 See also
 ========
 
-:doc:`Modifying datasets </programming/data/modifying_datasets>`
+:doc:`Server side programming </programming/server/index>`
 
+:doc:`Modifying datasets </programming/data/modifying_datasets>`
 
 

@@ -48,6 +48,10 @@ open method is called, uses one **JOIN** clause for all this fields.
 	:align: center
 	:alt: Master field example
 	
-
-
-
+When user clicks on the button to the right of the field input or uses typeahead,
+the application creates a copy of the lookup item of the field and
+triggers 
+:doc:`on_field_select_value </refs/client/item/on_field_select_value>`
+event. Write this event handler to specify fields that will be displayed, 
+set up filters for the lookup item, before it will be opened and displayed for 
+user to select a value for the field

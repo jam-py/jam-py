@@ -1,4 +1,4 @@
 
-from jam.wsgi import App
+from jam.wsgi import create_application
 
-application = App()
+application = create_application(__file__)

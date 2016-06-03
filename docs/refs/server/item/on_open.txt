@@ -1,3 +1,57 @@
 =======
 on_open
 =======
+
+on_open(item, params, user_info, enviroment)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Item class </refs/server/item_api>`
+
+Description
+===========
+
+Write ``on_open`` event handler when you need to override the standard 
+procedure of fetching the records from the dataset during the execution of the 
+open method on the
+:doc:`client </refs/client/item/m_open>`
+or
+:doc:`server <m_open>`.
+
+The ``on_open`` event handler has the following parameters:
+
+* ``item`` - a reference to the item,
+* ``params`` - the parameters passed to the server by open method
+* ``user_info`` - a dictionary containing information about the user (his id,
+    name, role id, role name and the right to work in the Administrator.
+
+  * ``user_id``
+  * ``user_name`` 
+  * ``role_id`` 
+  * ``role_name`` 
+  * ``admin``
+* ``enviroment`` - a dictionary containing standard WSGI environment variables.
+
+The following code is execute by default, when the ``on_open`` event handler is
+not defined:
+
+.. code-block:: py
+
+    error_mes = ''
+    sql = item.get_select_statement(params)
+    rows = item.task.execute_select(sql)
+    return rows, error_mes
+
+The ``get_select_statement`` method generates an SQL query, that the
+:doc:`execute_select </refs/server/task/m_execute_select>`
+method executes. The server returns to the client the records, that the item  and error message.
+
+See also
+========
+
+:doc:`Server side programming </programming/server/index>`
+
+:doc:`Dataset </programming/data/dataset>`
+

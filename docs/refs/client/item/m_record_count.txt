@@ -1,0 +1,37 @@
+============
+record_count
+============
+
+.. js:function:: record_count() 
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Call ``record_count`` to get the total number of records ownered by the item's 
+dataset.
+
+Example
+=======
+
+.. code-block:: js
+
+    item.open()
+    if (item.record_count()) {
+        // some code
+    }
+
+
+See also
+========
+
+:doc:`Dataset </programming/data/dataset>`
+
+:doc:`open <m_open>`
+
+

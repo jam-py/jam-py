@@ -3,9 +3,103 @@ Details
 =======
 
 Details are used in the framework to work with tabular data, pertaining to a record 
-in an item' table.
+in an item's table.
 
 For example, the **Invoices** journal in the Demo application has the 
-**InvoiceTable** detail, which keeps a list of tracks sold in an customer 
-invoice.
+**InvoiceTable** detail, which keeps a list of tracks in an customer's invoice.
 
+Details and tables share the same underlying database table.
+ 
+To create a detail, you must first create a table and the use the
+:doc:`Details Dialog </admin/items/details_dialog>`
+to add a detail to an item.
+
+For example the following code
+
+.. code-block:: py
+
+    def on_created(task):
+        task.invoice_table.open()
+        print  task.invoice_table.record_count()
+    
+        task.invoices.open(limit=1)
+            task.invoices.invoice_table.open()	
+        print task.invoices.invoice_table.record_count()
+    
+will print::
+
+    2259
+    6
+
+Tables have two 
+:doc:`common fields <common_fields>` -
+``owner_id`` and ``owner_rec_id``, that are used to store information about the 
+``ID`` (each item have its own unique ID) and the value of ``id`` field of the 
+record of its master. This way each table can be linked to several items. As well
+as each item can have several details. To get access to details of an item use
+its ``details`` attribute. To get access to the master of the detail use its 
+``master`` attribute.
+
+Detail class, used to create details, is an ancestor of the Item class and 
+inherits all its attributes, methods and events.
+
+.. note::
+
+    The ``apply`` method of the Detail class does nothing. To write changes made 
+    to a detail use ``apply`` method of its master.
+    
+    To work with a detail its muster must be active
+    
+    To make any changes to a detail its master must be in an edit or insert mode
+    
+Example
+=======
+
+Just as an example:
+
+.. code-block:: py
+
+    from datetime import datetime, timedelta
+
+    def on_created(task):
+        invoices = task.invoices.copy()
+        invoices.set_where(invoicedate__gt=datetime.now()-timedelta(days=1))
+        invoices.open()
+        for i in invoices:
+            i.invoice_table.open()
+            i.edit()
+            for t in i.invoice_table:
+                t.edit()
+                t.sales_id.value = '101010'
+                t.post()
+            i.post()
+        invoices.apply()
+    
+The same code on the client will be as follows:
+
+.. code-block:: js
+
+    function on_page_loaded(task) {
+        var date = new Date(),
+            invoices = task.invoices.copy();
+        
+        invoices.set_where({invoicedate__gt: date.setDate(date.getDate() - 1)});
+        invoices.open();
+        invoices.each(function(i) {
+            i.invoice_table.open();
+            i.edit();
+            i.invoice_table.each(function(t) {
+                t.edit();
+                t.sales_id.value = '101010';
+                t.post();
+            });
+            i.post();
+        });
+        invoices.apply();
+    }
+
+
+
+
+
+    

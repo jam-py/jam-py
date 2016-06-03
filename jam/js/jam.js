@@ -918,7 +918,7 @@
                         item.warning(language.error + ': ' + item.item_caption + ' - ' + data.error);
                     } else {
                         if (data.result.status === consts.NO_PROJECT) {
-                            item.warning('You need to create a project.');
+                            item.warning('Creating a project is not finished yet. Run the Administrator to finish.');
                             return;
                         } else if (data.result.status === consts.UNDER_MAINTAINANCE) {
                             if (!self.task._under_maintainance) {
@@ -2557,6 +2557,11 @@
                 field,
                 field_name,
                 filters = [];
+
+            if (this.on_before_open) {
+                this.on_before_open.call(this, this, params);
+            }
+
             params.__expanded = expanded;
             params.__fields = [];
 
@@ -2633,9 +2638,6 @@
                 }
             }
             this._open_params = params;
-            if (this.on_before_open) {
-                this.on_before_open.call(this, this, params);
-            }
         },
 
         do_after_open: function() {
@@ -4010,7 +4012,7 @@
                     if (this.task.on_view_form_created) {
                         this.task.on_view_form_created.call(this, this);
                     }
-                    if (this.owner.on_view_form_created) {
+                    if (!this.master && this.owner.on_view_form_created) {
                         this.owner.on_view_form_created.call(this, this);
                     }
                     if (this.on_view_form_created) {
@@ -4021,7 +4023,7 @@
                     if (self.task.on_view_form_shown) {
                         self.task.on_view_form_shown.call(self, self);
                     }
-                    if (self.owner.on_view_form_shown) {
+                    if (!this.master && self.owner.on_view_form_shown) {
                         self.owner.on_view_form_shown.call(self, self);
                     }
                     if (self.on_view_form_shown) {
@@ -4034,7 +4036,7 @@
                     if (self.on_view_form_close_query) {
                         canClose = self.on_view_form_close_query.call(self, self);
                     }
-                    if (canClose === undefined && self.owner.on_view_form_close_query && !self.master) {
+                    if (!this.master && canClose === undefined && self.owner.on_view_form_close_query && !self.master) {
                         canClose = self.owner.on_view_form_close_query.call(self, self);
                     }
                     if (canClose === undefined && self.task.on_view_form_close_query) {
@@ -4096,7 +4098,7 @@
                     if (self.task.on_edit_form_created) {
                         self.task.on_edit_form_created.call(self, self);
                     }
-                    if (self.owner.on_edit_form_created && !self.master) {
+                    if (!self.master && self.owner.on_edit_form_created && !self.master) {
                         self.owner.on_edit_form_created.call(self, self);
                     }
                     if (self.on_edit_form_created) {
@@ -4107,7 +4109,7 @@
                     if (self.task.on_edit_form_shown) {
                         self.task.on_edit_form_shown.call(self, self);
                     }
-                    if (self.owner.on_edit_form_shown && !self.master) {
+                    if (!self.master && self.owner.on_edit_form_shown && !self.master) {
                         self.owner.on_edit_form_shown.call(self, self);
                     }
                     if (self.on_edit_form_shown) {
@@ -4123,7 +4125,7 @@
                     if (self.on_edit_form_close_query) {
                         canClose = self.on_edit_form_close_query.call(self, self);
                     }
-                    if (canClose === undefined && self.owner.on_edit_form_close_query && !self.master) {
+                    if (!self.master && canClose === undefined && self.owner.on_edit_form_close_query && !self.master) {
                         canClose = self.owner.on_edit_form_close_query.call(self, self);
                     }
                     if (canClose === undefined && self.task.on_edit_form_close_query) {
@@ -4160,7 +4162,7 @@
                     if (self.task.on_filter_form_created) {
                         self.task.on_filter_form_created.call(self, self);
                     }
-                    if (self.owner.on_filter_form_created) {
+                    if (!self.master && self.owner.on_filter_form_created) {
                         self.owner.on_filter_form_created.call(self, self);
                     }
                     if (self.on_filter_form_created) {
@@ -4171,7 +4173,7 @@
                     if (self.task.on_filter_form_shown) {
                         self.task.on_filter_form_shown.call(self, self);
                     }
-                    if (self.owner.on_filter_form_shown && !self.master) {
+                    if (!self.master && self.owner.on_filter_form_shown && !self.master) {
                         self.owner.on_filter_form_shown.call(self, self);
                     }
                     if (self.on_filter_form_shown) {
@@ -4184,7 +4186,7 @@
                     if (self.on_filter_form_close_query) {
                         canClose = self.on_filter_form_close_query.call(self, self);
                     }
-                    if (canClose === undefined && self.owner.on_filter_form_close_query) {
+                    if (!self.master && canClose === undefined && self.owner.on_filter_form_close_query) {
                         canClose = self.owner.on_filter_form_close_query.call(self, self);
                     }
                     if (canClose === undefined && self.task.on_filter_form_close_query) {

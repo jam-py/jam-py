@@ -889,10 +889,11 @@ class Consts(object):
 
 
 class AbstractServerTask(AbstrTask):
-    def __init__(self, name, caption, js_filename, db_type,
+    def __init__(self, app, name, caption, js_filename, db_type,
         db_database = '', db_user = '', db_password = '', host='', port='',
         encoding='', con_pool_size=1, mp_pool=False, persist_con=False):
         AbstrTask.__init__(self, None, None, None, None)
+        self.app = app
         self.consts = Consts()
         self.items = []
         self.ID = None
@@ -1124,11 +1125,11 @@ class AbstractServerTask(AbstrTask):
                             self.execute(sql)
 
 class Task(AbstractServerTask):
-    def __init__(self, name, caption, js_filename,
+    def __init__(self, app, name, caption, js_filename,
         db_type, db_database = '', db_user = '', db_password = '',
         host='', port='', encoding='', con_pool_size=4, mp_pool=True,
         persist_con=True):
-        AbstractServerTask.__init__(self, name, caption, js_filename,
+        AbstractServerTask.__init__(self, app, name, caption, js_filename,
             db_type, db_database, db_user, db_password,
             host, port, encoding, con_pool_size, mp_pool, persist_con)
         self.on_created = None
@@ -1141,14 +1142,14 @@ class Task(AbstractServerTask):
             self.init_dict[key] = value
 
     def find_user(self, login, password_hash=None):
-        return self.admin.find_user(login, password_hash)
+        return self.admin.find_user(self.app.admin, login, password_hash)
 
 
 class AdminTask(AbstractServerTask):
-    def __init__(self, name, caption, js_filename,
+    def __init__(self, app, name, caption, js_filename,
         db_type, db_database = '', db_user = '', db_password = '',
         host='', port='', encoding=''):
-        AbstractServerTask.__init__(self, name, caption, js_filename,
+        AbstractServerTask.__init__(self, app, name, caption, js_filename,
             db_type, db_database, db_user, db_password, host, port, encoding, 2)
         filepath, filename = os.path.split(__file__)
         self.cur_path = filepath

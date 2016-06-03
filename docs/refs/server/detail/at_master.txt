@@ -1,0 +1,22 @@
+======
+master
+======
+
+.. py:attribute:: master
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Detail class </refs/server/detail_api>`
+
+
+Description
+===========
+
+Use ``master`` attribute to get reference to the master of the detail.
+
+See also
+========
+
+:doc:`Details </programming/data/details>`

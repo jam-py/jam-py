@@ -1453,6 +1453,10 @@ class AbstractDataSet(object):
 
     def do_before_open(self, expanded, fields, where, order_by, open_empty,
         params, offset, limit, funcs, group_by):
+
+        if self.on_before_open:
+             self.on_before_open(self, params)
+
         result = None
         params['__expanded'] = expanded
         params['__fields'] = []
@@ -1497,8 +1501,6 @@ class AbstractDataSet(object):
             self._order_by_list = []
             self._where_list = []
             self._open_params = params
-        if self.on_before_open:
-             self.on_before_open(self, params)
 
     def do_after_open(self):
         if self.on_after_open:

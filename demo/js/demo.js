@@ -432,7 +432,7 @@ task.events.events15 = new Events15();
 
 function Events16() { // demo.journals.invoices 
 
-	function on_after_append(item) {
+	function on_after_append(item) { 
 		item.invoicedate.value = new Date();
 		item.taxrate.value = 5;
 	}

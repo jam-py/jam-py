@@ -1,0 +1,27 @@
+=================
+create_connection
+=================
+
+.. py:method:: create_connection(self) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Task class </refs/server/task_api>`
+
+Description
+===========
+
+Use ``create_connection`` to create a connection to the project database.
+
+The method returns a new connection.
+
+A developer must close a connection after it is no longer needed.
+
+See also
+========
+
+:doc:`execute <m_execute>`
+
+:doc:`execute_select <m_execute_select>`

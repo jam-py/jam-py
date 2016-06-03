@@ -24,10 +24,15 @@ lists and so on.
 All queries are executed in one transaction and if execution succeeds the ``COMMIT``
 command is called, otherwise ``ROLLBACK`` command is executed.
 
+Example
+=======
 
-Examples
-========
+.. code-block:: py
 
+    sql = []
+    for i in ids:
+        sql.append('UPDATE DEMO_CUSTOMERS SET QUANTITY=2 WHERE ID=%s' % i) 
+    item.task.execute(sql)
 
 See also
 ========
