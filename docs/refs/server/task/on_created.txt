@@ -23,6 +23,19 @@ has just been created. See
 The ``task`` parameter is a reference to the 
 :doc:`task tree </programming/task_tree>`
 
+Example
+=======
+
+In the following code a lock is created that will be later used in the 
+on_apply event handler of the **Invoices** journal in the Demo application.
+
+.. code-block:: py
+
+    from threading import Lock
+    
+    def on_created(task):
+    	task.invoices_lock = Lock()
+
 See also
 ========
 

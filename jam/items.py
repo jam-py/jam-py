@@ -6,9 +6,6 @@ import logging
 import lang.langs as langs
 import common
 
-#~ ITEM_INFO = ITEM_ID, ITEM_NAME, ITEM_CAPTION, ITEM_VISIBLE, ITEM_TYPE, ITEM_JS_FILENAME, \
-    #~ ITEM_ITEMS, ITEM_FIELDS, ITEM_FILTERS, ITEM_REPORTS = range(10)
-
 class AbortException(Exception):
     pass
 
@@ -47,6 +44,11 @@ class AbstractItem(object):
             result = item.item_by_ID(id_value)
             if result:
                 return result
+
+    def all(self, func):
+        func(self);
+        for item in self.items:
+            item.all(func)
 
     def write_info(self, info):
         info['id'] = self.ID
@@ -90,7 +92,6 @@ class AbstractItem(object):
         for item in self.items:
             item.bind_items()
         self.item_type = common.ITEM_TYPES[self.item_type_id - 1]
-
 
     def get_module_name(self):
         result = self.owner.get_module_name() + '.' + self.item_name
@@ -137,6 +138,10 @@ class AbstrTask(AbstractItem):
         self.__language = None
         self.item_type_id = common.TASK_TYPE
         self.log = None
+
+    def write_info(self, info):
+        super(AbstrTask, self).write_info(info)
+        info['lookup_lists'] = self.lookup_lists
 
     def set_info(self, info):
         super(AbstrTask, self).set_info(info)
@@ -214,6 +219,10 @@ class AbstrItem(AbstractItem):
         info['filters'] = self.filter_defs
         info['reports'] = self.get_reports_info()
         info['default_order'] = self._order_by
+        info['primary_key'] = self._primary_key
+        info['deleted_flag'] = self._deleted_flag
+        info['master_id'] = self._master_id
+        info['master_rec_id'] = self._master_rec_id
 
     def read_info(self, info):
         super(AbstrItem, self).read_info(info)

@@ -57,51 +57,85 @@ def upper_function():
 
 def create_table_sql(table_name, fields, foreign_fields=None):
     result = []
-    sql = 'CREATE TABLE "%s"\n(\n' % table_name
+    primary_key = ''
+    sql = set_case('CREATE TABLE "%s"\n(\n' % table_name)
     for field in fields:
-        sql += '"%s" %s' % (field['field_name'], FIELD_TYPES[field['data_type']])
+        sql += set_case('"%s" %s' % (field['field_name'], FIELD_TYPES[field['data_type']]))
         if field['size'] != 0 and field['data_type'] == TEXT:
             sql += '(%d)' % field['size']
-        if field['field_name'].upper() == u'ID':
+        if field['default_value'] and not field['primary_key']:
+            if field['data_type'] == TEXT:
+                sql += " DEFAULT '%s'" % field['default_value']
+            else:
+                sql += ' DEFAULT %s' % field['default_value']
+        if field['primary_key']:
             sql += ' NOT NULL AUTO_INCREMENT'
+            primary_key = set_case(field['field_name'])
         sql +=  ',\n'
-    sql += 'PRIMARY KEY("ID")'
+    sql += 'PRIMARY KEY("%s")' % primary_key
     sql += ')\n'
     result.append(sql)
     return result
 
 def delete_table_sql(table_name):
     result = []
-    result.append('DROP TABLE "%s"' % table_name)
+    result.append(set_case('DROP TABLE "%s"' % table_name))
     return result
 
-def create_index_sql(index_name, table_name, fields, desc):
-    return 'CREATE INDEX "%s" ON "%s" (%s)' % (index_name, table_name, fields)
+def create_index_sql(index_name, table_name, unique, fields, desc):
+    return set_case('CREATE %s INDEX "%s" ON "%s" (%s)' % \
+        (unique, index_name, table_name, fields))
 
-def create_foreign_index_sql(table_name, index_name, key, ref):
-    return 'ALTER TABLE %s ADD FOREIGN KEY (%s) REFERENCES %s(ID)' % \
-        (table_name, index_name, key, ref)
+def create_foreign_index_sql(table_name, index_name, key, ref, primary_key):
+    return set_case('ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s)' % \
+        (table_name, index_name, key, ref, primary_key))
 
 def delete_index(table_name, index_name):
     return 'DROP INDEX %s ON %s' % (index_name, table_name)
 
 def delete_foreign_index(table_name, index_name):
-    return 'ALTER TABLE %s DROP FOREIGN KEY %s' % (table_name, index_name)
+    return set_case('ALTER TABLE %s DROP FOREIGN KEY %s' % \
+        (table_name, index_name))
 
 def add_field_sql(table_name, field):
-    result = 'ALTER TABLE "%s" ADD "%s" %s'
-    result = result % (table_name, field['field_name'], FIELD_TYPES[field['data_type']])
+    result = set_case('ALTER TABLE "%s" ADD "%s" %s' % \
+        (table_name, field['field_name'], FIELD_TYPES[field['data_type']]))
     if field['size']:
         result += '(%d)' % field['size']
+    if field['default_value']:
+        if field['data_type'] == TEXT:
+            result += " DEFAULT '%s'" % field['default_value']
+        else:
+            result += ' DEFAULT %s' % field['default_value']
     return result
 
 def del_field_sql(table_name, field):
-    return 'ALTER TABLE "%s" DROP "%s"' % (table_name, field['field_name'])
+    return set_case('ALTER TABLE "%s" DROP "%s"' % (table_name, field['field_name']))
 
 def change_field_sql(table_name, old_field, new_field):
-    result = 'ALTER TABLE "%s" CHANGE  "%s" "%s" %s' % (table_name, old_field['field_name'], new_field['field_name'], FIELD_TYPES[new_field['data_type']])
-    if old_field['size'] and old_field['size'] != new_field['size']:
-        result += '(%d)' % new_field['size']
+    result = []
+    if old_field['field_name'] != new_field['field_name']:
+        sql = set_case('ALTER TABLE "%s" CHANGE  "%s" "%s"' % (table_name, old_field['field_name'],
+            new_field['field_name'], FIELD_TYPES[new_field['data_type']]))
+        if old_field['data_type'] != new_field['data_type'] or \
+            old_field['size'] != new_field['size']:
+            sql += set_case(' %s' % FIELD_TYPES[field['data_type']])
+            if new_field['size'] and old_field['size'] != new_field['size']:
+                sql += '(%d)' % new_field['size']
+        result.append(sql)
+    if old_field['default_value'] != new_field['default_value']:
+        if new_field['default_value']:
+            if new_field['data_type'] == TEXT:
+                sql = set_case('ALTER TABLE "%s" ALTER "%s" SET DEFAULT' % \
+                    (table_name, new_field['field_name']))
+                sql +=  " '%s'" % new_field['default_value']
+            else:
+                sql = set_case('ALTER TABLE "%s" ALTER "%s" SET DEFAULT %s' % \
+                    (table_name, new_field['field_name'], new_field['default_value']))
+        else:
+            sql = set_case('ALTER TABLE "%s" ALTER "%s" DROP DEFAULT' % \
+                (table_name, new_field['field_name']))
+        result.append(sql)
     return result
 
 def set_case(string):

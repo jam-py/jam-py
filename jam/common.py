@@ -62,15 +62,16 @@ LOCALE_SETTINGS = (
 SETTINGS = {}
 
 RESPONSE, NOT_LOGGED, UNDER_MAINTAINANCE, NO_PROJECT = range(1, 5)
-ROOT_TYPE, USERS_TYPE, ROLES_TYPE, TASKS_TYPE, TASK_TYPE, \
-    CATALOGS_TYPE, JOURNALS_TYPE, TABLES_TYPE, REPORTS_TYPE, \
-    CATALOG_TYPE, JOURNAL_TYPE, TABLE_TYPE, REPORT_TYPE, DETAIL_TYPE = range(1, 15)
 
+ROOT_TYPE, USERS_TYPE, ROLES_TYPE, TASKS_TYPE, TASK_TYPE, \
+    ITEMS_TYPE, JOURNALS_TYPE, TABLES_TYPE, REPORTS_TYPE, \
+    ITEM_TYPE, JOURNAL_TYPE, TABLE_TYPE, REPORT_TYPE, DETAIL_TYPE = range(1, 15)
 ITEM_TYPES = ["root", "users", "roles", "tasks", 'task',
         "catalogs", "journals", "tables", "reports",
         "catalog", "journal", "table", "report", "detail"]
 
-SYSTEM_FIELDS = KEY_FIELD_NAME, DEL_FIELD_NAME, OWNER_ID_FIELD_NAME, OWNER_REC_ID_FIELD_NAME = 'id', 'deleted', 'owner_id', 'owner_rec_id'
+GROUP_TYPES = ["Item group", "Table group", "Report group"]
+
 TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB = range(1, 9)
 FIELD_TYPES = ('TEXT', 'INTEGER', 'FLOAT', 'CURRENCY', 'DATE', 'DATETIME', 'BOOLEAN', 'BLOB')
 FIELD_TYPE_NAMES = ('', 'text', 'integer', 'float', 'currency', 'date', 'datetime', 'boolean', 'blob')

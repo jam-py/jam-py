@@ -9,6 +9,7 @@ import zipfile
 import shutil
 import traceback
 import sqlite3
+from threading import Lock
 
 from jsparser import parse, SyntaxError_
 
@@ -126,8 +127,10 @@ def create_items(task):
     task.sys_params.add_field(27, 'f_single_file_js', u'All JS modules in a single file', common.BOOLEAN)
     task.sys_params.add_field(28, 'f_dynamic_js', u'Dynamic JS modules loading', common.BOOLEAN)
     task.sys_params.add_field(29, 'f_compressed_js', u'Compressed JS, CSS files', common.BOOLEAN)
+    task.sys_params.add_field(30, 'f_field_id_gen', u'f_field_id_gen', common.INTEGER)
 
     task.sys_items = task.sys_catalogs.add_catalog('sys_items', u'Items', 'SYS_ITEMS')
+    task.sys_fields = task.sys_tables.add_table('sys_fields', task.lang['fields'], 'SYS_FIELDS')
 
     task.sys_items.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_items.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
@@ -150,6 +153,11 @@ def create_items(task):
     task.sys_items.add_field(19, 'f_virtual_table', u'Virtual table', common.BOOLEAN)
     task.sys_items.add_field(20, 'f_js_external', u'External js module', common.BOOLEAN)
     task.sys_items.add_field(21, 'f_js_filename', u'js_file_name', common.TEXT, size=1024)
+    task.sys_items.add_field(22, 'f_primary_key', u'Primary key field', common.INTEGER, False, task.sys_fields, 'f_field_name')
+    task.sys_items.add_field(23, 'f_deleted_flag', u'Deleted flag field', common.INTEGER, False, task.sys_fields, 'f_field_name')
+    task.sys_items.add_field(24, 'f_master_id', u'Master ID field', common.INTEGER, False, task.sys_fields, 'f_field_name')
+    task.sys_items.add_field(25, 'f_master_rec_id', u'Master record id field', common.INTEGER, False, task.sys_fields, 'f_field_name')
+    task.sys_items.add_field(26, 'f_js_funcs', 'f_js_funcs', common.BLOB, visible=False, edit_visible=False)
 
     task.sys_items.add_filter('id', u'ID', 'id', common.FILTER_EQ, visible=False)
     task.sys_items.add_filter('not_id', u'ID', 'id', common.FILTER_NE, visible=False)
@@ -176,18 +184,24 @@ def create_items(task):
 
     task.sys_tasks.add_filter('task_id', u'Task ID', 'task_id', common.FILTER_EQ, visible=False)
 
-    task.sys_field_lookups = task.sys_tables.add_table('sys_field_lookups', u'Field lookups', 'SYS_FIELD_LOOKUPS')
+    task.sys_lookup_lists = task.sys_catalogs.add_catalog('sys_lookup_lists', u'Lookup lists', 'SYS_LOOKUP_LISTS')
+
+    task.sys_lookup_lists.add_field(1, 'id', u'ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_lookup_lists.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_lookup_lists.add_field(3, 'f_name', task.lang['name'], common.TEXT, required=True, expand=True, size=256)
+    task.sys_lookup_lists.add_field(4, 'f_lookup_values_text', u'Text to store lookup_values',  common.BLOB)
+
+    task.sys_field_lookups = task.sys_tables.add_table('sys_field_lookups', u'Lookup item', 'SYS_FIELD_LOOKUPS')
 
     task.sys_field_lookups.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_field_lookups.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_field_lookups.add_field(3, 'field_id', u'Field ID', common.INTEGER)
-    task.sys_field_lookups.add_field(4, 'f_value', u'Value', common.INTEGER)
-    task.sys_field_lookups.add_field(5, 'f_lookup', u'Lookup value', common.TEXT, size=612)
+    task.sys_field_lookups.add_field(3, 'f_value', u'Value', common.INTEGER)
+    task.sys_field_lookups.add_field(4, 'f_lookup', u'Lookup value', common.TEXT, size=612)
 
-    task.sys_fields = task.sys_tables.add_table('sys_fields', task.lang['fields'], 'SYS_FIELDS')
+#    task.sys_fields = task.sys_tables.add_table('sys_fields', task.lang['fields'], 'SYS_FIELDS')
 
     task.sys_fields.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_fields.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_fields.add_field(2, 'deleted', u'Deleted', common.INTEGER, visible=False, edit_visible=False)
     task.sys_fields.add_field(3, 'owner_id', u'Owner ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_fields.add_field(4, 'owner_rec_id', u'Owner record ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_fields.add_field(5, 'task_id', u'Task ID', common.INTEGER, visible=False, edit_visible=False)
@@ -199,13 +213,15 @@ def create_items(task):
     task.sys_fields.add_field(11, 'f_object_field',   task.lang['object_field'], common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_fields.add_field(12, 'f_master_field', task.lang['master_field'], common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_fields.add_field(13, 'f_enable_typehead', u'Typeahead',  common.BOOLEAN)
-    task.sys_fields.add_field(14, 'f_lookup_values', task.lang['lookup_values'], common.INTEGER, False, task.sys_field_lookups, 'id')
+    task.sys_fields.add_field(14, 'f_lookup_values', task.lang['lookup_values'], common.INTEGER, False, task.sys_lookup_lists, 'f_name')
     task.sys_fields.add_field(15, 'f_required',     task.lang['required'], common.BOOLEAN)
     task.sys_fields.add_field(16, 'f_calculated',   task.lang['calculated'], common.BOOLEAN, visible=False, edit_visible=False)
     task.sys_fields.add_field(17, 'f_default',      task.lang['default'], common.BOOLEAN)
     task.sys_fields.add_field(18, 'f_read_only',    task.lang['read_only'], common.BOOLEAN)
     task.sys_fields.add_field(19, 'f_alignment',    task.lang['alignment'], common.INTEGER, lookup_values=get_value_list(common.ALIGNMENT))
-    task.sys_fields.add_field(20, 'f_lookup_values_text', u'Text to store lookup_values',  common.BLOB)
+    task.sys_fields.add_field(20, 'f_default_value', u'Default value', common.TEXT, False,  False, size =256)
+    task.sys_fields.add_field(21, 'f_help',          u'Help', common.BLOB, visible=False)
+    task.sys_fields.add_field(22, 'f_placeholder',   u'Placeholder', common.TEXT, visible=False, size=256)
 
     task.sys_fields.add_filter('id', u'ID', 'id', common.FILTER_EQ, visible=False)
     task.sys_fields.add_filter('owner_rec_id', u'Owner record ID', 'owner_rec_id', common.FILTER_IN, visible=False)
@@ -232,9 +248,13 @@ def create_items(task):
     task.sys_report_params.add_field(11, 'f_object',       task.lang['object'],       common.INTEGER, False, task.sys_items, 'f_name')
     task.sys_report_params.add_field(12, 'f_object_field',   task.lang['object_field'],  common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_report_params.add_field(13, 'f_enable_typehead', u'Typeahead',  common.BOOLEAN)
-    task.sys_report_params.add_field(14, 'f_required',     task.lang['required'],        common.BOOLEAN)
-    task.sys_report_params.add_field(15, 'f_visible',      task.lang['visible'],    common.BOOLEAN)
-    task.sys_report_params.add_field(16, 'f_alignment',    task.lang['alignment'], common.INTEGER, lookup_values=get_value_list(common.ALIGNMENT))
+    task.sys_report_params.add_field(14, 'f_lookup_values', task.lang['lookup_values'], common.INTEGER, False, task.sys_lookup_lists, 'f_name')
+    task.sys_report_params.add_field(15, 'f_required',     task.lang['required'],        common.BOOLEAN)
+    task.sys_report_params.add_field(16, 'f_visible',      task.lang['visible'],    common.BOOLEAN)
+    task.sys_report_params.add_field(17, 'f_alignment',    task.lang['alignment'], common.INTEGER, lookup_values=get_value_list(common.ALIGNMENT))
+    task.sys_report_params.add_field(18, 'f_master_field', task.lang['master_field'], common.INTEGER, False, task.sys_fields, 'f_field_name')
+    task.sys_report_params.add_field(19, 'f_help',         u'Help', common.BLOB, visible=False)
+    task.sys_report_params.add_field(20, 'f_placeholder',  u'Placeholder', common.TEXT, visible=False, size=256)
 
     task.sys_report_params.add_filter('owner_rec_id', u'Owner rec ID ', 'owner_rec_id', common.FILTER_EQ, visible=False)
     task.sys_report_params.add_filter('task_id', u'Task ID', 'task_id', common.FILTER_EQ, visible=False)
@@ -248,9 +268,10 @@ def create_items(task):
     task.sys_indices.add_field(5, 'task_id', u'Task ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_indices.add_field(6, 'f_index_name', task.lang['index_name'], common.TEXT, True, word_wrap=True, expand=True, size = 100)
     task.sys_indices.add_field(7, 'descending', u'Descending', common.BOOLEAN)
-    task.sys_indices.add_field(8, 'f_foreign_index', u'Foreign Index', common.BOOLEAN, visible=False, edit_visible=False)
-    task.sys_indices.add_field(9, 'f_foreign_field', u'Foreign Field', common.INTEGER, False, task.item_fields, 'f_field_name', visible=False, edit_visible=False, word_wrap=True, expand=True)
-    task.sys_indices.add_field(10, 'f_fields', task.lang['fields'], common.BLOB, visible=False, edit_visible=False)
+    task.sys_indices.add_field(8, 'f_unique_index', u'Unique', common.BOOLEAN)
+    task.sys_indices.add_field(9, 'f_foreign_index', u'Foreign Index', common.BOOLEAN, visible=False, edit_visible=False)
+    task.sys_indices.add_field(10, 'f_foreign_field', u'Foreign Field', common.INTEGER, False, task.item_fields, 'f_field_name', visible=False, edit_visible=False, word_wrap=True, expand=True)
+    task.sys_indices.add_field(11, 'f_fields', task.lang['fields'], common.BLOB, visible=False, edit_visible=False)
 
     task.sys_indices.add_filter('id', u'ID', 'id', common.FILTER_EQ, visible=False)
     task.sys_indices.add_filter('owner_rec_id', u'Owner record ID', 'owner_rec_id', common.FILTER_EQ, visible=False)
@@ -271,6 +292,9 @@ def create_items(task):
     task.sys_filters.add_field(10, 'f_data_type', task.lang['data_type'], common.INTEGER, False,  visible=False, edit_visible=False, lookup_values=get_value_list(common.FIELD_TYPES))
     task.sys_filters.add_field(11, 'f_type',      task.lang['filter_type'], common.INTEGER, False, lookup_values=get_value_list(common.FILTER_STRING))
     task.sys_filters.add_field(12, 'f_visible',   task.lang['visible'],    common.BOOLEAN)
+    task.sys_filters.add_field(13, 'f_help',      u'Help', common.BLOB, visible=False)
+    task.sys_filters.add_field(14, 'f_placeholder', u'Placeholder', common.TEXT, visible=False, size=256)
+
 
     task.sys_filters.add_filter('owner_rec_id', u'Owner rec ID ', 'owner_rec_id', common.FILTER_EQ, visible=False)
     task.sys_filters.add_filter('task_id', u'Task ID', 'task_id', common.FILTER_EQ, visible=False)
@@ -286,7 +310,7 @@ def create_items(task):
     task.sys_users.add_field(6, 'f_login', task.lang['login'], common.TEXT, required=True, expand=True, size=30)
     task.sys_users.add_field(7, 'f_password', task.lang['password'], common.TEXT, required=True, expand=True, size=30)
     task.sys_users.add_field(8, 'f_role', task.lang['role'], common.INTEGER, True, task.sys_roles, 'f_name', expand=True)
-    task.sys_users.add_field(9, 'f_info', task.lang['info'], common.TEXT, size=100)
+    task.sys_users.add_field(9, 'f_info', task.lang['info'], common.TEXT, edit_visible=False, size=100)
     task.sys_users.add_field(10, 'f_admin', u'Admin', common.BOOLEAN)
 
     task.sys_roles.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
@@ -316,13 +340,13 @@ def create_items(task):
     task.sys_code_editor.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_code_editor.add_field(2, 'parent', u'parent', common.INTEGER)
     task.sys_code_editor.add_field(3, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_code_editor.add_field(4, 'name', task.lang['caption'], common.TEXT, expand=True, size = 256)
+    task.sys_code_editor.add_field(4, 'name', task.lang['caption'], common.TEXT, expand=True, size = 10000)
 
     task.sys_fields_editor = task.sys_catalogs.add_catalog('sys_fields_editor', u'Editor', '')
 
     task.sys_fields_editor.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_fields_editor.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_fields_editor.add_field(3, 'name', task.lang['caption'], common.TEXT, required=True, expand=True, size = 200)
+    task.sys_fields_editor.add_field(3, 'name', task.lang['caption'], common.TEXT, required=True, expand=True, size = 256)
     task.sys_fields_editor.add_field(4, 'param1', u'param1', common.BOOLEAN)
     task.sys_fields_editor.add_field(5, 'param2', u'param2', common.BOOLEAN)
     task.sys_fields_editor.add_field(6, 'param3', u'param3', common.BOOLEAN)
@@ -332,13 +356,24 @@ def create_items(task):
     task.sys_search.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_search.add_field(2, 'parent', u'parent', common.INTEGER)
     task.sys_search.add_field(3, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_search.add_field(4, 'find_text', task.lang['find'], common.TEXT, size = 200)
+    task.sys_search.add_field(4, 'find_text', task.lang['find'], common.TEXT, size = 1000)
     task.sys_search.add_field(5, 'case_sensitive', task.lang['case_sensitive'], common.BOOLEAN)
     task.sys_search.add_field(6, 'whole_words', task.lang['whole_words'], common.BOOLEAN)
+
+    task.sys_new_group = task.sys_catalogs.add_catalog('sys_new_group', u'Select new group type', '')
+
+    task.sys_new_group.add_field(1, 'group_type',  'Group type', common.INTEGER, required=True, lookup_values=get_value_list(common.GROUP_TYPES))
 
     def init_item(item, id_value, *order_by):
         item.ID = id_value
         item.soft_delete = False
+        item._primary_key = 'id'
+        item._deleted_flag = 'deleted'
+        item._master_id = ''
+        item._master_rec_id = ''
+        if item.master:
+            item._master_id = 'owner_id'
+            item._master_rec_id = 'owner_rec_id'
         if hasattr(item, '_fields'):
             for field in item._fields:
                 field.alignment = common.get_alignment(field.data_type, field.lookup_item, field.lookup_values)
@@ -362,6 +397,8 @@ def create_items(task):
     init_item(task.sys_fields_editor, 15)
     init_item(task.sys_search, 16)
     init_item(task.sys_field_lookups, 17)
+    init_item(task.sys_lookup_lists, 18, 'f_name')
+    init_item(task.sys_new_group, 19)
 
     task.sys_catalogs.ID = 101
     task.sys_tables.ID = 102
@@ -383,6 +420,54 @@ def create_items(task):
 
 def update_admin_fields(task):
 
+    def update_system_fields(cursor, id_value, parent, type_id, name):
+        print name
+        cursor.execute("SELECT ID, F_FIELD_NAME FROM SYS_FIELDS WHERE OWNER_REC_ID IN (%d, %d)" % (id_value, parent))
+        rows = cursor.fetchall()
+        for (field_id, field_name) in rows:
+            if field_name == 'id':
+                cursor.execute("UPDATE SYS_ITEMS SET F_PRIMARY_KEY=%d WHERE ID=%d" % (field_id, id_value))
+            elif field_name == 'deleted':
+                cursor.execute("UPDATE SYS_ITEMS SET F_DELETED_FLAG=%d WHERE ID=%d" % (field_id, id_value))
+                cursor.execute("UPDATE SYS_FIELDS SET f_data_type=%d WHERE ID=%d" % (common.INTEGER, field_id))
+            elif field_name == 'owner_id':
+                cursor.execute("UPDATE SYS_ITEMS SET F_MASTER_ID=%d WHERE ID=%d" % (field_id, id_value))
+            elif field_name == 'owner_rec_id':
+                cursor.execute("UPDATE SYS_ITEMS SET F_MASTER_REC_ID=%d WHERE ID=%d" % (field_id, id_value))
+
+    def do_updates(con, field):
+        if field.field_name.lower() == 'f_js_funcs':
+            cursor = con.cursor()
+            cursor.execute("SELECT ID, F_WEB_CLIENT_MODULE FROM SYS_ITEMS")
+            rows = cursor.fetchall()
+            for (id_value, code) in rows:
+                if code:
+                    js_funcs = parse_js(code.encode('utf-8'))
+                    cursor.execute("UPDATE SYS_ITEMS SET F_JS_FUNCS='%s' WHERE ID=%d" % (js_funcs, id_value))
+                else:
+                    cursor.execute("UPDATE SYS_ITEMS SET F_JS_FUNCS=NULL WHERE ID=%d" % id_value)
+            con.commit()
+        if field.field_name.lower() == 'f_field_id_gen':
+            cursor = con.cursor()
+            cursor.execute("SELECT MAX(ID) FROM SYS_FIELDS")
+            rows = cursor.fetchall()
+            max_field_id = rows[0][0]
+            print 'max_field_id', max_field_id
+            cursor.execute("UPDATE SYS_PARAMS SET F_FIELD_ID_GEN = %d" % max_field_id)
+            con.commit()
+        if field.field_name.lower() == 'f_master_rec_id':
+            cursor = con.cursor()
+            cursor.execute("UPDATE SYS_ITEMS SET TYPE_ID = %d WHERE TYPE_ID=%d" % (common.ITEMS_TYPE, common.JOURNALS_TYPE))
+            cursor.execute("UPDATE SYS_ITEMS SET TYPE_ID = %d WHERE TYPE_ID=%d" % (common.ITEM_TYPE, common.JOURNAL_TYPE))
+            con.commit()
+            cursor.execute("SELECT ID, PARENT, TYPE_ID, F_NAME FROM SYS_ITEMS WHERE TYPE_ID IN (%d, %d, %d, %d)" % \
+                (common.ITEMS_TYPE, common.TABLES_TYPE, common.ITEM_TYPE, common.TABLE_TYPE))
+            rows = cursor.fetchall()
+            for (id_value, parent, type_id, name) in rows:
+                update_system_fields(cursor, id_value, parent, type_id, name)
+            con.commit()
+            create_items(task)
+
     def get_item_fields(item):
         cursor.execute('PRAGMA table_info(%s)' % item.table_name)
         rows = cursor.fetchall()
@@ -399,9 +484,10 @@ def update_admin_fields(task):
                 print sql
                 cursor.execute(sql)
                 con.commit()
+                do_updates(con, field)
 
     def check_table_exists(item):
-        sql = 'SELECT name FROM sqlite_master WHERE type="table" AND name="%s"' % item.table_name
+        sql = 'SELECT name FROM sqlite_master WHERE type="table" AND UPPER(name)="%s"' % item.table_name.upper()
         cursor.execute(sql)
         rows = cursor.fetchall()
         if not rows:
@@ -409,7 +495,7 @@ def update_admin_fields(task):
             cursor.execute(sql)
         return True
 
-    con = sqlite3.connect('admin.sqlite')
+    con = task.create_connection()
     cursor = con.cursor()
     for group in task.items:
         for item in group.items:
@@ -424,6 +510,7 @@ def create_admin(app):
     task.language = read_language(task)
     create_items(task)
     update_admin_fields(task)
+    task.fields_id_lock = Lock()
 
     read_setting(task)
     task.task_con_pool_size = common.SETTINGS['CON_POOL_SIZE']
@@ -582,57 +669,60 @@ def reload_task(task):
             task.app.under_maintenance = False
 
 
-def load_task(target, app, first_build=True):
+def load_task(target, app, first_build=True, after_import=False):
 
     def create_fields(item, parent_id):
-        for rec in sys_fields:
-            if sys_fields.owner_rec_id.value == parent_id:
-                view_index = -1
-                visible = False
-                word_wrap = False
-                expand = False
-                editable = False
-                for i, rec in enumerate(sys_items._view_list):
-                    if sys_fields.id.value == rec[0]:
-                        view_index = i
-                        visible = True
-                        word_wrap = rec[1]
-                        expand = rec[2]
-                        editable = rec[3]
-                        break
-                edit_visible = False
-                edit_index = -1
-                for i, rec in enumerate(sys_items._edit_list):
-                    if sys_fields.id.value == rec[0]:
-                        edit_index = i
-                        edit_visible = True
-                        break
-                lookup_values = None
-                if sys_fields.f_lookup_values_text.value:
-                    lookup_values = json.loads(sys_fields.f_lookup_values_text.value)
-                field = item.add_field(sys_fields.field_by_name('id').value,
-                    sys_fields.f_field_name.value,
-                    sys_fields.f_name.value,
-                    sys_fields.f_data_type.value,
-                    sys_fields.f_required.value,
-                    sys_fields.f_object.value,
-                    sys_fields.f_object_field.value,
-                    visible,
-                    view_index,
-                    edit_visible,
-                    edit_index,
-                    sys_fields.f_read_only.value,
-                    expand,
-                    word_wrap,
-                    sys_fields.f_size.value,
-                    sys_fields.f_default.value,
-                    sys_fields.f_calculated.value,
-                    editable,
-                    sys_fields.f_master_field.value,
-                    sys_fields.f_alignment.value,
-                    lookup_values,
-                    sys_fields.f_enable_typehead.value
-                    )
+        recs = fields_dict.get(parent_id)
+        if recs:
+            for r in recs:
+                sys_fields.rec_no = r
+                if sys_fields.owner_rec_id.value == parent_id:
+                    view_index = -1
+                    visible = False
+                    word_wrap = False
+                    expand = False
+                    editable = False
+                    for i, rec in enumerate(sys_items._view_list):
+                        if sys_fields.id.value == rec[0]:
+                            view_index = i
+                            visible = True
+                            word_wrap = rec[1]
+                            expand = rec[2]
+                            editable = rec[3]
+                            break
+                    edit_visible = False
+                    edit_index = -1
+                    for i, rec in enumerate(sys_items._edit_list):
+                        if sys_fields.id.value == rec[0]:
+                            edit_index = i
+                            edit_visible = True
+                            break
+                    field = item.add_field(sys_fields.field_by_name('id').value,
+                        sys_fields.f_field_name.value,
+                        sys_fields.f_name.value,
+                        sys_fields.f_data_type.value,
+                        sys_fields.f_required.value,
+                        sys_fields.f_object.value,
+                        sys_fields.f_object_field.value,
+                        visible,
+                        view_index,
+                        edit_visible,
+                        edit_index,
+                        sys_fields.f_read_only.value,
+                        expand,
+                        word_wrap,
+                        sys_fields.f_size.value,
+                        sys_fields.f_default_value.value,
+                        sys_fields.f_default.value,
+                        sys_fields.f_calculated.value,
+                        editable,
+                        sys_fields.f_master_field.value,
+                        sys_fields.f_alignment.value,
+                        sys_fields.f_lookup_values.value,
+                        sys_fields.f_enable_typehead.value,
+                        sys_fields.f_help.value,
+                        sys_fields.f_placeholder.value
+                        )
 
     def create_filters(item, parent_id):
         for rec in sys_filters:
@@ -643,7 +733,10 @@ def load_task(target, app, first_build=True):
                     sys_filters.f_field.value,
                     sys_filters.f_type.value,
                     sys_filters.f_data_type.value,
-                    sys_filters.f_visible.value)
+                    sys_filters.f_visible.value,
+                    sys_filters.f_help.value,
+                    sys_filters.f_placeholder.value
+                    )
 
     def create_params(item, parent_id):
         for params in sys_params:
@@ -656,17 +749,19 @@ def load_task(target, app, first_build=True):
                         params.f_required.value,
                         params.f_visible.value,
                         params.f_alignment.value,
-                        params.f_enable_typehead.value)
+                        params.f_enable_typehead.value,
+                        params.f_lookup_values.value,
+                        params.f_help.value,
+                        params.f_placeholder.value
+                        )
 
     def create_items(group, group_id, group_type_id):
         for rec in sys_items:
             if rec.parent.value == group_id:
                 item = None
                 add_item = None
-                if group_type_id == common.CATALOGS_TYPE:
+                if group_type_id == common.ITEMS_TYPE:
                     add_item = group.add_catalog
-                elif group_type_id == common.JOURNALS_TYPE:
-                    add_item = group.add_journal
                 elif group_type_id == common.TABLES_TYPE:
                     add_item = group.add_table
                 elif group_type_id == common.REPORTS_TYPE:
@@ -682,6 +777,10 @@ def load_task(target, app, first_build=True):
                     if item:
                         item.ID = rec.id.value
                         item.server_code = rec.f_server_module.value
+                        item._primary_key = rec.f_primary_key.value
+                        item._deleted_flag = rec.f_deleted_flag.value
+                        item._master_id = rec.f_master_id.value
+                        item._master_rec_id = rec.f_master_rec_id.value
                         if group_type_id != common.REPORTS_TYPE:
                             common.load_interface(sys_items)
                             create_fields(item, group_id)
@@ -767,6 +866,13 @@ def load_task(target, app, first_build=True):
             for item in group.items:
                 add_reports(item)
 
+    def process_lookup_lists():
+        lists = task.sys_lookup_lists.copy()
+        lists.open()
+        for l in lists:
+            text = l.f_lookup_values_text.value
+            target.lookup_lists[l.id.value] = json.loads(l.f_lookup_values_text.value)
+
     def remove_attr(target):
         keys = target.__dict__.keys()
         for key in keys:
@@ -782,6 +888,12 @@ def load_task(target, app, first_build=True):
     target.items = []
     sys_fields = task.sys_fields.copy()
     sys_fields.open()
+    fields_dict = {}
+    for f in sys_fields:
+        d = fields_dict.get(f.owner_rec_id.value, [])
+        if not d:
+            fields_dict[f.owner_rec_id.value] = d
+        d.append(f.rec_no)
     sys_filters = task.sys_filters.copy()
     sys_filters.open()
     sys_params = task.sys_report_params.copy()
@@ -792,16 +904,13 @@ def load_task(target, app, first_build=True):
     create_groups(target.ID)
     create_details()
     process_reports()
+    process_lookup_lists()
     target.bind_items()
     target.compile_all()
     target.language = task.language
 
-    target.app = app
-    target.app.task = target
-    target.admin = app.admin
-    target.admin.task = target
-
     target.first_build = first_build
+    target.after_import = after_import
     if target.on_created:
         target.on_created(target)
 
@@ -819,8 +928,6 @@ def load_task(target, app, first_build=True):
 
 def server_check_connection(task, db_type, database, user, password, host, port, encoding):
     error = ''
-    #~ if not host:
-        #~ host = 'localhost'
     if db_type:
         db_module = db_modules.get_db_module(db_type)
         try:
@@ -895,8 +1002,8 @@ def server_update_has_children(task):
     for it in items:
         has_children[it.parent.value] = True
         if it.type_id.value in (common.ROOT_TYPE, common.USERS_TYPE, common.ROLES_TYPE,
-            common.TASKS_TYPE, common.CATALOGS_TYPE,
-            common.JOURNALS_TYPE, common.TABLES_TYPE, common.REPORTS_TYPE):
+            common.TASKS_TYPE, common.ITEMS_TYPE,
+            common.TABLES_TYPE, common.REPORTS_TYPE):
             has_children[it.id.value] = True
     for it in items:
         if not has_children.get(it.id.value):
@@ -915,7 +1022,7 @@ def server_export_task(task, task_id, url=None):
         fields = []
         for field in table.fields:
             fields.append(field.field_name)
-        result[item.item_name] = {'fields': fields, 'records': table.records}
+        result[item.item_name] = {'fields': fields, 'records': table.dataset}
 
     result = {}
     add_item(task.sys_items)
@@ -926,6 +1033,7 @@ def server_export_task(task, task_id, url=None):
     add_item(task.sys_roles)
     add_item(task.sys_params)
     add_item(task.sys_privileges)
+    add_item(task.sys_lookup_lists)
 
     task_file = 'task.dat'
     file_name = 'task.zip'
@@ -972,6 +1080,25 @@ def server_import_task(task, task_id, file_name, from_client=False):
         item.open()
         old_dict[item.item_name] = item
 
+    def get_dataset(item, data_lists):
+        ns = []
+        ds = []
+        dl = data_lists.get(item.item_name)
+        if dl:
+            field_names = data_lists[item.item_name]['fields']
+            dataset = data_lists[item.item_name]['records']
+            for d in dataset:
+                ds.append([])
+            for i, f in enumerate(field_names):
+                if item.field_by_name(f):
+                    ns.append(f)
+                    for j, d in enumerate(dataset):
+                        ds[j].append(dataset[j][i])
+        else:
+            for f in item.fields:
+                ns.append(f.field_name)
+        return ns, ds
+
     def get_items(dir):
         file_name = os.path.join(dir, 'task.dat')
         with open(file_name, 'r' ) as f:
@@ -980,15 +1107,17 @@ def server_import_task(task, task_id, file_name, from_client=False):
         new_items = {}
         old_items = {}
         items = [task.sys_items, task.sys_fields, task.sys_indices, task.sys_filters, \
-            task.sys_report_params, task.sys_roles, task.sys_params, task.sys_privileges]
+            task.sys_report_params, task.sys_roles, task.sys_params, task.sys_privileges, \
+            task.sys_lookup_lists]
         for item in items:
             task.execute('DELETE FROM "%s" WHERE "DELETED" = 1' % item.table_name)
             old_item = item.copy(handlers=False)
             old_item.soft_delete = False
             old_item.open()
+            field_names, dataset = get_dataset(old_item, data_lists)
             new_item = item.copy(handlers=False)
-            new_item.open(fields=data_lists[item.item_name]['fields'])
-            new_item._records = data_lists[item.item_name]['records']
+            new_item.open(fields=field_names)
+            new_item._dataset = dataset
             new_items[item.item_name] = new_item
             old_items[item.item_name] = old_item
         os.remove(file_name)
@@ -1082,6 +1211,8 @@ def server_import_task(task, task_id, file_name, from_client=False):
                     dic['field_name'] = field.f_field_name.value
                     dic['data_type'] = field.f_data_type.value
                     dic['size'] = field.f_size.value
+                    dic['default_value'] = field.f_default_value.value
+                    dic['primary_key'] = field.id.value == new_items.f_primary_key.value
                     result.append(dic)
         return result
 
@@ -1167,8 +1298,11 @@ def server_import_task(task, task_id, file_name, from_client=False):
 
             delta = get_delta('sys_privileges')
             adm_sql.append(delta.apply_sql())
+
+            delta = get_delta('sys_lookup_lists')
+            adm_sql.append(delta.apply_sql())
         except Exception, e:
-            error = '%s: %s' % (e.message, traceback.format_exc())
+            error = traceback.format_exc()
             print u'Import error: %s' % error
         return error, db_sql, adm_sql
 
@@ -1217,6 +1351,8 @@ def server_import_task(task, task_id, file_name, from_client=False):
                     break
             if len(db_sql):
                 print 'Import: applying changes to the database'
+                if task.app.task:
+                    task.app.task.mod_count += 1
                 error = execute(task, task_id, db_sql)
             if not error:
                 print 'Import: applying changes to admin.sqlite'
@@ -1228,7 +1364,7 @@ def server_import_task(task, task_id, file_name, from_client=False):
                 if task.app.task:
                     reload_utils()
                     read_setting(task)
-                    load_task(task.app.task, task.app, first_build=False)
+                    load_task(task.app.task, task.app, first_build=False, after_import=True)
                     task.app.roles = None
                     task.app.task.mod_count += 1
                     update_events_code(task)
@@ -1250,7 +1386,7 @@ def server_import_task(task, task_id, file_name, from_client=False):
         task.app.under_maintenance = False
     return error
 
-def get_module_names_dict(task_id):
+def get_module_names_dict(task, task_id):
 
     def find_module_name(dic, id_value):
         lst = dic[id_value]
@@ -1332,7 +1468,7 @@ def server_find_in_task(task, task_id, search_text, case_sencitive, whole_words)
             search = header + '\n' + search
         return search + '\n'
 
-    names_dict = get_module_names_dict(task_id)
+    names_dict = get_module_names_dict(task, task_id)
     items = task.sys_items.copy(handlers=False)
     items.set_where(task_id=task_id)
     items.open(fields=['id', 'f_item_name', 'f_web_client_module', 'f_server_module'])
@@ -1360,7 +1496,7 @@ def server_web_print_code(task, task_id):
 
     result = {}
 
-    names_dict = get_module_names_dict(task_id)
+    names_dict = get_module_names_dict(task, task_id)
     children = task.sys_items.copy()
     children.set_where(table_id__gt=0)
     children.open()
@@ -1390,27 +1526,15 @@ def server_store_report_module(task, text, module_name):
 
 def update_events_code(task):
 
-    def find_events(code):
-        result = []
-        code = code.replace('.delete(', '["delete"](')
-        n = parse(code)
-        for key in n:
-            if key.type == 'FUNCTION':
-                result.append(key.name)
-        return result
-
-    def process_events(code, ID, path):
+    def process_events(code, js_funcs, ID, path):
         script = ''
         if code:
             script += str('\nfunction Events%s() { // %s \n\n' % (ID, path))
             code = '\t' + code.replace('\n', '\n\t')
             code = code.replace('    ', '\t')
             script += code
-            events = find_events(code)
-            if len(events):
-                script += '\n'
-                for event in events:
-                    script += '\tthis.%s = %s;\n' % (event, event)
+            if js_funcs:
+                script += js_funcs
             else:
                 script += '\n'
             script += '}\n\n'
@@ -1437,6 +1561,9 @@ def update_events_code(task):
             external = parent_external
         return external
 
+    def update_task(item):
+        js_filename = js_filenames.get(item.ID, '')
+        item.js_filename = js_filename
 
     single_file = common.SETTINGS['SINGLE_FILE_JS']
     name_dict = {}
@@ -1448,7 +1575,7 @@ def update_events_code(task):
     it.open()
     task_id = it.task_id.value
     it.set_where(task_id=task_id)
-    it.open(fields=['id', 'parent', 'type_id', 'f_name', 'f_item_name', 'f_js_filename', 'f_js_external', 'f_web_client_module'])
+    it.open(fields=['id', 'parent', 'type_id', 'f_name', 'f_item_name', 'f_js_filename', 'f_js_external', 'f_web_client_module', 'f_js_funcs'])
     script_start = '(function($, task) {\n"use strict";\n'
     script_end = '\n})(jQuery, task)'
     script_common = ''
@@ -1463,11 +1590,13 @@ def update_events_code(task):
             os.remove(min_file_name)
         name_dict[it.id.value] = [it.parent.value, it.type_id.value, it.f_item_name.value, it.f_js_external.value]
         code = it.f_web_client_module.value
+        js_funcs = it.f_js_funcs.value
         cur_js_filename = ''
         if code:
             code = code.strip().encode('utf-8')
+            js_funcs = js_funcs.encode('utf-8')
             if code:
-                script = process_events(code, it.id.value, js_path)
+                script = process_events(code, js_funcs, it.id.value, js_path)
                 external = get_external(it)
                 if single_file and not external:
                     script_common += script
@@ -1493,7 +1622,8 @@ def update_events_code(task):
     for key,value in js_filenames.iteritems():
         sql.append("UPDATE %s SET F_JS_FILENAME = '%s' WHERE ID = %s" % (it.table_name, value, key))
     it.task.execute(sql)
-
+    if it.task.app.task:
+        it.task.app.task.all(update_task)
 
 def get_minified_name(file_name):
     result = file_name
@@ -1516,7 +1646,7 @@ def minify(file_name):
 
 def get_field_dict(task, item_id, parent_id, type_id, table_id):
     result = {}
-    if type_id in [common.CATALOG_TYPE, common.JOURNAL_TYPE, common.TABLE_TYPE, common.DETAIL_TYPE]:
+    if type_id in [common.ITEM_TYPE, common.TABLE_TYPE, common.DETAIL_TYPE]:
         fields = task.sys_fields.copy()
         if table_id:
             fields.filters.owner_rec_id.value = [table_id, task.sys_items.field_by_id(table_id, 'parent')]
@@ -1532,25 +1662,37 @@ def get_task_dict(task, task_id):
 
     def get_children(items, id_value, type_id, dict, key, parent_id=None):
         childs = {}
-        if type_id in (common.TASK_TYPE, common.CATALOGS_TYPE,
-            common.JOURNALS_TYPE, common.TABLES_TYPE, common.REPORTS_TYPE):
+        if type_id in (common.TASK_TYPE, common.ITEMS_TYPE,
+            common.TABLES_TYPE, common.REPORTS_TYPE):
             for it in items:
                 if it.parent.value == id_value:
                         clone = items.clone()
                         get_children(clone, it.id.value, it.type_id.value, childs, it.f_item_name.value, it.parent.value)
         else:
+            fields = []
+            f = f_dict.get(id_value)
+            if f:
+                fields += f
+            f = f_dict.get(parent_id)
+            if f:
+                fields += f
             for f in fields:
-                if f.owner_rec_id.value in [id_value, parent_id]:
-                    if f.f_field_name.value.lower() != 'deleted':
-                        childs[f.f_field_name.value] = None
+                childs[f] = None
         dict[key] = childs
 
     result = {}
+    f_dict = {}
     items = task.sys_items.copy()
     items.details_active = False
-    items.open()
+    items.open(['id', 'type_id', 'parent', 'f_item_name'])
     fields = task.sys_fields.copy()
-    fields.open()
+    fields.open(['owner_rec_id', 'f_field_name'])
+    for f in fields:
+        if f.f_field_name.value.lower() != 'deleted':
+            d = f_dict.get(f.owner_rec_id.value, [])
+            if not d:
+                f_dict[f.owner_rec_id.value] = d
+            d.append(f.f_field_name.value)
     get_children(items, task_id, common.TASK_TYPE, result, 'task')
     return result['task']
 
@@ -1563,14 +1705,19 @@ def server_item_info(task, item_id, is_server):
     task_id = items.task_id.value
     table_id = items.table_id.value
     item_name = items.f_item_name.value
+    if table_id:
+        parent = task.sys_items.copy()
+        parent.set_where(id=parent_id)
+        parent.open()
+        item_name = parent.f_item_name.value + '.' + item_name
     module_type = common.WEB_CLIENT_MODULE
     code = items.f_web_client_module.value
     if is_server:
         module_type = common.SERVER_MODULE
         code = items.f_server_module.value
-        item_name = 'Server ' + item_name
+        item_name = item_name + ' - Server module'
     else:
-        item_name = 'Client ' + item_name
+        item_name = item_name + ' - Client module'
 
     result = {}
     result[common.editor_tabs[common.TAB_FIELDS]] = get_field_dict(task, item_id, parent_id, type_id, table_id)
@@ -1581,8 +1728,20 @@ def server_item_info(task, item_id, is_server):
     result['code'] = code
     return result
 
+def parse_js(code):
+    script = ''
+    code = code.replace('.delete(', '["delete"](')
+    n = parse(code)
+    for key in n:
+        if key.type == 'FUNCTION':
+            script += '\tthis.%s = %s;\n' % (key.name, key.name)
+    if script:
+        script = '\n' + script
+    return script
+
 def server_save_edit(task, item_id, text, is_server):
     code = text
+    text = text.encode('utf-8')
     line = None
     error = ''
     module_info = None
@@ -1591,11 +1750,10 @@ def server_save_edit(task, item_id, text, is_server):
         module_type = common.SERVER_MODULE
     try:
         if is_server:
-            text = text.encode('utf-8')
             compile(text, 'check_item_code', "exec")
         else:
             text = text.replace('.delete(', '["delete"](')
-            parse(text)
+            js_funcs = parse_js(text)
     except SyntaxError_, e:
         try:
             err_str = e.args[0]
@@ -1626,13 +1784,14 @@ def server_save_edit(task, item_id, text, is_server):
         try:
             item = task.sys_items.copy()
             item.set_where(id=item_id)
-            item.open()
+            item.open(['id', 'f_server_module', 'f_web_client_module', 'f_js_funcs'])
             if item.record_count() == 1:
                 item.edit()
                 if is_server:
                     item.f_server_module.value = code
                 else:
                     item.f_web_client_module.value = code
+                    item.f_js_funcs.value = js_funcs
                 item.post()
                 item.apply()
                 module_info = common.get_funcs_info(code, module_type)
@@ -1722,9 +1881,35 @@ def server_get_db_options(task, db_type):
     result['NEED_PORT'] = db_module.NEED_PORT
     result['CAN_CHANGE_TYPE'] = db_module.CAN_CHANGE_TYPE
     result['CAN_CHANGE_SIZE'] = db_module.CAN_CHANGE_SIZE
-
-
     return result
+
+def server_get_task_info(task, get_version):
+    items = task.sys_items.copy()
+    items.set_where(type_id=common.TASK_TYPE)
+    items.open(fields=['f_item_name', 'f_name'])
+    task_name = items.f_item_name.value;
+    task_caption = items.f_name.value;
+    task_version = None
+    if get_version:
+        params = task.sys_params.copy()
+        params.open()
+        task_version = params.f_version.value
+    return task_name, task_caption, task_version
+
+def server_can_delete_lookup_list(task, list_id):
+    fields = task.sys_fields.copy()
+    fields.set_where(f_lookup_values=list_id)
+    fields.open()
+    used = []
+    for f in fields:
+        used.append((task.sys_items.field_by_id(f.owner_rec_id.value, 'f_item_name'), f.f_field_name.value))
+    if len(used) != 0:
+        names = ',<br>'.join([task.lang['field_mess'] % use for use in used])
+        mess = u'Lookup list is used in <br> %s' % names
+        return mess
+
+def server_create_task(task):
+    task.create_task()
 
 def do_on_apply_sys_changes(item, delta, params, priv, user_info, env):
     task = item.task
@@ -1733,7 +1918,6 @@ def do_on_apply_sys_changes(item, delta, params, priv, user_info, env):
     single_file_js = common.SETTINGS['SINGLE_FILE_JS']
     compressed_js = common.SETTINGS['COMPRESSED_JS']
 
-#    task.task_client_modified = True
     sql = delta.apply_sql()
     result = item.task.execute(sql)
 
@@ -1749,6 +1933,17 @@ def do_on_apply_sys_changes(item, delta, params, priv, user_info, env):
         task.app.users = {}
     return result
 
+def get_fields_next_id(task):
+    with task.fields_id_lock:
+        params = task.sys_params.copy()
+        params.open()
+        cur_id = params.f_field_id_gen.value + 1
+        params.edit()
+        params.f_field_id_gen.value = cur_id
+        params.post()
+        params.apply()
+        return cur_id
+
 ###############################################################################
 #                                  sys_items                                  #
 ###############################################################################
@@ -1758,12 +1953,7 @@ def get_db_type(task):
     tasks.open()
     return tasks.f_db_type.value
 
-def manual_update(task):
-    tasks = task.sys_tasks.copy()
-    tasks.open()
-    return tasks.f_manual_update.value
-
-def get_table_fields(task, fields, delta_fields=None):
+def get_table_fields(item, fields, delta_fields=None):
 
     def field_dict(field):
         if not (field.f_calculated.value or field.f_master_field.value):
@@ -1772,6 +1962,8 @@ def get_table_fields(task, fields, delta_fields=None):
             dic['field_name'] = field.f_field_name.value
             dic['data_type'] = field.f_data_type.value
             dic['size'] = field.f_size.value
+            dic['default_value'] = field.f_default_value.value
+            dic['primary_key'] = field.id.value == item.f_primary_key.value
             return dic
 
     def field_info(fields):
@@ -1788,6 +1980,7 @@ def get_table_fields(task, fields, delta_fields=None):
             if field['id'] == field_id:
                 return field
 
+    task = item.task
     result = []
     parent_fields = task.sys_fields.copy()
     parent_fields.filters.owner_rec_id.value = [fields.owner.parent.value]
@@ -1811,6 +2004,7 @@ def get_table_fields(task, fields, delta_fields=None):
                         field_info['field_name'] = field.f_field_name.value
                         field_info['data_type'] = field.f_data_type.value
                         field_info['size'] = field.f_size.value
+                        field_info['default_value'] = field.f_default_value.value
                     else:
                         dic = field_dict(field)
                         if dic:
@@ -1823,76 +2017,84 @@ def item_children(task, item_id):
     items.open()
     return items
 
+def get_system_fields(item):
+    result = []
+    atts = ['f_primary_key', 'f_deleted_flag', 'f_master_id', 'f_master_rec_id']
+    for at in atts:
+        field = item.field_by_name(at)
+        if field.value:
+            result.append(field.value)
+    if result:
+        fields = item.task.sys_fields.copy()
+        fields.set_where(id__in=result)
+        fields.open()
+        result = []
+        for f in fields:
+            result.append(f.f_field_name.value)
+    return result
+
 def update_interface(delta, type_id, item_id):
 
     def delete_id_from_list(id_list, id_value):
         return [id_it for id_it in id_list if id_it[0] != id_value]
 
     task = delta.task
-    if type_id in (common.CATALOGS_TYPE, common.JOURNALS_TYPE, common.TABLES_TYPE, common.CATALOG_TYPE, common.JOURNAL_TYPE, common.TABLE_TYPE) and \
+    if type_id in (common.ITEM_TYPE, common.TABLE_TYPE) and \
         delta.details.sys_fields.record_count():
-        if type_id in (common.CATALOGS_TYPE, common.JOURNALS_TYPE, common.TABLES_TYPE):
-            for it in item_children(item_id):
-                update_interface(delta, it.type_id.value, it.id.value)
-        else:
-            item = task.sys_items.copy()
-            item.filters.id.value = item_id
-            item.open()
-            fields = task.sys_fields.copy()
-            fields.filters.owner_rec_id.value = [item_id, item.parent.value]
-            fields.open()
-            common.load_interface(item)
-            if delta.record_status == common.RECORD_INSERTED:
-                for field in fields:
-                    if field.owner_rec_id.value == item.parent.value:
-                        if not field.f_field_name.value in common.SYSTEM_FIELDS:
-                            item._view_list.append([field.id.value, False, False, False])
-                            item._edit_list.append([field.id.value])
+        item = task.sys_items.copy()
+        item.filters.id.value = item_id
+        item.open()
+        system_fields = get_system_fields(item)
 
-            for d in delta.details.sys_fields:
-                if d.record_status in [common.RECORD_INSERTED, common.RECORD_DELETED]:
-                    field_name = d.f_field_name.value
-                    if fields.locate('f_field_name', field_name):
-                        if d.record_status == common.RECORD_INSERTED:
-                            if not field_name in common.SYSTEM_FIELDS:
-                                item._view_list.append([fields.id.value, False, False, False])
-                                item._edit_list.append([fields.id.value])
-                        elif d.record_status == common.RECORD_DELETED:
-                            item._view_list = delete_id_from_list(item._view_list, fields.id.value)
-                            item._edit_list = delete_id_from_list(item._edit_list, fields.id.value)
-                            item._order_list = delete_id_from_list(item._order_list, fields.id.value)
-            common.store_interface(item)
+        fields = task.sys_fields.copy()
+        fields.filters.owner_rec_id.value = [item_id, item.parent.value]
+        fields.open()
+        common.load_interface(item)
+        if delta.record_status == common.RECORD_INSERTED:
+            for field in fields:
+                if field.owner_rec_id.value == item.parent.value:
+                    if not field.f_field_name.value in system_fields:
+                        item._view_list.append([field.id.value, False, False, False])
+                        item._edit_list.append([field.id.value])
+
+        for d in delta.details.sys_fields:
+            if d.record_status in [common.RECORD_INSERTED, common.RECORD_DELETED]:
+                field_name = d.f_field_name.value
+                if fields.locate('f_field_name', field_name):
+                    if d.record_status == common.RECORD_INSERTED:
+                        if not field_name in system_fields:
+                            item._view_list.append([fields.id.value, False, False, False])
+                            item._edit_list.append([fields.id.value])
+                    elif d.record_status == common.RECORD_DELETED:
+                        item._view_list = delete_id_from_list(item._view_list, fields.id.value)
+                        item._edit_list = delete_id_from_list(item._edit_list, fields.id.value)
+                        item._order_list = delete_id_from_list(item._order_list, fields.id.value)
+        common.store_interface(item)
 
 def change_item_sql(item, old_fields, new_fields):
     db_type = get_db_type(item.task)
-    if item.type_id.value in (common.CATALOGS_TYPE, common.JOURNALS_TYPE, common.TABLES_TYPE):
-        result = []
-        for it in item_children(item.id.value):
-            result.append(it.change_table_sql(db_type, old_fields, new_fields))
-        return result
-    elif item.type_id.value in (common.CATALOG_TYPE, common.JOURNAL_TYPE, common.TABLE_TYPE):
-        return item.change_table_sql(db_type, old_fields, new_fields)
-
-def items_insert_sql(item, delta):
-    if update_table(delta):
-        if delta.type_id.value in (common.CATALOG_TYPE, common.JOURNAL_TYPE, common.TABLE_TYPE):
-            db_type = get_db_type(item.task)
-            sql = delta.create_table_sql(db_type, delta.f_table_name.value, get_table_fields(delta.task, delta.details.sys_fields))
-            return sql
+    return item.change_table_sql(db_type, old_fields, new_fields)
 
 def update_table(delta):
-    if manual_update(delta.task) or delta.f_virtual_table.value:
+    if delta.f_virtual_table.value or \
+        delta.type_id.value in (common.ITEMS_TYPE, common.TABLES_TYPE, common.REPORTS_TYPE):
         return False
     else:
         return True
 
-def items_execute_insert(item, delta):
-    if update_table(delta):
-        sql = items_insert_sql(item, delta)
-        if sql:
-            error = execute(item.task, delta.task_id.value, sql)
-            if error:
-                raise Exception, u'Error while creating table: %s' % (error)
+def items_insert_sql(item, delta, manual_update=False):
+    if update_table(delta) and not manual_update:
+        if delta.type_id.value in (common.ITEM_TYPE, common.TABLE_TYPE):
+            db_type = get_db_type(item.task)
+            sql = delta.create_table_sql(db_type, delta.f_table_name.value, get_table_fields(delta, delta.details.sys_fields))
+            return sql
+
+def items_execute_insert(item, delta, manual_update):
+    sql = items_insert_sql(item, delta, manual_update)
+    if sql:
+        error = execute(item.task, delta.task_id.value, sql)
+        if error:
+            raise Exception, u'Error while creating table: %s' % (error)
     sql = delta.apply_sql()
     result = item.task.execute(sql)
     exec_result = result[0]
@@ -1900,47 +2102,45 @@ def items_execute_insert(item, delta):
     update_interface(delta, delta.type_id.value, result_id)
     return result
 
-def items_update_sql(item, delta):
-    if update_table(delta):
-        if delta.type_id.value in (common.CATALOGS_TYPE, common.JOURNALS_TYPE, common.TABLES_TYPE,
-            common.CATALOG_TYPE, common.JOURNAL_TYPE, common.TABLE_TYPE) and \
+def items_update_sql(item, delta, manual_update=False):
+    if update_table(delta) and not manual_update:
+        if delta.type_id.value in (common.ITEMS_TYPE, common.TABLES_TYPE,
+            common.ITEM_TYPE, common.TABLE_TYPE) and \
             delta.details.sys_fields.record_count():
             it = item.copy()
             it.filters.id.value = delta.id.value
             it.open()
             it_fields = it.details.sys_fields
             it_fields.open()
-            old_fields = get_table_fields(item.task, it_fields)
-            new_fields = get_table_fields(item.task, it_fields, delta.details.sys_fields)
+            old_fields = get_table_fields(delta, it_fields)
+            new_fields = get_table_fields(delta, it_fields, delta.details.sys_fields)
             sql = change_item_sql(delta, old_fields, new_fields)
             return sql
 
-def items_execute_update(item, delta):
-    if update_table(delta):
-        sql = items_update_sql(item, delta)
-        if sql:
-            error = execute(item.task, delta.task_id.value, sql)
-            if error:
-                raise Exception, u'Error while modifying table: %s' % error
+def items_execute_update(item, delta, manual_update):
+    sql = items_update_sql(item, delta, manual_update)
+    if sql:
+        error = execute(item.task, delta.task_id.value, sql)
+        if error:
+            raise Exception, u'Error while modifying table: %s' % error
     sql = delta.apply_sql()
     result = item.task.execute(sql)
     update_interface(delta, delta.type_id.value, delta.id.value)
     return result
 
-def items_delete_sql(item, delta):
-    if update_table(delta):
-        if delta.type_id.value in (common.CATALOG_TYPE, common.JOURNAL_TYPE, common.TABLE_TYPE):
+def items_delete_sql(item, delta, manual_update=False):
+    if update_table(delta) and not manual_update:
+        if delta.type_id.value in (common.ITEM_TYPE, common.TABLE_TYPE):
             db_type = get_db_type(item.task)
             sql = delta.delete_table_sql(db_type)
             return sql
 
-def items_execute_delete(item, delta):
-    if update_table(delta):
-        sql = items_delete_sql(item, delta)
-        if sql:
-            error = execute(item.task, delta.task_id.value, sql)
-            if error:
-                raise Exception, u'Error while deleting table %s: %s' % (delta.table_name.upper(), error)
+def items_execute_delete(item, delta, manual_update):
+    sql = items_delete_sql(item, delta, manual_update)
+    if sql:
+        error = execute(item.task, delta.task_id.value, sql)
+        if error:
+            raise Exception, u'Error while deleting table %s: %s' % (delta.table_name.upper(), error)
     commands = []
     sql = delta.apply_sql()
     commands.append(sql)
@@ -1950,12 +2150,16 @@ def items_execute_delete(item, delta):
     return result
 
 def items_apply_changes(item, delta, params, priv, user_info, env):
+    manual_update = params['manual_update']
+    for f in delta.sys_fields:
+        if not f.id.value:
+            raise Exception, u'Field %s id value is not set' % (f.field_name)
     if delta.rec_inserted():
-        result = items_execute_insert(item, delta)
+        result = items_execute_insert(item, delta, manual_update)
     elif delta.rec_modified():
-        result = items_execute_update(item, delta)
+        result = items_execute_update(item, delta, manual_update)
     elif delta.rec_deleted():
-        result = items_execute_delete(item, delta)
+        result = items_execute_delete(item, delta, manual_update)
     item.task.app.task_server_modified = True
     return result
 
@@ -1964,6 +2168,12 @@ def do_on_apply_changes(item, delta, params, priv, user_info, env):
     result = item.task.execute(sql)
     item.task.app.task_server_modified = True
     return result
+
+def server_group_is_empty(item, id_value):
+    item = item.task.sys_items.copy()
+    item.set_where(parent=id_value)
+    item.open()
+    return item.record_count() == 0
 
 def server_can_delete(item, id_value):
     item = item.copy()
@@ -1976,7 +2186,7 @@ def server_can_delete(item, id_value):
     for d in details:
         used.append((item.task.sys_items.field_by_id(d.parent.value, 'f_item_name'), d.f_item_name.value))
     if len(used) != 0:
-        names = ',\n'.join([item.task.lang['detail_mess'] % use for use in used])
+        names = ',<br>'.join([item.task.lang['detail_mess'] % use for use in used])
         mess = item.task.lang['item_used_in_items'] % (item.f_item_name.value, names)
         return mess
 
@@ -1987,7 +2197,7 @@ def server_can_delete(item, id_value):
         if f.f_object.value == id_value:
             used.append((item.task.sys_items.field_by_id(f.owner_rec_id.value, 'f_item_name'), f.f_field_name.value))
     if len(used) != 0:
-        names = ',\n'.join([item.task.lang['field_mess'] % use for use in used])
+        names = ',<br>'.join([item.task.lang['field_mess'] % use for use in used])
         mess = item.task.lang['item_used_in_fields'] % (item.f_item_name.value, names)
         return mess
 
@@ -1998,7 +2208,7 @@ def server_can_delete(item, id_value):
         if p.f_object.value == id_value:
              used.append((item.task.sys_items.field_by_id(p.owner_rec_id.value, 'f_item_name'), p.f_param_name.value))
     if len(used) != 0:
-        names = ',\n'.join([item.task.lang['param_mess'] % use for use in used])
+        names = ',<br>'.join([item.task.lang['param_mess'] % use for use in used])
         mess = item.task.lang['item_used_in_params'] % (item.f_item_name.value, names)
         return mess
 
@@ -2090,9 +2300,11 @@ def server_can_delete_field(item, id_value):
     item.set_where(id=id_value)
     item.open()
 
-    if item.f_field_name.value in common.SYSTEM_FIELDS:
-        mess = item.task.lang['field_is_system']
-        return mess
+    item_type_id = item.task.sys_items.field_by_id(item.owner_rec_id.value, 'type_id')
+    if item_type_id in (common.ITEMS_TYPE, common.TABLES_TYPE):
+        if not server_group_is_empty(item, item.owner_rec_id.value):
+            mess = "Can't delete the field: the group contains items."
+            return mess
 
     field_id = item.id.value
     fields = item.task.sys_fields.copy()
@@ -2104,7 +2316,7 @@ def server_can_delete_field(item, id_value):
             used.append((item.task.sys_items.field_by_id(f.owner_rec_id.value, 'f_item_name'),
                 f.f_field_name.value))
     if len(used) != 0:
-        names = ',\n'.join([u'%s - %s' % use for use in used])
+        names = ',<br>'.join([u'<p>%s - %s</p>' % use for use in used])
         mess = item.task.lang['field_used_in_fields'] % \
             (item.f_field_name.value, names)
         return mess
@@ -2124,7 +2336,7 @@ def server_can_delete_field(item, id_value):
                 if fld[0] == field_id:
                     ind_list.append(ind.f_index_name.value)
     if len(ind_list):
-        names = ',\n'.join(ind_list)
+        names = ',<br>'.join(ind_list)
         mess = item.task.lang['field_used_in_indices'] % \
             (item.f_field_name.value, names)
         return mess
@@ -2138,7 +2350,7 @@ def server_can_delete_field(item, id_value):
         if fltr.f_field.value == field_id:
             filters_list.append(fltr.f_filter_name.value)
     if len(filters_list):
-        names = ',\n'.join(filters_list)
+        names = ',<br>'.join(filters_list)
         mess = item.task.lang['field_used_in_filters'] % \
             (item.f_field_name.value, names)
         return mess
@@ -2152,7 +2364,7 @@ def update_index(delta):
     it = delta.task.sys_items.copy()
     it.set_where(id=delta.owner_rec_id.value)
     it.open()
-    if manual_update(delta.task) or it.f_virtual_table.value:
+    if it.f_virtual_table.value:
         return False
     else:
         return True
@@ -2163,62 +2375,65 @@ def change_foreign_index(delta):
     items.open()
     it_fields = items.details.sys_fields
     it_fields.open()
-    fields = get_table_fields(delta.task, it_fields)
+    fields = get_table_fields(items, it_fields)
     new_fields = list(fields)
     return items.recreate_table_sql(db_modules.SQLITE, fields, new_fields, delta)
 
-def indices_insert_sql(item, delta, table_name=None, new_fields=None):
-    if not table_name:
-        table_name = delta.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
-    db_type = get_db_type(item.task)
-    if db_type == db_modules.SQLITE and delta.f_foreign_index.value:
-        return change_foreign_index(delta)
-    else:
-        return delta.create_index_sql(db_type, table_name, new_fields=new_fields)
+def indices_insert_sql(item, delta, table_name=None, new_fields=None, manual_update=False):
+    if not manual_update and update_index(delta):
+        if not table_name:
+            table_name = delta.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
+        db_type = get_db_type(item.task)
+        if db_type == db_modules.SQLITE and delta.f_foreign_index.value:
+            return change_foreign_index(delta)
+        else:
+            return delta.create_index_sql(db_type, table_name, new_fields=new_fields)
 
-def indices_execute_insert(item, delta, params):
-    if update_index(delta):
-        sql = indices_insert_sql(item, delta)
+def indices_execute_insert(item, delta, manual_update):
+    sql = indices_insert_sql(item, delta, manual_update=manual_update)
+    if sql:
         error = execute(item.task, delta.task_id.value, sql)
         if error:
             raise Exception, u'Error while creating index %s: %s' % (delta.f_index_name.value.upper(), error)
     sql = delta.apply_sql()
     return item.task.execute(sql)
 
-def indices_update_sql(item, delta, table_name=None, new_fields=None):
+def indices_update_sql(item, delta, table_name=None, new_fields=None, manual_update=False):
     sql = []
-    db_type = get_db_type(item.task)
-    ind = delta.task.sys_indices.copy()
-    ind.filters.id.value = delta.id.value
-    ind.open()
-    if not table_name:
-        table_name = delta.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
-    if db_type == db_modules.SQLITE and delta.f_foreign_index.value:
-        sql = change_foreign_index(delta)
-    else:
-        sql.append(ind.delete_index_sql(db_type))
-        sql.append(delta.create_index_sql(db_type, table_name, new_fields=new_fields))
-    return sql
+    if not manual_update and update_index(delta):
+        db_type = get_db_type(item.task)
+        ind = delta.task.sys_indices.copy()
+        ind.filters.id.value = delta.id.value
+        ind.open()
+        if not table_name:
+            table_name = delta.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
+        if db_type == db_modules.SQLITE and delta.f_foreign_index.value:
+            sql = change_foreign_index(delta)
+        else:
+            sql.append(ind.delete_index_sql(db_type))
+            sql.append(delta.create_index_sql(db_type, table_name, new_fields=new_fields))
+        return sql
 
-def indices_execute_update(item, delta, params):
-    if update_index(delta):
-        sql = indices_update_sql(item, delta)
+def indices_execute_update(item, delta, manual_update):
+    sql = indices_update_sql(item, delta, manual_update=manual_update)
+    if sql:
         error = execute(item.task, delta.task_id.value, sql)
         if error:
             raise Exception, u'Error while modifying index %s: %s' % (delta.f_index_name.value.upper(), error)
     sql = delta.apply_sql()
     return item.task.execute(sql)
 
-def indices_delete_sql(item, delta):
-    db_type = get_db_type(item.task)
-    if db_type == db_modules.SQLITE and delta.f_foreign_index.value:
-        return change_foreign_index(delta)
-    else:
-        return delta.delete_index_sql(db_type)
+def indices_delete_sql(item, delta, manual_update=False):
+    if not manual_update and update_index(delta):
+        db_type = get_db_type(item.task)
+        if db_type == db_modules.SQLITE and delta.f_foreign_index.value:
+            return change_foreign_index(delta)
+        else:
+            return delta.delete_index_sql(db_type)
 
-def indices_execute_delete(item, delta, params):
-    if update_index(delta):
-        sql = indices_delete_sql(item, delta)
+def indices_execute_delete(item, delta, manual_update):
+    sql = indices_delete_sql(item, delta, manual_update)
+    if sql:
         error = execute(item.task, delta.task_id.value, sql)
         if error:
             raise Exception, u'Error while deleting index %s' % error
@@ -2226,14 +2441,15 @@ def indices_execute_delete(item, delta, params):
     return item.task.execute(sql)
 
 def indices_apply_changes(item, delta, params, priv, user_info, env):
+    manual_update = params['manual_update']
     table_name = item.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
     if table_name:
         if delta.rec_inserted():
-            result = indices_execute_insert(item, delta, params)
+            result = indices_execute_insert(item, delta, manual_update)
         elif delta.rec_modified():
-            result = indices_execute_update(item, delta, params)
+            result = indices_execute_update(item, delta, manual_update)
         elif delta.rec_deleted():
-            result = indices_execute_delete(item, delta, params)
+            result = indices_execute_delete(item, delta, manual_update)
         return result
 
 def server_dump_index_fields(item, dest_list):
@@ -2247,8 +2463,8 @@ def server_load_index_fields(item, value):
 ###############################################################################
 
 def privileges_table_get_select(item, query, user_info, enviroment):
-    owner_id = query['__owner_id']
-    owner_rec_id = query['__owner_rec_id']
+    owner_id = query['__master_id']
+    owner_rec_id = query['__master_rec_id']
     result_sql =  \
         """
         SELECT "SYS_PRIVILEGES"."ID", "SYS_PRIVILEGES"."DELETED", "SYS_PRIVILEGES"."OWNER_ID",
@@ -2293,10 +2509,15 @@ def register_defs(task):
     task.register(server_save_edit)
     task.register(server_get_file_info)
     task.register(server_save_file)
+    task.register(get_fields_next_id)
     task.register(server_get_db_options)
+    task.register(server_create_task)
+    task.register(server_get_task_info)
+    task.register(server_can_delete_lookup_list)
     task.sys_params.on_apply = do_on_apply_sys_changes
     task.sys_tasks.on_apply = do_on_apply_sys_changes
     task.sys_items.register(server_can_delete)
+    task.sys_items.register(server_group_is_empty)
     task.sys_items.register(server_load_interface)
     task.sys_items.register(server_store_interface)
     task.sys_items.register(server_update_details)

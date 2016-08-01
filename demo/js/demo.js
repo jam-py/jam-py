@@ -4,8 +4,6 @@
 function Events1() { // demo 
 
 	function on_page_loaded(task) {
-		var groups = [task.journals, task.reports, task.catalogs]; 
-	
 		$("#title").text(task.item_caption);
 		if (task.safe_mode) {
 			$("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
@@ -18,11 +16,13 @@ function Events1() { // demo
 		}
 	
 		$("#taskmenu").show();
-		for (var i = 0; i < groups.length; i++) {
-			$("#menu").append($('<li></li>').append(
-					$('<a href=""></a>').text(groups[i].item_caption).data('group', groups[i])
-				)
-			);
+		for (var i = 0; i < task.items.length; i++) {
+			if (task.items[i].visible) {
+				$("#menu").append($('<li></li>').append(
+						$('<a href=""></a>').text(task.items[i].item_caption).data('group', task.items[i])
+					)
+				);
+			}
 		}
 		$('#menu').on('click', 'a', (function(e) {
 				var submenu = $("#submenu"),
@@ -78,38 +78,6 @@ function Events1() { // demo
 			resize(task);
 		});
 	} 
-	
-	function create_print_btns(item) {
-		var i,
-			$ul,
-			$li,
-			reports = [];
-		if (item.reports) {
-			for (i = 0; i < item.reports.length; i++) {
-				if (item.reports[i].can_view()) {
-					reports.push(item.reports[i]);
-				}
-			}
-			if (reports.length) {
-				$ul = item.view_form.find("#report-btn ul");
-				for (i = 0; i < reports.length; i++) {
-					$li = $('<li><a href="#">' + reports[i].item_caption + '</a></li>');
-					$li.find('a').data('report', reports[i]);
-					$li.on('click', 'a', function(e) {
-						e.preventDefault();
-						$(this).data('report').print(false);
-					});
-					$ul.append($li);
-				}
-			}
-			else {
-				item.view_form.find("#report-btn").hide();
-			}
-		}
-		else {
-			item.view_form.find("#report-btn").hide();
-		}
-	}
 	
 	function on_view_form_created(item) {
 		var table_options = {
@@ -241,6 +209,38 @@ function Events1() { // demo
 		}
 	}
 	
+	function create_print_btns(item) {
+		var i,
+			$ul,
+			$li,
+			reports = [];
+		if (item.reports) {
+			for (i = 0; i < item.reports.length; i++) {
+				if (item.reports[i].can_view()) {
+					reports.push(item.reports[i]);
+				}
+			}
+			if (reports.length) {
+				$ul = item.view_form.find("#report-btn ul");
+				for (i = 0; i < reports.length; i++) {
+					$li = $('<li><a href="#">' + reports[i].item_caption + '</a></li>');
+					$li.find('a').data('report', reports[i]);
+					$li.on('click', 'a', function(e) {
+						e.preventDefault();
+						$(this).data('report').print(false);
+					});
+					$ul.append($li);
+				}
+			}
+			else {
+				item.view_form.find("#report-btn").hide();
+			}
+		}
+		else {
+			item.view_form.find("#report-btn").hide();
+		}
+	}
+	
 	function resize_view_table(item) {
 		item.view_form.find(".dbtable").each(function() {
 			var height,
@@ -298,7 +298,6 @@ function Events1() { // demo
 		200);
 	}
 	this.on_page_loaded = on_page_loaded;
-	this.create_print_btns = create_print_btns;
 	this.on_view_form_created = on_view_form_created;
 	this.on_view_form_shown = on_view_form_shown;
 	this.on_view_form_close_query = on_view_form_close_query;
@@ -309,6 +308,7 @@ function Events1() { // demo
 	this.on_param_form_created = on_param_form_created;
 	this.on_view_form_keyup = on_view_form_keyup;
 	this.on_edit_form_keyup = on_edit_form_keyup;
+	this.create_print_btns = create_print_btns;
 	this.resize_view_table = resize_view_table;
 	this.resize_edit_table = resize_edit_table;
 	this.resize = resize;
@@ -346,7 +346,7 @@ function Events2() { // demo.catalogs
 				);
 			});
 			search.keydown(function(e) {
-				var code = (e.keyCode ? e.keyCode : e.which);
+				var code = e.which;
 				if (code === 13) {
 					e.preventDefault();
 				}
@@ -356,7 +356,7 @@ function Events2() { // demo.catalogs
 				}
 			});
 			item.view_form.on('keydown', function(e) {
-				var code = (e.keyCode ? e.keyCode : e.which);
+				var code = e.which;
 				if (isCharCode(code) || code === 32 || code === 8) {
 					if (!search.is(":focus")) {
 						if (code !== 8) {
@@ -409,30 +409,9 @@ function Events5() { // demo.reports
 
 task.events.events5 = new Events5();
 
-function Events15() { // demo.catalogs.tracks 
-
-	function init_table(item, options) {
-		options.sortable = false;
-	}
-	
-	function on_before_post(item) {
-	   item.track.value = item.name.value;
-	   if (item.album.value) {
-		   item.track.value += '; album: ' + item.album.display_text;
-	   }
-	   if (item.composer.value) {
-		   item.track.value += '; composer: ' + item.composer.display_text;
-	   }
-	}
-	this.init_table = init_table;
-	this.on_before_post = on_before_post;
-}
-
-task.events.events15 = new Events15();
-
 function Events16() { // demo.journals.invoices 
 
-	function on_after_append(item) { 
+	function on_after_append(item) {
 		item.invoicedate.value = new Date();
 		item.taxrate.value = 5;
 	}
@@ -620,6 +599,27 @@ function Events16() { // demo.journals.invoices
 }
 
 task.events.events16 = new Events16();
+
+function Events15() { // demo.catalogs.tracks 
+
+	function init_table(item, options) {
+		options.sortable = false;
+	}
+	
+	function on_before_post(item) {
+	   item.track.value = item.name.value;
+	   if (item.album.value) {
+		   item.track.value += '; album: ' + item.album.display_text;
+	   }
+	   if (item.composer.value) {
+		   item.track.value += '; composer: ' + item.composer.display_text;
+	   }
+	}
+	this.init_table = init_table;
+	this.on_before_post = on_before_post;
+}
+
+task.events.events15 = new Events15();
 
 function Events19() { // demo.reports.invoice 
 

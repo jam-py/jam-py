@@ -139,6 +139,11 @@
     color: red;
 }
 
+.editor-title {
+    color: #0088cc;
+    margin-left: 2px;
+}
+
 p.search {
     margin: 0px;
     font-family: 'Courier New', Courier, monospace;

@@ -1,0 +1,21 @@
+=========================
+Client server interaction
+=========================
+
+In most cases, the client sends a request to the server when  following methods 
+of an element are executed:
+
+* :doc:`open </refs/client/item/m_open>`
+* :doc:`apply </refs/client/item/m_apply>`
+* :doc:`server </refs/client/abstr_item/m_server>`
+
+In this case the client sends to the server the 
+:doc:`ID </refs/client/abstr_item/at_id>`
+of the item's task, the
+:doc:`ID </refs/client/abstr_item/at_id>`
+item, the type of the request and its parameters.
+
+The server on receiving the request, based on passed IDs, finds the task 
+(it can be Project task or Administrator task) and the item on the server, 
+executes the corresponing method with passed parameters and returns the result of
+the execution to the client.

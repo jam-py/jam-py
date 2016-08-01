@@ -106,23 +106,26 @@ invoices. All this is done in one transection.
 
 .. code-block:: py
 
-    def on_apply(item, delta, params, privileges, user_info, enviroment):
-        tracks_sql = []
-        delta.update_deleted()    
-        for d in delta:
-            for t in d.invoice_table:
-                if t.rec_inserted():
-                    sql = "UPDATE DEMO_TRACKS SET SOLD = COALESCE(SOLD, 0) + %s WHERE ID = %s" % \
-                    (t.quantity.value, t.track.value)                
-                elif t.rec_deleted():
-                    sql = "UPDATE DEMO_TRACKS SET SOLD = SOLD- %s WHERE ID = %s" % \
-                    (t.quantity.value, t.track.value)
-                elif t.rec_modified():
-                    sql = "UPDATE DEMO_TRACKS SET SOLD = SOLD - \
-                    (SELECT QUANTITY FROM DEMO_INVOICE_TABLE WHERE ID=%s) + %s WHERE ID = %s" % \
-                    (t.id.value, t.quantity.value, t.track.value)
-                tracks_sql.append(sql)                
-        sql = delta.apply_sql()
+def on_apply(item, delta, params, privileges, user_info, enviroment):
+    tracks_sql = []
+    delta.update_deleted()    
+    for d in delta:
+        for t in d.invoice_table:
+            if t.rec_inserted():
+                sql = "UPDATE DEMO_TRACKS SET TRACKS_SOLD = COALESCE(TRACKS_SOLD, 0) + \
+                %s WHERE ID = %s" % \
+                (t.quantity.value, t.track.value)                
+            elif t.rec_deleted():
+                sql = "UPDATE DEMO_TRACKS SET TRACKS_SOLD = COALESCE(TRACKS_SOLD, 0) - \
+                (SELECT QUANTITY FROM DEMO_INVOICE_TABLE WHERE ID=%s) WHERE ID = %s" % \
+                (t.id.value, t.track.value)
+            elif t.rec_modified():
+                sql = "UPDATE DEMO_TRACKS SET TRACKS_SOLD = COALESCE(TRACKS_SOLD, 0) - \
+                (SELECT QUANTITY FROM DEMO_INVOICE_TABLE WHERE ID=%s) + %s WHERE ID = %s" % \
+                (t.id.value, t.quantity.value, t.track.value)
+            tracks_sql.append(sql)                
+    sql = delta.apply_sql()
+    with item.task.invoices_lock:
         return item.task.execute(tracks_sql + [sql])
 
 See also

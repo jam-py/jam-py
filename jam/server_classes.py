@@ -18,6 +18,7 @@ import common, db.db_modules as db_modules
 from items import *
 from dataset import *
 from sql import *
+import adm_server
 
 class ServerDataset(Dataset, SQL):
     def __init__(self, table_name='', soft_delete=True):
@@ -28,9 +29,8 @@ class ServerDataset(Dataset, SQL):
         self.values = None
         self.on_open = None
         self.on_apply = None
-        self.on_record_count = None
+        self.on_count = None
         self.on_get_field_text = None
-        self.id_field_name = None
         self.deleted_field_name = None
         self.soft_delete = soft_delete
 
@@ -38,28 +38,33 @@ class ServerDataset(Dataset, SQL):
         result = super(ServerDataset, self).copy(filters, details, handlers)
         result.table_name = self.table_name
         result._order_by = self._order_by
-        result.id_field_name = self.id_field_name
-        result.deleted_field_name = self.deleted_field_name
         result.soft_delete = self.soft_delete
+        result._primary_key = self._primary_key
+        result._deleted_flag = self._deleted_flag
+        result._master_id = self._master_id
+        result._master_rec_id = self._master_rec_id
         return result
 
     def get_event(self, caption):
         return getattr(caption)
 
     def add_field(self, field_id, field_name, field_caption, data_type, required = False,
-        item = None, object_field = None,
-        visible = True, index=0, edit_visible = True, edit_index = 0, read_only = False, expand = False,
-        word_wrap = False, size = 0, default = False, calculated = False, editable = False,
-        master_field = None, alignment=None, lookup_values=None, enable_typeahead=False):
+        item = None, object_field = None, visible = True, index=0, edit_visible = True, edit_index = 0, read_only = False,
+        expand = False, word_wrap = False, size = 0, default_value=None, default = False, calculated = False, editable = False,
+        master_field = None, alignment=None, lookup_values=None, enable_typeahead=False, field_help=None, field_placeholder=None):
+
         field_def = self.add_field_def(field_id, field_name, field_caption, data_type, required, item, object_field, visible,
-            index, edit_visible, edit_index, read_only, expand, word_wrap, size, default, calculated, editable, master_field,
-            alignment, lookup_values, enable_typeahead)
+            index, edit_visible, edit_index, read_only, expand, word_wrap, size, default_value, default, calculated, editable,
+            master_field, alignment, lookup_values, enable_typeahead, field_help, field_placeholder)
         field = DBField(self, field_def)
         self._fields.append(field)
         return field
 
-    def add_filter(self, name, caption, field_name, filter_type = common.FILTER_EQ, data_type = None, visible = True):
-        filter_def = self.add_filter_def(name, caption, field_name, filter_type, data_type, visible)
+    def add_filter(self, name, caption, field_name, filter_type = common.FILTER_EQ,
+        data_type = None, visible = True, filter_help=None, filter_placeholder=None):
+
+        filter_def = self.add_filter_def(name, caption, field_name, filter_type,
+            data_type, visible, filter_help, filter_placeholder)
         fltr = DBFilter(self, filter_def)
         self.filters.append(fltr)
         return fltr
@@ -68,7 +73,6 @@ class ServerDataset(Dataset, SQL):
         return self.select_records(params)
 
     def do_apply(self, params=None):
-        result = True
         if not self.master and self.log_changes:
             if self.item_state != common.STATE_BROWSE:
                 raise Exception, u'Item: %s is not in browse state. Apply requires browse state.'
@@ -81,7 +85,6 @@ class ServerDataset(Dataset, SQL):
                     raise Exception, error
                 else:
                     self.change_log.update(data)
-        return result
 
     def add_detail(self, table):
         detail = Detail(self, table.item_name, table.item_caption, table.table_name)
@@ -112,8 +115,8 @@ class ServerDataset(Dataset, SQL):
 
     def get_record_count(self, params, user_info=None, enviroment=None):
         result = 0;
-        if self.on_record_count:
-            result, error_mes = self.on_record_count(self, params, user_info, enviroment)
+        if self.on_count:
+            result, error_mes = self.on_count(self, params, user_info, enviroment)
         else:
             error_mes = ''
             result = 0
@@ -160,8 +163,11 @@ class ServerDataset(Dataset, SQL):
                             for field in detail.fields:
                                 fields.append(field.field_name)
                             det = self.task.item_by_name(detail.item_name).copy()
-                            det.set_where(owner_id=self.ID, owner_rec_id=self.id.value)
-                            det.open(fields=fields, expanded=detail.expanded)
+                            where = {
+                                det._master_id: self.ID,
+                                det._master_rec_id: self._primary_key_field.value
+                            }
+                            det.open(fields=fields, expanded=detail.expanded, where=where)
                             it.edit()
                             for d in det:
                                 detail.append()
@@ -240,10 +246,10 @@ class Param(DBField):
     def set_lookup_data(self, value):
         self._lookup_value = value
 
-    def do_before_changed(self):
+    def _do_before_changed(self):
         pass
 
-    def do_on_change_lookup_field(self, lookup_value=None, slave_field_values=None):
+    def _change_lookup_field(self, lookup_value=None, slave_field_values=None):
         pass
 
     def raw_display_text(self):
@@ -304,15 +310,17 @@ class Report(AbstrReport):
 
     def add_param(self, caption='', name='', data_type=common.INTEGER,
         obj=None, obj_field=None, required=True, visible=True, alignment=None,
-        enable_typeahead=None):
+        enable_typeahead=None, lookup_values=None, param_help=None, param_placeholder=None):
         param_def = self.add_param_def(caption, name, data_type, obj,
-            obj_field, required, visible, alignment, enable_typeahead)
+            obj_field, required, visible, alignment, enable_typeahead,
+            lookup_values, param_help, param_placeholder)
         param = Param(self, param_def)
         self.params.append(param)
 
     def add_param_def(self, param_caption='', param_name='', data_type=common.INTEGER,
         lookup_item=None, lookup_field=None, required=True, visible=True,
-        alignment=0, enable_typeahead=False):
+        alignment=0, enable_typeahead=False, lookup_values=None, param_help=None,
+        param_placeholder=None):
         param_def = [None for i in range(len(FIELD_DEF))]
         param_def[FIELD_NAME] = param_name
         param_def[NAME] = param_caption
@@ -323,6 +331,9 @@ class Report(AbstrReport):
         param_def[FIELD_EDIT_VISIBLE] = visible
         param_def[FIELD_ALIGNMENT] = alignment
         param_def[FIELD_ENABLE_TYPEAHEAD] = enable_typeahead
+        param_def[FIELD_LOOKUP_VALUES] = lookup_values
+        param_def[FIELD_HELP] = param_help
+        param_def[FIELD_PLACEHOLDER] = param_placeholder
         self.param_defs.append(param_def)
         return param_def
 
@@ -405,8 +416,11 @@ class Report(AbstrReport):
             if ext and (ext != 'ods'):
                 converted = False
                 if self.owner.on_convert_report:
-                    self.owner.on_convert_report(self)
-                    converted = True
+                    try:
+                        self.owner.on_convert_report(self)
+                        converted = True
+                    except:
+                        pass
                 #~ if not converted:
                     #~ # OpenOffice must be running in server mode
                     #~ # soffice --headless --accept="socket,host=127.0.0.1,port=2002;urp;"
@@ -660,14 +674,155 @@ class Report(AbstrReport):
     def datetime_to_str(self, value):
         return common.datetime_to_str(value)
 
+    def _set_modified(self, value):
+        pass
 
-delta_result = None
+log = {}
+log_counter = 0
+log_save_after = 0
+log_pid = os.getpid()
+
+def find_where_fields(command):
+    result = ''
+    where_pos = command.find('WHERE')
+    where = None
+    if where_pos >= 0:
+        a = []
+        where = command[where_pos + 5:]
+        a.append(where.find(' GROUP BY'))
+        a.append(where.find(' ORDER BY'))
+        a.append(where.find(' HAVING'))
+        pos = -1
+        b = []
+        for p in a:
+            if p >= 0:
+                b.append(p)
+        if len(b):
+            pos = min(b)
+        if pos >= 0:
+            where = where[:pos + 1]
+        if where:
+            parts = where.split('AND')
+            fields = []
+            for p in parts:
+                p = p.strip()
+                p = p.strip('(')
+                w = ''
+                for ch in p:
+                    if ch in [' ', '>', '<', '=']:
+                        break
+                    else:
+                        w += ch
+                w = w.replace('"', '')
+                pos = w.find('.')
+                if pos >= 0:
+                    w = w[pos + 1:]
+                fields.append(w)
+#            fields.sort()
+            result = ' '.join(fields)
+    return result
+
+def find_table_name(command):
+    result = ''
+    s = ''
+    if command[:12] ==   'SELECT NEXT ':
+        result = ''
+    elif command[:12] == 'INSERT INTO ':
+        result = ''
+    elif command[:6] == 'UPDATE':
+        s = command[7:]
+        s = s.lstrip('"')
+    else:
+        pos = command.find(' FROM ')
+        s = command[pos+5:pos+105]
+        s = s.lstrip(' ')
+        s = s.lstrip('(')
+        s = s.lstrip('"')
+    if s:
+        w = ''
+        for ch in s:
+            if ch in [' ', '"']:
+                break
+            else:
+                w += ch
+        result = w
+    return result
+
+def save_log(log):
+
+    def get_reqs_key(item):
+        key, (dur, freq) = item
+        return dur / 1000000.0 / freq
+
+    def get_tables_key(item):
+        key, (dur, freq, reqs) = item
+        return dur / 1000000.0 / freq
+
+    text = ''
+
+    tlist = sorted(log.iteritems(), key=get_tables_key, reverse=True)
+    for table, (dur, freq, reqs) in tlist:
+        sec = dur / 1000000.0
+        per_request = sec / freq
+        text += '%-20s %f %d %f\n' % (table, per_request, freq, sec)
+
+    text += '\n'
+
+    tables = sorted(log.keys())
+    for table in tables:
+        dur, freq, reqs = log[table]
+        sec = dur / 1000000.0
+        per_request = sec / freq
+        text += '\n%-20s %f %d %f\n' % (table, per_request, freq, sec)
+        rlist = sorted(reqs.iteritems(), key=get_reqs_key, reverse=True)
+        for fields, (dur, freq) in rlist:
+            sec = dur / 1000000.0
+            per_request = sec / freq
+            text += '      %f %d %f %s\n' % (per_request, freq, sec, fields)
+    with open('log.info', 'w') as f:
+        f.write(text.encode('utf-8'))
+
+
+def log_request(command, duration):
+    global log_counter
+    global log_pid
+    global log
+    global log_save_after
+
+    if log_pid == os.getpid():
+        command = command.upper().strip()
+        table_name = find_table_name(command)
+        if table_name:
+            where_fields = find_where_fields(command)
+
+            msec = duration.microseconds
+
+            table = log.get(table_name)
+            if not table:
+                table = [0, 0, {}]
+                log[table_name] = table
+            table[0] += msec
+            table[1] += 1
+            reqs = table[2]
+
+            req = reqs.get(where_fields)
+            if not req:
+                req = [0, 0]
+                reqs[where_fields] = req
+            req[0] += msec
+            req[1] += 1
+
+        log_counter += 1
+        if log_counter % log_save_after == 0:
+            save_log(log)
+
 
 def execute_sql(db_module, db_database, db_user, db_password,
     db_host, db_port, db_encoding, connection, command,
     params=None, result_set=None, call_proc=False, commit=True):
 
     def execute_command(cursor, command, params=None):
+        global log_save_after
         print_command = False
         log_command = False
         try:
@@ -675,6 +830,8 @@ def execute_sql(db_module, db_database, db_user, db_password,
                 print ''
                 print command
                 print params
+
+            now = datetime.datetime.now()
 
             result = None
             if params:
@@ -685,6 +842,9 @@ def execute_sql(db_module, db_database, db_user, db_password,
                 result = cursor.fetchone()
             elif result_set == 'ALL':
                 result = cursor.fetchall()
+
+            if log_save_after:
+                log_request(command, datetime.datetime.now() - now)
 
             if log_command and command.upper().find('SELECT') == -1:
                 try:
@@ -705,7 +865,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
         rec = cursor.fetchone()
         return int(rec[0])
 
-    def execute_delta(cursor, command):
+    def execute_delta(cursor, command, delta_result):
 
         def process_delta(delta, master_rec_id, result):
             ID, sqls = delta
@@ -715,7 +875,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
             for sql in sqls:
                 (command, params, info), details = sql
                 if info:
-                    rec_id = info['id']
+                    rec_id = info['primary_key']
                     if info['status'] == common.RECORD_INSERTED:
                         if rec_id:
                             pass
@@ -723,9 +883,9 @@ def execute_sql(db_module, db_database, db_user, db_password,
                             next_sequence_value_sql = db_module.next_sequence_value_sql(info['table_name'])
                             if next_sequence_value_sql:
                                 rec_id = get_next_id(cursor, next_sequence_value_sql)
-                                params[info['id_index']] = rec_id
-                    if info['status'] == common.RECORD_INSERTED and info['owner_rec_id_index']:
-                        params[info['owner_rec_id_index']] = master_rec_id
+                                params[info['primary_key_index']] = rec_id
+                    if info['status'] == common.RECORD_INSERTED and info['master_rec_id_index']:
+                        params[info['master_rec_id_index']] = master_rec_id
                     if command:
                         execute_command(cursor, command, params)
                     if not rec_id and info['status'] == common.RECORD_INSERTED:
@@ -743,12 +903,10 @@ def execute_sql(db_module, db_database, db_user, db_password,
                     if command:
                         execute_command(cursor, command, params)
 
-        global delta_result
         delta = command['delta']
-        delta_result = {}
         process_delta(delta, None, delta_result)
 
-    def execute_list(cursor, command):
+    def execute_list(cursor, command, delta_result):
         res = None
         if command:
             for com in command:
@@ -756,9 +914,9 @@ def execute_sql(db_module, db_database, db_user, db_password,
                     if isinstance(com, unicode) or isinstance(com, str):
                         res = execute_command(cursor, com)
                     elif isinstance(com, list):
-                        res = execute_list(cursor, com)
+                        res = execute_list(cursor, com, delta_result)
                     elif isinstance(com, dict):
-                        res = execute_delta(cursor, com)
+                        res = execute_delta(cursor, com, delta_result)
                     elif isinstance(com, tuple):
                         res = execute_command(cursor, com[0], com[1])
                     else:
@@ -766,7 +924,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
             return res
 
     def execute(connection):
-        global delta_result
+        delta_result = {}
         result = None
         error = None
         try:
@@ -782,9 +940,9 @@ def execute_sql(db_module, db_database, db_user, db_password,
                 if isinstance(command, str) or isinstance(command, unicode):
                     result = execute_command(cursor, command, params)
                 elif isinstance(command, dict):
-                    res = execute_delta(cursor, command)
+                    res = execute_delta(cursor, command, delta_result)
                 elif isinstance(command, list):
-                    result = execute_list(cursor, command)
+                    result = execute_list(cursor, command, delta_result)
                 elif isinstance(command, tuple):
                     result = execute_command(cursor, command[0], command[1])
             if commit:
@@ -804,10 +962,6 @@ def execute_sql(db_module, db_database, db_user, db_password,
                 connection = None
         return connection, (result, error)
 
-    global delta_result
-    delta_result = None
-    #~ if not db_host:
-        #~ db_host = 'localhost'
     if connection is None:
         connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
     return execute(connection)
@@ -896,6 +1050,7 @@ class AbstractServerTask(AbstrTask):
         self.app = app
         self.consts = Consts()
         self.items = []
+        self.lookup_lists = {}
         self.ID = None
         self.item_name = name
         self.item_caption = caption
@@ -959,7 +1114,6 @@ class AbstractServerTask(AbstrTask):
     def send_to_pool(self, queue, result_queue, command, params=None, result_set=None, call_proc=False, commit=True):
         request = {}
         request['queue'] = result_queue
-        request['command'] = command
         request['command'] = command
         request['params'] = params
         request['result_set'] = result_set
@@ -1109,8 +1263,8 @@ class AbstractServerTask(AbstrTask):
                                         if not field.master_field:
                                             field.value = r[j]
                                             j += 1
-                                    if item.id.value > max_id:
-                                        max_id = item.id.value
+                                    if item._primary_key_field.value > max_id:
+                                        max_id = item._primary_key_field.value
                                     item.post()
                                 item.apply()
                             else:
@@ -1154,31 +1308,41 @@ class AdminTask(AbstractServerTask):
         filepath, filename = os.path.split(__file__)
         self.cur_path = filepath
 
+    def create_task(self):
+        return adm_server.create_task(self.app)
+
+    def get_roles(self):
+        return adm_server.get_roles(self)
+
+    def reload_task(self):
+        adm_server.reload_task(self)
+
+    def update_events_code(self):
+        adm_server.update_events_code(self)
+
+    def logout(self, user_id):
+        adm_server.logout(self, user_id)
+
 class Group(AbstrGroup):
-    def __init__(self, owner, name, caption, view_template = None, js_filename = None, visible = True, item_type_id=0):
-        AbstrGroup.__init__(self, owner, name, caption, True, item_type_id, js_filename)
+    def __init__(self, owner, name, caption, view_template=None, js_filename=None, visible=True, item_type_id=0):
+        AbstrGroup.__init__(self, owner, name, caption, visible, item_type_id, js_filename)
         self.ID = None
         self.view_template = view_template
         self.js_filename = js_filename
         if item_type_id == common.REPORTS_TYPE:
             self.on_convert_report = None
 
-    def add_catalog(self, name, caption, table_name, visible = True, view_template = '', js_filename = '', soft_delete=True):
+    def add_catalog(self, name, caption, table_name, visible=True, view_template='', js_filename='', soft_delete=True):
         result = Item(self, name, caption, visible, table_name, view_template, js_filename, soft_delete)
-        result.item_type_id = common.CATALOG_TYPE
+        result.item_type_id = common.ITEM_TYPE
         return result
 
-    def add_journal(self, name, caption, table_name, visible = True, view_template = '', js_filename = '', soft_delete=True):
-        result = Item(self, name, caption, visible, table_name, view_template, js_filename, soft_delete)
-        result.item_type_id = common.JOURNAL_TYPE
-        return result
-
-    def add_table(self, name, caption, table_name, visible = True, view_template = '', js_filename = '', soft_delete=True):
+    def add_table(self, name, caption, table_name, visible=True, view_template='', js_filename='', soft_delete=True):
         result = Item(self, name, caption, visible, table_name, view_template, js_filename, soft_delete)
         result.item_type_id = common.TABLE_TYPE
         return result
 
-    def add_report(self, name, caption, table_name, visible = True, view_template = '', js_filename = '', soft_delete=True):
+    def add_report(self, name, caption, table_name, visible=True, view_template='', js_filename='', soft_delete=True):
         result = Report(self, name, caption, visible, table_name, view_template, js_filename)
         result.item_type_id = common.REPORT_TYPE
         return result
@@ -1198,17 +1362,23 @@ class Detail(AbstrDetail, ServerDataset):
         for field_def in self.field_defs:
             field = DBField(self, field_def)
             self._fields.append(field)
+        self._primary_key = self.prototype._primary_key
+        self._deleted_flag = self.prototype._deleted_flag
+        self._master_id = self.prototype._master_id
+        self._master_rec_id = self.prototype._master_rec_id
+
 
     def do_internal_post(self):
         return {'success': True, 'id': None, 'message': '', 'detail_ids': None}
 
     def where_clause(self, query, db_module):
-        owner_id = query['__owner_id']
-        owner_rec_id = query['__owner_rec_id']
-        if type(owner_id) == int and type(owner_rec_id) == int:
+        master_id = query['__master_id']
+        master_rec_id = query['__master_rec_id']
+        if type(master_id) == int and type(master_rec_id) == int:
             result = super(Detail, self).where_clause(query, db_module)
-            clause = '"%s"."OWNER_ID"=%s AND "%s"."OWNER_REC_ID"=%s' % \
-            (self.table_name.upper(), str(owner_id), self.table_name.upper(), str(owner_rec_id))
+            clause = '"%s"."%s"=%s AND "%s"."%s"=%s' % \
+                (self.table_name.upper(), self._master_id, str(master_id),
+                self.table_name.upper(), self._master_rec_id, str(master_rec_id))
             if result:
                 result += ' AND ' + clause
             else:

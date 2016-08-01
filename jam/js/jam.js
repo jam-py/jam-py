@@ -208,6 +208,10 @@
                 child = this.addChild(item_info.id, item_info.name,
                     item_info.caption, item_info.visible, item_info.type, item_info.js_filename);
                 child._default_order = item_info.default_order;
+                child._primary_key = item_info.primary_key
+                child._deleted_flag = item_info.deleted_flag
+                child._master_id = item_info.master_id
+                child._master_rec_id = item_info.master_rec_id
                 if (child.initAttr) {
                     child.initAttr(item_info);
                 }
@@ -240,9 +244,7 @@
                 s = document.createElement('script');
 
             if (js_filename && !this.task._script_cache[js_filename]) {
-                url = location.protocol + '//' +
-                    location.hostname + (location.port ? ':' + location.port : '') +
-                    '/' + js_filename;
+                url = js_filename;
 
                 s.src = url;
                 s.type = "text/javascript";
@@ -367,8 +369,11 @@
                     }
                 }
             }
-            if (template) {
+            if (template.length) {
                 result = template.clone();
+            }
+            else {
+                this.warning(this.item_caption + ': ' +  suffix + ' form template not found.')
             }
             return result;
         },
@@ -444,13 +449,13 @@
                 options.title = '&nbsp';
             }
             $form = $(
-                '<div class="modal hide normal-modal-border" tabindex="-1" data-backdrop="static" data-item="' + this.item_name + '">' +
+                '<div class="modal hide normal-modal-border" tabindex="-1" data-backdrop="static">' +
                 '<div class="modal-header">' +
                 '</div>' +
                 '</div>'
             );
             $doc = $(document);
-            this.set_form_options($form, options);
+            this._set_form_options($form, options);
             $title = $form.find('.modal-title');
             $title.on("mousedown", function(e) {
                 mouseX = e.screenX;
@@ -467,7 +472,7 @@
             return $form;
         },
 
-        set_form_options: function(form, options, form_name) {
+        _set_form_options: function(form, options, form_name) {
             var self = this,
                 header = form.find('.modal-header'),
                 title = header.find('.modal-title'),
@@ -572,7 +577,7 @@
                             if (self[formName].modal_width) {
                                 options.item_options.width = self[formName].modal_width;
                             }
-                            self.set_form_options(self[formName], options.item_options, formName);
+                            self._set_form_options(self[formName], options.item_options, formName);
                         });
 
                         this[formName].on("shown", function(e) {
@@ -596,6 +601,7 @@
 
                         this[formName].on("hidden", function(e) {
                             e.stopPropagation();
+                            $('body .popover').remove();
                             if (options.onHidden) {
                                 options.onHidden.call(self, e);
                             }
@@ -869,15 +875,14 @@
         this.user_info = {};
         this._script_cache = {};
         this.gridId = 0;
-        $('body').on('mousedown.context_menu', function(e) {
-            if (self.$context_menu) {
-                self.$context_menu.hide();
-                self.$context_menu.detach();
-                self.$context_menu_parent.append(self.$context_menu);
-                self.$context_menu = undefined;
-            }
-        });
-
+        //~ $('body').on('mousedown.context_menu', function(e) {
+            //~ if (self.$context_menu) {
+                //~ self.$context_menu.hide();
+                //~ self.$context_menu.detach();
+                //~ self.$context_menu_parent.append(self.$context_menu);
+                //~ self.$context_menu = undefined;
+            //~ }
+        //~ });
     }
 
     $.extend(Task.prototype, {
@@ -905,7 +910,7 @@
             }
 
             $.ajax({
-                url: "/api",
+                url: "api",
                 type: "POST",
                 contentType: contentType,
                 async: async,
@@ -915,9 +920,12 @@
                 success: function(data) {
                     var mess;
                     if (data.error) {
-                        item.warning(language.error + ': ' + item.item_caption + ' - ' + data.error);
+                        console.log(data);
+//                        data.result.data = [undefined, data.error]
+//                        item.warning(language.error + ': ' + item.item_caption + ' - ' + data.error);
                     } else {
                         if (data.result.status === consts.NO_PROJECT) {
+                            $('body').empty();
                             item.warning('Creating a project is not finished yet. Run the Administrator to finish.');
                             return;
                         } else if (data.result.status === consts.UNDER_MAINTAINANCE) {
@@ -936,10 +944,10 @@
                         } else if (data.result.status === consts.NOT_LOGGED) {
                             if (!self.logged_in) {
                                 self.login();
-                                return;
                             } else {
                                 location.reload();
                             }
+                            return;
                         } else if (self.ID > 0 && data.result.version &&
                             self.version && data.result.version !== self.version) {
                             if (!self.task._version_changed) {
@@ -950,20 +958,20 @@
                                     text_center: true
                                 });
                             }
+                            return;
                         }
-                        if (callback) {
-                            callback.call(item, data.result.data);
-                        } else {
-                            reply = data.result.data;
-                        }
+                    }
+                    if (callback) {
+                        callback.call(item, data.result.data);
+                    } else {
+                        reply = data.result.data;
                     }
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
-                    if (jqXHR.responseText) {
+                    if (jqXHR.responseText && self.ID !== 0) {
                         document.open();
                         document.write(jqXHR.responseText);
                         document.close();
-                        //                        window.open().document.write(jqXHR.responseText);
                     } else if (language) {
                         if (!self.task._server_request_error) {
                             self.task._server_request_error = true;
@@ -1022,7 +1030,7 @@
                 body.push(file.name);
                 body.push(content);
             }
-            xhr.open('POST', '/upload', true);
+            xhr.open('POST', 'upload', true);
             if (options.callback) {
                 xhr.onload = function(e) {
                     if (options.multiple) {
@@ -1107,7 +1115,12 @@
             }
             this.send_request('init_client', null, function(data) {
                 var info = data[0],
+                    error = data[1],
                     templates;
+                if (error) {
+                    self.warning(error);
+                    return;
+                }
                 self.logged_in = true;
                 settings = info.settings;
                 language = info.language;
@@ -1122,6 +1135,7 @@
                 self.item_name = info.task.name;
                 self.item_caption = info.task.caption;
                 self.visible = info.task.visible;
+                self.lookup_lists = info.task.lookup_lists;
                 self.item_type = "";
                 if (info.task.type) {
                     self.item_type = self.types[info.task.type - 1];
@@ -1136,12 +1150,19 @@
                 templates.remove();
                 self.init(info.task);
                 self.bind_items();
-                self.events = {};
                 if (self.ID === 0) {
                     self.js_filename = 'jam/js/admin.js';
                     self.settings.DYNAMIC_JS = false;
                 }
-                self.init_modules();
+                if (self.static_js_modules) {
+                    self.bind_events();
+                    if (self.on_page_loaded) {
+                        self.on_page_loaded.call(self, self);
+                    }
+                }
+                else {
+                    self.init_modules();
+                }
             });
         },
 
@@ -1392,7 +1413,7 @@
                             }
                             detail = {
                                 'logs': {},
-                                'records': this.item._records,
+                                'records': this.item._dataset,
                                 'fields': fields,
                                 'expanded': this.item.expanded
                             };
@@ -1405,10 +1426,10 @@
                     }
                 }
                 if (this.item.record_count()) {
-                    change_id = this.item.get_rec_change_id();
+                    change_id = this.item._get_rec_change_id();
                     if (!change_id) {
                         change_id = this.get_change_id()
-                        this.item.set_rec_change_id(change_id);
+                        this.item._set_rec_change_id(change_id);
                     }
                     result = this.logs[change_id];
                     if (this.is_empty_obj(result)) {
@@ -1447,17 +1468,17 @@
         },
 
         remove_record_log: function() {
-            var change_id = this.item.get_rec_change_id();
+            var change_id = this.item._get_rec_change_id();
             if (change_id) {
                 this.find_record_log();
                 delete this.logs[change_id];
-                this.item.set_rec_change_id(null);
-                this.item.set_record_status(consts.RECORD_UNCHANGED);
+                this.item._set_rec_change_id(null);
+                this.item._set_record_status(consts.RECORD_UNCHANGED);
             }
         },
 
         cur_record: function() {
-            return this.item._records[this.item.get_rec_no()];
+            return this.item._dataset[this.item._get_rec_no()];
         },
 
         record_modified: function(record_log) {
@@ -1503,33 +1524,33 @@
             if (this.log_changes()) {
                 record_log = this.find_record_log();
                 if (this.item.item_state === consts.STATE_BROWSE) {
-                    if ((this.item.get_record_status() === consts.RECORD_UNCHANGED) ||
-                        (this.item.get_record_status() === consts.RECORD_DETAILS_MODIFIED && record_log.unmodified_record === null)) {
+                    if ((this.item._get_record_status() === consts.RECORD_UNCHANGED) ||
+                        (this.item._get_record_status() === consts.RECORD_DETAILS_MODIFIED && record_log.unmodified_record === null)) {
                         record_log.unmodified_record = this.copy_record(this.cur_record(), false);
                         return;
                     }
                 } else if (this.item.item_state === consts.STATE_INSERT) {
-                    this.item.set_record_status(consts.RECORD_INSERTED);
+                    this.item._set_record_status(consts.RECORD_INSERTED);
                 } else if (this.item.item_state === consts.STATE_EDIT) {
-                    if (this.item.get_record_status() === consts.RECORD_UNCHANGED) {
+                    if (this.item._get_record_status() === consts.RECORD_UNCHANGED) {
                         this.item.record_status = consts.RECORD_MODIFIED;
-                    } else if (this.item.get_record_status() === consts.RECORD_DETAILS_MODIFIED) {
+                    } else if (this.item._get_record_status() === consts.RECORD_DETAILS_MODIFIED) {
                         if (this.record_modified(record_log)) {
-                            this.item.set_record_status(consts.RECORD_MODIFIED);
+                            this.item._set_record_status(consts.RECORD_MODIFIED);
                         }
                     }
                 } else if (this.item.item_state === consts.STATE_DELETE) {
-                    if (this.item.get_record_status() === consts.RECORD_INSERTED) {
+                    if (this.item._get_record_status() === consts.RECORD_INSERTED) {
                         this.remove_record_log();
                     } else {
-                        this.item.set_record_status(consts.RECORD_DELETED);
+                        this.item._set_record_status(consts.RECORD_DELETED);
                     }
                 } else {
                     throw this.item.item_name + ': change log invalid records state';
                 }
                 if (this.item.master) {
-                    if (this.item.master.get_record_status() === consts.RECORD_UNCHANGED) {
-                        this.item.master.set_record_status(consts.RECORD_DETAILS_MODIFIED);
+                    if (this.item.master._get_record_status() === consts.RECORD_UNCHANGED) {
+                        this.item.master._set_record_status(consts.RECORD_DETAILS_MODIFIED);
                     }
                 }
             }
@@ -1683,8 +1704,8 @@
                         }
                     }
                 } else {
-                    if (detail_item._records) {
-                        records = this.copy_records(detail_item._records);
+                    if (detail_item._dataset) {
+                        records = this.copy_records(detail_item._dataset);
                     }
                 }
                 dest[detail_id] = {
@@ -1715,8 +1736,8 @@
                 details = {};
                 for (var i = 0; i < this.item.details.length; i++) {
                     detail = this.item.details[i];
-                    if (!detail.disabled && detail._records) {
-                        details[detail.ID] = detail._records.slice(0);
+                    if (!detail.disabled && detail._dataset) {
+                        details[detail.ID] = detail._dataset.slice(0);
                     }
                 }
                 result['details'] = details;
@@ -1746,10 +1767,10 @@
                     detail = this.item.details[i];
                     detail_log = log['details'][detail.ID];
                     if (!this.is_empty_obj(detail_log)) {
-                        detail._records = detail_log['records'];
+                        detail._dataset = detail_log['records'];
                     }
                 }
-                if (this.item.get_record_status() === consts.RECORD_UNCHANGED) {
+                if (this.item._get_record_status() === consts.RECORD_UNCHANGED) {
                     this.remove_record_log();
                 }
             } else {
@@ -1761,12 +1782,12 @@
                 }
                 for (var i = 0; i < this.item.details.length; i++) {
                     detail = this.item.details[i];
-                    detail._records = log['details'][detail.ID];
+                    detail._dataset = log['details'][detail.ID];
                 }
             }
         },
 
-        update: function(updates) {
+        update: function(updates, master_rec_id) {
             var change,
                 changes,
                 log_id,
@@ -1780,7 +1801,9 @@
                 ID,
                 detail_item,
                 item_detail,
-                info;
+                info,
+                primary_key_field,
+                master_rec_id_field;
             if (updates) {
                 changes = updates['changes'];
                 for (var key in changes) {
@@ -1800,11 +1823,18 @@
                             item_detail = record_details[ID];
                             if (!this.is_empty_obj(item_detail)) {
                                 detail_item.change_log.logs = item_detail['logs'];
-                                detail_item.change_log.update(detail);
+                                detail_item.change_log.update(detail, rec_id);
                             }
                         }
-                        if (rec_id && !record[this.item.id.bind_index]) {
-                            record[this.item.id.bind_index] = rec_id;
+                        if (rec_id) {
+                            if (!record[this.item._primary_key_field.bind_index]) {
+                                record[this.item._primary_key_field.bind_index] = rec_id;
+                            }
+                        }
+                        if (master_rec_id) {
+                            if (!record[this.item._master_rec_id_field.bind_index]) {
+                                record[this.item._master_rec_id_field.bind_index] = master_rec_id;
+                            }
                         }
                         info = this.item.get_rec_info(undefined, record);
                         info[consts.REC_STATUS] = consts.RECORD_UNCHANGED;
@@ -1862,7 +1892,7 @@
         this.disabled = false;
         this.expanded = true;
         this._log_changes = true;
-        this._records = null;
+        this._dataset = null;
         this._eof = false;
         this._bof = false;
         this._cur_row = null;
@@ -1891,10 +1921,10 @@
         this.filter_options = $.extend({}, this.modal_options);
         Object.defineProperty(this, "rec_no", {
             get: function() {
-                return this.get_rec_no();
+                return this._get_rec_no();
             },
             set: function(new_value) {
-                this.set_rec_no(new_value);
+                this._set_rec_no(new_value);
             }
         });
         Object.defineProperty(this, "rec_count", {
@@ -1902,54 +1932,41 @@
                 return this.record_count();
             },
         });
-        Object.defineProperty(this, "records", {
-            get: function() {
-                return this.get_records();
-            },
-            set: function(new_value) {
-                this.set_records(new_value);
-            }
-        });
         Object.defineProperty(this, "active", {
             get: function() {
-                return this.get_active();
+                return this._get_active();
             }
         });
         Object.defineProperty(this, "read_only", {
             get: function() {
-                return this.get_read_only();
+                return this._get_read_only();
             },
             set: function(new_value) {
-                this.set_read_only(new_value);
+                this._set_read_only(new_value);
             }
-        });
-        Object.defineProperty(this, "modified", {
-            get: function() {
-                return this.is_modified();
-            },
         });
         Object.defineProperty(this, "filtered", {
             get: function() {
-                return this.get_filtered();
+                return this._get_filtered();
             },
             set: function(new_value) {
-                this.set_filtered(new_value);
+                this._set_filtered(new_value);
             }
         });
         Object.defineProperty(this, "item_state", {
             get: function() {
-                return this.get_state();
+                return this._get_item_state();
             },
             set: function(new_value) {
-                this.set_state(new_value);
+                this._set_item_state(new_value);
             }
         });
         Object.defineProperty(this, "record_status", {
             get: function() {
-                return this.get_record_status();
+                return this._get_record_status();
             },
             set: function(new_value) {
-                this.set_record_status(new_value);
+                this._set_record_status(new_value);
             }
         });
         Object.defineProperty(this, "default_field", {
@@ -1959,10 +1976,18 @@
         });
         Object.defineProperty(this, "log_changes", {
             get: function() {
-                return this.get_log_changes();
+                return this._get_log_changes();
             },
             set: function(new_value) {
-                this.set_log_changes(new_value);
+                this._set_log_changes(new_value);
+            }
+        });
+        Object.defineProperty(this, "dataset", {
+            get: function() {
+                return this.get_dataset();
+            },
+            set: function(new_value) {
+                this.set_dataset(new_value);
             }
         });
     }
@@ -2044,6 +2069,10 @@
                 if (field.master_field && (typeof field.master_field === "number")) {
                     field.master_field = this.get_master_field(this._fields, field.master_field);
                 }
+                if (field.lookup_values && (typeof field.lookup_values === "number")) {
+                    field.lookup_values = self.task.lookup_lists[field.lookup_values];
+                }
+
             }
             this.fields = this._fields.slice(0);
             for (i = 0; i < len; i++) {
@@ -2236,20 +2265,20 @@
             }
         },
 
-        get_records: function() {
+        get_dataset: function() {
             var i,
                 len,
                 result = [];
             if (this.active) {
-                len = this._records.length;
+                len = this._dataset.length;
                 for (i = 0; i < len; i++)
-                    result.push(this._records[i].slice(0, this._record_info_index))
+                    result.push(this._dataset[i].slice(0, this._record_info_index))
                 return result
             }
         },
 
-        set_records: function(value) {
-            this._records = value;
+        set_dataset: function(value) {
+            this._dataset = value;
         },
 
         copy: function(options) {
@@ -2274,6 +2303,10 @@
             result.expanded = this.expanded;
             result.field_defs = this.field_defs;
             result.filter_defs = this.filter_defs;
+            result._primary_key = this._primary_key
+            result._deleted_flag = this._deleted_flag
+            result._master_id = this._master_id
+            result._master_rec_id = this._master_rec_id
             result._default_order = this._default_order;
             result._edit_options = this._edit_options;
             result._view_options = this._view_options;
@@ -2371,14 +2404,16 @@
                 }
             }
 
-            result.bind_fields();
-            result._records = this._records;
+            result.update_system_fields();
+
+            result._bind_fields();
+            result._dataset = this._dataset;
             if (keep_filtered) {
                 result.on_filter_record = this.on_filter_record;
                 result.filtered = this.filtered;
             }
             result._active = true;
-            result.set_state(consts.STATE_BROWSE);
+            result._set_item_state(consts.STATE_BROWSE);
             result.first();
             return result;
         },
@@ -2413,11 +2448,11 @@
             }
         },
 
-        get_log_changes: function() {
+        _get_log_changes: function() {
             return this._log_changes;
         },
 
-        set_log_changes: function(value) {
+        _set_log_changes: function(value) {
             this._log_changes = value;
         },
 
@@ -2425,10 +2460,10 @@
             return this._modified;
         },
 
-        set_modified: function(value) {
+        _set_modified: function(value) {
             this._modified = value;
             if (this.master && value) {
-                this.master.set_modified(value);
+                this.master._set_modified(value);
             }
         }
     });
@@ -2437,7 +2472,7 @@
 
     $.extend(Item.prototype, {
 
-        bind_fields: function(expanded) {
+        _bind_fields: function(expanded) {
             var j = 0;
             if (expanded === undefined) {
                 expanded = true;
@@ -2549,22 +2584,30 @@
             return result;
         },
 
-        do_before_open: function(expanded, fields, where, order_by, open_empty, params,
-            offset, limit, funcs, group_by) {
-            var result,
-                i,
+        update_system_fields: function() {
+            var i,
                 len,
                 field,
-                field_name,
-                filters = [];
-
-            if (this.on_before_open) {
-                this.on_before_open.call(this, this, params);
+                sys_field,
+                sys_field_name,
+                sys_fields = ['_primary_key', '_deleted_flag', '_master_id', '_master_rec_id'];
+            len = sys_fields.length;
+            for (i = 0; i < len; i++) {
+                sys_field_name = sys_fields[i];
+                sys_field = this[sys_field_name];
+                if (sys_field) {
+                    field = this.field_by_name(sys_field)
+                    if (field) {
+                        this[sys_field_name + '_field'] = field;
+                    }
+                }
             }
+        },
 
-            params.__expanded = expanded;
-            params.__fields = [];
-
+        _update_fields: function(fields) {
+            var i,
+                len,
+                field;
             len = this.fields.length;
             for (i = 0; i < len; i++) {
                 field = this.fields[i]
@@ -2581,7 +2624,6 @@
                 for (i = 0; i < len; i++) {
                     this.fields.push(this._field_by_name(fields[i]));
                 }
-                params.__fields = fields;
             } else {
                 this.fields = this._fields.slice(0);
             }
@@ -2592,6 +2634,24 @@
                     this[field.field_name] = field;
                 }
             }
+            this.update_system_fields();
+        },
+
+        _do_before_open: function(expanded, fields, where, order_by, open_empty, params,
+            offset, limit, funcs, group_by) {
+            var filters = [];
+
+            if (this.on_before_open) {
+                this.on_before_open.call(this, this, params);
+            }
+
+            params.__expanded = expanded;
+            params.__fields = [];
+            if (fields) {
+                params.__fields = fields;
+            }
+
+            this._update_fields(fields);
 
             params.__open_empty = open_empty;
             params.__order = []
@@ -2640,7 +2700,7 @@
             this._open_params = params;
         },
 
-        do_after_open: function() {
+        _do_after_open: function() {
             if (this.on_after_open) {
                 this.on_after_open.call(this, this);
             }
@@ -2679,7 +2739,7 @@
 
         find_change_log: function() {
             if (this.master) {
-                if (this.master.get_record_status() !== consts.RECORD_UNCHANGED) {
+                if (this.master._get_record_status() !== consts.RECORD_UNCHANGED) {
                     return this.master.change_log.get_detail_log(this.ID)
                 }
             }
@@ -2743,10 +2803,8 @@
             async = callback ? true : false;
             if (this.master) {
                 if (!this.disabled && this.master.record_count() > 0) {
-                    params.__owner_id = this.master.ID;
-                    if (this.master.id) {
-                        params.__owner_rec_id = this.master.id.get_value();
-                    }
+                    params.__master_id = this.master.ID;
+                    params.__master_rec_id = this.master.field_by_name(this.master._primary_key).value;
                     if (this.master.is_new()) {
                         records = [];
                     } else {
@@ -2758,18 +2816,18 @@
                         }
                     }
                     if (records !== undefined) {
-                        this.do_before_open(expanded, fields,
+                        this._do_before_open(expanded, fields,
                             where, order_by, open_empty, params, offset,
                             limit, funcs, group_by)
-                        this.bind_fields(expanded);
+                        this._bind_fields(expanded);
                         if (this.master.is_new()) {
                             this.change_log.prepare();
                         }
-                        this._records = records;
+                        this._dataset = records;
                         this._active = true;
-                        this.set_state(consts.STATE_BROWSE);
+                        this._set_item_state(consts.STATE_BROWSE);
                         this.first();
-                        this.do_after_open();
+                        this._do_after_open();
                         this.update_controls(consts.UPDATE_OPEN);
                         if (callback) {
                             callback.call(this, this);
@@ -2789,21 +2847,21 @@
                 }
             } else {
                 offset = 0
-                this.do_before_open(expanded, fields,
+                this._do_before_open(expanded, fields,
                     where, order_by, open_empty, params, offset, limit, funcs, group_by);
-                this.bind_fields(expanded);
+                this._bind_fields(expanded);
             }
             if (this.paginate) {
                 params.__limit = this._pg_limit;
             }
             this.change_log.prepare();
-            this._records = [];
+            this._dataset = [];
             this.do_open(offset, async, params, open_empty, function() {
                 self._active = true;
-                self.set_state(consts.STATE_BROWSE);
+                self._set_item_state(consts.STATE_BROWSE);
                 self._cur_row = null;
                 self.first();
-                self.do_after_open();
+                self._do_after_open();
                 if ((!self.paginate || self.paginate && offset === 0) && self.on_filters_applied) {
                     self.on_filters_applied.call(self, self);
                 }
@@ -2819,7 +2877,7 @@
                 data;
             if (async && !open_empty) {
                 this.send_request('open', params, function(data) {
-                    self.do_after_upload(data, offset, callback);
+                    self._do_after_load(data, offset, callback);
                 });
             } else {
                 if (open_empty) {
@@ -2829,11 +2887,11 @@
                 } else {
                     data = this.send_request('open', params);
                 }
-                this.do_after_upload(data, offset, callback);
+                this._do_after_load(data, offset, callback);
             }
         },
 
-        do_after_upload: function(data, offset, callback) {
+        _do_after_load: function(data, offset, callback) {
             var rows,
                 error_mes,
                 i,
@@ -2847,9 +2905,9 @@
                         rows = data[0];
 
                         len = rows.length;
-                        this._records = [];
+                        this._dataset = [];
                         for (i = 0; i < len; i++) {
-                            this._records.push(rows[i]);
+                            this._dataset.push(rows[i]);
                         }
                         if (this._pg_limit && this.paginate && rows) {
                             this._pg_offset = offset;
@@ -2862,21 +2920,21 @@
                     }
                 }
             } else {
-                this._records = [];
+                this._dataset = [];
                 console.log(this.item_name + " error while opening table");
             }
 
         },
 
-        do_close: function() {
+        _do_close: function() {
             this._active = false;
-            this._records = null;
+            this._dataset = null;
             this._cur_row = null;
         },
 
         close: function() {
             var len = this.details.length;
-            this.do_close();
+            this._do_close();
             for (var i = 0; i < len; i++) {
                 this.details[i].close();
             }
@@ -2949,7 +3007,7 @@
                 field_names.push(this.field_by_ID(sort_fields[i][0]).field_name);
                 desc.push(sort_fields[i][1]);
             }
-            this._records.sort(compare_records);
+            this._dataset.sort(compare_records);
             this.update_controls();
         },
 
@@ -2997,13 +3055,27 @@
             return result;
         },
 
-        do_before_append: function() {
+        _do_before_append: function() {
             if (this.on_before_append) {
                 this.on_before_append.call(this, this);
             }
         },
 
-        do_after_append: function() {
+        _do_after_append: function() {
+            var i = 0,
+                len = this.fields.length,
+                field;
+            for (; i < len; i++) {
+                field = this.fields[i];
+                if (field.default_value) {
+                    try {
+                        field.text = field.default_value;
+                    }
+                    catch (e) {
+                    }
+                }
+            }
+            this._modified = false;
             if (this.on_after_append) {
                 this.on_after_append.call(this, this);
             }
@@ -3016,20 +3088,20 @@
             if (this.master && !this.master.is_changing()) {
                 throw this.item_name + ": can't append record - master item is not in edit or insert mode";
             }
-            if (this.get_state() !== consts.STATE_BROWSE) {
+            if (this._get_item_state() !== consts.STATE_BROWSE) {
                 throw this.item_name + ": can't append record - item is not in browse mode";
             }
-            this.do_before_append();
-            this.do_before_scroll();
-            this._old_row = this.get_rec_no();
-            this.set_state(consts.STATE_INSERT);
-            this._records.push(this.new_record());
-            this._cur_row = this._records.length - 1;
-            this._modified = false;
-            this.set_record_status(consts.RECORD_INSERTED);
+            this._do_before_append();
+            this._do_before_scroll();
+            this._old_row = this._get_rec_no();
+            this._set_item_state(consts.STATE_INSERT);
+            this._dataset.push(this.new_record());
+            this._cur_row = this._dataset.length - 1;
+//            this._modified = false;
+            this._set_record_status(consts.RECORD_INSERTED);
             this.update_controls(consts.UPDATE_APPEND);
-            this.do_after_scroll();
-            this.do_after_append();
+            this._do_after_scroll();
+            this._do_after_append();
         },
 
         insert: function() {
@@ -3039,29 +3111,29 @@
             if (this.master && !this.master.is_changing()) {
                 throw this.item_name + ": can't insert record - master item is not in edit or insert mode";
             }
-            if (this.get_state() !== consts.STATE_BROWSE) {
+            if (this._get_item_state() !== consts.STATE_BROWSE) {
                 throw this.item_name + ": can't insert record - item is not in browse mode";
             }
-            this.do_before_append();
-            this.do_before_scroll();
-            this._old_row = this.get_rec_no();
-            this.set_state(consts.STATE_INSERT);
-            this._records.splice(0, 0, this.new_record());
+            this._do_before_append();
+            this._do_before_scroll();
+            this._old_row = this._get_rec_no();
+            this._set_item_state(consts.STATE_INSERT);
+            this._dataset.splice(0, 0, this.new_record());
             this._cur_row = 0;
             this._modified = false;
-            this.set_record_status(consts.RECORD_INSERTED);
+            this._set_record_status(consts.RECORD_INSERTED);
             this.update_controls(consts.UPDATE_INSERT);
-            this.do_after_scroll();
-            this.do_after_append();
+            this._do_after_scroll();
+            this._do_after_append();
         },
 
-        do_before_edit: function() {
+        _do_before_edit: function() {
             if (this.on_before_edit) {
                 this.on_before_edit.call(this, this);
             }
         },
 
-        do_after_edit: function() {
+        _do_after_edit: function() {
             if (this.on_after_edit) {
                 this.on_after_edit.call(this, this);
             }
@@ -3077,26 +3149,26 @@
             if (this.master && !this.master.is_changing()) {
                 throw this.item_name + ": can't edit record - master item is not in edit or insert mode";
             }
-            if (this.get_state() !== consts.STATE_BROWSE) {
+            if (this._get_item_state() !== consts.STATE_BROWSE) {
                 throw this.item_name + ": can't edit record - item is not in browse mode";
             }
-            this.do_before_edit();
+            this._do_before_edit();
             this.change_log.log_change();
             this._buffer = this.change_log.store_record_log();
-            this.set_state(consts.STATE_EDIT);
-            this._old_row = this.get_rec_no();
-            this._old_status = this.get_record_status();
+            this._set_item_state(consts.STATE_EDIT);
+            this._old_row = this._get_rec_no();
+            this._old_status = this._get_record_status();
             this._modified = false;
-            this.do_after_edit();
+            this._do_after_edit();
         },
 
-        do_before_cancel: function() {
+        _do_before_cancel: function() {
             if (this.on_before_cancel) {
                 this.on_before_cancel.call(this, this);
             }
         },
 
-        do_after_cancel: function() {
+        _do_after_cancel: function() {
             if (this.on_after_cancel) {
                 this.on_after_cancel.call(this, this);
             }
@@ -3107,74 +3179,74 @@
                 len,
                 rec,
                 prev_state;
-            rec = this.get_rec_no();
+            rec = this._get_rec_no();
 
-            this.do_before_cancel();
-            if (this.get_state() === consts.STATE_EDIT) {
+            this._do_before_cancel();
+            if (this._get_item_state() === consts.STATE_EDIT) {
                 this.change_log.restore_record_log(this._buffer)
                 this.update_controls(consts.UPDATE_CANCEL)
                 for (var i = 0; i < this.details.length; i++) {
                     this.details[i].update_controls(consts.UPDATE_OPEN);
                 }
-            } else if (this.get_state() === consts.STATE_INSERT) {
+            } else if (this._get_item_state() === consts.STATE_INSERT) {
                 this.change_log.remove_record_log();
                 this.update_controls(consts.UPDATE_DELETE);
-                this._records.splice(rec, 1);
+                this._dataset.splice(rec, 1);
             } else {
                 throw this.item_name + ' cancel error: invalid item state';
             }
 
-            prev_state = this.get_state();
-            this.set_state(consts.STATE_BROWSE);
+            prev_state = this._get_item_state();
+            this._set_item_state(consts.STATE_BROWSE);
             if (prev_state === consts.STATE_INSERT) {
-                this.do_before_scroll();
+                this._do_before_scroll();
             }
             this._cur_row = this._old_row;
             if (prev_state === consts.STATE_EDIT) {
-                this.set_record_status(this._old_status);
+                this._set_record_status(this._old_status);
             }
             this._modified = false;
             if (prev_state === consts.STATE_INSERT) {
-                this.do_after_scroll();
+                this._do_after_scroll();
             }
-            this.do_after_cancel();
+            this._do_after_cancel();
         },
 
         is_browsing: function() {
-            return this.get_state() === consts.STATE_BROWSE;
+            return this._get_item_state() === consts.STATE_BROWSE;
         },
 
         is_changing: function() {
-            return (this.get_state() === consts.STATE_INSERT) || (this.get_state() === consts.STATE_EDIT);
+            return (this._get_item_state() === consts.STATE_INSERT) || (this._get_item_state() === consts.STATE_EDIT);
         },
 
         is_new: function() {
-            return this.get_state() === consts.STATE_INSERT;
+            return this._get_item_state() === consts.STATE_INSERT;
         },
 
         is_edited: function() {
-            return this.get_state() === consts.STATE_EDIT;
+            return this._get_item_state() === consts.STATE_EDIT;
         },
 
         is_deleting: function() {
-            return this.get_state() === consts.STATE_DELETE;
+            return this._get_item_state() === consts.STATE_DELETE;
         },
 
 
-        do_before_delete: function(callback) {
+        _do_before_delete: function(callback) {
             if (this.on_before_delete) {
                 this.on_before_delete.call(this, this);
             }
         },
 
-        do_after_delete: function() {
+        _do_after_delete: function() {
             if (this.on_after_delete) {
                 this.on_after_delete.call(this, this);
             }
         },
 
         "delete": function() {
-            var rec = this.get_rec_no();
+            var rec = this._get_rec_no();
             if (!this._active) {
                 throw this.item_name + ": can't delete record - item is not active";
             }
@@ -3184,22 +3256,22 @@
             if (this.master && !this.master.is_changing()) {
                 throw this.item_name + ": can't delete record - master item is not in edit or insert mode";
             }
-            this.set_state(consts.STATE_DELETE);
+            this._set_item_state(consts.STATE_DELETE);
             try {
-                this.do_before_delete();
-                this.do_before_scroll();
+                this._do_before_delete();
+                this._do_before_scroll();
                 this.update_controls(consts.UPDATE_DELETE);
                 this.change_log.log_change();
                 if (this.master) {
-                    this.master.set_modified(true);
+                    this.master._set_modified(true);
                 }
-                this._records.splice(rec, 1);
-                this.set_rec_no(rec);
-                this.do_after_scroll();
-                this.set_state(consts.STATE_BROWSE);
-                this.do_after_delete();
+                this._dataset.splice(rec, 1);
+                this._set_rec_no(rec);
+                this._do_after_scroll();
+                this._set_item_state(consts.STATE_BROWSE);
+                this._do_after_delete();
             } finally {
-                this.set_state(consts.STATE_BROWSE);
+                this._set_item_state(consts.STATE_BROWSE);
             }
         },
 
@@ -3221,13 +3293,16 @@
             var data,
                 i,
                 len,
-                old_state = this.get_state();
+                old_state = this._get_item_state();
 
             if (!this.is_changing()) {
                 throw this.item_name + ' post method: dataset is not in edit or insert mode';
             }
             if (this.on_before_post) {
                 this.on_before_post.call(this, this);
+            }
+            if (this.master) {
+                this.field_by_name(this._master_id).value = this.master.ID;
             }
             this.check_record_valid();
             len = this.details.length;
@@ -3238,23 +3313,18 @@
             }
             if (this.is_modified() || this.is_new()) {
                 this.change_log.log_change();
-            } else if (this.get_record_status() === consts.RECORD_UNCHANGED) {
+            } else if (this._get_record_status() === consts.RECORD_UNCHANGED) {
                 this.change_log.remove_record_log();
             }
             this._modified = false;
-            this.set_state(consts.STATE_BROWSE);
+            this._set_item_state(consts.STATE_BROWSE);
             if (this.on_after_post) {
                 this.on_after_post.call(this, this);
             }
             if (!this._valid_record()) {
                 this.update_controls(consts.UPDATE_DELETE);
-                this._search_record(this.get_rec_no(), 0);
+                this._search_record(this._get_rec_no(), 0);
             }
-        },
-
-        get_change_id: function() {
-            this._change_id = this._change_id + 1;
-            return this._change_id;
         },
 
         apply: function() {
@@ -3264,6 +3334,7 @@
                 changes = {},
                 callback,
                 params,
+                result,
                 data,
                 result = true;
             for (; i < len; i++) {
@@ -3285,7 +3356,10 @@
             this.change_log.get_changes(changes);
             if (!this.change_log.is_empty_obj(changes.data)) {
                 if (this.on_before_apply) {
-                    this.on_before_apply.call(this, this);
+                    result = this.on_before_apply.call(this, this);
+                    if (result) {
+                        params = result;
+                    }
                 }
                 if (callback) {
                     this.send_request('apply_changes', [changes, params], function(data) {
@@ -3340,9 +3414,10 @@
                 result.details[i]._is_delta = true;
             }
             result.change_log.set_changes(changes);
-            result._records = result.change_log.records;
-            result.bind_fields(result.change_log.expanded)
-            result.set_state(consts.STATE_BROWSE);
+            result._dataset = result.change_log.records;
+            result._update_fields();
+            result._bind_fields(result.change_log.expanded)
+            result._set_item_state(consts.STATE_BROWSE);
             result._cur_row = null;
             result._active = true;
             result.first();
@@ -3365,7 +3440,7 @@
                     expanded: false,
                     fields: fields
                 }, function() {
-                    values = copy._records[0];
+                    values = copy._dataset[0];
                     if (fields.length === 1) {
                         values = values[0];
                     }
@@ -3377,7 +3452,7 @@
                     fields: fields
                 });
                 if (copy.record_count() === 1) {
-                    values = copy._records[0];
+                    values = copy._dataset[0];
                     if (fields.length === 1) {
                         values = values[0];
                     }
@@ -3422,11 +3497,11 @@
 
     $.extend(Item.prototype, {
 
-        get_active: function() {
+        _get_active: function() {
             return this._active;
         },
 
-        set_read_only: function(value) {
+        _set_read_only: function(value) {
             var i,
                 len;
             this._read_only = value;
@@ -3435,24 +3510,24 @@
                 this.fields[i].update_controls();
             }
             this.each_detail(function(detail, i) {
-                detail.set_read_only(value);
+                detail._set_read_only(value);
             });
 
         },
 
-        get_read_only: function() {
+        _get_read_only: function() {
             if (this.master && this._parent_read_only) {
-                return this.master.get_read_only();
+                return this.master._get_read_only();
             } else {
                 return this._read_only;
             }
         },
 
-        get_filtered: function() {
+        _get_filtered: function() {
             return this._filtered;
         },
 
-        set_filtered: function(value) {
+        _set_filtered: function(value) {
             if (value) {
                 if (!this.on_filter_record) {
                     value = false;
@@ -3482,7 +3557,7 @@
             });
         },
 
-        set_state: function(value) {
+        _set_item_state: function(value) {
             if (this._state !== value) {
                 this._state = value;
                 if (this.on_state_changed) {
@@ -3491,14 +3566,14 @@
             }
         },
 
-        get_state: function() {
+        _get_item_state: function() {
             return this._state;
         },
 
-        do_after_scroll: function() {
+        _do_after_scroll: function() {
             var len = this.details.length;
             for (var i = 0; i < len; i++) {
-                this.details[i].do_close();
+                this.details[i]._do_close();
             }
             this.update_controls(consts.UPDATE_SCROLLED);
             if (this.on_after_scroll) {
@@ -3506,7 +3581,7 @@
             }
         },
 
-        do_before_scroll: function() {
+        _do_before_scroll: function() {
             if (this._cur_row !== null) {
                 if (this.is_changing()) {
                     this.post();
@@ -3523,10 +3598,10 @@
                 old_row,
                 new_row;
             if (this.record_count() === 0) {
-                this.do_before_scroll();
+                this._do_before_scroll();
                 this._eof = true;
                 this._bof = true;
-                this.do_after_scroll();
+                this._do_after_scroll();
             } else {
                 old_row = this._cur_row;
                 eof = false;
@@ -3536,24 +3611,24 @@
                     new_row = 0;
                     bof = true;
                 }
-                if (new_row >= this._records.length) {
-                    new_row = this._records.length - 1;
+                if (new_row >= this._dataset.length) {
+                    new_row = this._dataset.length - 1;
                     eof = true;
                 }
                 this._eof = eof;
                 this._bof = bof;
                 if (old_row !== new_row) {
-                    this.do_before_scroll();
+                    this._do_before_scroll();
                     this._cur_row = new_row;
-                    this.do_after_scroll();
+                    this._do_after_scroll();
                 } else if (eof || bof && this.is_new() && this.record_count() === 1) {
-                    this.do_before_scroll();
-                    this.do_after_scroll();
+                    this._do_before_scroll();
+                    this._do_after_scroll();
                 }
             }
         },
 
-        set_rec_no: function(value) {
+        _set_rec_no: function(value) {
             if (this._active) {
                 if (this.filter_active()) {
                     this._search_record(value, 0);
@@ -3563,7 +3638,7 @@
             }
         },
 
-        get_rec_no: function() {
+        _get_rec_no: function() {
             if (this._active) {
                 return this._cur_row;
             }
@@ -3579,7 +3654,7 @@
             if (this.filter_active()) {
                 this.find_first();
             } else {
-                this.set_rec_no(0);
+                this._set_rec_no(0);
             }
         },
 
@@ -3587,7 +3662,7 @@
             if (this.filter_active()) {
                 this.find_last();
             } else {
-                this.set_rec_no(this._records.length);
+                this._set_rec_no(this._dataset.length);
             }
         },
 
@@ -3595,7 +3670,7 @@
             if (this.filter_active()) {
                 this.find_next();
             } else {
-                this.set_rec_no(this.get_rec_no() + 1);
+                this._set_rec_no(this._get_rec_no() + 1);
             }
         },
 
@@ -3603,7 +3678,7 @@
             if (this.filter_active()) {
                 this.find_prior();
             } else {
-                this.set_rec_no(this.get_rec_no() - 1);
+                this._set_rec_no(this._get_rec_no() - 1);
             }
         },
 
@@ -3642,8 +3717,8 @@
                         self._cur_row = 0;
                         self._bof = true;
                     }
-                    if (self._cur_row >= self._records.length) {
-                        self._cur_row = self._records.length - 1;
+                    if (self._cur_row >= self._dataset.length) {
+                        self._cur_row = self._dataset.length - 1;
                         self._eof = true;
                     }
                 }
@@ -3694,20 +3769,20 @@
         },
 
         find_last: function() {
-            this._search_record(this._records.length, -1);
+            this._search_record(this._dataset.length, -1);
         },
 
         find_next: function() {
-            this._search_record(this.get_rec_no(), 1);
+            this._search_record(this._get_rec_no(), 1);
         },
 
         find_prior: function() {
-            this._search_record(this.get_rec_no(), -1);
+            this._search_record(this._get_rec_no(), -1);
         },
 
         record_count: function() {
-            if (this._records) {
-                return this._records.length;
+            if (this._dataset) {
+                return this._dataset.length;
             } else {
                 return 0;
             }
@@ -3716,9 +3791,9 @@
         find_rec_info: function(rec_no, record) {
             if (record === undefined) {
                 if (rec_no === undefined) {
-                    rec_no = this.get_rec_no();
+                    rec_no = this._get_rec_no();
                     if (this.record_count() > 0) {
-                        record = this._records[rec_no];
+                        record = this._dataset[rec_no];
                     }
                 }
             }
@@ -3736,14 +3811,14 @@
             return this.find_rec_info(rec_no, record);
         },
 
-        get_record_status: function() {
+        _get_record_status: function() {
             var info = this.get_rec_info();
             if (info) {
                 return info[consts.REC_STATUS];
             }
         },
 
-        set_record_status: function(value) {
+        _set_record_status: function(value) {
             var info = this.get_rec_info();
             if (info && this.log_changes) {
                 info[consts.REC_STATUS] = value;
@@ -3757,14 +3832,14 @@
             }
         },
 
-        get_rec_change_id: function() {
+        _get_rec_change_id: function() {
             var info = this.get_rec_info();
             if (info) {
                 return info[consts.REC_CHANGE_ID];
             }
         },
 
-        set_rec_change_id: function(value) {
+        _set_rec_change_id: function(value) {
             var info = this.get_rec_info();
             if (info) {
                 info[consts.REC_CHANGE_ID] = value;
@@ -3772,20 +3847,20 @@
         },
 
         rec_unchanged: function() {
-            return this.get_record_status() === consts.RECORD_UNCHANGED;
+            return this._get_record_status() === consts.RECORD_UNCHANGED;
         },
 
         rec_inserted: function() {
-            return this.get_record_status() === consts.RECORD_INSERTED;
+            return this._get_record_status() === consts.RECORD_INSERTED;
         },
 
         rec_deleted: function() {
-            return this.get_record_status() === consts.RECORD_DELETED;
+            return this._get_record_status() === consts.RECORD_DELETED;
         },
 
         rec_modified: function() {
-            return this.get_record_status() === consts.RECORD_MODIFIED ||
-                this.get_record_status() === consts.RECORD_DETAILS_MODIFIED;
+            return this._get_record_status() === consts.RECORD_MODIFIED ||
+                this._get_record_status() === consts.RECORD_DETAILS_MODIFIED;
         }
 
     });
@@ -3886,8 +3961,8 @@
 
         delete_record: function(callback) {
             var self = this,
-                rec_no = self.get_rec_no(),
-                record = self._records[rec_no],
+                rec_no = self._get_rec_no(),
+                record = self._dataset[rec_no],
                 error;
             if (this.can_delete()) {
                 if (this.record_count() > 0) {
@@ -3898,16 +3973,16 @@
                         } catch (e) {
                             error = (e + '').toUpperCase();
                             if (error && error.indexOf('FOREIGN KEY') !== -1 &&
-                                (error.indexOf('VIOLATION') !== -1 || error.indexOf('FAILED') !== -1)) {
+                                (error.indexOf('VIOLAT') !== -1 || error.indexOf('FAIL') !== -1)) {
                                 self.warning(language.cant_delete_used_record);
                             } else {
                                 self.warning(e);
                             }
-                            self._records.splice(rec_no, 0, record);
+                            self._dataset.splice(rec_no, 0, record);
                             self._cur_row = rec_no;
                             self.change_log.remove_record_log();
                             self.update_controls();
-                            self.do_after_scroll();
+                            self._do_after_scroll();
                             if (callback) {
                                 callback.call(this);
                             }
@@ -4409,34 +4484,34 @@
         set_lookup_field_value: function() {
             if (this.record_count()) {
                 var lookup_field = this.lookup_field,
-                    object_field = this.field_by_name(lookup_field.lookup_field),
+                    item_field = this.field_by_name(lookup_field.lookup_field),
                     lookup_value = null,
                     lookup_field_item = this.lookup_field.owner,
-                    slave_field_values = {},
                     ids = [],
+                    slave_field_values = {},
                     self = this;
 
-                if (object_field) {
-                    lookup_value = object_field.get_value();
+                if (item_field) {
+                    lookup_value = item_field.get_value();
                 }
                 if (lookup_field.owner && lookup_field.owner.is_changing && !lookup_field.owner.is_changing()) {
                     lookup_field.owner.edit();
                 }
                 if (lookup_field.filter && lookup_field.filter.filter_type ===
                     consts.FILTER_IN) {
-                    lookup_field.set_value([this.id.value], lookup_value);
+                    lookup_field.set_value([this._primary_key_field.value], lookup_value);
                 } else {
                     if (lookup_field_item) {
                         lookup_field_item.each_field(function(field) {
                             if (field.master_field === lookup_field) {
-                                object_field = self.field_by_name(field.lookup_field)
-                                if (object_field) {
-                                    slave_field_values[field.field_name] = object_field.get_value();
+                                item_field = self.field_by_name(field.lookup_field)
+                                if (item_field) {
+                                    slave_field_values[field.field_name] = item_field.value;
                                 }
                             }
-                        })
+                        });
                     }
-                    lookup_field.set_value(this.id.get_value(), lookup_value, slave_field_values, this);
+                    lookup_field.set_value(this._primary_key_field.value, lookup_value, slave_field_values, this);
                 }
             }
             if (this.lookup_field) {
@@ -4471,26 +4546,27 @@
             var self = this,
                 i, len,
                 fields = [],
+                primary_key = this._primary_key,
+                where = {},
                 copy = this.copy({
                     filters: false,
                     details: false,
                     handlers: false
                 });
-            if (this.id.value !== null) {
+            if (this._primary_key_field.value !== null) {
                 self.each_field(function(field) {
                     fields.push(field.field_name)
                 })
+                where[primary_key] = this._primary_key_field.value;
                 copy.open({
                     expanded: this.expanded,
                     fields: fields,
-                    where: {
-                        id: this.id.value
-                    }
+                    where: where
                 })
                 if (copy.record_count() === 1) {
-                    len = copy._records[0].length;
+                    len = copy._dataset[0].length;
                     for (i = 0; i < len; i++) {
-                        self._records[self.rec_no][i] = copy._records[0][i];
+                        self._dataset[self.rec_no][i] = copy._dataset[0][i];
                     }
                     self.update_controls(consts.UPDATE_CANCEL);
                     if (callback) {
@@ -4521,13 +4597,13 @@
     $.extend(Report.prototype, {
         constructor: Report,
 
-        set_state: function(value) {
+        _set_item_state: function(value) {
             if (this._state !== value) {
                 this._state = value;
             }
         },
 
-        get_state: function() {
+        _get_item_state: function() {
             return this._state;
         },
 
@@ -4554,6 +4630,9 @@
                 }
                 if (param.lookup_field && (typeof param.lookup_field === "number")) {
                     param.lookup_field = param.lookup_item._field_by_ID(param.lookup_field).field_name;
+                }
+                if (param.lookup_values && (typeof param.lookup_values === "number")) {
+                    param.lookup_values = self.task.lookup_lists[param.lookup_values];
                 }
             }
             this.param_options.title = this.item_caption;
@@ -4721,7 +4800,7 @@
                         win;
                     if (result) {
                         url = result[0],
-                            error = result[1];
+                        error = result[1];
                     }
                     if (error) {
                         self.warning(error);
@@ -4893,6 +4972,9 @@
         Object.defineProperty(this, "lookup_value", {
             get: function() {
                 return this.get_lookup_value();
+            },
+            set: function(new_value) {
+                this.set_lookup_value(new_value);
             }
         });
         Object.defineProperty(this, "alignment", {
@@ -4905,10 +4987,10 @@
         });
         Object.defineProperty(this, "read_only", {
             get: function() {
-                return this.get_read_only();
+                return this._get_read_only();
             },
             set: function(new_value) {
-                this.set_read_only(new_value);
+                this._set_read_only(new_value);
             }
         });
     }
@@ -4933,12 +5015,15 @@
             "_expand",
             "_word_wrap",
             "field_size",
+            "default_value",
             "is_default",
             "calculated",
             "editable",
             "_alignment",
             "lookup_values",
-            "enable_typeahead"
+            "enable_typeahead",
+            "field_help",
+            "field_placeholder"
         ],
 
         type_names: ["", "text", "integer", "float", 'currency',
@@ -4973,8 +5058,8 @@
         },
 
         get_row: function() {
-            if (this.owner._records) {
-                return this.owner._records[this.owner.get_rec_no()];
+            if (this.owner._dataset) {
+                return this.owner._dataset[this.owner._get_rec_no()];
             } else {
                 throw 'An attempt to get a field value in the empty dataset - item: ' + this.owner.item_name;
             }
@@ -5065,8 +5150,7 @@
                 }
             } catch (e) {
                 result = '';
-                error = this.field_caption + ": " + this.type_error();
-                this.do_on_error(error);
+                this.do_on_error(e);
             }
             if (typeof result !== 'string') {
                 result = ''
@@ -5183,31 +5267,37 @@
             return value;
         },
 
-        do_on_change_lookup_field: function(lookup_value, slave_field_values) {
-            var self = this;
-            if (lookup_value === undefined) {
-                lookup_value = null;
-            }
+        _change_lookup_field: function(lookup_value, slave_field_values) {
+            var self = this,
+                item = this.owner,
+                master_field;
             if (this.lookup_item) {
-                if (this.master_field) {
-                    this.master_field.do_on_change_lookup_field(null);
-                } else {
-                    this.set_lookup_data(lookup_value);
-                    if (this.owner) {
-                        this.owner.each_field(function(field, i) {
-                            if (self === field.master_field && slave_field_values !== undefined) {
-                                field.set_lookup_data(slave_field_values[field.field_name]);
-                                field.update_controls();
-                            }
-                        });
+                if (this.owner) {
+                    master_field = this;
+                    if (this.master_field) {
+                        master_field = this.master_field
                     }
+                    master_field.lookup_value = null;
+                    this.owner.each_field(function(field) {
+                        if (field.master_field === master_field) {
+                            if (master_field === self && slave_field_values && slave_field_values[field.field_name]) {
+                                field.lookup_value = slave_field_values[field.field_name]
+                            }
+                            else {
+                                field.lookup_value = null;
+                            }
+                        }
+                    });
+                }
+                if (lookup_value) {
+                    this.lookup_value = lookup_value;
                 }
             }
         },
 
-        do_before_changed: function() {
+        _do_before_changed: function() {
             if (this.field_kind === consts.ITEM_FIELD) {
-                if (this.owner.get_state() !== consts.STATE_INSERT && this.owner.get_state() !== consts.STATE_EDIT) {
+                if (this.owner._get_item_state() !== consts.STATE_INSERT && this.owner._get_item_state() !== consts.STATE_EDIT) {
                     throw this.owner.item_name + ' is not in edit or insert mode';
                 }
                 if (this.owner.on_before_field_changed) {
@@ -5216,7 +5306,7 @@
             }
         },
 
-        do_after_changed: function(lookup_item) {
+        _do_after_changed: function(lookup_item) {
             if (this.owner && this.owner.on_field_changed) {
                 this.owner.on_field_changed.call(this.owner, this, lookup_item);
             }
@@ -5228,24 +5318,36 @@
             }
         },
 
+        _check_system_field_value: function(value) {
+            if (this.field_kind === consts.ITEM_FIELD) {
+                if (this.field_name === this.owner._primary_key && this.value && this.value !== value) {
+                    this.do_on_error(this.owner.item_name + ': сhanging of the primary field is forbidden');
+                }
+                if (this.field_name === this.owner._deleted_flag && this.value !== value) {
+                    this.do_on_error(this.owner.item_name + ': сhanging of the primary field is forbidden');
+                }
+            }
+        },
+
+        _is_filter_value: function(value) {
+            if (this.field_kind === consts.FILTER_FIELD) {
+                if ($.inArray(this.filter.filter_type, [consts.FILTER_IN, consts.FILTER_NOT_IN]) !== -1) {
+                    if (!$.isArray(value)) {
+                        this.do_on_error('Filter "' + this.filter.filter_name + '" value must be an array');
+                    }
+                    return true;
+                }
+            }
+        },
+
         set_value: function(value, lookup_value, slave_field_values, lookup_item) {
             var error;
-            if (((this.field_name === 'id' && this.value) || this.field_name === 'deleted') &&
-                (this.field_kind === consts.ITEM_FIELD) && (self.value !== value)) {
-                throw this.owner.item_name + ': can not change value of the system field - ' + this.field_name;
-            }
+            this._check_system_field_value(value);
             this.new_value = null;
+            this.new_lookup_value = lookup_value;
             if (value !== null) {
                 this.new_value = value;
-                if (this.field_kind === consts.FILTER_FIELD &&
-                    $.inArray(this.filter.filter_type,
-                    [consts.FILTER_IN, consts.FILTER_NOT_IN]) !== -1) {
-                    if (!$.isArray(value)) {
-                        error = 'Filter "' + this.filter.filter_name + '" value must be an array';
-                        this.do_on_error(error);
-                    }
-                }
-                else {
+                if (!this._is_filter_value(value)) {
                     switch (this.data_type) {
                         case consts.INTEGER:
                             this.new_value = value;
@@ -5281,28 +5383,29 @@
                 }
             }
             if (this.get_raw_value() !== this.new_value) {
-                this.do_before_changed();
+                this._do_before_changed();
                 try {
                     this.set_data(this.new_value);
                 } catch (e) {
                     error = this.field_name + ": " + this.type_error();
                     this.do_on_error(error);
                 }
-                this.new_value = null;
-                this.do_on_change_lookup_field(lookup_value, slave_field_values);
-                this.set_modified(true);
-                this.do_after_changed(lookup_item);
-            } else if (lookup_value && lookup_value !== this.get_lookup_value()) {
-                this.do_on_change_lookup_field(lookup_value, slave_field_values);
-                this.do_after_changed(lookup_item);
+                this._change_lookup_field(lookup_value, slave_field_values);
+                this._set_modified(true);
+                this._do_after_changed(lookup_item);
+            } else if (lookup_value && lookup_value !== this.lookup_value) {
+                this.lookup_value = lookup_value;
+                this._do_after_changed(lookup_item, slave_field_values);
             }
+            this.new_value = null;
+            this.new_lookup_value = null;
             this.update_controls();
         },
 
-        set_modified: function(value) {
+        _set_modified: function(value) {
             if (this.field_kind === consts.ITEM_FIELD) {
-                if (this.owner.set_modified && !this.calculated) {
-                    this.owner.set_modified(value);
+                if (this.owner._set_modified && !this.calculated) {
+                    this.owner._set_modified(value);
                 }
             }
         },
@@ -5344,6 +5447,13 @@
                 value = this.get_value();
             }
             return value;
+        },
+
+        set_lookup_value: function(value) {
+            if (this.lookup_item) {
+                this.set_lookup_data(value);
+                this.update_controls();
+            }
         },
 
         get_lookup_text: function() {
@@ -5430,15 +5540,15 @@
             return result;
         },
 
-        set_read_only: function(value) {
+        _set_read_only: function(value) {
             this._read_only = value;
             this.update_controls();
         },
 
-        get_read_only: function() {
+        _get_read_only: function() {
             var result = this._read_only;
-            if (this.owner && this.owner._parent_read_only && this.owner.get_read_only()) {
-                result = this.owner.get_read_only();
+            if (this.owner && this.owner._parent_read_only && this.owner._get_read_only()) {
+                result = this.owner._get_read_only();
             }
             return result;
         },
@@ -5561,8 +5671,10 @@
         },
 
         system_field: function() {
-            if (this.field_name === 'id' || this.field_name === 'deleted' ||
-                this.field_name === 'owner_id' || this.field_name === 'owner_rec_id') {
+            if (this.field_name === this.owner._primary_key ||
+                this.field_name === this.owner._deleted_flag ||
+                this.field_name === this.owner._master_id ||
+                this.field_name === this.owner._master_rec_id) {
                 return true;
             }
         },
@@ -5929,8 +6041,11 @@
             if (this.field_name) {
                 field = this.owner._field_by_ID(this.field_name);
                 this.field = this.create_field(field);
+                this.field.field_help = this.filter_help;
+                this.field.field_placeholder = this.filter_placeholder;
                 if (this.filter_type === consts.FILTER_RANGE) {
                     this.field1 = this.create_field(field);
+                    this.field1.field_help = undefined;
                 }
             }
         }
@@ -5958,7 +6073,9 @@
             "field_name",
             "filter_type",
             "data_type",
-            "visible"
+            "visible",
+            "filter_help",
+            "filter_placeholder"
         ],
 
         create_field: function(field) {
@@ -6146,7 +6263,7 @@
             this.$element.on('keydown', function(e) {
                 self.keydown(e);
             })
-            if (item.get_active() && this.$container.width()) {
+            if (item._get_active() && this.$container.width()) {
                 this.build();
             }
         },
@@ -6363,9 +6480,9 @@
             for (i = 0; i < len; i++) {
                 $li = $lis.eq(i);
                 rec = $li.data('rec');
-                clone.set_rec_no(rec);
+                clone._set_rec_no(rec);
                 this.item._cur_row = rec;
-                $li.data("record", clone._records[rec]);
+                $li.data("record", clone._dataset[rec]);
                 info = clone.rec_controls_info();
                 info[this.id] = $li.get();
                 if (this.options.node_callback) {
@@ -6433,9 +6550,9 @@
             }
             if ($li && (!this.selected_node || $li.get(0) !== this.selected_node.get(0))) {
                 this.selected_node = $li;
-                rec = this.item._records.indexOf($li.data("record"));
+                rec = this.item._dataset.indexOf($li.data("record"));
                 if (rec !== this.item.rec_no) {
-                    this.item.set_rec_no(rec);
+                    this.item._set_rec_no(rec);
                 }
                 $parent = this.selected_node.parent().parent()
                 if ($parent.prop("tagName") === "LI") {
@@ -6521,6 +6638,7 @@
                     on_click: undefined,
                     on_dblclick: undefined,
                     on_pagecount_update: undefined,
+                    on_page_changed: undefined,
                     editable: false,
                     keypress_edit: true,
                     editable_fields: undefined,
@@ -6531,7 +6649,8 @@
                     row_callback: undefined,
                     title_callback: undefined,
                     show_footer: undefined,
-                    pagination_container: undefined
+                    show_paginator: true,
+                    paginator_container: undefined
                 };
 
             this.item = item;
@@ -6558,14 +6677,14 @@
                     }
                 }
                 this.options.multi_select_get_selected = function(item) {
-                        return self._filter_dict[item.id.value]
+                        return self._filter_dict[item._primary_key_field.value]
                     },
                 this.options.multi_select_set_selected = function(item, value) {
                     var ids = [];
                     if (value) {
-                        self._filter_dict[item.id.value] = true;
+                        self._filter_dict[item._primary_key_field.value] = true;
                     } else {
-                        delete self._filter_dict[item.id.value];
+                        delete self._filter_dict[item._primary_key_field.value];
                     }
                     for (var id in self._filter_dict) {
                         if (self._filter_dict.hasOwnProperty(id)) {
@@ -6596,7 +6715,7 @@
             this.$container.empty();
             this.$element.appendTo(this.$container);
             this.createTable();
-            if (item.get_active()) {
+            if (item._get_active()) {
                 setTimeout(function() {
                         self.init_table();
                     },
@@ -6753,7 +6872,7 @@
             });
 
             if (!this.options.word_wrap) {
-                this.$table.on('mouseenter', 'div', function() {
+                this.$table.on('mouseenter', 'td div', function() {
                     var $this = $(this);
                     if (this.offsetHeight < (this.scrollHeight - 2) ||
                         this.offsetWidth < (this.scrollWidth - 2)) {
@@ -7035,7 +7154,7 @@
                 $pager,
                 tabindex,
                 pagerWidth;
-            if (this.item.paginate) {
+            if (this.item.paginate && this.options.show_paginator) {
                 tabindex = -1;
                 //~ if (this.options.tabindex > 0) {
                 //~ tabindex = this.options.tabindex + 1;
@@ -7104,9 +7223,9 @@
                 $("body").append($pager);
                 pagerWidth = $pager.width();
                 $pager.remove();
-                if (this.options.pagination_container) {
-                    this.options.pagination_container.empty();
-                    this.options.pagination_container.append($pagination);
+                if (this.options.paginator_container) {
+                    this.options.paginator_container.empty();
+                    this.options.paginator_container.append($pagination);
                 } else {
                     if ($element) {
                         $element.find('tfoot').append($pagination);
@@ -7586,7 +7705,7 @@
             if (this.options.editable) {
                 this.setSelectedField(this.item.field_by_name($(td).data('field_name')));
             }
-            rec = this.item._records.indexOf($row.data("record"));
+            rec = this.item._dataset.indexOf($row.data("record"));
             if (this.editMode && rec !== this.item.rec_no) {
                 if (!this.item.is_edited()) {
                     this.item.edit();
@@ -7594,7 +7713,7 @@
                 this.flushEditor();
                 this.item.post();
             }
-            this.item.set_rec_no(rec);
+            this.item._set_rec_no(rec);
             if (!this.editing && !this.is_focused()) {
                 this.focus();
             }
@@ -7838,20 +7957,25 @@
         },
 
         updatePageInfo: function() {
-            this.$pageInput.val(this.page + 1);
-            if (this.page === 0) {
-                this.$fistPageBtn.addClass("disabled");
-                this.$priorPageBtn.addClass("disabled");
-            } else {
-                this.$fistPageBtn.removeClass("disabled");
-                this.$priorPageBtn.removeClass("disabled");
+            if (this.options.show_paginator) {
+                this.$pageInput.val(this.page + 1);
+                if (this.page === 0) {
+                    this.$fistPageBtn.addClass("disabled");
+                    this.$priorPageBtn.addClass("disabled");
+                } else {
+                    this.$fistPageBtn.removeClass("disabled");
+                    this.$priorPageBtn.removeClass("disabled");
+                }
+                if (this.item.is_loaded) {
+                    this.$lastPageBtn.addClass("disabled");
+                    this.$nextPageBtn.addClass("disabled");
+                } else {
+                    this.$lastPageBtn.removeClass("disabled");
+                    this.$nextPageBtn.removeClass("disabled");
+                }
             }
-            if (this.item.is_loaded) {
-                this.$lastPageBtn.addClass("disabled");
-                this.$nextPageBtn.addClass("disabled");
-            } else {
-                this.$lastPageBtn.removeClass("disabled");
-                this.$nextPageBtn.removeClass("disabled");
+            if (this.options.on_page_changed) {
+                this.options.on_page_changed.call(this.item, this.item, this);
             }
         },
 
@@ -7860,7 +7984,9 @@
             this.item.total_records(function(count) {
                 self.recordCount = count;
                 self.pageCount = Math.ceil(count / self.row_count);
-                self.$pageCount.text(language.of + ' ' + self.pageCount);
+                if (self.$pageCount) {
+                    self.$pageCount.text(language.of + ' ' + self.pageCount);
+                }
                 if (self.options.on_pagecount_update) {
                     self.options.on_pagecount_update.call(self.item, self.item, self);
                 }
@@ -7884,7 +8010,7 @@
                 }
             } else {
                 clone = this.item.clone();
-                clone.set_rec_no(this.item.get_rec_no())
+                clone._set_rec_no(this.item._get_rec_no())
                 lines = this.$scroll_div.innerHeight() / this.rowHeight - 1;
                 for (var i = 0; i < lines; i++) {
                     if (!clone.eof()) {
@@ -7893,7 +8019,7 @@
                         break;
                     }
                 }
-                this.item.set_rec_no(clone.get_rec_no());
+                this.item._set_rec_no(clone._get_rec_no());
             }
         },
 
@@ -7908,7 +8034,7 @@
                 }
             } else {
                 clone = this.item.clone();
-                clone.set_rec_no(this.item.get_rec_no());
+                clone._set_rec_no(this.item._get_rec_no());
                 lines = this.$scroll_div.innerHeight() / this.rowHeight - 1;
                 for (var i = 0; i < lines; i++) {
                     if (!clone.eof()) {
@@ -7917,7 +8043,7 @@
                         break;
                     }
                 }
-                this.item.set_rec_no(clone.get_rec_no());
+                this.item._set_rec_no(clone._get_rec_no());
             }
         },
 
@@ -7952,9 +8078,9 @@
 
         addNewRow: function() {
             var $row = $(this.newRow()),
-                rec = this.item.get_rec_no(),
+                rec = this.item._get_rec_no(),
                 info;
-            $row.data("record", this.item._records[rec]);
+            $row.data("record", this.item._dataset[rec]);
             info = this.item.rec_controls_info();
             info[this.id] = $row.get();
             if (this.options.row_callback) {
@@ -8079,7 +8205,7 @@
                 while (!clone.eof()) {
                     this.item._cur_row = clone._cur_row;
                     rows += this.newRow();
-                    rec_nos.push(clone.get_rec_no());
+                    rec_nos.push(clone._get_rec_no());
                     clone.next();
                 }
                 this.$table.html(rows);
@@ -8088,9 +8214,9 @@
                 for (i = 0; i < len; i++) {
                     row = rows.eq(i);
                     rec = rec_nos[i]
-                    clone.set_rec_no(rec);
+                    clone._set_rec_no(rec);
                     this.item._cur_row = rec;
-                    row.data("record", clone._records[rec]);
+                    row.data("record", clone._dataset[rec]);
                     info = clone.rec_controls_info();
                     info[this.id] = row.get();
                     if (this.options.row_callback) {
@@ -8258,7 +8384,8 @@
                 $input,
                 $btn,
                 $controls,
-                $btnCtrls;
+                $btnCtrls,
+                $help;
             if (!field) {
                 return;
             }
@@ -8294,6 +8421,7 @@
                 $input = $('<textarea>')
                     .attr("id", field.field_name)
                     .attr("tabindex", tabIndex + "")
+//                    .attr("rows", 4 + "")
                     .innerHeight(70);
             } else {
                 $input = $('<input>')
@@ -8407,10 +8535,8 @@
             if (container) {
                 container.append(this.$controlGroup);
             }
+            this.$modalForm = this.$input.closest('.modal');
             this.field.controls.push(this);
-            this.$input.bind('destroyed', function() {
-                self.field.controls.splice(self.field.controls.indexOf(self), 1);
-            });
 
             this.$input.on('mouseenter', function() {
                 var $this = $(this);
@@ -8419,9 +8545,48 @@
                 }
             });
 
+            if (this.field.field_placeholder) {
+                this.$input.attr('placeholder', this.field.field_placeholder);
+            }
+
+            if (this.field.field_help) {
+                $help = $('<span class="badge help-badge">?</span>');
+
+                $help.click(function() {
+                    var deleted = false,
+                        $title = $('<div><b>' + self.field.field_caption + '</b>' +
+                        '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;"> ×</button></div>');
+                    $title.find("#close-btn").click(function() {
+                        $input.popover('destroy');
+                        deleted = true;
+                    });
+                    $input.popover({
+                        container: 'body',
+                        placement: 'right',
+                        html: true,
+                        title: $title,
+                        content: self.field.field_help
+                    });
+                    $input.popover('show');
+                    setTimeout(
+                        function() {
+                            if (!deleted) {
+                                $input.popover('destroy');
+                            }
+                        },
+                        5 * 1000
+                    );
+                })
+                if ($btnCtrls) {
+                    $btnCtrls.append($help);
+                }
+                else {
+                    $controls.append($help);
+                }
+            }
             this.$input.tooltip({
-                    'placement': 'bottom',
-                    'title': ''
+                    placement: 'bottom',
+                    title: ''
                 })
                 .on('hide', function(e) {
                     e.stopPropagation()
@@ -8436,7 +8601,10 @@
                     e.stopPropagation()
                 });
 
-            this.$modalForm = this.$input.closest('.modal');
+            this.$input.bind('destroyed', function() {
+                self.field.controls.splice(self.field.controls.indexOf(self), 1);
+            });
+
             this.update();
         },
 
@@ -8465,8 +8633,8 @@
                 }
             }
             if (!this.removed && !this.form_closing()) {
-                if (this.read_only !== this.field.get_read_only()) {
-                    this.read_only = this.field.get_read_only();
+                if (this.read_only !== this.field._get_read_only()) {
+                    this.read_only = this.field._get_read_only();
                     if (this.$firstBtn) {
                         this.$firstBtn.prop('disabled', this.read_only);
                     }
@@ -8803,6 +8971,7 @@
     };
 
     window.task = new Task();
+    window.task.events = {}
     window.task.constructors = {
         task: Task,
         group: Group,

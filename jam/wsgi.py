@@ -16,7 +16,6 @@ from werkzeug.exceptions import HTTPException, NotFound
 from werkzeug.wsgi import SharedDataMiddleware, peek_path_info, get_path_info
 
 import common
-import adm_server
 from items import AbortException
 
 def create_application(from_file):
@@ -34,9 +33,10 @@ def create_application(from_file):
 class App():
     def __init__(self, work_dir):
         self.work_dir = work_dir
-        self.admin = adm_server.create_admin(self)
+        self._loading = False
+        self._load_lock = Lock()
+        self.admin = None
         self.task = None
-        self.task_lock = Lock()
         self.users = {}
         self.roles = None
         self._busy = 0
@@ -44,13 +44,11 @@ class App():
         self.task_server_modified = False
         self.task_client_modified = True
         self.under_maintenance = False
-        self.work_dir = self.admin.work_dir
         self.jam_dir = os.path.dirname(jam.__file__)
         self.jam_version = jam.version()
         self.application_files = {
             '/': self.work_dir,
-            '/jam/': self.jam_dir,
-            '/static/': os.path.join(self.jam_dir, 'static'            )
+            '/jam/': self.jam_dir
         }
         self.fileserver = SharedDataMiddleware(None, self.application_files, cache_timeout=0.1)
         self.url_map = Map([
@@ -66,36 +64,73 @@ class App():
             Rule('/upload', endpoint='upload')
         ])
 
+    def check_admin(self):
+        if self.admin:
+            return True
+        else:
+            result = False
+            if not self._loading:
+                self._loading = True;
+                try:
+                    with self._load_lock:
+                        import adm_server
+                        self.admin = adm_server.create_admin(self)
+                finally:
+                    self._loading = False;
+                result = True
+            return result
+
+    def check_task(self):
+        if self.task:
+            return True
+        else:
+            result = False
+            if not self._loading:
+                self._loading = True
+                try:
+                    with self._load_lock:
+                        if self.admin is None:
+                            import adm_server
+                            self.admin = adm_server.create_admin(self)
+                        self.task = self.admin.create_task()
+                finally:
+                    self._loading = False
+                result = True
+            return result
+
     def get_task(self):
-        if self.task is None:
-            with self.task_lock:
-                if self.task is None:
-                    adm_server.create_task(self)
+        self.check_task()
         return self.task
 
     def __call__(self, environ, start_response):
         return self.wsgi_app(environ, start_response)
 
     def wsgi_app(self, environ, start_response):
-        request = Request(environ)
-        adapter = self.url_map.bind_to_environ(request.environ)
-        try:
-            endpoint, values = adapter.match()
-            if endpoint in ['file', 'root_file']:
-                return self.serve_file(environ, start_response, endpoint, **values)
-            elif endpoint in ['api', 'upload']:
-                response = getattr(self, 'on_' + endpoint)(request, **values)
-        except HTTPException, e:
-            if peek_path_info(environ) == 'ext':
-                response = self.on_ext(request)
-            else:
-                response = e
-        return response(environ, start_response)
+        if self.check_admin():
+            request = Request(environ)
+            adapter = self.url_map.bind_to_environ(request.environ)
+            try:
+                endpoint, values = adapter.match()
+                if endpoint in ['file', 'root_file']:
+                    return self.serve_file(environ, start_response, endpoint, **values)
+                elif endpoint in ['api', 'upload']:
+                    response = getattr(self, 'on_' + endpoint)(request, **values)
+            except HTTPException, e:
+                if peek_path_info(environ) == 'ext':
+                    response = self.on_ext(request)
+                else:
+                    response = e
+            return response(environ, start_response)
+        else:
+            response = Response('The server is loading')
+            return response(environ, start_response)
 
-    def serve_index(self, environ, start_response):
+    def serve_himself(self, environ, start_response, file_name):
         response = Response()
         response.headers['Content-Type'] = 'text/html'
-        with open('index.html', 'r') as f:
+        if file_name == 'admin.html':
+            file_name = os.path.join(self.jam_dir, file_name)
+        with open(file_name, 'r') as f:
             response.set_data(f.read())
         return response(environ, start_response)
 
@@ -105,10 +140,15 @@ class App():
                 file_name = 'index.html'
                 environ['PATH_INFO'] = environ['PATH_INFO'] + '/index.html'
             if file_name == 'index.html':
-                self.check_task_client_modified()
-                return self.serve_index(environ, start_response)
+                if self.check_task():
+                    self.check_task_client_modified()
+                    return self.serve_himself(environ, start_response, file_name)
+                else:
+                    response = Response('The task is loading')
+                    return response(environ, start_response)
             elif file_name == 'admin.html':
-                environ['PATH_INFO'] = os.path.join('jam', file_name)
+                return self.serve_himself(environ, start_response, file_name)
+#                environ['PATH_INFO'] = os.path.join('jam', file_name)
         try:
             if file_name:
                 base, ext = os.path.splitext(file_name)
@@ -152,13 +192,13 @@ class App():
                 r['result'] = self.process_request(request.environ, method, user_id, task_id, item_id, params)
             except AbortException, e:
                 print traceback.format_exc()
-                r['result'] = None, e.message
+                r['result'] = {'data': [None, e.message]}
                 r['error'] = e.message
             except Exception, e:
                 print traceback.format_exc()
-                if common.SETTINGS['DEBUGGING']:
+                if common.SETTINGS['DEBUGGING'] and task_id != 0:
                     raise
-                r['result'] = None, e.message
+                r['result'] = {'data': [None, e.message]}
                 r['error'] = e.message
             return self.create_post_response(request, r)
 
@@ -168,7 +208,7 @@ class App():
         if is_admin:
             task = self.admin
         else:
-            task = self.get_task()
+            task = self.task
         if not task:
             return {'status': common.NO_PROJECT, 'data': None}
         elif self.under_maintenance:
@@ -226,7 +266,7 @@ class App():
 
     def get_privileges(self, role_id):
         if self.roles is None:
-            self.roles = adm_server.get_roles(self.admin)
+            self.roles = self.admin.get_roles()
         return self.roles[role_id]
 
     def server_func(self, obj, func_name, params, env):
@@ -244,12 +284,12 @@ class App():
 
     def check_task_server_modified(self):
         if self.task_server_modified:
-            adm_server.reload_task(self.admin)
+            self.admin.reload_task()
             self.task_server_modified = False
 
     def check_task_client_modified(self):
         if self.task_client_modified:
-            adm_server.update_events_code(self.admin)
+            self.admin.update_events_code()
             self.task_client_modified = False
 
     def init_client(self, user_info, is_admin):
@@ -303,8 +343,9 @@ class App():
         else:
             user = self.users.get(user_uuid)
             if user:
-                adm_server.logout(self.admin, user[0])
+                self.admin.logout(user[0])
                 del user
+        return None, ''
 
     def find_privileges(self, user_info, item):
         if not self.admin.safe_mode or item.master or (item.task == self.admin) or (item == item.task):
@@ -336,13 +377,13 @@ class App():
                     method, user_id, task_id, item_id, params, ext)
             except AbortException, e:
                 print traceback.format_exc()
-                r['result'] = None, e.message
+                r['result'] = {'data': [None, e.message]}
                 r['error'] = e.message
             except Exception, e:
                 print traceback.format_exc()
-                if common.SETTINGS['DEBUGGING']:
+                if common.SETTINGS['DEBUGGING'] and task_id != 0:
                     raise
-                r['result'] = None, e.message
+                r['result'] = {'data': [None, e.message]}
                 r['error'] = e.message
             return self.create_post_response(request, r)
 

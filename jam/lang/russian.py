@@ -94,7 +94,7 @@ dictionary = \
     'caption_word_wrap':                u'Перен.',
     'caption_expand':                   u'Расш.',
     'caption_edit':                     u'Ред.',
-    'caption_descening':                u'По убыв.',
+    'caption_descening':                u'Убыв.',
 #admin messages
     'fill_task_attrubutes':             u'Введите имя, наименование и тип базы данных.',
     'can_not_connect':                  u'Не возможно подключиться к базе данных задачи. %s',
