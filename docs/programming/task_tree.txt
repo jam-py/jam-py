@@ -2,36 +2,64 @@
 Task tree
 =========
 
-All objects of the framework represent a tree::
+All objects of the framework represent a tree of objects. These object are 
+called items.
 
-    /task/
-        catalogs/ 
-            catalog1/
-                table1
-            catalog2   
-           ...
-        journals/
-            journal1
-            journal2/
-                table2            
-                table3
-            ...
-        tables/
-            table1
-            table2
-            table3
-            ...
-        reports/
-            report1
-            report2
-            ...
+All items of the tree have common ancestor class ``AbstractItem`` (
+:doc:`client reference </refs/client/abstractitem_api>`
+/
+:doc:`server reference </refs/server/abstractitem_api>`
+) and common attributes:.
 
-At the root of the tree is a task object that contains item group objects: 
-catalogs, journals, tables and reports. Catalogs, journals and tables item groups 
-in their turn contain item objects. Each item object can have detail objects.
-Reports group object contains report objects. 
 
-For example the task tree of the demo project is::
+* ``ID``  - unique in the framework ID of the item
+	
+* ``owner`` - immediate parent and owner of the item
+	
+* ``task`` — root of the task tree
+	
+* ``items`` — list of child items
+	
+* ``item_type`` — type of the item — one of the following values:
+
+  * "task", 
+  * "itms",
+  * "tables", 
+  * "reports",  
+  * "item", 
+  * "table", 
+  * "report", 
+  * "detail"
+      
+* ``item_name`` — the name of the item that will be used in programming code 
+  to get access to the item
+	  
+* ``item_caption`` — the item name that appears to users
+
+At the root of the tree is the task item. 
+
+The task contains group items. There are three types of groups that have the 
+following values of the ``item_type`` attribute:
+
+* "items" - these groups contain items with "item" ``item_type``, that can have 
+  associated database table. 
+ 
+* "tables" - such groups also contain items that can have associated database 
+  tables, but they can be used to create details for other items (see 
+  :doc:`Details <data/details>`
+  ). 
+
+* "reports" - these groups contain reports - items with "report" ``item_type``, 
+  that are used to create reports.
+
+You can create your own groups.
+
+Items that can have associated database table can own details, that are used to 
+store records that belong to a record of the master.
+
+For example the task tree of the 
+:doc:`Demo project </intro/demo_project>`
+is::
 
     /demo/
         catalogs/
@@ -51,108 +79,49 @@ For example the task tree of the demo project is::
             purchases_report
             customers_report
 
-The following table lists description of all item types and the classes that are 
-used to create them:
+At the root of the task tree is a task with the ``item_name`` **demo**. It has
+four groups: **catalogs**, **journals**, **tables** and **reports**. The
+**catalogs**, **journals** groups have ``item_type`` "items". The items they own
+are wrappers over the corresponding database tables. There is one table with 
+``tem_name`` **invoice_table**, that also has it's own database table, and three 
+reports in the **reports** group.
 
-.. csv-table:: 
-   :header: Item type, Example from Demo, Server class, Client class, Description
-   :widths: 10, 10, 10, 10, 40
+The **invoices** journal has the **invoice_table** detail, which keeps a list 
+of tracks in an customer's invoice. So there are two items with the same name 
+"invoice_table" (table and detail). They share the same database table. 
 
-    task, demo, :doc:`Task </refs/server/task_api>`, :doc:`Task </refs/client/task_api>`, "Root of the task tree."
-    catalogs, catalogs, :doc:`Group </refs/server/item_group_api>`, :doc:`Group </refs/client/item_group_api>`, "Group item that owns all catalogs of the project."
-    journals, journals, :doc:`Group </refs/server/item_group_api>`, :doc:`Group </refs/client/item_group_api>`, "Group item that owns all journals of the project."
-    tables, tables, :doc:`Group </refs/server/item_group_api>`, :doc:`Group </refs/client/item_group_api>`, "Group item that owns all tables of the project."
-    reports, reports, :doc:`Reports </refs/server/report_group_api>`, :doc:`Reports </refs/client/report_group_api>`, "Group item that owns all reports of the project."
-    catalog, customers, :doc:`Item </refs/server/item_api>`, :doc:`Item </refs/client/item_api>`, "Catalogs are data items that contain information of catalog type such as customers, organizations, tracks, etc. When creating other data items, we can create a field that is a reference to the record in a catalog."
-    journal, invoices, :doc:`Item </refs/server/item_api>`, :doc:`Item </refs/client/item_api>`, "Journals are the structures that store information about events recorded in some documents, such as invoices, purchase orders, etc."
-    table, invoice_table, :doc:`Item </refs/server/item_api>`, :doc:`Item </refs/client/item_api>`, "Tables are essentially similar to journals. But besides that they could be embedded into data items."
-    report, customers_report, :doc:`Report </refs/server/report_api>`, :doc:`Report </refs/client/report_api>`, "Reports are items designed to created report."
-    detail, invoices/invoice_table, :doc:`Detail </refs/server/detail_api>`, :doc:`Detail </refs/client/detail_api>`, "Details are copies of tables designed to store records that are ownered by a record of another data item. Such as a list of tracks in an invoice."
-    
-Items of the type **catalog**, **journal**, **table** and **detail** may have a 
-database table associated with them.
+Every item is an attribute of its owner and all items, tables and reports are 
+attibutes the task as well (they all have a unique ``item_name``). 
 
-All items of the task tree have a common ancestor 
-:doc:`AbstractItem on client</refs/client/abstractitem_api>` and 
-:doc:`AbstractItem on server</refs/server/abstractitem_api>` and common attributes:.
+Jam.py is an event driven framework. Each event has, as a parameter, an item (or field)
+that triggered the event. For example (on the client):
 
+.. code-block:: js
 
-* **ID**  - unique in the framework ID of the item
-	
-* **owner** - immediate parent and owner of the item
-	
-* **task** — root of the task tree
-	
-* **items** — list of child items
-	
-* **item_type** — type of the item — one of the following values "task", 
-  "catalogs", "journals", "tables", "reports",  "catalog", "journal", 
-  "table", "report", "detail"
-      
-* **item_name** — the name of the item that will be used in programming code 
-  to get access to the item object
-	  
-* **item_caption** — the item name that appears to users
-	
+    function on_after_append(item) {
+    }
 
-So the following code in the task server module that is executed when task is 
-created:
+Knowing this item, we can get access to any item of the task tree. For example to
+get access to the **customers** catalog we can write
 
-.. code-block:: py
+.. code-block:: js
 
-    def print_item(item, ident):
-        owner_name = None
-        if item.owner:
-            owner_name = item.owner.item_name
-        print '%s %s - item_type: "%s", ID: %s, item_caption: "%s", owner: %s' % \
-            (2 * ident * ' ', item.item_name, item.item_type, item.ID, \
-            item.item_caption, owner_name)
+    item.task.catalogs.customers
 
-    def on_created(task):
-        print_item(task, 0)
-        for group in task.items:
-            print_item(group, 1)
-            for item in group.items:
-                print_item(item, 2)
-                for detail in item.items:
-                    print_item(detail, 3)
-                    
-will print::
+or just
 
-    demo - item_type: "task", ID: 5, item_caption: "Demo", owner: None
-      catalogs - item_type: "catalogs", ID: 6, item_caption: "Catalogs", owner: demo
-        customers - item_type: "catalog", ID: 10, item_caption: "Customers", owner: catalogs
-        artists - item_type: "catalog", ID: 11, item_caption: "Artists", owner: catalogs
-        albums - item_type: "catalog", ID: 12, item_caption: "Albums", owner: catalogs
-        genres - item_type: "catalog", ID: 13, item_caption: "Genres", owner: catalogs
-        media_types - item_type: "catalog", ID: 14, item_caption: "MediaTypes", owner: catalogs
-        tracks - item_type: "catalog", ID: 15, item_caption: "Tracks", owner: catalogs
-      journals - item_type: "journals", ID: 7, item_caption: "Journals", owner: demo
-        invoices - item_type: "journal", ID: 16, item_caption: "Invoices", owner: journals
-          invoice_table - item_type: "detail", ID: 18, item_caption: "InvoiceTable", owner: invoices
-      tables - item_type: "tables", ID: 8, item_caption: "Tables", owner: demo
-        invoice_table - item_type: "table", ID: 17, item_caption: "InvoiceTable", owner: tables
-      reports - item_type: "reports", ID: 9, item_caption: "Reports", owner: demo
-        invoice - item_type: "report", ID: 19, item_caption: "Print invoice", owner: reports
-        purchases_report - item_type: "report", ID: 20, item_caption: "Customer purchases ", owner: reports
-        customers_report - item_type: "report", ID: 22, item_caption: "Customer list", owner: reports
-                    
-In addition every item is an attribute of its owner and all journals, catalogs, 
-tables and reports are attibutes not only of their owner item group but of the 
-task (they all have a unique item_name). So
+.. code-block:: js
 
-.. code-block:: py
+    item.task.customers
 
-    albums = task.catalogs.albums
-    print_item(task.journals.invoices.invoice_table)
-    print_item(task.invoices.invoice_table)
-    print_item(task.invoice_table)    
-    print_item(albums.task.invoices)
-    
-will print::
+The hierarchical structure of the project is one of the bases of the DRY 
+(don't repeat yourself) principle of the framework. 
 
-    invoice_table - item_type: "detail", ID: 18, item_caption: "InvoiceTable", owner: invoices
-    invoice_table - item_type: "detail", ID: 18, item_caption: "InvoiceTable", owner: invoices
-    invoice_table - item_type: "table", ID: 17, item_caption: "InvoiceTable", owner: tables
-    invoices - item_type: "journal", ID: 16, item_caption: "Invoices", owner: journals
+For example, some methods of the items, when executed, successively generate 
+events for the task, group and the item.
 
+This way we can define a basic behavior for all items in the event handler of 
+the task, than can be expanded in then event handler of the group, and finally, 
+if nessesary, can be specified in the event handler of the item itself. For more 
+details see
+:doc:`Working with view forms <interface/view_forms>`.

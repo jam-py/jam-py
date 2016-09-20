@@ -12,6 +12,12 @@ NEED_HOST = True
 NEED_PORT = True
 CAN_CHANGE_TYPE = False
 CAN_CHANGE_SIZE = False
+UPPER_CASE = False
+DDL_ROLLBACK = True
+FROM = '"%s" as %s'
+LEFT_OUTER_JOIN = 'left outer join "%s" as %s'
+FIELD_AS = 'as'
+LIKE = 'ilike'
 
 JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB = range(1, 9)
 FIELD_TYPES = {
@@ -31,14 +37,22 @@ def connect(database, user, password, host, port, encoding):
 def get_lastrowid(cursor):
     return None
 
-LEFT_OUTER_JOIN = 'left outer join'
-LIKE = 'ilike'
+def get_select(query, start, end, fields):
+    offset = query['__offset']
+    limit = query['__limit']
+    result = 'select %s from %s' % (start, end)
+    if limit:
+        result += ' limit %d offset %d' % (limit, offset)
+    return result
 
-def limit_start(offset, limit):
-    return ''
+def cast_date(date_str):
+    return "cast('" + date_str + "' as date)"
 
-def limit_end(offset, limit):
-    return 'limit %d offset %d' % (limit, offset)
+def cast_datetime(datetime_str):
+    return "cast('" + datetime_str + "' as timestamp)"
+
+def value_literal(index):
+    return '%s'
 
 def upper_function():
     pass
@@ -130,9 +144,6 @@ def change_field_sql(table_name, old_field, new_field):
 
 def set_case(string):
     return string.lower()
-
-def param_literal():
-    return '%s'
 
 def get_sequence_name(table_name):
     return set_case('%s_id_seq' % table_name)

@@ -33,6 +33,9 @@
         constructor: Modal,
 
         init: function (element, options) {
+            var that = this,
+                manager;
+
             this.options = options;
 
             this.$element = $(element)
@@ -40,17 +43,60 @@
 
             this.options.remote && this.$element.find('.modal-body').load(this.options.remote);
 
-            var manager = typeof this.options.manager === 'function' ?
-                this.options.manager.call(this) : this.options.manager;
-
-            manager = manager.appendModal ?
-                manager : $(manager).modalmanager().data('modalmanager');
+            manager = $('body').data('modalmanager');
 
             manager.appendModal(this);
 
             this.manager = manager;
 
+            this.$element.on('focusin', function(e) {
+                if (e.target != element) {
+                    that.activeElement = e.target;
+                }
+            });
+
+            this.$element.on('focusout', function(e) {
+                if (e.relatedTarget) {
+                    if (e.relatedTarget && that.manager.elzIndex(e.relatedTarget) < that.zIndex) {
+                        that.restoreFocus();
+                    }
+                }
+                else {
+                    if (that.options.item_options && that.options.item_options.close_focusout) {
+                        that.options.item.close_form(that.options.form_name);
+                    }
+                }
+            });
+
             this.show();
+
+            this.zIndex = this.manager.elzIndex(element);
+        },
+
+        restoreFocus: function () {
+            var tabs,
+                el = this.activeElement;
+            if (el) {
+                if (!this.elementIsActive(el)) {
+                    this.focusNext(el);
+                }
+                else {
+                    $(el).focus();
+                }
+            }
+            else {
+                tabs = this.tabList();
+                if (tabs.length) {
+                    $(tabs[0]).focus();
+                }
+                else {
+                    this.$element.focus();
+                }
+            }
+        },
+
+        elementIsActive: function (el) {
+            return !(el.disabled || el.hidden || el.readOnly || el.type === 'hidden');
         },
 
         toggle: function () {
@@ -94,8 +140,6 @@
 
             this.isLoading && this.loading();
 
-//            $(document).off('focusin.modal');
-
             this.$element
                 .removeClass('in')
                 .removeClass('animated')
@@ -109,7 +153,8 @@
         },
 
         layout: function () {
-            var prop = this.options.height ? 'height' : 'max-height',
+            var that = this,
+                prop = this.options.height ? 'height' : 'max-height',
                 value = this.options.height || this.options.maxHeight,
                 width;
 
@@ -126,14 +171,18 @@
                 }
                 this.$element.css('width', width);
 
-                var that = this;
-                this.$element.css('margin-left', function () {
-                    if (/%/ig.test(width)){
-                        return -(parseInt(width) / 2) + '%';
-                    } else {
-                        return -($(this).width() / 2) + 'px';
-                    }
-                });
+                if (this.options.item_options && this.options.item_options.left !== undefined) {
+                    this.$element.css('left', 0).css('margin-left', this.options.item_options.left);
+                }
+                else {
+                    this.$element.css('margin-left', function () {
+                        if (/%/ig.test(width)){
+                            return -(parseInt(width) / 2) + '%';
+                        } else {
+                            return -($(this).width() / 2) + 'px';
+                        }
+                    });
+                }
             } else {
                 this.$element.css('width', '');
                 this.$element.css('margin-left', '');
@@ -142,22 +191,26 @@
             this.$element.find('.modal-body')
                 .css('overflow', '')
                 .css(prop, '');
-            if (value){
-                this.$element.find('.modal-body')
-                    .css('overflow', 'auto')
-                    .css(prop, value);
+            if (this.options.item_options && this.options.item_options.top !== undefined) {
+                this.$element.css('top', 0).css('margin-top', this.options.item_options.top);
             }
+            else {
+                if (value){
+                    this.$element.find('.modal-body')
+                        .css('overflow', 'auto')
+                        .css(prop, value);
+                }
 
-            var modalOverflow = $(window).height() - 10 < this.$element.height();
-            if (modalOverflow || this.options.modalOverflow) {
-                this.$element
-                    .css('margin-top', 0)
-                    .addClass('modal-overflow');
-            } else {
-                this.$element
-                    .css('margin-top', 0 - this.$element.height() / 2)
-//                    .addClass('modal-overflow');
-                    .removeClass('modal-overflow');
+                var modalOverflow = $(window).height() - 10 < this.$element.height();
+                if (modalOverflow || this.options.modalOverflow) {
+                    this.$element
+                        .css('margin-top', 0)
+                        .addClass('modal-overflow');
+                } else {
+                    this.$element
+                        .css('margin-top', 0 - this.$element.height() / 2)
+                        .removeClass('modal-overflow');
+                }
             }
         },
 
@@ -191,8 +244,7 @@
 
             for (i = 0, len = result.length; i < len; i++) {
                 el = result[i];
-                if (!el.disabled && !el.hidden &&
-                    !el.readOnly && el.type !== 'hidden') {
+                if (this.elementIsActive(el)) {
                     if (el.tabIndex === 0) {
                         els0.push(el);
                     }
@@ -215,10 +267,16 @@
                 this.$element.on('keydown.tabindex.modal', function (e) {
                     var tabs,
                         curIndex;
-                    if (e.target.tabIndex >= 0) {
-                        key = e.charCode ? e.charCode : e.keyCode ? e.keyCode : 0;
-                        if (key === 9 || ((e.target.tagName !== 'TABLE') && !$(e.target).hasClass('dbtableinput'))
-                            && (key === 38 || key === 40)){
+                    key = e.which;
+                    if (key === 9 || ((e.target.tagName !== 'TABLE') && !$(e.target).hasClass('dbtableinput'))
+                        && (key === 38 || key === 40)){
+                        if (e.target === that.$element.get(0)) {
+                            tabs = that.tabList();
+                            if (tabs.length) {
+                                $(tabs[0]).focus();
+                            }
+                        }
+                        else if (e.target.tabIndex >= 0) {
                             tabs = that.tabList();
                             curIndex = tabs.indexOf(e.target);
                             if (curIndex !== -1) {
@@ -347,9 +405,11 @@
                 var that = this;
 
                 setTimeout(function () {
-                    that.$element
-                        .addClass('animated')
-                        .addClass(that.options.attentionAnimation);
+                    if (that.$element) {
+                        that.$element
+                            .addClass('animated')
+                            .addClass(that.options.attentionAnimation);
+                    }
                 }, 0);
             }
             this.focus();
@@ -380,6 +440,25 @@
             this.$element
                 .removeClass('in')
                 .attr('aria-hidden', true);
+        },
+
+        focusNext: function(el) {
+            var tabs = this.tabList(),
+                i;
+            if (!el) {
+                el = document.activeElement;
+            }
+            i = tabs.indexOf(el);
+            if (i !== -1) {
+                i++;
+                if (i > tabs.length -1) {
+                    i = 0;
+                }
+                $(tabs[i]).focus();
+            }
+            else if (tabs.length) {
+                $(tabs[0]).focus();
+            }
         }
     };
 
@@ -412,7 +491,6 @@
         replace: false,
         resize: true,
         attentionAnimation: 'shake',
-        manager: 'body',
         spinner: '<div class="loading-spinner" style="width: 200px; margin-left: -100px;"><div class="progress progress-striped active"><div class="bar" style="width: 100%;"></div></div></div>'
     };
 
@@ -437,34 +515,5 @@
                 })
         });
     });
-
-    /* CAN FOCUS
-    * ============== */
-
-    $.fn.modalForm = function() {
-        return this.closest('.modal');
-    }
-
-    $.fn.modalCanFocus = function () {
-        var result = true,
-            $modal = this.closest('.modal'),
-            modal = $modal.data('modal'),
-            manager;
-        if (modal) {
-            if (modal.manager) {
-                result = modal.zPos === modal.manager.getMaxzPos();
-            }
-        }
-        else {
-            manager = $.fn.modal.defaults.manager;
-            manager = typeof manager === 'function' ? manager.call(this) : manager;
-            manager = manager.appendModal ?
-                manager : $(manager).modalmanager().data('modalmanager');
-            if (manager) {
-                result = manager.getMaxzPos() === 0;
-            }
-        }
-        return result;
-    }
 
 }(window.jQuery);

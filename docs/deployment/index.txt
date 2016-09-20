@@ -1,0 +1,91 @@
+==========================================
+Jam.py delpoyment with Apache and mod_wsgi
+==========================================
+
+Once you’ve got ``mod_wsgi`` installed and activated, edit your Apache server’s 
+httpd.conf file and add the following. If you are using a version of Apache older 
+than 2.4, replace **Require all granted** with **Allow from all** and also add 
+the line **Order deny,allow** above it.
+
+.. code-block:: apache
+
+    WSGIScriptAlias / /path/to/mysite.com/mysite/wsgi.py
+    WSGIPythonPath /path/to/mysite.com
+
+    <Directory /path/to/mysite.com/mysite>
+    <Files wsgi.py>
+    Require all granted
+    </Files>
+    </Directory>
+
+The first bit in the ``WSGIScriptAlias`` line is the base URL path you want to
+serve your application at (``/`` indicates the root url), and the second is the
+location of a "WSGI file" -- see below -- on your system, usually inside of
+your project package (``mysite`` in this example). This tells Apache to serve
+any request below the given URL using the WSGI application defined in that
+file.
+
+The ``WSGIPythonPath`` line ensures that your project package is available for
+import on the Python path; in other words, that ``import mysite`` works.
+
+The ``<Directory>`` piece just ensures that Apache can access your
+:file:`wsgi.py` file.
+
+Serving files
+=============
+
+Django doesn't serve files itself; it leaves that job to whichever Web
+server you choose.
+
+We recommend using a separate Web server -- i.e., one that's not also running
+Django -- for serving media. Here are some good choices:
+
+* Nginx_
+* A stripped-down version of Apache_
+
+If, however, you have no option but to serve media files on the same Apache
+``VirtualHost`` as Django, you can set up Apache to serve some URLs as
+static media, and others using the mod_wsgi interface to Django.
+
+This example sets up Django at the site root, but explicitly serves
+``robots.txt``, ``favicon.ico``, any CSS file, and anything in the
+``/static/`` and ``/media/`` URL space as a static file. All other URLs
+will be served using mod_wsgi:
+
+.. code-block:: apache
+
+    Alias /robots.txt /path/to/mysite.com/static/robots.txt
+    Alias /favicon.ico /path/to/mysite.com/static/favicon.ico
+
+    Alias /media/ /path/to/mysite.com/media/
+    Alias /static/ /path/to/mysite.com/static/
+
+    <Directory /path/to/mysite.com/static>
+    Require all granted
+    </Directory>
+
+    <Directory /path/to/mysite.com/media>
+    Require all granted
+    </Directory>
+
+    WSGIScriptAlias / /path/to/mysite.com/mysite/wsgi.py
+
+    <Directory /path/to/mysite.com/mysite>
+    <Files wsgi.py>
+    Require all granted
+    </Files>
+    </Directory>
+
+If you are using a version of Apache older than 2.4, replace
+``Require all granted`` with ``Allow from all`` and also add the line
+``Order deny,allow`` above it.
+
+.. _Nginx: http://wiki.nginx.org/Main
+.. _Apache: http://httpd.apache.org/
+
+.. More details on configuring a mod_wsgi site to serve static files can be found
+.. in the mod_wsgi documentation on `hosting static files`_.
+
+.. _hosting static files: http://code.google.com/p/modwsgi/wiki/ConfigurationGuidelines#Hosting_Of_Static_Files
+
+.. _serving-the-admin-files:

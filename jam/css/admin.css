@@ -144,6 +144,16 @@
     margin-left: 2px;
 }
 
+.field-group {
+/*
+    margin-top: 4px;
+    margin-bottom: 4px;
+    padding-top: 8px;
+    padding-bottom: 0;
+    border: 1px solid #eee;
+*/
+}
+
 p.search {
     margin: 0px;
     font-family: 'Courier New', Courier, monospace;

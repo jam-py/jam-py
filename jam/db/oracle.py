@@ -3,63 +3,83 @@
 from __future__ import with_statement
 import sys
 import cPickle
-import fdb
+import cx_Oracle
 
 NEED_DATABASE_NAME = True
 NEED_LOGIN = True
 NEED_PASSWORD = True
-NEED_ENCODING = True
-NEED_HOST = True
-NEED_PORT = True
+NEED_ENCODING = False
+NEED_HOST = False
+NEED_PORT = False
 CAN_CHANGE_TYPE = False
 CAN_CHANGE_SIZE = False
 UPPER_CASE = True
-DDL_ROLLBACK = True
-FROM = '"%s" AS %s'
-LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" AS %s'
+DDL_ROLLBACK = False
+FROM = '"%s" %s '
+LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" %s'
 FIELD_AS = 'AS'
 LIKE = 'LIKE'
 
 JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB = range(1, 9)
 FIELD_TYPES = {
-    INTEGER: 'INTEGER',
-    TEXT: 'VARCHAR',
+    INTEGER: 'NUMBER',
+    TEXT: 'VARCHAR2',
     FLOAT: 'DOUBLE PRECISION',
     CURRENCY: 'DOUBLE PRECISION',
     DATE: 'DATE',
     DATETIME: 'TIMESTAMP',
-    BOOLEAN: 'INTEGER',
+    BOOLEAN: 'NUMBER',
     BLOB: 'BLOB'
 }
 
 def connect(database, user, password, host, port, encoding):
-    if not encoding:
-        encoding = None
-    if not port:
-        port = None
-    else:
-        port = int(port)
-    return fdb.connect(database=database, user=user, password=password, charset=encoding, host=host, port=port)
+    if database and user and password:
+        return cx_Oracle.connect(user=user, password=password, dsn=database)
+    elif database:
+        return cx_Oracle.connect(dsn=database)
 
 def get_lastrowid(cursor):
     return None
 
+def get_fields(query, fields, alias):
+    sql = ''
+    for field in fields:
+        if field.master_field:
+            pass
+        elif field.calculated:
+            sql += 'NULL AS "%s", ' % field.field_name
+        else:
+            sql += '%s."%s", ' % (alias, field.field_name)
+    if query['__expanded']:
+        for field in fields:
+            if field.lookup_item:
+                sql += '%s_LOOKUP, ' % field.field_name
+    sql = sql[:-2]
+    return set_case(sql)
+
+
 def get_select(query, start, end, fields):
     offset = query['__offset']
     limit = query['__limit']
-    page = ''
+    result = 'SELECT %s FROM %s' % (start, end)
     if limit:
-        page = 'FIRST %d SKIP %d' % (limit, offset)
-    return 'SELECT %s %s FROM %s' % (page, start, end)
+        flds = get_fields(query, fields, 'b')
+        rnum = offset + 1
+        rownum = offset + limit
+        if offset == 0:
+            rnum = 0
+        result = "SELECT %s FROM (SELECT a.*, rownum rnum FROM (%s) a WHERE rownum <= %s) b WHERE rnum >= %s" % \
+            (flds, result, rownum, rnum)
+    return result
 
 def cast_date(date_str):
-    return "CAST('" + date_str + "' AS DATE)"
+    return "TO_DATE('" + date_str + "', 'YYYY-MM-DD')"
 
 def cast_datetime(datetime_str):
-    return "CAST('" + datetime_str + "' AS TIMESTAMP)"
+    return "TO_DATE('" + date_str + "', 'YYYY-MM-DD  HH24:MI')"
 
 def value_literal(index):
-    return '?'
+    return ':%d' % index
 
 def upper_function():
     return 'UPPER'
@@ -94,8 +114,8 @@ def delete_table_sql(table_name):
     return result
 
 def create_index_sql(index_name, table_name, unique, fields, desc):
-    return set_case('CREATE %s %s INDEX "%s" ON "%s" (%s)' % \
-        (unique, desc, index_name, table_name, fields))
+    return set_case('CREATE %s INDEX "%s" ON "%s" (%s)' % \
+        (unique, index_name, table_name, fields))
 
 def create_foreign_index_sql(table_name, index_name, key, ref, primary_key):
     return set_case('ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s)' % \
@@ -120,7 +140,7 @@ def add_field_sql(table_name, field):
     return result
 
 def del_field_sql(table_name, field):
-    return set_case('ALTER TABLE "%s" DROP "%s"' % (table_name, field['field_name']))
+    return set_case('ALTER TABLE "%s" DROP COLUMN "%s"' % (table_name, field['field_name']))
 
 def change_field_sql(table_name, old_field, new_field):
     result = []
@@ -128,36 +148,41 @@ def change_field_sql(table_name, old_field, new_field):
         or old_field['size'] != new_field['size']:
         raise Exception, u"Don't know how to change field's size or type of %s" % old_field['field_name']
     if old_field['field_name'] != new_field['field_name']:
-        sql = set_case('ALTER TABLE "%s" ALTER "%s" TO "%s"' % \
+        sql = set_case('ALTER TABLE "%s" RENAME COLUMN "%s" TO "%s"' % \
             (table_name, old_field['field_name'], new_field['field_name']))
         result.append(sql)
     if old_field['default_value'] != new_field['default_value']:
         if new_field['default_value']:
             if new_field['data_type'] == TEXT:
-                sql = set_case('ALTER TABLE "%s" ALTER "%s" SET DEFAULT' % \
+                sql = set_case('ALTER TABLE "%s" MODIFY "%s" DEFAULT' % \
                     (table_name, new_field['field_name']))
                 sql +=  " '%s'" % new_field['default_value']
             else:
-                sql = set_case('ALTER TABLE "%s" ALTER "%s" SET DEFAULT %s' % \
+                sql = set_case('ALTER TABLE "%s" MODIFY "%s" DEFAULT %s' % \
                     (table_name, new_field['field_name'], new_field['default_value']))
         else:
-            sql = set_case('ALTER TABLE "%s" ALTER "%s" DROP DEFAULT' % \
-                (table_name, new_field['field_name']))
+            sql = set_case('ALTER TABLE "%s" MODIFY "%s" DEFAULT %s' % \
+                (table_name, new_field['field_name'], 'NULL'))
         result.append(sql)
     return result
 
 def set_case(string):
     return string.upper()
 
+def param_literal():
+    return '?'
+
 def get_sequence_name(table_name):
     return set_case('%s_GEN' % table_name)
 
 def next_sequence_value_sql(table_name):
-    return set_case('SELECT NEXT VALUE FOR "%s" FROM RDB$DATABASE' % \
+    return set_case('SELECT %s.NEXTVAL FROM DUAL' % \
         get_sequence_name(table_name))
 
 def restart_sequence_sql(table_name, value):
-    return set_case('ALTER SEQUENCE %s RESTART WITH %d' % \
-        (get_sequence_name(table_name), value))
+    result = []
+    result.append(set_case('DROP SEQUENCE "%s_GEN"' % table_name))
+    result.append(set_case('CREATE SEQUENCE "%s_GEN" START WITH %s' % (table_name, value)))
+    return result
 
 

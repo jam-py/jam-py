@@ -3,7 +3,8 @@
 
 function Events1() { // demo 
 
-	function on_page_loaded(task) {
+	function on_page_loaded(task) { 
+		
 		$("#title").text(task.item_caption);
 		if (task.safe_mode) {
 			$("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
@@ -18,7 +19,8 @@ function Events1() { // demo
 		$("#taskmenu").show();
 		for (var i = 0; i < task.items.length; i++) {
 			if (task.items[i].visible) {
-				$("#menu").append($('<li></li>').append(
+				$("#menu").append(
+					$('<li></li>').append(
 						$('<a href=""></a>').text(task.items[i].item_caption).data('group', task.items[i])
 					)
 				);
@@ -57,6 +59,7 @@ function Events1() { // demo
 				item.view($("#content"));
 			}
 		}));
+		
 		$("#menu").append($('<li></li>').append($('<a href="#">About</a>').click(function(e) {
 			e.preventDefault();
 			task.message(
@@ -72,7 +75,9 @@ function Events1() { // demo
 		
 		$('#menu').children(":first").find('a').click();
 		$('#submenu').children(":first").find('a').click();	
-	
+		
+		$(document).ajaxStart(function() { $("html").addClass("wait"); });
+		$(document).ajaxStop(function() { $("html").removeClass("wait"); });
 	
 		$(window).on('resize', function() {
 			resize(task);
@@ -82,7 +87,6 @@ function Events1() { // demo
 	function on_view_form_created(item) {
 		var table_options = {
 				height: 480,
-				word_wrap: false,
 				sortable: true
 			};
 			
@@ -96,23 +100,27 @@ function Events1() { // demo
 		}
 		else {
 			item.view_form.find(".modal-body").css('padding', 0);
-			item.view_form.find(".view-title #title-left").append($('<h4>' + item.item_caption + '<h4>'));
+			item.view_form.find(".view-title #title-left")
+				.append($('<h4>' + item.item_caption + '<h4>'));
 			table_options.height = $(window).height() - $('body').height() - 10;
 		}
 		if (item.can_create()) {
-			item.view_form.find("#new-btn").on('click.task', function() {item.insert_record();});
+			item.view_form.find("#new-btn")
+				.on('click.task', function() { item.insert_record(); });
 		}
 		else {
 			item.view_form.find("#new-btn").prop("disabled", true);
 		}
 		if (item.can_edit()) {
-			item.view_form.find("#edit-btn").on('click.task', function() {item.edit_record();});
+			item.view_form.find("#edit-btn")
+				.on('click.task', function() { item.edit_record(); });
 		}
 		else {
 			item.view_form.find("#edit-btn").prop("disabled", true);
 		}
 		if (item.can_delete()) {
-			item.view_form.find("#delete-btn").on('click.task', function() {item.delete_record();});
+			item.view_form.find("#delete-btn")
+				.on('click.task', function() { item.delete_record();} );
 		}
 		else {
 			item.view_form.find("#delete-btn").prop("disabled", true);
@@ -124,11 +132,10 @@ function Events1() { // demo
 			item.init_table(item, table_options);
 		}
 		item.create_table(item.view_form.find(".view-table"), table_options);
+		
+		item.open(function() {});	
 	}
 	
-	function on_view_form_shown(item) {
-		item.open();
-	}
 	
 	function on_view_form_close_query(item) {
 		item.close();
@@ -143,12 +150,8 @@ function Events1() { // demo
 			item.init_inputs(item, input_options);
 		}
 		item.create_inputs(item.edit_form.find(".edit-body"), input_options);
-		item.edit_form.find("#cancel-btn").attr("tabindex", 101).on('click.task', function(e) {
-			item.cancel_edit(e);
-		});
-		item.edit_form.find("#ok-btn").attr("tabindex", 100).on('click.task', function() {
-			item.apply_record();
-		});
+		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
+		item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
 	}
 	
 	function on_edit_form_shown(item) {
@@ -179,18 +182,29 @@ function Events1() { // demo
 	function on_filter_form_created(item) {
 		item.filter_options.title = item.item_caption + ' - filter';
 		item.create_filter_inputs(item.filter_form.find(".edit-body"));
-		item.filter_form.find("#cancel-btn").attr("tabindex", 101)
-			.on('click.task', function() {item.close_filter_form()});
-		item.filter_form.find("#ok-btn").attr("tabindex", 100)
-			.on('click.task', function() {item.apply_filters()});
+		item.filter_form.find("#cancel-btn")
+			.on('click.task', function() { item.close_filter_form() });
+		item.filter_form.find("#ok-btn")
+			.on('click.task', function() { item.apply_filters() });
 	}
 	
 	function on_param_form_created(item) {
 		item.create_param_inputs(item.param_form.find(".edit-body"));
-		item.param_form.find("#cancel-btn").attr("tabindex", 101)
-			.on('click.task', function() {item.close_param_form()});
-		item.param_form.find("#ok-btn").attr("tabindex", 100)
-			.on('click.task', function() {item.process_report()});
+		item.param_form.find("#cancel-btn")
+			.on('click.task', function() { item.close_param_form() });
+		item.param_form.find("#ok-btn")
+			.on('click.task', function() { item.process_report() });
+	}
+	
+	function on_before_print_report(report) {
+		var select;
+		report.extension = 'pdf';
+		if (report.param_form) {
+			select = report.param_form.find('select');
+			if (select && select.val()) {
+				report.extension = select.val();
+			}
+		}
 	}
 	
 	function on_view_form_keyup(item, event) {
@@ -299,13 +313,13 @@ function Events1() { // demo
 	}
 	this.on_page_loaded = on_page_loaded;
 	this.on_view_form_created = on_view_form_created;
-	this.on_view_form_shown = on_view_form_shown;
 	this.on_view_form_close_query = on_view_form_close_query;
 	this.on_edit_form_created = on_edit_form_created;
 	this.on_edit_form_shown = on_edit_form_shown;
 	this.on_edit_form_close_query = on_edit_form_close_query;
 	this.on_filter_form_created = on_filter_form_created;
 	this.on_param_form_created = on_param_form_created;
+	this.on_before_print_report = on_before_print_report;
 	this.on_view_form_keyup = on_view_form_keyup;
 	this.on_edit_form_keyup = on_edit_form_keyup;
 	this.create_print_btns = create_print_btns;
@@ -392,31 +406,15 @@ function Events2() { // demo.catalogs
 
 task.events.events2 = new Events2();
 
-function Events5() { // demo.reports 
-
-	function on_before_print_report(report) {
-		var select;
-		report.extension = 'pdf';
-		if (report.param_form) {
-			select = report.param_form.find('select');
-			if (select && select.val()) {
-				report.extension = select.val();
-			}
-		}
-	}
-	this.on_before_print_report = on_before_print_report;
-}
-
-task.events.events5 = new Events5();
-
 function Events16() { // demo.journals.invoices 
 
 	function on_after_append(item) {
-		item.invoicedate.value = new Date();
+		item.date.value = new Date();
 		item.taxrate.value = 5;
 	}
 	
 	function init_table(item, table_options) {
+		item.filters.invoicedate1.value = new Date(new Date().setYear(new Date().getFullYear() - 1));
 		table_options.height = $(window).height() - $('body').height() - 200 - 10;
 		if (table_options.height < 200) {
 			table_options.height = 200;
@@ -432,11 +430,14 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_view_form_created(item) {
-		item.filters.invoicedate1.value = new Date(new Date().setYear(new Date().getFullYear() - 1));
 		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});	
 	
 		item.invoice_table.create_table(item.view_form.find(".view-detail"),
 			{height: 200 - 4, dblclick_edit: false, column_width: {"track": "60%"}});
+	}
+	
+	function on_view_form_shown(item) {
+		item.view_form.find(".dbtable.invoices .inner-table").focus();
 	}
 	
 	function on_filters_applied(item) {
@@ -473,23 +474,19 @@ function Events16() { // demo.journals.invoices
 		item.edit_options.width = 1050;
 		item.invoice_table.create_table(item.edit_form.find(".edit-detail"),
 			{
-				height: 400,
+				height: 450,
 				tabindex: 90,
 				editable: true,
 				editable_fields: ['track', 'quantity'],
-	//			append_on_lastrow_keydown: true,
 				sortable: true,
 				column_width: {"track": "60%"}
 			});
 		item.edit_form.find("#new-btn")
-			.attr("tabindex", 92)
-			.on('click.task', function() {item.invoice_table.append_record()});
+			.on('click.task', function() { item.invoice_table.append_record() });
 		item.edit_form.find("#edit-btn")
-			.attr("tabindex", 91)
-			.on('click.task', function() {item.invoice_table.edit_record()});
+			.on('click.task', function() { item.invoice_table.edit_record() });
 		item.edit_form.find("#delete-btn")
-			.attr("tabindex", 90)
-			.on('click.task', function() {item.invoice_table.delete_record()});
+			.on('click.task', function() { item.invoice_table.delete_record() });
 	}
 	
 	function on_get_field_text(field) {
@@ -576,14 +573,10 @@ function Events16() { // demo.journals.invoices
 			100
 		);
 	}
-	
-	
-	function on_view_form_shown(item) {
-		item.view_form.find(".dbtable.invoices .inner-table").focus();
-	}
 	this.on_after_append = on_after_append;
 	this.init_table = init_table;
 	this.on_view_form_created = on_view_form_created;
+	this.on_view_form_shown = on_view_form_shown;
 	this.on_filters_applied = on_filters_applied;
 	this.calc_footer = calc_footer;
 	this.init_inputs = init_inputs;
@@ -595,7 +588,6 @@ function Events16() { // demo.journals.invoices
 	this.on_edit_form_keyup = on_edit_form_keyup;
 	this.on_after_apply = on_after_apply;
 	this.on_after_scroll = on_after_scroll;
-	this.on_view_form_shown = on_view_form_shown;
 }
 
 task.events.events16 = new Events16();
@@ -603,7 +595,9 @@ task.events.events16 = new Events16();
 function Events15() { // demo.catalogs.tracks 
 
 	function init_table(item, options) {
-		options.sortable = false;
+	//	options.sortable = false;
+		options.row_line_count = 2;
+		options.expand_selected_row = 3;
 	}
 	
 	function on_before_post(item) {

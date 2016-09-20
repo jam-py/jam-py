@@ -87,6 +87,9 @@
         this.onRender = options.onRender;
         this.fillDow();
         this.fillMonths();
+        if (options.date) {
+            this.date = options.date;
+        }
         this.update();
         this.showMode();
     };
@@ -111,10 +114,10 @@
                     that.hide();
                 }
             });
-            this.element.trigger({
-                type: 'show',
-                date: this.date
-            });
+            //~ this.element.trigger({
+                //~ type: 'show',
+                //~ date: this.date
+            //~ });
             this.picker.on("keyup", function(e) {
                 if (e.keyCode === 27) {
                     e.stopPropagation();
@@ -136,10 +139,11 @@
             }
             this.picker.off("keyup");
             //this.set();
-            this.element.trigger({
-                type: 'hide',
-                date: this.date
-            });
+            //~ this.element.trigger({
+                //~ type: 'hide',
+                //~ date: this.date
+            //~ });
+            this.element.focus();
         },
 
         set: function() {
@@ -344,7 +348,10 @@
             if (dir) {
                 this.viewMode = Math.max(this.minViewMode, Math.min(2, this.viewMode + dir));
             }
-            this.picker.find('>div').hide().filter('.datepicker-'+DPGlobal.modes[this.viewMode].clsName).show();
+//            this.picker.find('>div').hide().filter('.datepicker-'+DPGlobal.modes[this.viewMode].clsName).show();
+            this.picker.find('>div').hide();
+            this.element.focus();
+            this.picker.find('>div').filter('.datepicker-'+DPGlobal.modes[this.viewMode].clsName).show();
         }
     };
 
@@ -398,8 +405,11 @@
             return [31, (DPGlobal.isLeapYear(year) ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month]
         },
         parseFormat: function(format){
-            var separator = format.match(/[.\/\-\s].*?/),
-                parts = format.split(/\W+/);
+            var separator,
+                parts;
+//            format = format.split('%').join('');
+            separator = format.match(/[.\/\-\s].*?/),
+            parts = format.split('%').join('').split(/\W+/);
             if (!separator || !parts || parts.length === 0){
                 throw new Error("Invalid date format.");
             }

@@ -8,8 +8,14 @@ NEED_PASSWORD = True
 NEED_ENCODING = True
 NEED_HOST = True
 NEED_PORT = True
-CAN_CHANGE_TYPE = True
-CAN_CHANGE_SIZE = True
+CAN_CHANGE_TYPE = False
+CAN_CHANGE_SIZE = False
+UPPER_CASE = True
+DDL_ROLLBACK = False
+FROM = '"%s" AS %s'
+LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" AS %s'
+FIELD_AS = 'AS'
+LIKE = 'LIKE'
 
 JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB = range(1, 9)
 FIELD_TYPES = {
@@ -43,14 +49,22 @@ def connect(database, user, password, host, port, encoding):
 def get_lastrowid(cursor):
     return cursor.lastrowid
 
-LEFT_OUTER_JOIN = 'LEFT OUTER JOIN'
-LIKE = 'LIKE'
+def get_select(query, start, end, fields):
+    offset = query['__offset']
+    limit = query['__limit']
+    result = 'SELECT %s FROM %s' % (start, end)
+    if limit:
+        result += ' LIMIT %d, %d' % (offset, limit)
+    return result
 
-def limit_start(offset, limit):
-    return ''
+def cast_date(date_str):
+    return "CAST('" + date_str + "' AS DATE)"
 
-def limit_end(offset, limit):
-    return 'LIMIT %d, %d' % (offset, limit)
+def cast_datetime(datetime_str):
+    return "CAST('" + datetime_str + "' AS TIMESTAMP)"
+
+def value_literal(index):
+    return '%s'
 
 def upper_function():
     pass
@@ -115,13 +129,15 @@ def del_field_sql(table_name, field):
 def change_field_sql(table_name, old_field, new_field):
     result = []
     if old_field['field_name'] != new_field['field_name']:
-        sql = set_case('ALTER TABLE "%s" CHANGE  "%s" "%s"' % (table_name, old_field['field_name'],
+        sql = set_case('ALTER TABLE "%s" CHANGE  "%s" "%s" %s' % (table_name, old_field['field_name'],
             new_field['field_name'], FIELD_TYPES[new_field['data_type']]))
-        if old_field['data_type'] != new_field['data_type'] or \
-            old_field['size'] != new_field['size']:
-            sql += set_case(' %s' % FIELD_TYPES[field['data_type']])
-            if new_field['size'] and old_field['size'] != new_field['size']:
-                sql += '(%d)' % new_field['size']
+        if old_field['size']:
+            sql += '(%d)' % old_field['size']
+        #~ if old_field['data_type'] != new_field['data_type'] or \
+            #~ old_field['size'] != new_field['size']:
+            #~ sql += set_case(' %s' % FIELD_TYPES[field['data_type']])
+            #~ if new_field['size'] and old_field['size'] != new_field['size']:
+                #~ sql += '(%d)' % new_field['size']
         result.append(sql)
     if old_field['default_value'] != new_field['default_value']:
         if new_field['default_value']:

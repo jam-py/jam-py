@@ -19,12 +19,10 @@ Use the ``item_type`` attribute to get the type of the item. It can have one of 
 following values 
 
 * “task”, 
-* “catalogs”, 
-* “journals”, 
+* “items”, 
 * “tables”, 
 * “reports”, 
-* “catalog”, 
-* “journal”, 
+* “item”, 
 * “table”, 
 * “report”, 
 * “detail”

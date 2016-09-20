@@ -9,6 +9,7 @@ import threading
 import zipfile
 from xml.dom.minidom import parseString
 from xml.sax.saxutils import escape
+import uuid
 import datetime, time
 import traceback
 import inspect
@@ -33,6 +34,7 @@ class ServerDataset(Dataset, SQL):
         self.on_get_field_text = None
         self.deleted_field_name = None
         self.soft_delete = soft_delete
+        self.virtual_table = False
 
     def copy(self, filters=True, details=True, handlers=True):
         result = super(ServerDataset, self).copy(filters, details, handlers)
@@ -140,6 +142,8 @@ class ServerDataset(Dataset, SQL):
         return self.task.execute(sql)
 
     def apply_changes(self, data, privileges, user_info=None, enviroment=None):
+        if common.DEMO:
+            raise Exception, u'Demo version - changes are not allowed.'
         error = None
         result = None
         changes, params = data
@@ -542,7 +546,8 @@ class Report(AbstrReport):
 
     def hide_columns(self, col_list):
 
-        def convert_str_to_int(s):
+        def convert_str_to_int(string):
+            s = string.upper()
             base = ord('A')
             mult = ord('Z') - base + 1
             result = s
@@ -552,7 +557,7 @@ class Report(AbstrReport):
                 for i in range(len(s)):
                     chars.append(s[i])
                 for i in range(len(chars) - 1, -1, -1):
-                    result += (ord(chars[i]) - base + 1) * mult ** i
+                    result += (ord(chars[i]) - base + 1) * (mult ** (len(chars) - i - 1))
             return result
 
         def remove_repeated(col, repeated):
@@ -677,159 +682,204 @@ class Report(AbstrReport):
     def _set_modified(self, value):
         pass
 
-log = {}
-log_counter = 0
-log_save_after = 0
-log_pid = os.getpid()
-
-def find_where_fields(command):
-    result = ''
-    where_pos = command.find('WHERE')
-    where = None
-    if where_pos >= 0:
-        a = []
-        where = command[where_pos + 5:]
-        a.append(where.find(' GROUP BY'))
-        a.append(where.find(' ORDER BY'))
-        a.append(where.find(' HAVING'))
-        pos = -1
-        b = []
-        for p in a:
-            if p >= 0:
-                b.append(p)
-        if len(b):
-            pos = min(b)
-        if pos >= 0:
-            where = where[:pos + 1]
-        if where:
-            parts = where.split('AND')
-            fields = []
-            for p in parts:
-                p = p.strip()
-                p = p.strip('(')
-                w = ''
-                for ch in p:
-                    if ch in [' ', '>', '<', '=']:
-                        break
-                    else:
-                        w += ch
-                w = w.replace('"', '')
-                pos = w.find('.')
-                if pos >= 0:
-                    w = w[pos + 1:]
-                fields.append(w)
-#            fields.sort()
-            result = ' '.join(fields)
-    return result
-
-def find_table_name(command):
-    result = ''
-    s = ''
-    if command[:12] ==   'SELECT NEXT ':
-        result = ''
-    elif command[:12] == 'INSERT INTO ':
-        result = ''
-    elif command[:6] == 'UPDATE':
-        s = command[7:]
-        s = s.lstrip('"')
-    else:
-        pos = command.find(' FROM ')
-        s = command[pos+5:pos+105]
-        s = s.lstrip(' ')
-        s = s.lstrip('(')
-        s = s.lstrip('"')
-    if s:
-        w = ''
-        for ch in s:
-            if ch in [' ', '"']:
-                break
-            else:
-                w += ch
-        result = w
-    return result
-
-def save_log(log):
-
-    def get_reqs_key(item):
-        key, (dur, freq) = item
-        return dur / 1000000.0 / freq
-
-    def get_tables_key(item):
-        key, (dur, freq, reqs) = item
-        return dur / 1000000.0 / freq
-
-    text = ''
-
-    tlist = sorted(log.iteritems(), key=get_tables_key, reverse=True)
-    for table, (dur, freq, reqs) in tlist:
-        sec = dur / 1000000.0
-        per_request = sec / freq
-        text += '%-20s %f %d %f\n' % (table, per_request, freq, sec)
-
-    text += '\n'
-
-    tables = sorted(log.keys())
-    for table in tables:
-        dur, freq, reqs = log[table]
-        sec = dur / 1000000.0
-        per_request = sec / freq
-        text += '\n%-20s %f %d %f\n' % (table, per_request, freq, sec)
-        rlist = sorted(reqs.iteritems(), key=get_reqs_key, reverse=True)
-        for fields, (dur, freq) in rlist:
-            sec = dur / 1000000.0
-            per_request = sec / freq
-            text += '      %f %d %f %s\n' % (per_request, freq, sec, fields)
-    with open('log.info', 'w') as f:
-        f.write(text.encode('utf-8'))
-
-
-def log_request(command, duration):
-    global log_counter
-    global log_pid
-    global log
-    global log_save_after
-
-    if log_pid == os.getpid():
-        command = command.upper().strip()
-        table_name = find_table_name(command)
-        if table_name:
-            where_fields = find_where_fields(command)
-
-            msec = duration.microseconds
-
-            table = log.get(table_name)
-            if not table:
-                table = [0, 0, {}]
-                log[table_name] = table
-            table[0] += msec
-            table[1] += 1
-            reqs = table[2]
-
-            req = reqs.get(where_fields)
-            if not req:
-                req = [0, 0]
-                reqs[where_fields] = req
-            req[0] += msec
-            req[1] += 1
-
-        log_counter += 1
-        if log_counter % log_save_after == 0:
-            save_log(log)
-
+#~ log = {}
+#~ log_counter = 0
+#~ log_save_after = 0
+#~ log_pid = os.getpid()
+#~
+#~ def find_where_fields(command):
+    #~ result = ''
+    #~ where_pos = command.find('WHERE')
+    #~ where = None
+    #~ if where_pos >= 0:
+        #~ a = []
+        #~ where = command[where_pos + 5:]
+        #~ a.append(where.find(' GROUP BY'))
+        #~ a.append(where.find(' ORDER BY'))
+        #~ a.append(where.find(' HAVING'))
+        #~ pos = -1
+        #~ b = []
+        #~ for p in a:
+            #~ if p >= 0:
+                #~ b.append(p)
+        #~ if len(b):
+            #~ pos = min(b)
+        #~ if pos >= 0:
+            #~ where = where[:pos + 1]
+        #~ if where:
+            #~ parts = where.split('AND')
+            #~ fields = []
+            #~ for p in parts:
+                #~ p = p.strip()
+                #~ p = p.strip('(')
+                #~ w = ''
+                #~ for ch in p:
+                    #~ if ch in [' ', '>', '<', '=']:
+                        #~ break
+                    #~ else:
+                        #~ w += ch
+                #~ w = w.replace('"', '')
+                #~ pos = w.find('.')
+                #~ if pos >= 0:
+                    #~ w = w[pos + 1:]
+                #~ fields.append(w)
+            #~ result = ' '.join(fields)
+    #~ return result
+#~
+#~ def find_table_name(command):
+    #~ result = ''
+    #~ s = ''
+    #~ if command[:12] ==   'SELECT NEXT ':
+        #~ result = ''
+    #~ elif command[:12] == 'INSERT INTO ':
+        #~ result = ''
+    #~ elif command[:6] == 'UPDATE':
+        #~ s = command[7:]
+        #~ s = s.lstrip('"')
+    #~ else:
+        #~ pos = command.find(' FROM ')
+        #~ s = command[pos+5:pos+105]
+        #~ s = s.lstrip(' ')
+        #~ s = s.lstrip('(')
+        #~ s = s.lstrip('"')
+    #~ if s:
+        #~ w = ''
+        #~ for ch in s:
+            #~ if ch in [' ', '"']:
+                #~ break
+            #~ else:
+                #~ w += ch
+        #~ result = w
+    #~ return result
+#~
+#~ def save_log(log):
+#~
+    #~ def get_reqs_key(item):
+        #~ key, (dur, freq) = item
+        #~ return dur / 1000000.0 / freq
+#~
+    #~ def get_tables_key(item):
+        #~ key, (dur, freq, reqs) = item
+        #~ return dur / 1000000.0 / freq
+#~
+    #~ text = ''
+#~
+    #~ tlist = sorted(log.iteritems(), key=get_tables_key, reverse=True)
+    #~ for table, (dur, freq, reqs) in tlist:
+        #~ sec = dur / 1000000.0
+        #~ per_request = sec / freq
+        #~ text += '%-20s %f %d %f\n' % (table, per_request, freq, sec)
+#~
+    #~ text += '\n'
+#~
+    #~ tables = sorted(log.keys())
+    #~ for table in tables:
+        #~ dur, freq, reqs = log[table]
+        #~ sec = dur / 1000000.0
+        #~ per_request = sec / freq
+        #~ text += '\n%-20s %f %d %f\n' % (table, per_request, freq, sec)
+        #~ rlist = sorted(reqs.iteritems(), key=get_reqs_key, reverse=True)
+        #~ for fields, (dur, freq) in rlist:
+            #~ sec = dur / 1000000.0
+            #~ per_request = sec / freq
+            #~ text += '      %f %d %f %s\n' % (per_request, freq, sec, fields)
+    #~ with open('log.info', 'w') as f:
+        #~ f.write(text.encode('utf-8'))
+#~
+#~
+#~ def log_request(command, duration):
+    #~ global log_counter
+    #~ global log_pid
+    #~ global log
+    #~ global log_save_after
+#~
+    #~ if log_pid == os.getpid():
+        #~ command = command.upper().strip()
+        #~ table_name = find_table_name(command)
+        #~ if table_name:
+            #~ where_fields = find_where_fields(command)
+#~
+            #~ msec = duration.microseconds
+#~
+            #~ table = log.get(table_name)
+            #~ if not table:
+                #~ table = [0, 0, {}]
+                #~ log[table_name] = table
+            #~ table[0] += msec
+            #~ table[1] += 1
+            #~ reqs = table[2]
+#~
+            #~ req = reqs.get(where_fields)
+            #~ if not req:
+                #~ req = [0, 0]
+                #~ reqs[where_fields] = req
+            #~ req[0] += msec
+            #~ req[1] += 1
+#~
+        #~ log_counter += 1
+        #~ if log_counter % log_save_after == 0:
+            #~ save_log(log)
+#~
 
 def execute_sql(db_module, db_database, db_user, db_password,
     db_host, db_port, db_encoding, connection, command,
-    params=None, result_set=None, call_proc=False, commit=True):
+    params=None, result_set=None, call_proc=False, commit=True, ddl=False):
+
+    #~ def execute_command(cursor, command, params=None):
+        #~ global log_save_after
+        #~ print_command = False
+        #~ log_command = False
+        #~ try:
+            #~ if print_command:
+                #~ print ''
+                #~ print command
+                #~ print params
+#~
+            #~ now = datetime.datetime.now()
+#~
+            #~ result = None
+            #~ if params:
+                #~ cursor.execute(command, params)
+            #~ else:
+                #~ cursor.execute(command)
+            #~ if result_set == 'ONE':
+                #~ result = cursor.fetchone()
+            #~ elif result_set == 'ALL':
+                #~ result = cursor.fetchall()
+#~
+            #~ if log_save_after:
+                #~ log_request(command, datetime.datetime.now() - now)
+#~
+            #~ if log_command and command.upper().find('SELECT') == -1:
+                #~ try:
+                    #~ with open("sql_log.txt", "a") as f:
+                        #~ f.write('\n')
+                        #~ f.write(command + '\n')
+                        #~ f.write(json.dumps(params, default=common.json_defaul_handler) + '\n')
+                #~ except:
+                    #~ pass
+#~
+            #~ return result
+        #~ except Exception, x:
+            #~ error = '\nError: %s\n command: %s\n params: %s' % (str(x), command, params)
+            #~ print error
+            #~ if not ddl:
+                #~ raise
+            #~ elif db_module.DDL_ROLLBACK:
+                #~ raise
 
     def execute_command(cursor, command, params=None):
-        global log_save_after
-        print_command = False
-        log_command = False
+        print_command = ddl
         try:
             if print_command:
                 print ''
                 print command
-                print params
+                if params:
+                    print params
+                    messages.append('<p>' + command + '<br>' + \
+                        json.dumps(params, default=common.json_defaul_handler) + '</p>')
+                else:
+                    messages.append('<p>' + command + '</p>')
 
             now = datetime.datetime.now()
 
@@ -843,22 +893,18 @@ def execute_sql(db_module, db_database, db_user, db_password,
             elif result_set == 'ALL':
                 result = cursor.fetchall()
 
-            if log_save_after:
-                log_request(command, datetime.datetime.now() - now)
-
-            if log_command and command.upper().find('SELECT') == -1:
-                try:
-                    with open("sql_log.txt", "a") as f:
-                        f.write('\n')
-                        f.write(command + '\n')
-                        f.write(json.dumps(params, default=common.json_defaul_handler) + '\n')
-                except:
-                    pass
-
             return result
         except Exception, x:
-            print '\nError: %s\n command: %s\n params: %s' % (str(x), command, params)
-            raise
+            error = '\nError: %s\n command: %s\n params: %s' % (str(x), command, params)
+            print error
+            if ddl:
+                arr = str(x).split('\\n')
+                error = '<br>'.join(arr)
+                messages.append('<div class="text-error">%s</div>' % error)
+                if db_module.DDL_ROLLBACK:
+                    raise
+            else:
+                raise
 
     def get_next_id(cursor, sql):
         cursor.execute(sql)
@@ -947,6 +993,8 @@ def execute_sql(db_module, db_database, db_user, db_password,
                     result = execute_command(cursor, command[0], command[1])
             if commit:
                 connection.commit()
+            else:
+                connection.rollback()
             if delta_result:
                 result = delta_result
         except Exception, x:
@@ -956,14 +1004,26 @@ def execute_sql(db_module, db_database, db_user, db_password,
                     connection.close()
                 error = str(x)
                 if not error:
-                    error = 'Execute error'
+                    error = 'SQL execution error'
                 print traceback.format_exc()
             finally:
                 connection = None
-        return connection, (result, error)
+        finally:
+            if ddl:
+                info = ''
+                if messages:
+                    info = "".join(messages)
+                return connection, (result, error, info)
+            else:
+                return connection, (result, error)
 
+    messages = []
     if connection is None:
-        connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
+        try:
+            connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
+        except Exception, x:
+             print str(x)
+             return  None, (None, str(x))
     return execute(connection)
 
 def process_request(parentPID, name, queue, db_type, db_database, db_user, db_password, db_host, db_port, db_encoding, mod_count):
@@ -1196,9 +1256,6 @@ class AbstractServerTask(AbstrTask):
                 setattr(item, func_name, func)
         del code
 
-    def login(self, params):
-        return 1
-
     def add_item(self, item):
         self.items.append(item)
         item.owner = self
@@ -1237,46 +1294,50 @@ class AbstractServerTask(AbstrTask):
             for it in group.items:
                 if it.item_type != 'report':
                     item = it.copy(handlers=False, filters=False, details=False)
-                    self.execute(self.db_module.set_case('DELETE FROM %s' % item.table_name))
-                    item.open(expanded=False, open_empty=True)
-                    params = {'__fields': [], '__filters': [], '__expanded': False, '__offset': 0, '__limit': 0}
-                    sql = item.get_record_count_query(params, db_module)
-                    connection, (result, error) = \
-                    execute_sql(db_module, database, user, password,
-                        host, port, encoding, connection, sql, None, 'ALL')
-                    record_count = result[0][0]
-                    loaded = 0
-                    max_id = 0
-                    if record_count:
-                        while True:
-                            params['__offset'] = loaded
-                            params['__limit'] = limit
-                            sql = item.get_select_statement(params, db_module)
-                            connection, (result, error) = \
-                            execute_sql(db_module, database, user, password,
-                                host, port, encoding, connection, sql, None, 'ALL')
-                            if not error:
-                                for i, r in enumerate(result):
-                                    item.append()
-                                    j = 0
-                                    for field in item.fields:
-                                        if not field.master_field:
-                                            field.value = r[j]
-                                            j += 1
-                                    if item._primary_key_field.value > max_id:
-                                        max_id = item._primary_key_field.value
-                                    item.post()
-                                item.apply()
-                            else:
-                                raise Exception, error
-                            records = len(result)
-                            loaded += records
-                            print 'coping table %s: %d%%' % (item.item_name, int(loaded * 100 / record_count))
-                            if records == 0 or records < limit:
-                                break
-                        if self.db_module.restart_sequence_sql:
-                            sql = self.db_module.restart_sequence_sql(item.table_name, max_id + 1)
-                            self.execute(sql)
+                    if item.table_name and not item.virtual_table:
+                        self.execute(self.db_module.set_case('DELETE FROM %s' % item.table_name))
+                        item.open(expanded=False, open_empty=True)
+                        params = {'__fields': [], '__filters': [], '__expanded': False, '__offset': 0, '__limit': 0}
+                        sql = item.get_record_count_query(params, db_module)
+                        connection, (result, error) = \
+                        execute_sql(db_module, database, user, password,
+                            host, port, encoding, connection, sql, None, 'ALL')
+                        record_count = result[0][0]
+                        loaded = 0
+                        max_id = 0
+                        if record_count:
+                            while True:
+                                params['__offset'] = loaded
+                                params['__limit'] = limit
+                                sql = item.get_select_statement(params, db_module)
+                                connection, (result, error) = \
+                                execute_sql(db_module, database, user, password,
+                                    host, port, encoding, connection, sql, None, 'ALL')
+                                if not error:
+                                    for i, r in enumerate(result):
+                                        item.append()
+                                        j = 0
+                                        for field in item.fields:
+                                            if not field.master_field:
+                                                field.value = r[j]
+                                                j += 1
+                                        if item._primary_key_field.value > max_id:
+                                            max_id = item._primary_key_field.value
+                                        item.post()
+                                    item.apply()
+                                else:
+                                    raise Exception, error
+                                records = len(result)
+                                loaded += records
+                                print 'coping table %s: %d%%' % (item.item_name, int(loaded * 100 / record_count))
+                                if records == 0 or records < limit:
+                                    break
+                            if self.db_module.restart_sequence_sql:
+                                sql = self.db_module.restart_sequence_sql(item.table_name, max_id + 1)
+                                self.execute(sql)
+
+class DebugException(Exception):
+    pass
 
 class Task(AbstractServerTask):
     def __init__(self, app, name, caption, js_filename,
@@ -1295,10 +1356,6 @@ class Task(AbstractServerTask):
         for key, value in self.__dict__.items():
             self.init_dict[key] = value
 
-    def find_user(self, login, password_hash=None):
-        return self.admin.find_user(self.app.admin, login, password_hash)
-
-
 class AdminTask(AbstractServerTask):
     def __init__(self, app, name, caption, js_filename,
         db_type, db_database = '', db_user = '', db_password = '',
@@ -1307,12 +1364,12 @@ class AdminTask(AbstractServerTask):
             db_type, db_database, db_user, db_password, host, port, encoding, 2)
         filepath, filename = os.path.split(__file__)
         self.cur_path = filepath
+        self.users = {}
+        self.roles = None
+        self.edited_docs = []
 
     def create_task(self):
         return adm_server.create_task(self.app)
-
-    def get_roles(self):
-        return adm_server.get_roles(self)
 
     def reload_task(self):
         adm_server.reload_task(self)
@@ -1320,8 +1377,63 @@ class AdminTask(AbstractServerTask):
     def update_events_code(self):
         adm_server.update_events_code(self)
 
-    def logout(self, user_id):
-        adm_server.logout(self, user_id)
+    def login(self, log, psw_hash, is_admin, env):
+        privileges = None
+        if not is_admin and self.app.task and self.app.task.on_login:
+            user_info = self.app.task.on_login(self.app.task, log, psw_hash, env)
+        else:
+            user_info = adm_server.login(self, log, psw_hash, is_admin)
+        user_uuid = None
+        if user_info:
+            for key in self.users.iterkeys():
+                if self.users[key]["user_id"] == user_info["user_id"] and \
+                    self.users[key]["admin"] == user_info["admin"]:
+                    if user_info["admin"]:
+                        adm_server.clear_docs_on_logout(self, user_info)
+                    del self.users[key]
+                    break
+            user_uuid = str(uuid.uuid4())
+            self.users[user_uuid] = user_info
+        return user_uuid, ''
+
+    def logout(self, user_uuid, admin, env):
+        try:
+            user_info = self.users.get(user_uuid)
+            adm_server.clear_docs_on_logout(self, user_info)
+            if user_info:
+                if not admin and self.app.task and self.app.task.on_logout:
+                    self.app.task.on_logout(self.app.task, user_info, env)
+                del self.users[user_uuid]
+        except:
+            pass
+        return None, ''
+
+    def get_user_info(self, user_uuid, admin, env):
+        user_info = self.users.get(user_uuid)
+        if user_info:
+            if not admin or (admin and user_info['admin']):
+                return user_info
+
+    def get_privileges(self, role_id):
+        if self.roles is None:
+            self.roles = adm_server.get_roles(self)
+        return self.roles[role_id]
+
+    def find_privileges(self, user_info, item):
+        if not self.safe_mode or item.master or (item.task == self) or (item == item.task):
+            return {'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': True}
+        else:
+            try:
+                priv_dic = self.get_privileges(user_info['role_id'])[item.ID]
+            except:
+                priv_dic = None
+            if priv_dic:
+                return priv_dic
+            else:
+                return {'can_view': False, 'can_create': False, 'can_edit': False, 'can_delete': False}
+
+    def has_privilege(self, user_info, item, priv_name):
+        return self.find_privileges(user_info, item)[priv_name]
 
 class Group(AbstrGroup):
     def __init__(self, owner, name, caption, view_template=None, js_filename=None, visible=True, item_type_id=0):
@@ -1376,9 +1488,9 @@ class Detail(AbstrDetail, ServerDataset):
         master_rec_id = query['__master_rec_id']
         if type(master_id) == int and type(master_rec_id) == int:
             result = super(Detail, self).where_clause(query, db_module)
-            clause = '"%s"."%s"=%s AND "%s"."%s"=%s' % \
-                (self.table_name.upper(), self._master_id, str(master_id),
-                self.table_name.upper(), self._master_rec_id, str(master_rec_id))
+            clause = '%s."%s"=%s AND %s."%s"=%s' % \
+                (self.table_alias(), self._master_id, str(master_id),
+                self.table_alias(), self._master_rec_id, str(master_rec_id))
             if result:
                 result += ' AND ' + clause
             else:

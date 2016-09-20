@@ -5,6 +5,7 @@ import os
 import json
 import uuid
 import traceback
+import datetime
 from threading import Lock
 import jam
 
@@ -32,13 +33,12 @@ def create_application(from_file):
 
 class App():
     def __init__(self, work_dir):
+        self.started = datetime.datetime.now()
         self.work_dir = work_dir
         self._loading = False
         self._load_lock = Lock()
         self.admin = None
         self.task = None
-        self.users = {}
-        self.roles = None
         self._busy = 0
         self.pid = os.getpid()
         self.task_server_modified = False
@@ -63,67 +63,43 @@ class App():
             Rule('/api', endpoint='api'),
             Rule('/upload', endpoint='upload')
         ])
+        self.admin = self.create_admin()
 
-    def check_admin(self):
-        if self.admin:
-            return True
-        else:
-            result = False
-            if not self._loading:
-                self._loading = True;
-                try:
-                    with self._load_lock:
-                        import adm_server
-                        self.admin = adm_server.create_admin(self)
-                finally:
-                    self._loading = False;
-                result = True
-            return result
+    def create_admin(self):
+        from adm_server import create_admin
+        return create_admin(self)
 
-    def check_task(self):
+    def get_task(self):
         if self.task:
-            return True
+            return self.task
         else:
-            result = False
             if not self._loading:
                 self._loading = True
                 try:
                     with self._load_lock:
-                        if self.admin is None:
-                            import adm_server
-                            self.admin = adm_server.create_admin(self)
                         self.task = self.admin.create_task()
                 finally:
                     self._loading = False
-                result = True
-            return result
-
-    def get_task(self):
-        self.check_task()
-        return self.task
+            return self.task
 
     def __call__(self, environ, start_response):
         return self.wsgi_app(environ, start_response)
 
     def wsgi_app(self, environ, start_response):
-        if self.check_admin():
-            request = Request(environ)
-            adapter = self.url_map.bind_to_environ(request.environ)
-            try:
-                endpoint, values = adapter.match()
-                if endpoint in ['file', 'root_file']:
-                    return self.serve_file(environ, start_response, endpoint, **values)
-                elif endpoint in ['api', 'upload']:
-                    response = getattr(self, 'on_' + endpoint)(request, **values)
-            except HTTPException, e:
-                if peek_path_info(environ) == 'ext':
-                    response = self.on_ext(request)
-                else:
-                    response = e
-            return response(environ, start_response)
-        else:
-            response = Response('The server is loading')
-            return response(environ, start_response)
+        request = Request(environ)
+        adapter = self.url_map.bind_to_environ(request.environ)
+        try:
+            endpoint, values = adapter.match()
+            if endpoint in ['file', 'root_file']:
+                return self.serve_file(environ, start_response, endpoint, **values)
+            elif endpoint in ['api', 'upload']:
+                response = getattr(self, 'on_' + endpoint)(request, **values)
+        except HTTPException, e:
+            if peek_path_info(environ) == 'ext':
+                response = self.on_ext(request)
+            else:
+                response = e
+        return response(environ, start_response)
 
     def serve_himself(self, environ, start_response, file_name):
         response = Response()
@@ -140,15 +116,14 @@ class App():
                 file_name = 'index.html'
                 environ['PATH_INFO'] = environ['PATH_INFO'] + '/index.html'
             if file_name == 'index.html':
-                if self.check_task():
+                if self.get_task():
                     self.check_task_client_modified()
                     return self.serve_himself(environ, start_response, file_name)
                 else:
-                    response = Response('The task is loading')
+                    response = Response('The project is loading or the creation of the project has not been completed yet.')
                     return response(environ, start_response)
             elif file_name == 'admin.html':
                 return self.serve_himself(environ, start_response, file_name)
-#                environ['PATH_INFO'] = os.path.join('jam', file_name)
         try:
             if file_name:
                 base, ext = os.path.splitext(file_name)
@@ -208,20 +183,25 @@ class App():
         if is_admin:
             task = self.admin
         else:
-            task = self.task
+            task = self.get_task()
         if not task:
             return {'status': common.NO_PROJECT, 'data': None}
         elif self.under_maintenance:
             return {'status': common.UNDER_MAINTAINANCE, 'data': None}
         elif method == 'login':
-            return {'status': common.RESPONSE, 'data': self.login(params[0], params[1], is_admin, env)}
+            return {'status': common.RESPONSE, 'data': self.admin.login(params[0], params[1], is_admin, env)}
+        elif method == 'logout':
+            user_info = self.admin.get_user_info(user_uuid, is_admin, env)
+            return self.admin.logout(params, is_admin, env)
         if ext:
             obj = task
         else:
             if self.admin.safe_mode:
-                user_info = self.get_user_info(user_uuid, is_admin, env)
+                user_info = self.admin.get_user_info(user_uuid, is_admin, env)
                 if not user_info:
                     return {'status': common.NOT_LOGGED, 'data': common.NOT_LOGGED}
+            elif not user_uuid is None:
+                return {'status': common.NOT_LOGGED, 'data': common.NOT_LOGGED}
             obj = task
             if task:
                 obj = task.item_by_ID(item_id)
@@ -234,7 +214,7 @@ class App():
                 data = self.get_response(is_admin, env, method, user_info, task_id, obj, params, ext)
         finally:
             self._busy -= 1
-        return {'status': common.RESPONSE, 'data': data, 'version': task.version}
+        return {'status': common.RESPONSE, 'data': data, 'version': task.version, 'server_date': self.started}
 
     def get_response(self, is_admin, env, method, user_info, task_id, item, params, ext):
         if ext:
@@ -243,31 +223,24 @@ class App():
         elif method == 'server_function':
             return self.server_func(item, params[0], params[1], env)
         elif method == 'open':
-            if self.has_privilege(user_info, item, 'can_view'):
+            if self.admin.has_privilege(user_info, item, 'can_view'):
                 return item.select_records(params, user_info, env)
             else:
                 return [], item.task.lang['cant_view'] % item.item_caption
         elif method == 'get_record_count':
             return item.get_record_count(params, env)
         elif method == 'apply_changes':
-            return item.apply_changes(params, self.find_privileges(user_info, item), user_info, env)
+            return item.apply_changes(params, self.admin.find_privileges(user_info, item), user_info, env)
         elif method == 'print_report':
             url = None
             error = None
-            if self.has_privilege(user_info, item, 'can_view'):
+            if self.admin.has_privilege(user_info, item, 'can_view'):
                 url = item.print_report(*params)
             else:
                 error = item.task.lang['cant_view'] % item.item_caption
             return url, error
-        elif method == 'logout':
-            return self.logout(params, is_admin, env)
         elif method == 'init_client':
             return self.init_client(user_info, is_admin)
-
-    def get_privileges(self, role_id):
-        if self.roles is None:
-            self.roles = self.admin.get_roles()
-        return self.roles[role_id]
 
     def server_func(self, obj, func_name, params, env):
         result = None
@@ -299,7 +272,7 @@ class App():
             task = self.task
             self.check_task_server_modified()
         if user_info:
-            priv = self.get_privileges(user_info['role_id'])
+            priv = self.admin.get_privileges(user_info['role_id'])
         else:
             priv = None
         result = {
@@ -307,61 +280,10 @@ class App():
             'settings': self.admin.get_settings(),
             'language': self.admin.lang,
             'user_info': user_info,
-            'privileges': priv
+            'privileges': priv,
+            'demo': jam.common.DEMO
         }
         return result, ''
-
-    def login(self, log, psw_hash, admin, env):
-        privileges = None
-        if not admin and self.task.on_login:
-            user_uuid, user_info = self.task.on_login(self.task, env, admin, log, psw_hash)
-        else:
-            user_id, user_info = self.admin.login(self.admin, log, psw_hash, admin)
-            user_uuid = None
-            if user_id:
-                for key in self.users.iterkeys():
-                    if self.users[key][0] == user_id:
-                        del self.users[key]
-                        break
-                user_uuid = str(uuid.uuid4())
-                self.users[user_uuid] = (user_id, user_info, common.now())
-        return user_uuid, ''
-
-    def get_user_info(self, user_uuid, admin, env):
-        if not admin and self.task.on_get_user_info:
-            return self.task.on_get_user_info(self.task, user_uuid, env)
-        else:
-            user = self.users.get(user_uuid)
-            if user:
-                user_info = user[1]
-                if not admin or (admin and user_info['admin']):
-                    return user_info
-
-    def logout(self, user_uuid, admin, env):
-        if not admin and self.task.on_logout:
-            self.task.on_logout(self.task, user_uuid, env)
-        else:
-            user = self.users.get(user_uuid)
-            if user:
-                self.admin.logout(user[0])
-                del user
-        return None, ''
-
-    def find_privileges(self, user_info, item):
-        if not self.admin.safe_mode or item.master or (item.task == self.admin) or (item == item.task):
-            return {'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': True}
-        else:
-            try:
-                priv_dic = self.get_privileges(user_info['role_id'])[item.ID]
-            except:
-                priv_dic = None
-            if priv_dic:
-                return priv_dic
-            else:
-                return {'can_view': False, 'can_create': False, 'can_edit': False, 'can_delete': False}
-
-    def has_privilege(self, user_info, item, priv_name):
-        return self.find_privileges(user_info, item)[priv_name]
 
     def on_ext(self, request):
         if request.method == 'POST':
@@ -411,7 +333,7 @@ class App():
                 string = ''
                 user_id, task_ID, pos = read_user_info(data)
                 if self.admin.safe_mode:
-                    user_info = self.get_user_info(user_id, task_ID == 0, request.environ)
+                    user_info = self.admin.get_user_info(user_id, task_ID == 0, request.environ)
                     if not user_info:
                         return Response()
                 for s in data[pos:]:

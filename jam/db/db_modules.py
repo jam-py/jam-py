@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-SQLITE, FIREBIRD, POSTGRESQL, MYSQL = range(1, 5)
-DB_TYPE = ('Sqlite', 'FireBird', 'PostgreSQL', 'MySQL')
+SQLITE, FIREBIRD, POSTGRESQL, MYSQL, ORACLE = range(1, 6)
+DB_TYPE = ('Sqlite', 'FireBird', 'PostgreSQL', 'MySQL', 'Oracle')
 
 def get_db_module(db_type):
     db = None
@@ -13,4 +13,6 @@ def get_db_module(db_type):
         import postgres as db
     elif db_type == MYSQL:
         import mysql as db
+    elif db_type == ORACLE:
+        import oracle as db
     return db

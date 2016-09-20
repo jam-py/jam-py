@@ -22,7 +22,8 @@ task_client_events = \
         'on_view_form_keyup': 'item, event',
         'on_view_form_keydown': 'item, event',
         'on_edit_form_keyup': 'item, event',
-        'on_edit_form_keydown': 'item, event'
+        'on_edit_form_keydown': 'item, event',
+        'on_before_print_report': 'report'
     }
 
 group_client_events = \
@@ -83,6 +84,7 @@ detail_client_events = \
         'on_field_changed': 'field, lookup_item',
         'on_field_select_value': 'field, lookup_item',
         'on_before_field_changed': 'field',
+        'on_filters_apply': 'item',
         'on_filters_applied': 'item',
         'on_filter_changed': 'filter',
         'on_filter_select_value': 'field, lookup_item',
@@ -109,9 +111,9 @@ report_client_events = \
 task_server_events = \
     {
         'on_created': 'task',
-        #~ 'on_login': 'task, env, admin, login, password_hash',
+        #~ 'on_login': 'task, login, password_hash, env',
         #~ 'on_get_user_info': 'task, user_uuid, env',
-        #~ 'on_logout': 'task, user_uuid, env',
+        #~ 'on_logout': 'task, user_info, env',
         #~ 'on_ext_request': 'task, request, params, env',
         #~ 'on_request': 'task, user_info, env, request, item, params, ext'
     }

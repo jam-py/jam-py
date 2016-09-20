@@ -170,6 +170,21 @@
             </div>
         </div>
 
+        <div class="sys_privileges-view">
+            <div class="modal-body">
+                <div class="row-fluid">
+                    <div id="title-left" class="span6"></div>
+                    <div id="title-right" class="text-right span6"></div>
+                </div>
+                <div class="view-table">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="unselect-all-btn" class="btn pull-right" type="button"><i class="icon-minus"></i> Unselect all</button>
+                <button id="select-all-btn" class="btn pull-right" type="button"><i class="icon-plus"></i> Select all</button>
+            </div>
+        </div>
+
         <div class="sys_fields_editor-view">
             <div class="modal-body">
                 <div class="view-title"></div>
@@ -237,7 +252,7 @@
             </div>
         </div>
 
-        <div class="journals-edit catalogs-edit tables-edit sys_items-sys_fields-edit">
+        <div class="journals-edit catalogs-edit tables-edit">
             <div class="modal-body">
                 <div class="edit-body">
                 </div>
@@ -248,15 +263,26 @@
             </div>
         </div>
 
+        <div class="sys_items-sys_fields-edit">
+            <div class="modal-body">
+                <div class="edit-body">
+                    <div id="definition" class="field-group">
+                        <legend style="border: 1px black solid; margin-left: 1em; padding: 0.2em 0.8em ">title</legend>
+                    </div>
+                    <div id="lookups" class="field-group">
+                    </div>
+                    <div id="interface" class="field-group">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancel-btn" class="btn pull-right"><i class="icon-remove"></i> Cancel<small class="muted">&nbsp;[Esc]</small></button>
+                <button type="button" id="ok-btn" class="btn pull-right"><i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small></button>
+            </div>
+        </div>
+
         <div class="sys_items-edit sys_lookup_lists-edit">
             <div class="modal-body">
-<!--
-                <div class="row-fluid">
-                    <div class="span2"></div>
-                    <div class="span8 field-container"></div>
-                    <div class="span2"></div>
-                </div>
--->
                 <div class="edit-body row-fluid">
                 </div>
                 <div class="edit-detail">

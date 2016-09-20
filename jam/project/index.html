@@ -39,6 +39,71 @@
 
     <div class="templates" style="display: none">
 
+        <div class="default-view">
+            <div class="modal-body">
+                <div class="view-title">
+                    <div class="row-fluid">
+                        <div id="title-left" class="span8"></div>
+                        <div id="title-right" class="span4"></div>
+                    </div>
+                </div>
+                <div class="view-table">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="delete-btn" class="btn expanded-btn pull-left" type="button"><i class="icon-trash"></i> __$_delete_$__<small class="muted">&nbsp;[Ctrl+Del]</small></button>
+                <button id="new-btn" class="btn expanded-btn pull-right" type="button"><i class="icon-plus"></i> __$_new_$__<small class="muted">&nbsp;[Ctrl+Ins]</small></button>
+                <button id="edit-btn" class="btn expanded-btn pull-right" type="button"><i class="icon-edit"></i> __$_edit_$__</button>
+                <div id="report-btn" class="btn-group dropup pull-right">
+                    <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+                        <i class="icon-print"></i> Reports
+                        <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu bottom-up">
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="default-edit default-details-edit">
+            <div class="modal-body">
+                <div class="edit-body">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancel-btn" class="btn expanded-btn pull-right"><i class="icon-remove"></i> __$_cancel_$__</button>
+                <button type="button" id="ok-btn" class="btn expanded-btn pull-right"><i class="icon-ok"></i> __$_ok_$__<small class="muted">&nbsp;[Ctrl+Enter]</small></button>
+            </div>
+        </div>
+
+        <div class="default-param">
+            <div class="modal-body">
+                <div class="edit-body">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <select id='extension' class="pull-left" style="width: 60px">
+                    <option>pdf</option>
+                    <option>ods</option>
+                    <option>xls</option>
+                    <option>html</option>
+                </select>
+                <button type="button" id="cancel-btn" class="btn expanded-btn pull-right"><i class="icon-remove"></i> __$_close_$__</button>
+                <button type="button" id="ok-btn" class="btn expanded-btn pull-right"><i class="icon-print"></i> __$_print_$__</button>
+            </div>
+        </div>
+
+        <div class="default-filter">
+            <div class="modal-body">
+                <div class="edit-body">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancel-btn" class="btn expanded-btn pull-right"><i class="icon-remove"></i> __$_close_$__</button>
+                <button type="button" id="ok-btn" class="btn expanded-btn pull-right"><i class="icon-filter"></i> __$_apply_$__</button>
+            </div>
+        </div>
+
         <div class="catalogs-view">
             <div class="modal-body">
                 <div class="view-title">
@@ -98,45 +163,6 @@
             </div>
         </div>
 
-        <div class="journals-edit catalogs-edit">
-            <div class="modal-body">
-                <div class="edit-body">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" id="cancel-btn" class="btn expanded-btn pull-right"><i class="icon-remove"></i> __$_cancel_$__</button>
-                <button type="button" id="ok-btn" class="btn expanded-btn pull-right"><i class="icon-ok"></i> __$_ok_$__<small class="muted">&nbsp;[Ctrl+Enter]</small></button>
-            </div>
-        </div>
-
-        <div class="reports-param">
-            <div class="modal-body">
-                <div class="edit-body">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <select id='extension' class="pull-left" style="width: 60px">
-                    <option>pdf</option>
-                    <option>ods</option>
-                    <option>xls</option>
-                    <option>html</option>
-                </select>
-                <button type="button" id="cancel-btn" class="btn expanded-btn pull-right"><i class="icon-remove"></i> __$_close_$__</button>
-                <button type="button" id="ok-btn" class="btn expanded-btn pull-right"><i class="icon-print"></i> __$_print_$__</button>
-            </div>
-        </div>
-
-        <div class="journals-filter">
-            <div class="modal-body">
-                <div class="edit-body">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" id="cancel-btn" class="btn expanded-btn pull-right"><i class="icon-remove"></i> __$_close_$__</button>
-                <button type="button" id="ok-btn" class="btn expanded-btn pull-right"><i class="icon-filter"></i> __$_apply_$__</button>
-            </div>
-        </div>
-
         <form id="login-form" target="dummy" class="form-horizontal" data-caption="__$_log_in_$__" style="margin: 10px 0 0; padding: 0px">
             <div class="control-group">
                 <label class="control-label" for="inputLoging">__$_login_$__</label>
@@ -165,7 +191,6 @@
     <script src="/jam/js/md5.js"></script>
     <script src="/jam/js/ace/ace.js" type="text/javascript" charset="utf-8"></script>
     <script src="/jam/js/jam.js"></script>
-    <script src="/js/events.js"></script>
 
     <script>
     $(document).ready(function(){

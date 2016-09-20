@@ -157,18 +157,22 @@ class DBField(object):
         return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
 
     def convert_date(self, value):
-        if value.find(' '):
-            value = value.split(' ')[0]
-        return datetime.datetime.strptime(value, '%Y-%m-%d').date()
+        try:
+            if value.find(' '):
+                value = value.split(' ')[0]
+            return datetime.datetime.strptime(value, '%Y-%m-%d').date()
+        except:
+            return self.convert_date_time(value).date()
+
 
     def get_raw_value(self):
         try:
             value = self.get_data()
             if self.data_type == common.DATE:
-                if isinstance(value, unicode):
+                if type(value) in [str, unicode]:
                     value = self.convert_date(value)
             elif self.data_type == common.DATETIME:
-                if isinstance(value, unicode):
+                if type(value) in [str, unicode]:
                     value = self.convert_date_time(value)
             return value
         except Exception, e:
@@ -866,26 +870,27 @@ class ChangeLog(object):
                 log_id = change['log_id']
                 rec_id = change['rec_id']
                 details = change['details']
-                record_log = self.logs[log_id]
-                record = record_log['record']
-                record_details = record_log['details']
-                for detail in details:
-                    ID = detail['ID']
-                    detail_item = self.item.detail_by_ID(int(ID))
-                    item_detail = record_details.get(str(ID))
-                    if item_detail:
-                        detail_item.change_log.logs = item_detail['logs']
-                        detail_item.change_log.update(detail, rec_id)
-                if rec_id:
-                    if not record[self.item._primary_key_field.bind_index]:
-                        record[self.item._primary_key_field.bind_index] = rec_id
-                if master_rec_id:
-                    if not record[self.item._master_rec_id_field.bind_index]:
-                        record[self.item._master_rec_id_field.bind_index] = master_rec_id
-                info = self.item.get_rec_info(record=record)
-                info[common.REC_STATUS] = common.RECORD_UNCHANGED
-                info[common.REC_CHANGE_ID] = common.RECORD_UNCHANGED
-                del self.logs[log_id]
+                record_log = self.logs.get(log_id)
+                if record_log:
+                    record = record_log['record']
+                    record_details = record_log['details']
+                    for detail in details:
+                        ID = detail['ID']
+                        detail_item = self.item.detail_by_ID(int(ID))
+                        item_detail = record_details.get(str(ID))
+                        if item_detail:
+                            detail_item.change_log.logs = item_detail['logs']
+                            detail_item.change_log.update(detail, rec_id)
+                    if rec_id:
+                        if not record[self.item._primary_key_field.bind_index]:
+                            record[self.item._primary_key_field.bind_index] = rec_id
+                    if master_rec_id:
+                        if not record[self.item._master_rec_id_field.bind_index]:
+                            record[self.item._master_rec_id_field.bind_index] = master_rec_id
+                    info = self.item.get_rec_info(record=record)
+                    info[common.REC_STATUS] = common.RECORD_UNCHANGED
+                    info[common.REC_CHANGE_ID] = common.RECORD_UNCHANGED
+                    del self.logs[log_id]
 
 
 class AbstractDataSet(object):
@@ -2085,7 +2090,7 @@ class MasterDetailDataset(MasterDataSet):
     def is_modified(self):
         return super(MasterDetailDataset, self).is_modified()
 
-    modified = property (is_modified, _set_modified)
+#    modified = property (is_modified, _set_modified)
 
     def _get_read_only(self):
         if self.master and self.parent_read_only:

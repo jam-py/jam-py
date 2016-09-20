@@ -113,6 +113,7 @@ simplified version of this event:
             item.init_table(item, table_options);
         }
         item.create_table(item.view_form.find(".view-table"), table_options);
+        item.open(function() {})
     }
     
 This code is executed for every item whose 
@@ -145,7 +146,11 @@ This event performs the following:
   method of the item to creates the html table in the div with class "view-table". 
   But before doing so, the event checks if the client module of the item has 
   init_table function, if the init_table function is defined, calls it, passing
-  table_options as a parameter. 
+  table_options as a parameter.
+  
+* Executes the 
+  :doc:`open </refs/client/item/m_open>`
+  method that send asyncronious request to the server to get the dataset.
 
 After the *on_view_form_created* of the task is executed, the application 
 triggers the *on_view_form_created* event of the group that owns the item. In the 

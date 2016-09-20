@@ -38,15 +38,6 @@
             this.stack = [];
             this.backdropCount = 0;
 
-            //~ $(document).on('focusin.modal', function (e) {
-                //~ var active_modal;
-                //~ if (that.stack.length) {
-                    //~ active_modal = that.stack[that.stack.length - 1];
-                //~ }
-                //~ if (active_modal) {
-                //~ }
-            //~ })
-
             if (this.options.resize) {
                 var resizeTimeout;
                 $(window).on('resize.modal', function(){
@@ -64,21 +55,23 @@
             $(element).modal($.extend({ manager: this }, options));
         },
 
+        topModal: function() {
+            var i,
+                result;
+            for (var i = 0; i < this.stack.length; i++){
+                if (this.stack[i].isShown) result = this.stack[i];
+            }
+            return result;
+        },
+
         appendModal: function (modal) {
             var that = this,
                 i,
-                topModal;
-            if (this.hasOpenModal()) {
-                for (var i = 0; i < this.stack.length; i++){
-                    if (this.stack[i].isShown) topModal = this.stack[i];
-                }
-                if (topModal) {
-                    topModal.focusedElement = $(':focus').get(0);
-                }
+                topModal = this.topModal();
+            if (!topModal) {
+                this.activeElement = $(':focus').get(0);
             }
-            else {
-                this.focusedElement = $(':focus').get(0);
-            }
+
             modal.zPos = this.getMaxzPos() + 1;
             this.stack.push(modal);
 
@@ -103,8 +96,6 @@
 
                     that.backdrop(modal, function () {
 
-//                        modal.layout();
-
                         modal.$element.show();
 
                         if (transition) {
@@ -112,8 +103,6 @@
                             modal.$element[0].offsetWidth;
                             //modal.$element.one($.support.transition.end, function () { modal.$element[0].style.display = 'block' });
                         }
-
-//                      modal.layout();
 
                         modal.$element
                             .addClass('in')
@@ -188,16 +177,10 @@
                 if (this.stack[i].isShown) topModal = this.stack[i];
             }
             if (topModal) {
-                if (topModal.focusedElement) {
-                    $(topModal.focusedElement).focus();
-                }
-                else
-                {
-                    topModal.focus();
-                }
+                topModal.restoreFocus();
             }
             else {
-                $(this.focusedElement).focus();
+                $(this.activeElement).focus();
             }
         },
 
@@ -413,6 +396,21 @@
             } else if (callback) {
                 callback(this.isLoading);
             }
+        },
+
+        elzIndex: function(el) {
+            var result = 0,
+                parent;
+            if (el && el.parentNode) {
+                parent = el.parentNode;
+                while (parent) {
+                    if (parent.className && parent.className === 'modal-scrollable') {
+                        result = $(parent).css('z-index');
+                    }
+                    parent = parent.parentNode;
+                }
+            }
+            return result;
         }
     };
 
@@ -455,7 +453,6 @@
         }
     }
 
-
     /* MODAL MANAGER PLUGIN DEFINITION
     * ======================= */
 
@@ -476,5 +473,23 @@
     };
 
     $.fn.modalmanager.Constructor = ModalManager
+
+    var manager = $('body').data('modalmanager');
+
+    if (!manager) {
+        manager = $('body').modalmanager().data('modalmanager');
+    }
+
+    $(window).on('keydown.modalmanager keyup.modalmanager keypress.modalmanager', function(e) {
+        var topModal = manager.topModal();
+        if (topModal && e.target) {
+            if (manager.elzIndex(e.target) < topModal.zIndex) {
+                e.stopImmediatePropagation();
+                e.stopPropagation();
+                e.preventDefault();
+                topModal.restoreFocus();
+            }
+        }
+    });
 
 }(jQuery);

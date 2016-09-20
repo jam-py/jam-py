@@ -10,6 +10,7 @@ Creating a project
 
     $ jam-project.py
 
+
 3. The following files and folders will be created in the directory::
 
     /
@@ -23,7 +24,9 @@ Creating a project
         server.py
         index.html
 
+
 4. To start Jam.py web server run **server.py** script.
+
 
 .. code-block:: console
 
@@ -40,6 +43,7 @@ Creating a project
     By default, the port is 8080. If you will specify another port, you need to 
     use it in a browser in the next steps.
 
+
 5. Open a Web browser and go to “/admin.html” on your local domain – e.g., 
 http://127.0.0.1:8080/admin.html. You should see the select language dialog. 
 
@@ -47,6 +51,7 @@ http://127.0.0.1:8080/admin.html. You should see the select language dialog.
 .. code-block:: console
 
     127.0.0.1:8080/admin.html
+    
     
 6. In the dialog that will appear, select the language and press OK button.
 

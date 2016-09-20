@@ -33,7 +33,7 @@ will print::
 
 Tables have two 
 :doc:`common fields <common_fields>` -
-``owner_id`` and ``owner_rec_id``, that are used to store information about the 
+``master_id`` and ``master_rec_id``, that are used to store information about the 
 ``ID`` (each item have its own unique ID) and the value of ``id`` field of the 
 record of its master. This way each table can be linked to several items. As well
 as each item can have several details. To get access to details of an item use

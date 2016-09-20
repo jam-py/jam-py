@@ -16,15 +16,13 @@ Description
 Specifies the type of the item.
 
 Use the type attribute to get the type of the item. It can have one of the 
-following values 
+following values: 
 
 * “task”, 
-* “catalogs”, 
-* “journals”, 
+* “items”, 
 * “tables”, 
 * “reports”, 
-* “catalog”, 
-* “journal”, 
+* “item”, 
 * “table”, 
 * “report”, 
 * “detail”

@@ -35,7 +35,7 @@ The most common server events are:
 
 .. note::
     Please do always remember that events triggered by server methods can be 
-    executed in parallel threads. Do be very carefull when modifying the 
+    executed in parallel threads or processes. Do be very carefull when modifying the 
     attributes of the items of the tasks tree. 
     
     You can use the
