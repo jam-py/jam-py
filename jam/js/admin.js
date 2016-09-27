@@ -112,28 +112,28 @@ function Events0() { // admin
 	
 			task.buttons_info = {
 				divider: {},
-				project_params:	{handler: set_project_params, short_cut: 'F2', key_code: 113},
-				project_locale:	{handler: set_locale_params, short_cut: 'F3', key_code: 114},
-				db:				{handler: edit_database, short_cut: 'F4', key_code: 115},
+				project_params:	{handler: set_project_params, short_cut: 'F2', key_code: 113, editor: true},
+				project_locale:	{handler: set_locale_params, short_cut: 'F3', key_code: 114, editor: true},
+				db:				{handler: edit_database, short_cut: 'F4', key_code: 115, editor: true},
 				'export':		  {handler: export_task, short_cut: 'Ctrl-E', key_code: 69, key_ctrl: true},
 				'import':		  {handler: import_task, short_cut: 'Ctrl-I', key_code: 73, key_ctrl: true},
 				find:			  {handler: find_in_task, short_cut: 'Alt-F', key_code: 70, key_alt: true},
 				print:			 {handler: print_code, short_cut: 'Shift-P', key_code: 80, key_shift: true},
-				client_module:	 {handler: task.sys_items.edit_client, item: task.sys_items, short_cut: 'F8', key_code: 119},
-				server_module:	 {handler: task.sys_items.edit_server, item: task.sys_items, short_cut: 'F9', key_code: 120},
-				'index.html':	  {handler: task.sys_items.edit_index_html, item: task.sys_items, short_cut: 'F10', key_code: 121},
-				'project.css':	 {handler: task.sys_items.edit_project_css, item: task.sys_items, short_cut: 'F11', key_code: 122},
-				'Lookup lists':	  {handler: show_lookup_lists},
-				viewing:		   {handler: task.sys_items.view_setup, item: task.sys_items},
-				editing:		   {handler: task.sys_items.edit_setup, item: task.sys_items},
-				filters:		   {handler: task.sys_items.filters_setup, item: task.sys_items},
-				details:		   {handler: task.sys_items.details_setup, item: task.sys_items},
-				order:			 {handler: task.sys_items.order_setup, item: task.sys_items},
-				indices:		   {handler: task.sys_items.indices_setup, item: task.sys_items},
-				foreign_keys:	  {handler: task.sys_items.foreign_keys_setup, item: task.sys_items},
-				reports:		   {handler: task.sys_items.reports_setup, item: task.sys_items},
-				report_params:	 {handler: task.sys_items.report_params_setup, item: task.sys_items},
-				privileges:		{handler: task.sys_items.privileges_setup, item: task.sys_items}
+				client_module:	 {handler: task.sys_items.edit_client, item: task.sys_items, short_cut: 'F8', key_code: 119, editor: true},
+				server_module:	 {handler: task.sys_items.edit_server, item: task.sys_items, short_cut: 'F9', key_code: 120, editor: true},
+				'index.html':	  {handler: task.sys_items.edit_index_html, item: task.sys_items, short_cut: 'F10', key_code: 121, editor: true},
+				'project.css':	 {handler: task.sys_items.edit_project_css, item: task.sys_items, short_cut: 'F11', key_code: 122, editor: true},
+				'Lookup lists':	{handler: show_lookup_lists, editor: true},
+				viewing:		   {handler: task.sys_items.view_setup, item: task.sys_items, editor: true},
+				editing:		   {handler: task.sys_items.edit_setup, item: task.sys_items, editor: true},
+				filters:		   {handler: task.sys_items.filters_setup, item: task.sys_items, editor: true},
+				details:		   {handler: task.sys_items.details_setup, item: task.sys_items, editor: true},
+				order:			 {handler: task.sys_items.order_setup, item: task.sys_items, editor: true},
+				indices:		   {handler: task.sys_items.indices_setup, item: task.sys_items, editor: true},
+				foreign_keys:	  {handler: task.sys_items.foreign_keys_setup, item: task.sys_items, editor: true},
+				reports:		   {handler: task.sys_items.reports_setup, item: task.sys_items, editor: true},
+				report_params:	 {handler: task.sys_items.report_params_setup, item: task.sys_items, editor: true},
+				privileges:		{handler: task.sys_items.privileges_setup, item: task.sys_items, editor: true}
 			};
 	
 			$("#title").html(task.language.admin);
@@ -175,6 +175,9 @@ function Events0() { // admin
 				if (e.which === 116) {
 					task.editing_finished();
 				}
+	//			if (e.which === 118) {
+	//				task.sys_lang.view()
+	//			}
 			});
 	
 			window.onbeforeunload = function(event) {
@@ -185,17 +188,42 @@ function Events0() { // admin
 		}
 	}
 	
-	function add_button(task, caption, handler, item, icon, short_cut, key_code, key_ctrl, key_shift, key_alt) {
+	function add_button(task, caption, handler, item, icon, short_cut, key_code, key_ctrl, key_shift, key_alt, editor) {
 	
 		function clicked(e) {
+			var doc,
+				cur_doc,
+				it,
+				item_id;
 			e.preventDefault();
 			e.stopImmediatePropagation();
 			e.stopPropagation();
 			if (item) {
-				handler.call(item, item, task.language[caption]);
+				it = item,
+				item_id = item.id.value;
 			}
 			else {
-				handler.call(task, task, task.language[caption]);
+				it = task;
+				item_id = 0;
+			}
+			if (editor) {
+				doc = [it.ID, item_id, caption, task.user_info];
+				cur_doc = task.server('check_doc_edited', doc)
+				if (cur_doc) {
+					task.question(task.doc_editing_message(cur_doc), function() {
+						task.edited_doc = doc
+						handler.call(it, it, task.language[caption]);
+						task.server('set_edited', doc);
+					});
+				}
+				else {
+					task.edited_doc = doc
+					handler.call(it, it, task.language[caption]);
+					task.server('set_edited', doc);
+				}
+			}
+			else {
+				handler.call(it, it, task.language[caption]);
 			}
 		}
 	
@@ -253,7 +281,7 @@ function Events0() { // admin
 			else {
 				button = task.buttons_info[button_id];
 				add_button(task, button_id, button.handler, button.item, button.icon, button.short_cut,
-					button.key_code, button.key_ctrl, button.key_shift, button.key_alt);
+					button.key_code, button.key_ctrl, button.key_shift, button.key_alt, button.editor);
 			}
 		}
 	}
@@ -316,24 +344,14 @@ function Events0() { // admin
 				task_version = res[2];
 			task.task_name = res[0];
 			if (task.server_started && task.server_started !== res[3]) {
-				task.question('Server has been restarted. Reload Adminstrator?',
-					function() {
+				if (task.edited_doc) {
+					if (task.server('check_doc_edited', task.edited_doc)) {
 						location.reload();
-					},
-					function() {
-						var doc;
-						if (task.edited_doc) {
-							doc = task.edited_doc.slice();
-							if (doc[0] > 0) {
-								doc[0] = task.item_by_ID(doc[0])
-							}
-							if (!check_doc_edited.apply(task, doc)) {
-								task.warning(task.doc_editing_message(doc) + ' Administrator will be reloaded.',
-									function() {location.reload();});
-							}
-						}
 					}
-				);
+					else {
+						task.server('set_edited', task.edited_doc);
+					}
+				}
 			}
 			task.server_started = res[3];
 			task.cur_task_info = '<h4>' + task.language.admin + ' ' + '<span class="editor-title">' +
@@ -357,7 +375,8 @@ function Events0() { // admin
 			table_height,
 			options;
 	
-		if (item.item_name === 'sys_fields_editor' || item.item_name === 'sys_code_editor') {
+		if (item.item_name === 'sys_fields_editor' || item.item_name === 'sys_code_editor' ||
+			item.item_name === 'sys_lang') {
 			return
 		}
 		item.paginate = false;
@@ -515,41 +534,35 @@ function Events0() { // admin
 	}
 	
 	function set_project_params(task, caption) {
-		if (task.check_doc_edited(task.sys_params, 0, 'project_params', true)) {
-			open_sys_params(task);
-			task.sys_params.params = true;
-			task.sys_params.edit_options.fields = ['f_safe_mode', 'f_debugging', 'f_con_pool_size', 'f_mp_pool',
-				'f_persist_con', 'f_compressed_js', 'f_single_file_js', 'f_dynamic_js', 'f_version'];
-			task.sys_params.edit_options.title = caption;
-			task.sys_params.edit_record();
-		}
+		open_sys_params(task);
+		task.sys_params.params = true;
+		task.sys_params.edit_options.fields = ['f_safe_mode', 'f_debugging', 'f_con_pool_size', 'f_mp_pool',
+			'f_persist_con', 'f_compressed_js', 'f_single_file_js', 'f_dynamic_js', 'f_version'];
+		task.sys_params.edit_options.title = caption;
+		task.sys_params.edit_record();
 	}
 	
 	function set_locale_params(task, caption) {
-		if (task.check_doc_edited(task.sys_params, 0, 'project_locale', true)) {
-			open_sys_params(task);
-			task.sys_params.params = false;
-			task.sys_params.edit_options.fields = ['f_decimal_point', 'f_mon_decimal_point', 'f_mon_thousands_sep',
-				'f_currency_symbol', 'f_frac_digits', 'f_p_cs_precedes', 'f_n_cs_precedes', 'f_p_sep_by_space',
-				'f_n_sep_by_space', 'f_positive_sign', 'f_negative_sign',
-				'f_p_sign_posn', 'f_n_sign_posn', 'f_d_fmt', 'f_d_t_fmt'];
-			task.sys_params.edit_options.title = caption;
-			task.sys_params.edit_record();
-		}
+		open_sys_params(task);
+		task.sys_params.params = false;
+		task.sys_params.edit_options.fields = ['f_decimal_point', 'f_mon_decimal_point', 'f_mon_thousands_sep',
+			'f_currency_symbol', 'f_frac_digits', 'f_p_cs_precedes', 'f_n_cs_precedes', 'f_p_sep_by_space',
+			'f_n_sep_by_space', 'f_positive_sign', 'f_negative_sign',
+			'f_p_sign_posn', 'f_n_sign_posn', 'f_d_fmt', 'f_d_t_fmt'];
+		task.sys_params.edit_options.title = caption;
+		task.sys_params.edit_record();
 	}
 	
 	function edit_database(task, caption) {
 		var fields = ['f_manual_update', 'f_db_type', 'f_alias', 'f_login', 'f_password',
 			'f_host', 'f_port', 'f_encoding']
-		if (task.check_doc_edited(task.sys_tasks, 0, 'db', true)) {
-			task.sys_tasks.open()
-			task.sys_tasks.on_field_changed(task.sys_tasks.f_db_type);
-			task.sys_tasks.edit_options.fields = fields;
-			task.sys_tasks.f_name.required = false;
-			task.sys_tasks.f_item_name.required = false;
-			task.sys_tasks.edit_options.title = caption;
-			task.sys_tasks.edit_record();
-		}
+		task.sys_tasks.open()
+		task.sys_tasks.on_field_changed(task.sys_tasks.f_db_type);
+		task.sys_tasks.edit_options.fields = fields;
+		task.sys_tasks.f_name.required = false;
+		task.sys_tasks.f_item_name.required = false;
+		task.sys_tasks.edit_options.title = caption;
+		task.sys_tasks.edit_record();
 	}
 	
 	function show_lookup_lists(task) {
@@ -775,30 +788,9 @@ function Events0() { // admin
 		}
 	}
 	
-	function check_doc_edited(item, item_id, doc_type, edit_form) {
-		var task = this,
-			doc = [item.ID, item_id, doc_type, task.user_info];
-		if (task.server('check_doc_edited', doc)) {
-			task.warning(task.doc_editing_message(doc));
-		}
-		else {
-			task.edited_doc = doc;
-			if ($.type(item) === 'object') {
-				item.edited_doc_info = {'doc_type': doc_type, 'edit_form': edit_form};
-			}
-			return true;
-		}
-	}
-	
 	function editing_finished(item) {
 		if (this.edited_doc) {
 			this.server('clear_edited', this.edited_doc, function() {});
-			if (!item) {
-				item = this.item_by_ID(this.edited_doc[0])
-			}
-			if (item) {
-				item.edited_doc_info = undefined;
-			}
 			this.edited_doc = undefined;
 			$("title").html(task.language.admin);
 		}
@@ -864,7 +856,6 @@ function Events0() { // admin
 	this.update_db_manual_mode = update_db_manual_mode;
 	this.on_view_form_keydown = on_view_form_keydown;
 	this.on_edit_form_keydown = on_edit_form_keydown;
-	this.check_doc_edited = check_doc_edited;
 	this.editing_finished = editing_finished;
 	this.doc_editing_message = doc_editing_message;
 }
@@ -1080,9 +1071,21 @@ function Events3() { // admin.catalogs.sys_items
 	}
 	
 	function edit_item(item) {
-		if (item.task.check_doc_edited(item, item.id.value, 'Item', true)) {
-			item.edit_record();
+		var doc = [item.ID, item.id.value, 'item_editor', item.task.user_info],
+			cur_doc = task.server('check_doc_edited', doc);
+		if (cur_doc) {
+			item.task.question(item.task.doc_editing_message(cur_doc), function() {
+				item.task.edited_doc = doc
+				item.edit_record();
+				item.task.server('set_edited', doc);
+			});
 		}
+		else {
+			item.task.edited_doc = doc
+			item.edit_record();
+			item.task.server('set_edited', doc);
+		}
+	
 	}
 	
 	function init_view_table(item, options) {
@@ -1246,6 +1249,10 @@ function Events3() { // admin.catalogs.sys_items
 		else {
 			item.edit_form.find('h4.modal-title').html(caption + ' <span class="editor-title">' + item.f_item_name.value + '</span>');
 		}
+	}
+	
+	function on_edit_form_closed(item) {
+		item.task.editing_finished();
 	}
 	
 	function update_sys_fields_read_only(item, value) {
@@ -1673,35 +1680,29 @@ function Events3() { // admin.catalogs.sys_items
 	}
 	
 	function filters_setup(item) {
-		if (task.check_doc_edited(item.task.sys_filters, item.id.value, 'filters')) {
-			item.task.sys_filters.filters.owner_rec_id.value = item.id.value;
-			item.task.sys_filters.open();
-			item.task.sys_filters.set_view_fields(['f_name', 'f_filter_name', 'f_type', 'f_field', 'f_visible']);
-			item.task.sys_filters.set_edit_fields(['f_field', 'f_name', 'f_filter_name', 'f_type', 'f_placeholder',
-				'f_help', 'f_visible']);
-			item.task.sys_filters.view_options.title = 'Filters <span class="editor-title">' + item.f_item_name.value + '</span>';
-			item.task.sys_filters.view();
-		}
+		item.task.sys_filters.filters.owner_rec_id.value = item.id.value;
+		item.task.sys_filters.open();
+		item.task.sys_filters.set_view_fields(['f_name', 'f_filter_name', 'f_type', 'f_field', 'f_visible']);
+		item.task.sys_filters.set_edit_fields(['f_field', 'f_name', 'f_filter_name', 'f_type', 'f_placeholder',
+			'f_help', 'f_visible']);
+		item.task.sys_filters.view_options.title = 'Filters <span class="editor-title">' + item.f_item_name.value + '</span>';
+		item.task.sys_filters.view();
 	}
 	
 	function indices_setup(item) {
-		if (task.check_doc_edited(item.task.sys_indices, item.id.value, 'indices')) {
-			item.task.sys_indices.filters.owner_rec_id.value = item.id.value;
-			item.task.sys_indices.filters.foreign_index.value = false;
-			item.task.sys_indices.open();
-			item.task.sys_indices.view_options.title = 'Indices <span class="editor-title">' + item.f_item_name.value + '</span>';
-			item.task.sys_indices.view();
-		}
+		item.task.sys_indices.filters.owner_rec_id.value = item.id.value;
+		item.task.sys_indices.filters.foreign_index.value = false;
+		item.task.sys_indices.open();
+		item.task.sys_indices.view_options.title = 'Indices <span class="editor-title">' + item.f_item_name.value + '</span>';
+		item.task.sys_indices.view();
 	}
 	
 	function foreign_keys_setup(item) {
-		if (task.check_doc_edited(item.task.sys_indices, item.id.value, 'foreign_keys')) {
-			item.task.sys_indices.filters.owner_rec_id.value = item.id.value;
-			item.task.sys_indices.filters.foreign_index.value = true;
-			item.task.sys_indices.open();
-			item.task.sys_indices.view_options.title = 'Foreign keys <span class="editor-title">' + item.f_item_name.value + '</span>';
-			item.task.sys_indices.view();
-		}
+		item.task.sys_indices.filters.owner_rec_id.value = item.id.value;
+		item.task.sys_indices.filters.foreign_index.value = true;
+		item.task.sys_indices.open();
+		item.task.sys_indices.view_options.title = 'Foreign keys <span class="editor-title">' + item.f_item_name.value + '</span>';
+		item.task.sys_indices.view();
 	}
 	
 	function report_params_setup(item) {
@@ -1830,6 +1831,7 @@ function Events3() { // admin.catalogs.sys_items
 	this.on_view_form_created = on_view_form_created;
 	this.on_edit_form_created = on_edit_form_created;
 	this.on_edit_form_shown = on_edit_form_shown;
+	this.on_edit_form_closed = on_edit_form_closed;
 	this.update_sys_fields_read_only = update_sys_fields_read_only;
 	this.on_after_append = on_after_append;
 	this.on_field_validate = on_field_validate;
@@ -2103,12 +2105,17 @@ function Events9() { // admin.catalogs.sys_tasks
 			}
 		}
 	}
+	
+	function on_edit_form_closed(item) {
+		item.task.editing_finished();
+	}
 	this.on_after_edit = on_after_edit;
 	this.on_after_apply = on_after_apply;
 	this.on_field_changed = on_field_changed;
 	this.on_before_post = on_before_post;
 	this.on_after_post = on_after_post;
 	this.on_field_validate = on_field_validate;
+	this.on_edit_form_closed = on_edit_form_closed;
 }
 
 task.events.events9 = new Events9();
@@ -2126,14 +2133,8 @@ function Events14() { // admin.catalogs.sys_code_editor
 			editor.doc_type = 'server_module';
 		}
 		editor.item_info = item.task.server('server_item_info', [item.task.sys_items.id.value,
-			editor.is_server, editor.doc_type, item.task.user_info]);
-		if (editor.item_info.is_edited) {
-			item.warning(item.task.doc_editing_message(editor.item_info.doc));
-		}
-		else {
-			task.edited_doc = editor.item_info.doc
-			editor.view();
-		}
+			editor.is_server, editor.doc_type]);
+		editor.view();
 	}
 	
 	function file_editor(item, file_name) {
@@ -2142,14 +2143,8 @@ function Events14() { // admin.catalogs.sys_code_editor
 		editor.item = item;
 		editor.file_name = file_name;
 		editor.doc_type = file_name;
-		editor.item_info = item.task.server('server_get_file_info', [item.task.sys_items.id.value, file_name, item.task.user_info]);
-		if (editor.item_info.is_edited) {
-			item.warning(item.task.doc_editing_message(editor.item_info.doc));
-		}
-		else {
-			task.edited_doc = editor.item_info.doc
-			editor.view();
-		}
+		editor.item_info = item.task.server('server_get_file_info', [item.task.sys_items.id.value, file_name]);
+		editor.view();
 	}
 	
 	function on_view_form_created(item) {
@@ -2295,10 +2290,11 @@ function Events14() { // admin.catalogs.sys_code_editor
 			item.editor.destroy();
 			result = true;
 		}
-		if (result) {
-			item.task.editing_finished()
-		}
 		return result;
+	}
+	
+	function on_view_form_closed(item) {
+		item.task.editing_finished();
 	}
 	
 	function save_to_field(item) {
@@ -2547,6 +2543,7 @@ function Events14() { // admin.catalogs.sys_code_editor
 	this.get_modified = get_modified;
 	this.mark_clean = mark_clean;
 	this.on_view_form_close_query = on_view_form_close_query;
+	this.on_view_form_closed = on_view_form_closed;
 	this.save_to_field = save_to_field;
 	this.save_to_file = save_to_file;
 	this.save_edit = save_edit;
@@ -2809,6 +2806,10 @@ function Events15() { // admin.catalogs.sys_fields_editor
 		}
 	}
 	
+	function on_view_form_closed(item) {
+		item.task.editing_finished();
+	}
+	
 	function item_cancel(item) {
 		item.close_view_form();
 	}
@@ -2828,6 +2829,7 @@ function Events15() { // admin.catalogs.sys_fields_editor
 	this.move_right = move_right;
 	this.save_result = save_result;
 	this.on_view_form_close_query = on_view_form_close_query;
+	this.on_view_form_closed = on_view_form_closed;
 	this.item_cancel = item_cancel;
 	this.on_view_form_keydown = on_view_form_keydown;
 }
@@ -2873,11 +2875,16 @@ function Events11() { // admin.catalogs.sys_params
 	function on_after_edit(item) {
 		item._safe_mode = item.f_safe_mode.value;
 	}
+	
+	function on_edit_form_closed(item) {
+		item.task.editing_finished();
+	}
 	this.on_after_apply = on_after_apply;
 	this.on_edit_form_created = on_edit_form_created;
 	this.on_field_validate = on_field_validate;
 	this.on_before_apply = on_before_apply;
 	this.on_after_edit = on_after_edit;
+	this.on_edit_form_closed = on_edit_form_closed;
 }
 
 task.events.events11 = new Events11();
@@ -3315,7 +3322,7 @@ function Events10() { // admin.tables.sys_indices
 		return {'manual_update': item.task._manual_update};
 	}
 	
-	function on_view_form_close_query(item) {
+	function on_view_form_closed(item) {
 		item.task.editing_finished();
 	}
 	this.on_view_form_created = on_view_form_created;
@@ -3326,7 +3333,7 @@ function Events10() { // admin.tables.sys_indices
 	this.on_field_changed = on_field_changed;
 	this.on_field_validate = on_field_validate;
 	this.on_before_apply = on_before_apply;
-	this.on_view_form_close_query = on_view_form_close_query;
+	this.on_view_form_closed = on_view_form_closed;
 }
 
 task.events.events10 = new Events10();
@@ -3470,7 +3477,12 @@ function Events17() { // admin.tables.sys_field_lookups
 			return 'Value must be greater than zero'
 		}
 	}
+	
+	function on_view_form_closed(item) {
+		item.task.editing_finished();
+	}
 	this.on_field_validate = on_field_validate;
+	this.on_view_form_closed = on_view_form_closed;
 }
 
 task.events.events17 = new Events17();

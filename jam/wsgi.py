@@ -50,7 +50,7 @@ class App():
             '/': self.work_dir,
             '/jam/': self.jam_dir
         }
-        self.fileserver = SharedDataMiddleware(None, self.application_files, cache_timeout=0.1)
+        self.fileserver = SharedDataMiddleware(None, self.application_files, cache_timeout=1)
         self.url_map = Map([
             Rule('/', endpoint='root_file'),
             Rule('/<file_name>', endpoint='root_file'),
@@ -104,6 +104,9 @@ class App():
     def serve_himself(self, environ, start_response, file_name):
         response = Response()
         response.headers['Content-Type'] = 'text/html'
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = 0
         if file_name == 'admin.html':
             file_name = os.path.join(self.jam_dir, file_name)
         with open(file_name, 'r') as f:
@@ -120,7 +123,7 @@ class App():
                     self.check_task_client_modified()
                     return self.serve_himself(environ, start_response, file_name)
                 else:
-                    response = Response('The project is loading or the creation of the project has not been completed yet.')
+                    response = Response(self.admin.lang['no_task'])
                     return response(environ, start_response)
             elif file_name == 'admin.html':
                 return self.serve_himself(environ, start_response, file_name)
@@ -191,8 +194,8 @@ class App():
         elif method == 'login':
             return {'status': common.RESPONSE, 'data': self.admin.login(params[0], params[1], is_admin, env)}
         elif method == 'logout':
-            user_info = self.admin.get_user_info(user_uuid, is_admin, env)
-            return self.admin.logout(params, is_admin, env)
+            self.admin.logout(params, is_admin, env)
+            return {'status': common.NOT_LOGGED, 'data': common.NOT_LOGGED}
         if ext:
             obj = task
         else:

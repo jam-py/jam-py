@@ -582,7 +582,7 @@ class SQL(object):
             print result[i]
         return result
 
-    def create_index_sql(self, db_type, table_name, fields=None, new_fields=None):
+    def create_index_sql(self, db_type, table_name, fields=None, new_fields=None, foreign_key_dict=None):
 
         def new_field_name_by_id(id_value):
             for f in new_fields:
@@ -592,19 +592,24 @@ class SQL(object):
         db_module = db_modules.get_db_module(db_type)
         index_name = self.f_index_name.value
         if self.f_foreign_index.value:
-            fields = self.task.sys_fields.copy()
-            fields.set_where(id=self.f_foreign_field.value)
-            fields.open()
-            key = fields.f_field_name.value
-            ref_id = fields.f_object.value
-            items = self.task.sys_items.copy()
-            items.set_where(id=ref_id)
-            items.open()
-            ref = items.f_table_name.value
-            primary_key = items.f_primary_key.value
-            fields.set_where(id=primary_key)
-            fields.open()
-            primary_key = fields.f_field_name.value
+            if foreign_key_dict:
+                key = foreign_key_dict['key']
+                ref = foreign_key_dict['ref']
+                primary_key = foreign_key_dict['primary_key']
+            else:
+                fields = self.task.sys_fields.copy()
+                fields.set_where(id=self.f_foreign_field.value)
+                fields.open()
+                key = fields.f_field_name.value
+                ref_id = fields.f_object.value
+                items = self.task.sys_items.copy()
+                items.set_where(id=ref_id)
+                items.open()
+                ref = items.f_table_name.value
+                primary_key = items.f_primary_key.value
+                fields.set_where(id=primary_key)
+                fields.open()
+                primary_key = fields.f_field_name.value
             sql = db_module.create_foreign_index_sql(table_name, index_name, key, ref, primary_key)
         else:
             index_fields = self.f_fields.value

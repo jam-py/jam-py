@@ -708,11 +708,12 @@
             var tab = 1,
                 self = this,
                 default_options = {
-                    buttons: undefined,
                     title: '',
                     width: 400,
                     height: undefined,
                     margin: undefined,
+                    buttons: undefined,
+                    default_button: undefined,
                     print: false,
                     text_center: false,
                     button_min_width: 100,
@@ -765,10 +766,26 @@
                 if (buttons.hasOwnProperty(key)) {
                     $element.find(".modal-footer").append(
                         $button.clone()
-                        .attr("id", key)
+                        .data('key', key)
                         .attr("tabindex", tab)
                         .css("min-width", options.button_min_width)
-                        .html(key));
+                        .html(key)
+                        .click(function(e) {
+                            var key = $(this).data('key');
+                            setTimeout(function() {
+                                    try {
+                                        if (buttons[key]) {
+                                            buttons[key].call(self);
+                                        }
+                                    }
+                                    catch (e) {}
+                                    $element.modal('hide');
+                                },
+                                0
+                            );
+
+                        })
+                    );
                     tab++;
                 }
             }
@@ -791,30 +808,6 @@
                 if (code === 80 && e.ctrlKey) {
                     e.preventDefault();
                     self.print_message($element.find(".modal-body").clone());
-                }
-            });
-
-            $element.on("click", ".btn", function(e) {
-                var button;
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                for (var key in buttons) {
-                    if (buttons.hasOwnProperty(key)) {
-                        if ($(e.target).attr("id") === key) {
-                            if (buttons[key]) {
-                                button = buttons[key];
-                            }
-                            clearTimeout(timeOut);
-                            timeOut = setTimeout(function() {
-                                    if (button) {
-                                        button.call(self);
-                                    }
-                                    $element.modal('hide');
-                                },
-                                100
-                            );
-                        }
-                    }
                 }
             });
 
@@ -976,6 +969,10 @@
                             return;
                         } else if (data.result.status === consts.NOT_LOGGED) {
                             if (!self.logged_in) {
+                                if (self.user_id) {
+                                    self.user_id = null;
+                                    self.erase_cookie(location.port + ':user_id');
+                                }
                                 self.login();
                             } else {
                                 location.reload();
@@ -992,21 +989,22 @@
                                 });
                             }
                             return;
-                        } else if (self.ID > 0) {
-                            if (!self.server_date) {
-                                self.server_date = data.result.server_date;
-                            } else if (self.server_date !== data.result.server_date) {
-                                if (!self.task._server_restarted) {
-                                    self.task._server_restarted = true;
-                                    self.message('<h4>' + language.server_restarted + '</h4>', {
-                                        margin: '50px 0px',
-                                        width: 500,
-                                        text_center: true
-                                    });
-                                }
-                                return;
-                            }
                         }
+                        //~ else if (self.ID > 0) {
+                            //~ if (!self.server_date) {
+                                //~ self.server_date = data.result.server_date;
+                            //~ } else if (self.server_date !== data.result.server_date) {
+                                //~ if (!self.task._server_restarted) {
+                                    //~ self.task._server_restarted = true;
+                                    //~ self.message('<h4>' + language.server_restarted + '</h4>', {
+                                        //~ margin: '50px 0px',
+                                        //~ width: 500,
+                                        //~ text_center: true
+                                    //~ });
+                                //~ }
+                                //~ return;
+                            //~ }
+                        //~ }
                     }
                     if (callback) {
                         callback.call(item, data.result.data);
@@ -1158,7 +1156,7 @@
             var self = this,
                 info;
             if (!this.user_id) {
-                this.user_id = this.read_cookie('user_id');
+                this.user_id = this.read_cookie(location.port + ':user_id');
                 if (this.user_id === "null") {
                     this.user_id = null;
                 }
@@ -1272,7 +1270,7 @@
                     passWord = $form.find("#inputPassword").val(),
                     pswHash = hex_md5(passWord);
                 self.user_id = self.send_request('login', [login, pswHash])[0];
-                self.create_cookie('user_id', self.user_id, 0.5);
+                self.create_cookie(location.port + ':user_id', self.user_id, 0.5);
                 if (self.user_id) {
                     if ($form) {
                         $form.modal('hide');
@@ -1310,7 +1308,7 @@
         logout: function() {
             this.send_request('logout', this.user_id);
             this.user_id = null;
-            this.erase_cookie('user_id');
+            this.erase_cookie(location.port + ':user_id');
             location.reload();
         },
 
@@ -4083,7 +4081,7 @@
                         }
                     });
                 } else {
-                    this.warning('Record is not selected.');
+                    this.warning(language.no_record);
                 }
             }
         },
@@ -4244,7 +4242,17 @@
                     }
                     return canClose;
                 },
-                onHidden: function() {},
+                onHidden: function() {
+                    if (self.task.on_view_form_closed) {
+                        self.task.on_view_form_closed.call(self, self);
+                    }
+                    if (!this.master && self.owner.on_view_form_closed) {
+                        self.owner.on_view_form_closed.call(self, self);
+                    }
+                    if (self.on_view_form_closed) {
+                        self.on_view_form_closed.call(self, self);
+                    }
+                },
                 onKeyUp: this.do_on_view_keyup,
                 onKeyDown: this.do_on_view_keydown
             })
@@ -4333,6 +4341,17 @@
                     }
                     return canClose;
                 },
+                onHidden: function() {
+                    if (self.task.on_edit_form_closed) {
+                        self.task.on_edit_form_closed.call(self, self);
+                    }
+                    if (!this.master && self.owner.on_edit_form_closed) {
+                        self.owner.on_edit_form_closed.call(self, self);
+                    }
+                    if (self.on_edit_form_closed) {
+                        self.on_edit_form_closed.call(self, self);
+                    }
+                },
                 onKeyUp: this.do_on_edit_keyup,
                 onKeyDown: this.do_on_edit_keydown
             })
@@ -4394,7 +4413,17 @@
                     }
                     return canClose;
                 },
-
+                onHidden: function() {
+                    if (self.task.on_filter_form_closed) {
+                        self.task.on_filter_form_closed.call(self, self);
+                    }
+                    if (!this.master && self.owner.on_filter_form_closed) {
+                        self.owner.on_filter_form_closed.call(self, self);
+                    }
+                    if (self.on_filter_form_closed) {
+                        self.on_filter_form_closed.call(self, self);
+                    }
+                }
             })
         },
 
@@ -4844,6 +4873,17 @@
                     }
                     return canClose;
                 },
+                onHidden: function() {
+                    if (self.task.on_param_form_closed) {
+                        self.task.on_param_form_closed.call(self, self);
+                    }
+                    if (!this.master && self.owner.on_param_form_closed) {
+                        self.owner.on_param_form_closed.call(self, self);
+                    }
+                    if (self.on_param_form_closed) {
+                        self.on_param_form_closed.call(self, self);
+                    }
+                }
             })
         },
 
@@ -5473,6 +5513,9 @@
 
         set_value: function(value, lookup_value, slave_field_values, lookup_item) {
             var error;
+            if (value === undefined) {
+                value = null;
+            }
             this._check_system_field_value(value);
             this.new_value = null;
             this.new_lookup_value = lookup_value;
@@ -5723,7 +5766,7 @@
         check_type: function() {
             this.get_value();
             if ((this.data_type === consts.TEXT) && (this.field_size !== 0) && (this.get_text().length > this.field_size)) {
-                this.do_on_error(this.field_caption + ': ' + language.invalid_length.replace('%d', this.field_size));
+                this.do_on_error(this.field_caption + ': ' + language.invalid_length.replace('%s', this.field_size));
             }
             return true;
         },
@@ -6888,7 +6931,7 @@
                         }
                     }
                     if (ids.length) {
-                        self.item.lookup_field.set_value(ids, language.items_selected.replace('%d', ids.length));
+                        self.item.lookup_field.set_value(ids, language.items_selected.replace('%s', ids.length));
                     } else {
                         self.item.lookup_field.set_value(null, '');
                     }
@@ -7089,8 +7132,8 @@
                 if (tt && tt.$tip) {
                     tt.$tip.remove();
                 }
-                if (this.offsetHeight < this.scrollHeight ||
-                    this.offsetWidth < this.scrollWidth) {
+                if (Math.abs(this.offsetHeight - this.scrollHeight) > 1 ||
+                    Math.abs(this.offsetWidth - this.scrollWidth) > 1) {
                     $this.tooltip({
                             'placement': 'right',
                             'title': $this.text()

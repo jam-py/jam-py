@@ -362,15 +362,39 @@ def create_items(task):
 
     task.sys_new_group.add_field(1, 'group_type',  'Group type', common.INTEGER, required=True, lookup_values=get_value_list(common.GROUP_TYPES))
 
-    #~ task.sys_locales = task.sys_catalogs.add_catalog('sys_locales', u'Locales', 'SYS_LOCALES')
-#~
-    #~ task.sys_locales.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
-    #~ task.sys_locales.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    #~ task.sys_locales.add_field(3, 'type', 'type', common.INTEGER, required=True, visible=False, edit_visible=False))
-    #~ task.sys_locales.add_field(4, 'data_type', 'data_type', common.INTEGER, required=True, visible=False, edit_visible=False))
-    #~ task.sys_locales.add_field(5, 'keyword', 'Keyword', common.TEXT, required=True, size = 32)
-    #~ task.sys_locales.add_field(6, 'text', 'text', common.TEXT, required=True, size = 612)
-    #~ task.sys_locales.add_field(7, 'value', 'text', common.TEXT, required=True, size = 6)
+    task.sys_lang = task.sys_catalogs.add_catalog('sys_lang', u'Languages', '')
+
+    task.sys_lang.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.sys_lang.add_field(2, 'f_abr', u'', common.INTEGER, required=True, visible=False, edit_visible=False)
+    task.sys_lang.add_field(3, 'f_name', u'language', common.TEXT, required=True, size = 20)
+    task.sys_lang.add_field(4, 'f_decimal_point', u'Decimal point', common.TEXT, size = 1)
+    task.sys_lang.add_field(5, 'f_mon_decimal_point', u'Monetory decimal point', common.TEXT, size = 1)
+    task.sys_lang.add_field(6, 'f_mon_thousands_sep', u'Monetory thousands separator', common.TEXT, size = 3)
+    task.sys_lang.add_field(7, 'f_currency_symbol', u'Currency symbol', common.TEXT, size = 10)
+    task.sys_lang.add_field(8, 'f_frac_digits', u'Number of fractional digits', common.INTEGER)
+    task.sys_lang.add_field(9, 'f_p_cs_precedes', u'Currency symbol precedes the value (positive values)', common.BOOLEAN)
+    task.sys_lang.add_field(10, 'f_n_cs_precedes', u'Currency symbol precedes the value (negative values)', common.BOOLEAN)
+    task.sys_lang.add_field(11, 'f_p_sep_by_space', u'Currency symbol is separated by a space (positive values)', common.BOOLEAN)
+    task.sys_lang.add_field(12, 'f_n_sep_by_space', u'Currency symbol is separated by a space (negative values)', common.BOOLEAN)
+    task.sys_lang.add_field(13, 'f_positive_sign', u'Symbol for a positive monetary value', common.TEXT, size = 1)
+    task.sys_lang.add_field(14, 'f_negative_sign', u'Symbol for a negative monetary value', common.TEXT, size = 1)
+    task.sys_lang.add_field(15, 'f_p_sign_posn', u'The position of the sign (positive values)', common.INTEGER)
+    task.sys_lang.add_field(16, 'f_n_sign_posn', u'The position of the sign (negative values)', common.INTEGER)
+    task.sys_lang.add_field(17, 'f_d_fmt', u'Date format string', common.TEXT, size = 30)
+    task.sys_lang.add_field(18, 'f_d_t_fmt', u'Date and time format string', common.TEXT, size = 30)
+
+    task.sys_lang_keys = task.sys_catalogs.add_catalog('sys_lang_keys', u'Language keys', '')
+
+    task.sys_lang_keys.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.sys_lang_keys.add_field(2, 'f_keyword', 'Keyword', common.TEXT, required=True, size = 128)
+
+    task.sys_lang_values = task.sys_catalogs.add_catalog('sys_lang_values', u'Language values', '')
+
+    task.sys_lang_values.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.sys_lang_values.add_field(2, 'f_lang', u'Key', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_lang_values.add_field(3, 'f_key', u'Key', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_lang_values.add_field(4, 'f_value', u'value', common.TEXT, size = 1048)
+
 
     def init_item(item, id_value, *order_by):
         item.ID = id_value
@@ -406,7 +430,10 @@ def create_items(task):
     init_item(task.sys_search, 16)
     init_item(task.sys_field_lookups, 17)
     init_item(task.sys_lookup_lists, 18, 'f_name')
-    init_item(task.sys_new_group, 19)
+    init_item(task.sys_lang, 19)
+    init_item(task.sys_lang_keys, 20)
+    init_item(task.sys_lang_values, 21)
+    init_item(task.sys_new_group, 22)
 
     task.sys_catalogs.ID = 101
     task.sys_tables.ID = 102
@@ -443,7 +470,7 @@ def update_admin_fields(task):
             elif field_name == 'owner_rec_id':
                 cursor.execute("UPDATE SYS_ITEMS SET F_MASTER_REC_ID=%d WHERE ID=%d" % (field_id, id_value))
 
-    def do_updates(con, field):
+    def do_updates(con, field, item_name):
         if field.field_name.lower() == 'f_js_funcs':
             cursor = con.cursor()
             cursor.execute("SELECT ID, F_WEB_CLIENT_MODULE FROM SYS_ITEMS")
@@ -476,30 +503,34 @@ def update_admin_fields(task):
             con.commit()
             create_items(task)
 
-    def get_item_fields(item):
-        cursor.execute('PRAGMA table_info(%s)' % item.table_name)
+    def get_item_fields(item, table_name):
+        cursor.execute('PRAGMA table_info(%s)' % table_name)
         rows = cursor.fetchall()
         result = [str(row[1]).upper() for row in rows]
         return result
 
-    def check_item_fields(item):
-        fields = get_item_fields(item)
+    def check_item_fields(item, table_name=None):
+        if not table_name:
+            table_name = item.table_name.upper()
+        fields = get_item_fields(item, table_name)
         for field in item._fields:
             if not field.field_name.upper() in fields:
                 sql = 'ALTER TABLE %s ADD COLUMN %s %s' % \
-                    (item.table_name.upper(), field.field_name.upper(), \
+                    (table_name, field.field_name.upper(), \
                     task.db_module.FIELD_TYPES[field.data_type])
                 print sql
                 cursor.execute(sql)
                 con.commit()
-                do_updates(con, field)
+                do_updates(con, field, item.item_name)
 
-    def check_table_exists(item):
-        sql = 'SELECT name FROM sqlite_master WHERE type="table" AND UPPER(name)="%s"' % item.table_name.upper()
+    def check_table_exists(item, table_name=None):
+        if not table_name:
+            table_name = item.table_name.upper()
+        sql = 'SELECT name FROM sqlite_master WHERE type="table" AND UPPER(name)="%s"' % table_name
         cursor.execute(sql)
         rows = cursor.fetchall()
         if not rows:
-            sql = 'CREATE TABLE %s (ID INTEGER PRIMARY KEY)' % item.table_name
+            sql = 'CREATE TABLE %s (ID INTEGER PRIMARY KEY)' % table_name
             cursor.execute(sql)
         return True
 
@@ -511,6 +542,16 @@ def update_admin_fields(task):
                 if check_table_exists(item):
                     check_item_fields(item)
     con.close()
+
+    #~ con = sqlite3.connect('langs.sqlite')
+    #~ cursor = con.cursor()
+    #~ for group in task.items:
+        #~ for item in group.items:
+            #~ if item.item_name.find('sys_lang') != -1:
+                #~ if check_table_exists(item, item.item_name.upper()):
+                    #~ check_item_fields(item, item.item_name.upper())
+    #~ con.close()
+
 
 def create_admin(app):
     task = AdminTask(app, 'admin', u'Administrator', '', db_modules.SQLITE, db_database='admin.sqlite')
@@ -623,7 +664,6 @@ def create_task(app):
             )
         result.ID = it.id.value
         load_task(result, app)
-    print result
     return result
 
 ###############################################################################
@@ -833,7 +873,6 @@ def load_task(target, app, first_build=True, after_import=False):
 
 
     def process_reports():
-
         def add_reports(item):
             item.reports = []
             for rep_id in item.rep_ids:
@@ -1243,7 +1282,23 @@ def server_import_task(task, task_id, file_name, from_client=False):
         from distutils import dir_util
         dir_util.copy_tree(dir, os.getcwd())
 
-    def analize(dir):
+    def get_foreign_key_dict(ind):
+        dic = None
+        if ind.f_foreign_index.value:
+            dic = {}
+            fields = new_dict['sys_fields']
+            fields.locate('id', ind.f_foreign_field.value)
+            dic['key'] = fields.f_field_name.value
+            ref_id = fields.f_object.value
+            items = new_dict['sys_items']
+            items.locate('id', ref_id)
+            dic['ref'] = items.f_table_name.value
+            primary_key = items.f_primary_key.value
+            fields.locate('id', primary_key)
+            dic['primary_key'] = fields.f_field_name.value
+        return dic
+
+    def analize(dir, db_type):
         try:
             error = ''
 
@@ -1281,9 +1336,9 @@ def server_import_task(task, task_id, file_name, from_client=False):
                 table_name = get_table_name(d.owner_rec_id.value)
                 if table_name:
                     if d.rec_inserted():
-                        db_sql.append(indices_insert_sql(task.sys_indices, d, table_name, get_new_fields(d.owner_rec_id.value)))
-                    elif d.rec_modified():
-                        db_sql.append(indices_update_sql(task.sys_indices, d, table_name, get_new_fields(d.owner_rec_id.value)))
+                        db_sql.append(indices_insert_sql(task.sys_indices, d, table_name,
+                            get_new_fields(d.owner_rec_id.value),
+                            foreign_key_dict=get_foreign_key_dict(d)))
                     elif d.rec_deleted():
                         db_sql.append(indices_delete_sql(task.sys_indices, d))
             adm_sql.append(delta.apply_sql())
@@ -1338,6 +1393,8 @@ def server_import_task(task, task_id, file_name, from_client=False):
         task._import_message += '<div style="margin-left: 30px;">' + info + '</div>'
 
     db_type = get_db_type(task)
+    if db_type == db_modules.SQLITE:
+        return False, error, '<h5>Import is not supported for SQlite database.</h5>'
     task.app.under_maintenance = True
     try:
         request_count = 0
@@ -1355,7 +1412,9 @@ def server_import_task(task, task_id, file_name, from_client=False):
             show_info(error)
         else:
             show_progress(u'Import: analyzing changes')
-            error, db_sql, adm_sql = analize(dir)
+            error, db_sql, adm_sql = analize(dir, db_type)
+            if error:
+                show_info(error)
         if not error:
             success = True
             show_progress(u'Import: waiting for connections to close')
@@ -1718,6 +1777,7 @@ def get_task_dict(task, task_id):
     items = task.sys_items.copy()
     items.details_active = False
     items.open(['id', 'type_id', 'parent', 'f_item_name'])
+
     fields = task.sys_fields.copy()
     fields.open(['owner_rec_id', 'f_field_name'])
     for f in fields:
@@ -1726,18 +1786,20 @@ def get_task_dict(task, task_id):
             if not d:
                 f_dict[f.owner_rec_id.value] = d
             d.append(f.f_field_name.value)
+
+    params = task.sys_report_params.copy()
+    params.open(['owner_rec_id', 'f_param_name'])
+    for f in params:
+        d = f_dict.get(f.owner_rec_id.value, [])
+        if not d:
+            f_dict[f.owner_rec_id.value] = d
+        d.append(f.f_param_name.value)
+
     get_children(items, task_id, common.TASK_TYPE, result, 'task')
     return result['task']
 
-def server_item_info(task, item_id, is_server, doc_type, user):
+def server_item_info(task, item_id, is_server, doc_type):
     result = {}
-
-    doc = is_doc_edited(task, task.sys_items.ID, item_id, doc_type, user)
-    if doc:
-        result['doc'] = doc
-        result['is_edited'] = True
-        return result
-
     items = task.sys_items.copy()
     items.set_where(id=item_id)
     items.open()
@@ -1764,10 +1826,6 @@ def server_item_info(task, item_id, is_server, doc_type, user):
     result[common.editor_tabs[common.TAB_FUNCS]] = common.get_funcs_info(code, module_type)
     result['module_name'] = item_name
     result['code'] = code
-
-    doc = set_edited(task, task.sys_items.ID, item_id, doc_type, user)
-    result['doc'] = doc
-
     return result
 
 def parse_js(code):
@@ -1883,18 +1941,8 @@ def get_templates(text):
             result[one] = None
     return result
 
-def server_get_file_info(task, item_id, file_name, user):
+def server_get_file_info(task, item_id, file_name):
     result = {}
-
-    ID = -1
-    if file_name == 'project.css':
-        ID = -2
-    doc = is_doc_edited(task, ID, item_id, file_name, user)
-    if doc:
-        result['doc'] = doc
-        result['is_edited'] = True
-        return result
-
     file_path = file_name
     if file_name == 'project.css':
         file_path = os.path.join('css', 'project.css')
@@ -1903,10 +1951,6 @@ def server_get_file_info(task, item_id, file_name, user):
             result['code'] = f.read()
         if file_name == 'index.html':
             result['Templates'] = get_templates(result['code'])
-
-    doc = set_edited(task, ID, item_id, file_name, user)
-    result['doc'] = doc
-
     return result
 
 def server_save_file(task, file_name, code):
@@ -2018,19 +2062,12 @@ def find_edited_doc(task, item_ID, item_id, doc_type, user):
         if c_item_ID == item_ID and c_item_id == item_id and c_doc_type == doc_type:
             return task.edited_docs[i]
 
-def is_doc_edited(task, item_ID, item_id, doc_type, user):
-    doc = find_edited_doc(task, item_ID, item_id, doc_type, user)
-    if doc:
-        return doc
-
 def check_doc_edited(task, item_ID, item_id, doc_type, user):
-    doc = is_doc_edited(task, item_ID, item_id, doc_type, user)
-    if doc:
-        return True
-    else:
-        set_edited(task, item_ID, item_id, doc_type, user)
+    doc = find_edited_doc(task, item_ID, item_id, doc_type, user)
+    return doc
 
 def set_edited(task, item_ID, item_id, doc_type, user):
+    clear_edited(task, item_ID, item_id, doc_type, user)
     doc = [item_ID, item_id, doc_type, user]
     task.edited_docs.append(doc)
     return doc
@@ -2200,11 +2237,12 @@ def init_priviliges(item, item_id):
         priv.post()
     priv.apply()
 
-def items_insert_sql(item, delta, manual_update=False):
+def items_insert_sql(item, delta, manual_update=False, foreign_fields=None):
     if update_table(delta) and not manual_update:
         if delta.type_id.value in (common.ITEM_TYPE, common.TABLE_TYPE):
             db_type = get_db_type(item.task)
-            sql = delta.create_table_sql(db_type, delta.f_table_name.value, get_table_fields(delta, delta.details.sys_fields))
+            sql = delta.create_table_sql(db_type, delta.f_table_name.value, \
+                get_table_fields(delta, delta.details.sys_fields), foreign_fields=foreign_fields)
             return sql
 
 def items_execute_insert(item, delta, manual_update):
@@ -2497,15 +2535,16 @@ def change_foreign_index(delta):
     new_fields = list(fields)
     return items.recreate_table_sql(db_modules.SQLITE, fields, new_fields, delta)
 
-def indices_insert_sql(item, delta, table_name=None, new_fields=None, manual_update=False):
+def indices_insert_sql(item, delta, table_name=None, new_fields=None, manual_update=False, foreign_key_dict=None):
     if not manual_update and update_index(delta):
         if not table_name:
             table_name = delta.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
         db_type = get_db_type(item.task)
         if db_type == db_modules.SQLITE and delta.f_foreign_index.value:
-            return change_foreign_index(delta)
+            if not new_fields:
+                return change_foreign_index(delta)
         else:
-            return delta.create_index_sql(db_type, table_name, new_fields=new_fields)
+            return delta.create_index_sql(db_type, table_name, new_fields=new_fields, foreign_key_dict=foreign_key_dict)
 
 def indices_execute_insert(item, delta, manual_update):
     sql = indices_insert_sql(item, delta, manual_update=manual_update)
@@ -2513,31 +2552,6 @@ def indices_execute_insert(item, delta, manual_update):
         error = execute(item.task, delta.task_id.value, sql)
         if error:
             raise Exception, u'Error while creating index %s: %s' % (delta.f_index_name.value.upper(), error)
-    sql = delta.apply_sql()
-    return item.task.execute(sql)
-
-def indices_update_sql(item, delta, table_name=None, new_fields=None, manual_update=False):
-    sql = []
-    if not manual_update and update_index(delta):
-        db_type = get_db_type(item.task)
-        ind = delta.task.sys_indices.copy()
-        ind.filters.id.value = delta.id.value
-        ind.open()
-        if not table_name:
-            table_name = delta.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
-        if db_type == db_modules.SQLITE and delta.f_foreign_index.value:
-            sql = change_foreign_index(delta)
-        else:
-            sql.append(ind.delete_index_sql(db_type))
-            sql.append(delta.create_index_sql(db_type, table_name, new_fields=new_fields))
-        return sql
-
-def indices_execute_update(item, delta, manual_update):
-    sql = indices_update_sql(item, delta, manual_update=manual_update)
-    if sql:
-        error = execute(item.task, delta.task_id.value, sql)
-        if error:
-            raise Exception, u'Error while modifying index %s: %s' % (delta.f_index_name.value.upper(), error)
     sql = delta.apply_sql()
     return item.task.execute(sql)
 
@@ -2564,8 +2578,6 @@ def indices_apply_changes(item, delta, params, priv, user_info, env):
     if table_name:
         if delta.rec_inserted():
             result = indices_execute_insert(item, delta, manual_update)
-        elif delta.rec_modified():
-            result = indices_execute_update(item, delta, manual_update)
         elif delta.rec_deleted():
             result = indices_execute_delete(item, delta, manual_update)
         return result
@@ -2660,6 +2672,7 @@ def register_defs(task):
     task.register(server_get_task_info)
     task.register(server_can_delete_lookup_list)
     task.register(clear_edited)
+    task.register(set_edited)
     task.register(check_doc_edited)
     task.sys_params.on_apply = do_on_apply_sys_changes
     task.sys_tasks.on_apply = do_on_apply_sys_changes
