@@ -79,6 +79,9 @@ class App():
                 try:
                     with self._load_lock:
                         self.task = self.admin.create_task()
+                except:
+                    print traceback.format_exc()
+                    raise
                 finally:
                     self._loading = False
             return self.task

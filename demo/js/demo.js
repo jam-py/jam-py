@@ -76,8 +76,8 @@ function Events1() { // demo
 		$('#menu').children(":first").find('a').click();
 		$('#submenu').children(":first").find('a').click();	
 		
-		// $(document).ajaxStart(function() { $("html").addClass("wait"); });
-		// $(document).ajaxStop(function() { $("html").removeClass("wait"); });
+		$(document).ajaxStart(function() { $("html").addClass("wait"); });
+		$(document).ajaxStop(function() { $("html").removeClass("wait"); });
 	
 		$(window).on('resize', function() {
 			resize(task);
@@ -181,6 +181,7 @@ function Events1() { // demo
 	
 	function on_filter_form_created(item) {
 		item.filter_options.title = item.item_caption + ' - filter';
+		item.filter_options.close_focusout = true;
 		item.create_filter_inputs(item.filter_form.find(".edit-body"));
 		item.filter_form.find("#cancel-btn")
 			.on('click.task', function() { item.close_filter_form() });
