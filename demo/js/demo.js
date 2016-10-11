@@ -76,8 +76,8 @@ function Events1() { // demo
 		$('#menu').children(":first").find('a').click();
 		$('#submenu').children(":first").find('a').click();	
 		
-		$(document).ajaxStart(function() { $("html").addClass("wait"); });
-		$(document).ajaxStop(function() { $("html").removeClass("wait"); });
+		// $(document).ajaxStart(function() { $("html").addClass("wait"); });
+		// $(document).ajaxStop(function() { $("html").removeClass("wait"); });
 	
 		$(window).on('resize', function() {
 			resize(task);

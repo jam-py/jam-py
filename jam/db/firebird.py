@@ -52,6 +52,24 @@ def get_select(query, start, end, fields):
         page = 'FIRST %d SKIP %d' % (limit, offset)
     return 'SELECT %s %s FROM %s' % (page, start, end)
 
+def process_sql_params(params, cursor):
+    result = []
+    for p in params:
+        if type(p) == tuple:
+            value, data_type = p
+            if data_type == BLOB and type(value) == unicode:
+                value = value.encode('utf-8')
+        else:
+            value = p
+        result.append(value)
+    return result
+
+def process_sql_result(rows):
+    result = []
+    for row in rows:
+        result.append(list(row))
+    return result
+
 def cast_date(date_str):
     return "CAST('" + date_str + "' AS DATE)"
 

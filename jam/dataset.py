@@ -597,49 +597,47 @@ class ChangeLog(object):
 
     def find_record_log(self):
         result = None
-        if self.log_changes():
-            if self.item.master:
-                record_log = self.item.master.change_log.find_record_log()
-                if record_log:
-                    details = record_log['details']
-                    detail = details.get(str(self.item.ID))
-                    if not detail:
-                        detail = {
-                            'logs': {},
-                            'records': self.item._dataset,
-                            'fields': [field.field_name for field in self.item.fields],
-                            'expanded': self.item.expanded
-                        }
-                        details[str(self.item.ID)] = detail
-                    self.logs = detail['logs']
-                    self.records = detail['records']
-                    self.fields = detail['fields']
-                    self.expanded = detail['expanded']
-            if self.item.record_count():
-                change_id = self.item.rec_change_id
-                if not change_id:
-                    change_id = self.get_change_id()
-                    self.item.rec_change_id = change_id;
-                result = self.logs.get(change_id)
-                if not result:
-                    result = {
-                        'unmodified_record': None,
-                        'record': self.cur_record(),
-                        'details': {}
+        if self.item.master:
+            record_log = self.item.master.change_log.find_record_log()
+            if record_log:
+                details = record_log['details']
+                detail = details.get(str(self.item.ID))
+                if not detail:
+                    detail = {
+                        'logs': {},
+                        'records': self.item._dataset,
+                        'fields': [field.field_name for field in self.item.fields],
+                        'expanded': self.item.expanded
                     }
-                    self.logs[change_id] = result
-                return result
+                    details[str(self.item.ID)] = detail
+                self.logs = detail['logs']
+                self.records = detail['records']
+                self.fields = detail['fields']
+                self.expanded = detail['expanded']
+        if self.item.record_count():
+            change_id = self.item.rec_change_id
+            if not change_id:
+                change_id = self.get_change_id()
+                self.item.rec_change_id = change_id;
+            result = self.logs.get(change_id)
+            if not result:
+                result = {
+                    'old_record': None,
+                    'record': self.cur_record(),
+                    'details': {}
+                }
+                self.logs[change_id] = result
+            return result
 
     def get_detail_log(self, detail_ID):
-        if self.log_changes():
-            result = None
-            record_log = self.find_record_log()
-            details = record_log['details']
-            if details:
-                result = details.get(detail_ID)
-            if result is None and self.item._is_delta:
-                result = {'records': [], 'fields': [], 'expanded': False, 'logs': {}}
-            return result
+        result = None
+        record_log = self.find_record_log()
+        details = record_log['details']
+        if details:
+            result = details.get(detail_ID)
+        if result is None and self.item._is_delta:
+            result = {'records': [], 'fields': [], 'expanded': False, 'logs': {}}
+        return result
 
     def remove_record_log(self):
         change_id = self.item.rec_change_id
@@ -654,7 +652,7 @@ class ChangeLog(object):
 
     def record_modified(self, record_log):
         modified = False
-        old_rec = record_log['unmodified_record']
+        old_rec = record_log['old_record']
         cur_rec = record_log['record']
         for i in xrange(self.item._record_lookup_index):
             if old_rec[i] != cur_rec[i]:
@@ -678,8 +676,8 @@ class ChangeLog(object):
             record_log = self.find_record_log()
             if self.item.item_state == common.STATE_BROWSE:
                 if (self.item.record_status == common.RECORD_UNCHANGED) or \
-                    (self.item.record_status == common.RECORD_DETAILS_MODIFIED and record_log['unmodified_record'] is None):
-                    record_log['unmodified_record'] = self.copy_record(self.cur_record(), False)
+                    (self.item.record_status == common.RECORD_DETAILS_MODIFIED and record_log['old_record'] is None):
+                    record_log['old_record'] = self.copy_record(self.cur_record(), False)
                     return
             elif self.item.item_state == common.STATE_INSERT:
                 self.item.record_status = common.RECORD_INSERTED
@@ -709,6 +707,7 @@ class ChangeLog(object):
             record = record_log['record']
             info = self.item.get_rec_info(record=record)
             if info[common.REC_STATUS] != common.RECORD_UNCHANGED:
+                old_record = record_log['old_record']
                 new_record = self.copy_record(record_log['record'], expanded=False)
                 new_details = {}
                 for detail_id, detail in record_log['details'].iteritems():
@@ -720,7 +719,7 @@ class ChangeLog(object):
                     detail_item.change_log.get_changes(new_detail)
                     new_details[detail_id] = new_detail
                 data[key] = {
-#                        'unmodified_record': record_log['unmodified_record'],
+                        'old_record': old_record,
                         'record': new_record,
                         'details': new_details
                     }
@@ -737,11 +736,11 @@ class ChangeLog(object):
             if self._change_id < int(key):
                 self._change_id = int(key)
             record = record_log['record']
+            record[len(record) - 1].append(record_log['old_record'])
             new_records.append([int(key), record])
             details = {}
             self.logs[key] = {
-#                'unmodified_record': record_log['unmodified_record'],
-                'unmodified_record': None,
+                'old_record': None,
                 'record': record,
                 'details': details
             }
@@ -790,7 +789,7 @@ class ChangeLog(object):
                     details = {}
                     detail_item.change_log.store_details(record_log['details'], details)
                     logs[key] = {
-                        'unmodified_record': record_log['unmodified_record'],
+                        'old_record': record_log['old_record'],
                         'record': record,
                         'details': details
                     }
@@ -814,7 +813,7 @@ class ChangeLog(object):
             details = {}
             self.store_details(record_log['details'], details)
             result = {}
-            result['unmodified_record'] = record_log['unmodified_record']
+            result['old_record'] = record_log['old_record']
             result['record'] = self.copy_record(record_log['record'])
             result['details'] = details
         return result
@@ -836,7 +835,7 @@ class ChangeLog(object):
         else:
             record_log = self.find_record_log()
             restore_record()
-            record_log['unmodified_record'] = log['unmodified_record']
+            record_log['old_record'] = log['old_record']
             record_log['record'] = self.cur_record()
             record_log['details'] = log['details']
             for detail in self.item.details:
@@ -934,6 +933,7 @@ class AbstractDataSet(object):
         self._disabled_count = 0
         self.open_params = {}
         self._is_delta = False
+        self.keep_history = False
         self.parent_read_only = True
         self.on_before_append = None
         self.on_after_append = None
@@ -1027,13 +1027,14 @@ class AbstractDataSet(object):
 
     dataset = property (get_dataset, set_dataset)
 
-    def copy(self, filters=True, details=True, handlers=True):
+    def _copy(self, filters=True, details=True, handlers=True):
         result = self.__class__(self.owner, self.item_name, self.item_caption, self.visible)
         result.ID = self.ID
         result.item_name = self.item_name
         result.expanded = self.expanded
         result.field_defs = self.field_defs
         result.filter_defs = self.filter_defs
+        result.keep_history = self.keep_history
 
         for field_def in result.field_defs:
             field = DBField(result, field_def)
@@ -1385,7 +1386,7 @@ class AbstractDataSet(object):
 
     def _set_record_status(self, value):
         info = self.get_rec_info()
-        if info and self.log_changes:
+        if info and (self.log_changes or self._is_delta):
             info[common.REC_STATUS] = value
 
     record_status = property (get_records_status, _set_record_status)
@@ -1581,8 +1582,7 @@ class AbstractDataSet(object):
         if error_mes:
             raise RuntimeError(error_mes)
         else:
-            for row in rows:
-                self._dataset.append(list(row))
+            self._dataset = rows
 
     def close(self):
         self._active = False
@@ -1881,11 +1881,11 @@ class MasterDataSet(AbstractDataSet):
         AbstractDataSet.__init__(self)
         self.details_active = False
 
-    def copy(self, filters=True, details=True, handlers=True):
-        result = super(MasterDataSet, self).copy(filters, details, handlers)
+    def _copy(self, filters=True, details=True, handlers=True):
+        result = super(MasterDataSet, self)._copy(filters, details, handlers)
         if details:
             for detail in self.details:
-                copy_table = detail.copy(filters, details, handlers)
+                copy_table = detail._copy(filters, details, handlers)
                 copy_table.owner = result
                 copy_table.master = result
                 copy_table.expanded = detail.expanded
@@ -1924,9 +1924,11 @@ class MasterDataSet(AbstractDataSet):
             changes = {}
             self.change_log.get_changes(changes)
         result = self.copy(filters=False, details=True, handlers=False)
+        result.log_changes = False
         result.expanded = False
         result._is_delta = True
         for detail in result.details:
+            detail.log_changes = False
             detail.expanded = False
             detail._is_delta = True
         result.details_active = True

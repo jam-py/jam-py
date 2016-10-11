@@ -174,5 +174,13 @@ dictionary = \
     'months_short':                     [u'Jan', u'Feb', u'Már', u'Ápr', u'Máj', u'Jun', u'Jul', u'Aug', u'Sep', u'Okt', u'Nov', u'Dec'],
 #grid
     'page':                             u'Lap',
-    'of':                               u'a'
+    'of':                               u'a',
+#history
+    'created':                        u'Created',
+    'modified':                       u'Modified',
+    'deleted':                        u'Deleted',
+    'by_user':                        u'by',
+    'old_value':                      u'old value',
+    'new_value':                      u'new value'
+
 }

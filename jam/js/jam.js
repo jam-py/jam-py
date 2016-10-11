@@ -52,8 +52,8 @@
             "RECORD_UNCHANGED": null,
             "RECORD_INSERTED": 1,
             "RECORD_MODIFIED": 2,
-            "RECORD_DETAILS_MODIFIED": 3,
-            "RECORD_DELETED": 4,
+            "RECORD_DELETED": 3,
+            "RECORD_DETAILS_MODIFIED": 4,
 
             "REC_STATUS": 0,
             "REC_CONTROLS_INFO": 1,
@@ -108,6 +108,7 @@
             close_button: true,
             close_caption: true,
             close_on_escape: true,
+            show_history: false,
             print: false,
         };
         this.items = [];
@@ -211,10 +212,11 @@
                 child = this.addChild(item_info.id, item_info.name,
                     item_info.caption, item_info.visible, item_info.type, item_info.js_filename);
                 child._default_order = item_info.default_order;
-                child._primary_key = item_info.primary_key
-                child._deleted_flag = item_info.deleted_flag
-                child._master_id = item_info.master_id
-                child._master_rec_id = item_info.master_rec_id
+                child._primary_key = item_info.primary_key;
+                child._deleted_flag = item_info.deleted_flag;
+                child._master_id = item_info.master_id;
+                child._master_rec_id = item_info.master_rec_id;
+                child.keep_history = item_info.keep_history;
                 if (child.initAttr) {
                     child.initAttr(item_info);
                 }
@@ -442,7 +444,7 @@
             }
         },
 
-        makeFormModal: function(form, options) {
+        makeFormModal: function(form, options, suffix) {
             var $doc,
                 $form,
                 $title,
@@ -508,7 +510,8 @@
                 closeCaption = '',
                 close_button = '',
                 printCaption = '',
-                print_button = '';
+                print_button = '',
+                history_button = '';
             if (options.close_button) {
                 if (language && options.close_caption) {
                     closeCaption = '&nbsp;' + language.close + ' - [Esc]</small>';
@@ -521,6 +524,9 @@
                     print_button = '<button type="button" id="print-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' +
                     printCaption + '</button>';
             }
+            if (options.show_history && this.keep_history) {
+                history_button = '<i id="history-btn" class="icon-film" style="float: right; margin: 5px;"></i>';
+            }
             if (!title.length) {
                 title = ('<h4 class="modal-title">' + options.title + '</h4>');
             } else {
@@ -528,7 +534,7 @@
                 title.html(options.title);
             }
             header.empty();
-            header.append(close_button + print_button);
+            header.append(close_button + history_button + print_button);
             header.append(title);
             header.find("#close-btn").css('cursor', 'default').click(function(e) {
                 if (form_name) {
@@ -537,6 +543,9 @@
             });
             header.find('#print-btn').css('cursor', 'default').click(function(e) {
                 self.print_message(form.find(".modal-body").clone());
+            });
+            header.find('#history-btn').css('cursor', 'default').click(function(e) {
+                self.show_history();
             });
         },
 
@@ -867,6 +876,165 @@
             });
         },
 
+        show_history: function() {
+            var self = this,
+                hist = this.task.history_item.copy();
+            hist.set_where({item_id: this.ID, item_rec_id: this.field_by_name(this._primary_key).value})
+            hist.set_order_by(['-date']);
+            hist.open(function() {
+                var html = '',
+                    acc_div = $('<div class="accordion" id="accordion1">'),
+                    item,
+                    master,
+                    lookups = {},
+                    lookup_keys,
+                    lookup_fields,
+                    keys,
+                    fields,
+                    where,
+                    lookup_item;
+                if (self.master) {
+                    master = self.master.copy({handlers: false}),
+                    item = master.item_by_ID(self.ID);
+                    master.open({open_empty: true});
+                    master.append();
+                }
+                else {
+                    item = self.copy({handlers: false, details: false});
+                }
+                item.open({open_empty: true});
+                item.append();
+                hist.each(function(h) {
+                    var acc = $(
+                        '<div class="accordion-group history-group">' +
+                            '<div class="accordion-heading history-heading">' +
+                                '<a class="history-toggle accordion-toggle" data-toggle="collapse" data-parent="#accordion1" href="#collapse' + h.rec_no + '">' +
+                                '</a>' +
+                            '</div>' +
+                            '<div id="collapse' + h.rec_no + '" class="accordion-body collapse">' +
+                                '<div class="accordion-inner history-inner">' +
+                                '</div>' +
+                            '</div>' +
+                         '</div>'
+                        ),
+                        i,
+                        user = '',
+                        content = '',
+                        old_value,
+                        new_value,
+                        field,
+                        field_name,
+                        changes = JSON.parse(h.changes.value),
+                        field_arr,
+                        details_arr;
+
+                    if (h.operation.value === consts.RECORD_DELETED) {
+                        content = '<p>Record deleted</p>'
+                    }
+                    else if (h.operation.value === consts.RECORD_DETAILS_MODIFIED) {
+                        content = '<p>Details modified</p>'
+                    }
+                    else if (changes) {
+                        field_arr = changes[0];
+                        details_arr = changes[1];
+                        if (field_arr) {
+                            for (i = 0; i < field_arr.length; i++) {
+                                field = item.field_by_ID(field_arr[i][0]);
+                                if (field && !field.system_field()) {
+                                    field_name = field.field_caption;
+                                    if (field.lookup_item) {
+                                        if (!lookups[field.lookup_item.ID]) {
+                                            lookups[field.lookup_item.ID] = [];
+                                        }
+                                        field.set_data(field_arr[i][1]);
+                                        old_value = field.value;
+                                        field.set_data(field_arr[i][2]);
+                                        new_value = field.value;
+                                        if (old_value) {
+                                            lookups[field.lookup_item.ID].push([field.lookup_field, old_value]);
+                                            old_value = '<span class="' + field.lookup_field + '_' + old_value + '">value is loading</span>';
+                                        }
+                                        if (new_value) {
+                                            lookups[field.lookup_item.ID].push([field.lookup_field, new_value]);
+                                            new_value = '<span class="' + field.lookup_field + '_' + new_value + '">value is loading</span>'
+                                        }
+                                    }
+                                    else {
+                                        field.set_data(field_arr[i][1]);
+                                        old_value = field.display_text;
+                                        field.set_data(field_arr[i][2]);
+                                        new_value = field.display_text;
+                                    }
+                                    if (h.operation.value === consts.RECORD_INSERTED) {
+                                        content += '<p>' + self.task.language.field + ' <b>' + field_name + '</b>: ' +
+                                            self.task.language.new_value + ': <b>' + new_value + '</b></p>';
+                                    }
+                                    else if (h.operation.value === consts.RECORD_MODIFIED) {
+                                        content += '<p>' + self.task.language.field + ' <b>' + field_name + '</b>: ' +
+                                            self.task.language.old_value + ': <b>' + old_value + '</b> ' +
+                                            self.task.language.new_value + ': <b>' + new_value + '</b></p>';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (h.user.value) {
+                        user = self.task.language.by_user + ' ' + h.user.value;
+                    }
+                    acc.find('.accordion-toggle').html(h.date.display_text + ': ' +
+                        h.operation.display_text + ' ' + user);
+                    acc.find('.accordion-inner').html(content);
+                    if (h.rec_no === 0) {
+                        acc.find('.accordion-body').addClass('in');
+                    }
+                    acc_div.append(acc)
+                })
+                if (hist.record_count()) {
+                    html = acc_div;
+                }
+                self.task.message(html, {width: 700, height: 600,
+                    title: self.item_caption + ': history', footer: false, print: true});
+                for (var ID in lookups) {
+                    if (lookups.hasOwnProperty(ID)) {
+                        lookup_item = self.task.item_by_ID(parseInt(ID, 10));
+                        if (lookup_item) {
+                            lookup_item = lookup_item.copy({handlers: false});
+                            lookup_keys = {};
+                            lookup_fields = {};
+                            lookup_fields[lookup_item._primary_key] = true;
+                            for (var i = 0; i < lookups[ID].length; i++) {
+                                lookup_fields[lookups[ID][i][0]] = true;
+                                lookup_keys[lookups[ID][i][1]] = true;
+                            }
+                            keys = [];
+                            for (var key in lookup_keys) {
+                                if (lookup_keys.hasOwnProperty(key)) {
+                                    keys.push(parseInt(key, 10));
+                                }
+                            }
+                            fields = [];
+                            for (var field in lookup_fields) {
+                                if (lookup_fields.hasOwnProperty(field)) {
+                                    fields.push(field);
+                                }
+                            }
+                            where = {}
+                            where[lookup_item._primary_key + '__in'] = keys
+                            lookup_item.open({where: where, fields: fields}, function() {
+                                lookup_item.each(function(l) {
+                                    l.each_field(function(f) {
+                                        if (!f.system_field()) {
+                                            acc_div.find("." + f.field_name + '_' + l._primary_key_field.value).text(f.value);
+                                        }
+                                    });
+                                });
+                            })
+                        }
+                    }
+                }
+            });
+        },
+
         is_empty_obj: function(obj) {
             for (var prop in obj) {
                 if (obj.hasOwnProperty(prop))
@@ -1185,6 +1353,7 @@
                 self.item_caption = info.task.caption;
                 self.visible = info.task.visible;
                 self.lookup_lists = info.task.lookup_lists;
+                self.history_item = info.task.history_item;
                 self.item_type = "";
                 if (info.task.type) {
                     self.item_type = self.types[info.task.type - 1];
@@ -1212,7 +1381,40 @@
                 else {
                     self.init_modules();
                 }
+                if (self.history_item) {
+                    self._set_history_item(self.item_by_ID(self.history_item))
+                }
             });
+        },
+
+        _set_history_item: function(item) {
+            var self = this;
+            this.history_item = item;
+            this.history_item.read_only = true;
+            item.view_options.fields = ['item_id', 'item_rec_id', 'date', 'operation', 'user'];
+            if (!item.on_get_field_text) {
+                item.on_get_field_text = function(field) {
+                    var oper,
+                        it;
+                    if (field.field_name === 'operation') {
+                        if (field.value === consts.RECORD_INSERTED) {
+                            return self.language.created;
+                        }
+                        else if (field.value === consts.RECORD_MODIFIED || field.value === consts.RECORD_DETAILS_MODIFIED) {
+                            return self.language.modified;
+                        }
+                        else if (field.value === consts.RECORD_DELETED) {
+                            return self.language.deleted;
+                        }
+                    }
+                    else if (field.field_name === 'item_id') {
+                        it = self.item_by_ID(field.value);
+                        if (it) {
+                            return it.item_caption;
+                        }
+                    }
+                }
+            }
         },
 
         init_modules: function() {
@@ -1447,71 +1649,67 @@
                 len,
                 fields = [],
                 change_id;
-            if (this.log_changes()) {
-                if (this.item.master) {
-                    record_log = this.item.master.change_log.find_record_log();
-                    if (record_log) {
-                        details = record_log.details;
-                        detail = details[this.item.ID];
-                        if (this.is_empty_obj(detail)) {
-                            len = this.item.fields.length;
-                            for (i = 0; i < len; i++) {
-                                fields.push(this.item.fields[i].field_name);
-                            }
-                            detail = {
-                                'logs': {},
-                                'records': this.item._dataset,
-                                'fields': fields,
-                                'expanded': this.item.expanded
-                            };
-                            details[this.item.ID] = detail;
+            if (this.item.master) {
+                record_log = this.item.master.change_log.find_record_log();
+                if (record_log) {
+                    details = record_log.details;
+                    detail = details[this.item.ID];
+                    if (this.is_empty_obj(detail)) {
+                        len = this.item.fields.length;
+                        for (i = 0; i < len; i++) {
+                            fields.push(this.item.fields[i].field_name);
                         }
-                        this.logs = detail.logs;
-                        this.records = detail.records;
-                        this.fields = detail.fields;
-                        this.expanded = detail.expanded;
-                    }
-                }
-                if (this.item.record_count()) {
-                    change_id = this.item._get_rec_change_id();
-                    if (!change_id) {
-                        change_id = this.get_change_id()
-                        this.item._set_rec_change_id(change_id);
-                    }
-                    result = this.logs[change_id];
-                    if (this.is_empty_obj(result)) {
-                        result = {
-                            'unmodified_record': null,
-                            'record': this.cur_record(),
-                            'details': {}
+                        detail = {
+                            logs: {},
+                            records: this.item._dataset,
+                            fields: fields,
+                            expanded: this.item.expanded
                         };
-                        this.logs[change_id] = result;
+                        details[this.item.ID] = detail;
                     }
+                    this.logs = detail.logs;
+                    this.records = detail.records;
+                    this.fields = detail.fields;
+                    this.expanded = detail.expanded;
                 }
-                return result;
             }
+            if (this.item.record_count()) {
+                change_id = this.item._get_rec_change_id();
+                if (!change_id) {
+                    change_id = this.get_change_id()
+                    this.item._set_rec_change_id(change_id);
+                }
+                result = this.logs[change_id];
+                if (this.is_empty_obj(result)) {
+                    result = {
+                        old_record: null,
+                        record: this.cur_record(),
+                        details: {}
+                    };
+                    this.logs[change_id] = result;
+                }
+            }
+            return result;
         },
 
         get_detail_log: function(detail_ID) {
             var result,
                 record_log,
                 details;
-            if (this.log_changes()) {
-                record_log = this.find_record_log();
-                details = record_log.details;
-                if (!this.is_empty_obj(details)) {
-                    result = details[detail_ID];
-                }
-                if (result === undefined && this._is_delta) {
-                    result = {
-                        'records': [],
-                        'fields': [],
-                        'expanded': false,
-                        'logs': {}
-                    };
-                }
-                return result;
+            record_log = this.find_record_log();
+            details = record_log.details;
+            if (!this.is_empty_obj(details)) {
+                result = details[detail_ID];
             }
+            if (result === undefined && this._is_delta) {
+                result = {
+                    records: [],
+                    fields: [],
+                    expanded: false,
+                    logs: {}
+                };
+            }
+            return result;
         },
 
         remove_record_log: function() {
@@ -1530,7 +1728,7 @@
 
         record_modified: function(record_log) {
             var modified = false,
-                old_rec = record_log.unmodified_record,
+                old_rec = record_log.old_record,
                 cur_rec = record_log.record;
             for (var i = 0; i < this.item._record_lookup_index; i++) {
                 if (old_rec[i] !== cur_rec[i]) {
@@ -1572,8 +1770,8 @@
                 record_log = this.find_record_log();
                 if (this.item.item_state === consts.STATE_BROWSE) {
                     if ((this.item._get_record_status() === consts.RECORD_UNCHANGED) ||
-                        (this.item._get_record_status() === consts.RECORD_DETAILS_MODIFIED && record_log.unmodified_record === null)) {
-                        record_log.unmodified_record = this.copy_record(this.cur_record(), false);
+                        (this.item._get_record_status() === consts.RECORD_DETAILS_MODIFIED && record_log.old_record === null)) {
+                        record_log.old_record = this.copy_record(this.cur_record(), false);
                         return;
                     }
                 } else if (this.item.item_state === consts.STATE_INSERT) {
@@ -1607,6 +1805,7 @@
             var data = {},
                 record_log,
                 record,
+                old_record = null,
                 info,
                 new_record,
                 new_details,
@@ -1625,6 +1824,9 @@
                     info = this.item.get_rec_info(undefined, record);
                     if (info[consts.REC_STATUS] !== consts.RECORD_UNCHANGED) {
                         details = record_log.details;
+                        if (this.item.keep_history || this.item.master && this.item.master.keep_history) {
+                            old_record = record_log.old_record;
+                        }
                         new_record = this.copy_record(record, false)
                         new_details = {};
                         for (var detail_id in details) {
@@ -1638,9 +1840,9 @@
                             }
                         }
                         data[key] = {
-                            //                            'unmodified_record': record_log['unmodified_record'],
-                            'record': new_record,
-                            'details': new_details
+                            record: new_record,
+                            details: new_details,
+                            old_record: old_record
                         };
                     }
                 }
@@ -1670,10 +1872,9 @@
                     this.records.push(record);
                     details = {};
                     this.logs[key] = {
-                        //                        'unmodified_record': record_log['unmodified_record'],
-                        'unmodified_record': null,
-                        'record': record,
-                        'details': details
+                        old_record: null,
+                        record: record,
+                        details: details
                     };
                     record_details = record_log.details;
                     for (var detail_id in record_details) {
@@ -1682,10 +1883,10 @@
                             detail_item = this.item.item_by_ID(parseInt(detail_id, 10));
                             detail_item.change_log.set_changes(detail);
                             details[detail_id] = {
-                                'logs': detail_item.change_log.logs,
-                                'records': detail_item.change_log.records,
-                                'fields': detail_item.change_log.fields,
-                                'expanded': detail_item.change_log.expanded
+                                logs: detail_item.change_log.logs,
+                                records: detail_item.change_log.records,
+                                fields: detail_item.change_log.fields,
+                                expanded: detail_item.change_log.expanded
                             };
                         }
                     }
@@ -1744,9 +1945,9 @@
                             details = {};
                             detail_item.change_log.store_details(record_log.details, details);
                             logs[key] = {
-                                'unmodified_record': record_log.unmodified_record,
-                                'record': record,
-                                'details': details
+                                old_record: record_log.old_record,
+                                record: record,
+                                details: details
                             };
                         }
                     }
@@ -1756,10 +1957,10 @@
                     }
                 }
                 dest[detail_id] = {
-                    'logs': logs,
-                    'records': records,
-                    'fields': fields,
-                    'expanded': expanded
+                    logs: logs,
+                    records: records,
+                    fields: fields,
+                    expanded: expanded
                 };
             }
         },
@@ -1774,12 +1975,12 @@
                 details = {};
                 this.store_details(record_log.details, details);
                 result = {};
-                result.unmodified_record = record_log.unmodified_record;
+                result.old_record = record_log.old_record;
                 result.record = this.copy_record(record_log.record);
                 result.details = details;
             } else {
                 result = {};
-                result['record'] = this.copy_record(this.cur_record());
+                result.record = this.copy_record(this.cur_record());
                 details = {};
                 for (var i = 0; i < this.item.details.length; i++) {
                     detail = this.item.details[i];
@@ -1787,7 +1988,7 @@
                         details[detail.ID] = detail._dataset.slice(0);
                     }
                 }
-                result['details'] = details;
+                result.details = details;
             }
             return result;
         },
@@ -1801,27 +2002,27 @@
                 info_index;
             if (this.log_changes()) {
                 record_log = this.find_record_log();
-                record = log['record'];
+                record = log.record;
                 cur_record = this.cur_record();
                 info_index = this.item._record_info_index;
                 for (var i = 0; i < info_index; i++) {
                     cur_record[i] = record[i];
                 }
-                record_log['unmodified_record'] = log['unmodified_record'];
-                record_log['record'] = cur_record;
-                record_log['details'] = log['details'];
+                record_log.old_record = log.old_record;
+                record_log.record = cur_record;
+                record_log.details = log.details;
                 for (var i = 0; i < this.item.details.length; i++) {
                     detail = this.item.details[i];
-                    detail_log = log['details'][detail.ID];
+                    detail_log = log.details[detail.ID];
                     if (!this.is_empty_obj(detail_log)) {
-                        detail._dataset = detail_log['records'];
+                        detail._dataset = detail_log.records;
                     }
                 }
                 if (this.item._get_record_status() === consts.RECORD_UNCHANGED) {
                     this.remove_record_log();
                 }
             } else {
-                record = log['record'];
+                record = log.record;
                 cur_record = this.cur_record();
                 info_index = this.item._record_info_index;
                 for (var i = 0; i < info_index; i++) {
@@ -1829,7 +2030,7 @@
                 }
                 for (var i = 0; i < this.item.details.length; i++) {
                     detail = this.item.details[i];
-                    detail._dataset = log['details'][detail.ID];
+                    detail._dataset = log.details[detail.ID];
                 }
             }
         },
@@ -1852,25 +2053,25 @@
                 primary_key_field,
                 master_rec_id_field;
             if (updates) {
-                changes = updates['changes'];
+                changes = updates.changes;
                 for (var key in changes) {
                     if (changes.hasOwnProperty(key)) {
                         change = changes[key];
-                        log_id = change['log_id'];
-                        rec_id = change['rec_id'];
-                        details = change['details'];
+                        log_id = change.log_id;
+                        rec_id = change.rec_id;
+                        details = change.details;
                         record_log = this.logs[log_id];
                         if (record_log) {
-                            record = record_log['record'];
-                            record_details = record_log['details'];
+                            record = record_log.record;
+                            record_details = record_log.details;
                             len = details.length;
                             for (var i = 0; i < len; i++) {
                                 detail = details[i];
-                                ID = detail['ID'];
+                                ID = detail.ID;
                                 detail_item = this.item.detail_by_ID(parseInt(ID, 10));
                                 item_detail = record_details[ID];
                                 if (!this.is_empty_obj(item_detail)) {
-                                    detail_item.change_log.logs = item_detail['logs'];
+                                    detail_item.change_log.logs = item_detail.logs;
                                     detail_item.change_log.update(detail, rec_id);
                                 }
                             }
@@ -2331,6 +2532,13 @@
         },
 
         copy: function(options) {
+            if (this.master) {
+                throw 'A detail item can not be copied.';
+            }
+            return this._copy(options);
+        },
+
+        _copy: function(options) {
             var copyTable,
                 i,
                 len,
@@ -2392,7 +2600,7 @@
             }
             if (options.details) {
                 this.each_detail(function(detail, i) {
-                    copyTable = detail.copy(options);
+                    copyTable = detail._copy(options);
                     copyTable.owner = result;
                     copyTable.expanded = detail.expanded;
                     copyTable.master = result;
@@ -2965,10 +3173,7 @@
                         rows = data[0];
 
                         len = rows.length;
-                        this._dataset = [];
-                        for (i = 0; i < len; i++) {
-                            this._dataset.push(rows[i]);
-                        }
+                        this._dataset = rows;
                         if (this._pg_limit && this.paginate && rows) {
                             this._pg_offset = offset;
                             this.is_loaded = false;
@@ -3377,7 +3582,7 @@
                 this.on_before_post.call(this, this);
             }
             if (this.master) {
-                this.field_by_name(this._master_id).value = this.master.ID;
+                this.field_by_name(this._master_id).set_data(this.master.ID);
             }
             this.check_record_valid();
             len = this.details.length;
@@ -3507,7 +3712,7 @@
             }
             result.change_log.set_changes(changes);
             result._dataset = result.change_log.records;
-            result._update_fields();
+            result._update_fields(result.change_log.fields);
             result._bind_fields(result.change_log.expanded)
             result._set_item_state(consts.STATE_BROWSE);
             result._cur_row = null;
@@ -4300,6 +4505,7 @@
                     }
                 }
             }
+            this.edit_options.show_history = true;
             this.create_form('edit', {
                 container: container,
                 beforeShow: function() {
@@ -6001,7 +6207,7 @@
         },
 
         int_to_str: function(value) {
-            if (value) {
+            if (value || value === 0) {
                 return value.toString();
             }
             else {
@@ -6013,7 +6219,7 @@
             var str,
                 i,
                 result = '';
-            if (value) {
+            if (value || value === 0) {
                 str = ('' + value.toFixed(6)).replace(".", settings.DECIMAL_POINT);
                 i = str.length - 1;
                 for (; i >= 0; i--) {
@@ -6058,7 +6264,7 @@
                 len,
                 result = '';
 
-            if (value) {
+            if (value || value === 0) {
                 result = value.toFixed(settings.FRAC_DIGITS);
                 if (isNaN(result[0])) {
                     result = result.slice(1, result.length);
@@ -7845,30 +8051,57 @@
         },
 
         update_field: function(field, refreshingRow) {
-            var row = this.itemRow(),
+            var self = this,
+                row = this.itemRow(),
                 update,
+                build,
                 text,
+                div,
                 span;
             if (this.item.active && this.item.controls_enabled() && this.item.record_count()) {
-                span = row.find('div.' + field.field_name + ' span');
-                text = this.get_field_text(field);
-                if (text !== span.text()) {
-                    span.text(text);
-                    update = (this.item.is_new() && this.item.record_count() < 10) ||
-                        (this.$table.get(0).clientWidth > this.$scroll_div.innerWidth()) ||
-                        (this.$table.get(0).clientWidth > this.$element.innerWidth()) ||
-                        (this.$head.find('th.' + field.field_name).outerWidth() !== row.find('td.' + field.field_name).outerWidth() && field !== this.fields[this.fields.length - 1]) ||
-                        (span.get(0) && span.get(0).clientWidth !== span.get(0).scrollWidth);
-
-                    if (update) {
-                        if (this.item.record_count() < 100) {
-                            this.build();
-                        } else {
-                            this.syncColWidth();
+                div = row.find('div.' + field.field_name);
+                if (div.length) {
+                    span = div.find('span');
+                    text = this.get_field_text(field);
+                    if (text !== span.text()) {
+                        span.text(text);
+                        if (this.item.is_new() && this.item.record_count() < 10) {
+                            update = true;
                         }
-                    }
-                    if (!refreshingRow) {
-                        this.update_selected(row);
+                        else if (this.$table.get(0).clientWidth > this.$scroll_div.innerWidth() ||
+                            this.$table.get(0).clientWidth > this.$element.innerWidth()) {
+                            update = true;
+                        }
+                        else if (this.$table.get(0).clientWidth > this.$scroll_div.innerWidth() ||
+                            this.$table.get(0).clientWidth > this.$element.innerWidth()) {
+                            update = true;
+                        }
+                        else if (this.$table.get(0).clientWidth > this.$scroll_div.innerWidth() ||
+                            this.$table.get(0).clientWidth > this.$element.innerWidth()) {
+                            update = true;
+                        }
+                        else if ((field.data_type === consts.INTEGER ||
+                            field.data_type === consts.FLOAT ||
+                            field.data_type === consts.CURRENCY) &&
+                            Math.abs(div.get(0).offsetWidth - div.get(0).scrollWidth) > 1) {
+                            update = true
+                        }
+                        if (update || build) {
+                            clearTimeout(this._update_field_timeout);
+                            this._update_field_timeout = setTimeout(
+                                function() {
+                                    if (self.item.record_count() <= 100) {
+                                        self.build();
+                                    } else {
+                                        self.syncColWidth();
+                                    }
+                                },
+                                0
+                            )
+                        }
+                        if (!refreshingRow) {
+                            this.update_selected(row);
+                        }
                     }
                 }
             }
@@ -9497,7 +9730,9 @@
                     case 27: // escape
                         if (!this.shown) return
                         this.field.update_controls();
-                        this.$element.select();
+                        if (this.$element) {
+                            this.$element.select();
+                        }
                         this.hide();
                         break
 

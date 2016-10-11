@@ -60,6 +60,22 @@ def get_select(query, start, end, fields):
         result += ' LIMIT %d, %d' % (offset, limit)
     return result
 
+def process_sql_params(params, cursor):
+    result = []
+    for p in params:
+        if type(p) == tuple:
+            value, data_type = p
+        else:
+            value = p
+        result.append(value)
+    return result
+
+def process_sql_result(rows):
+    result = []
+    for row in rows:
+        result.append(list(row))
+    return result
+
 def cast_date(date_str):
     return "CAST('" + date_str + "' AS DATE)"
 

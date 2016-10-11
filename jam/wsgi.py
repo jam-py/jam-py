@@ -7,6 +7,7 @@ import uuid
 import traceback
 import datetime
 from threading import Lock
+from types import MethodType
 import jam
 
 sys.path.insert(1, os.path.join(os.path.dirname(jam.__file__), 'third_party'))
@@ -101,12 +102,15 @@ class App():
                 response = e
         return response(environ, start_response)
 
-    def serve_himself(self, environ, start_response, file_name):
-        response = Response()
+    def set_no_cache_headers(self, response):
         response.headers['Content-Type'] = 'text/html'
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = 0
+
+    def serve_himself(self, environ, start_response, file_name):
+        response = Response()
+        self.set_no_cache_headers(response)
         if file_name == 'admin.html':
             file_name = os.path.join(self.jam_dir, file_name)
         with open(file_name, 'r') as f:
@@ -124,6 +128,7 @@ class App():
                     return self.serve_himself(environ, start_response, file_name)
                 else:
                     response = Response(self.admin.lang['no_task'])
+                    self.set_no_cache_headers(response)
                     return response(environ, start_response)
             elif file_name == 'admin.html':
                 return self.serve_himself(environ, start_response, file_name)
@@ -254,6 +259,10 @@ class App():
                 params = list(params)
                 params.append(env)
             result = func(obj, *params)
+            #~ if isinstance(func, MethodType):
+                #~ result = func(*params)
+            #~ else:
+                #~ result = func(obj, *params)
         else:
             raise Exception, 'item: %s no server function with name %s' % (obj.item_name, func_name)
         return result, error

@@ -137,11 +137,14 @@ class AbstrTask(AbstractItem):
         self.task = self
         self.__language = None
         self.item_type_id = common.TASK_TYPE
+        self.history_item = None
         self.log = None
 
     def write_info(self, info):
         super(AbstrTask, self).write_info(info)
         info['lookup_lists'] = self.lookup_lists
+        if self.history_item:
+            info['history_item'] = self.history_item.ID
 
     def set_info(self, info):
         super(AbstrTask, self).set_info(info)
@@ -223,6 +226,7 @@ class AbstrItem(AbstractItem):
         info['deleted_flag'] = self._deleted_flag
         info['master_id'] = self._master_id
         info['master_rec_id'] = self._master_rec_id
+        info['keep_history'] = self.keep_history
 
     def read_info(self, info):
         super(AbstrItem, self).read_info(info)

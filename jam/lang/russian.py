@@ -174,5 +174,12 @@ dictionary = \
     'months_short':                     [u'Янв', u'Фев', u'Мар', u'Апр', u'Май', u'Июн', u'Июл', u'Авг', u'Сен', u'Окт', u'Ноя', u'Дек'],
 #grid
     'page':                             u'Стр.',
-    'of':                               u'из'
+    'of':                               u'из',
+#history
+    'created':                        u'Создан',
+    'modified':                       u'Изменен',
+    'deleted':                        u'Удален',
+    'by_user':                        u'пользователем',
+    'old_value':                      u'старое значение',
+    'new_value':                      u'новое значение'
 }

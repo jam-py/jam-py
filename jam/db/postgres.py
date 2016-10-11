@@ -45,6 +45,31 @@ def get_select(query, start, end, fields):
         result += ' limit %d offset %d' % (limit, offset)
     return result
 
+def process_sql_params(params, cursor):
+    result = []
+    for p in params:
+        if type(p) == tuple:
+            value, data_type = p
+            if data_type == BLOB:
+                if type(value) == unicode:
+                    value = value.encode('utf-8')
+                value = psycopg2.Binary(value)
+        else:
+            value = p
+        result.append(value)
+    return result
+
+def process_sql_result(rows):
+    result = []
+    for row in rows:
+        fields = []
+        for field in row:
+            if type(field) == buffer:
+                field = str(field)
+            fields.append(field)
+        result.append(fields)
+    return result
+
 def cast_date(date_str):
     return "cast('" + date_str + "' as date)"
 
@@ -62,7 +87,7 @@ def create_table_sql(table_name, fields, foreign_fields=None):
     primary_key = ''
     seq_name = '%s_id_seq' % table_name
     result.append(set_case('create sequence "%s"' % seq_name))
-    sql = 'create table "%s"\n(\n' % table_name
+    sql = 'create table "%s"\n(\n' % set_case(table_name)
     for field in fields:
         if field['primary_key']:
             primary_key = set_case(field['field_name'])

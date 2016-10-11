@@ -23,11 +23,12 @@ def read_language(task):
     result = None
     sql = 'SELECT F_LANGUAGE FROM SYS_PARAMS'
     db_module = db_modules.get_db_module(task.db_type)
-    connection, (rec, error) = execute_sql(db_module, \
+    connection, (rec, error) = execute_sql(db_module,
         task.db_database, task.db_user, task.db_password,
-        task.db_host, task.db_port, task.db_encoding, None, sql, result_set='ONE')
+        task.db_host, task.db_port, task.db_encoding,
+        None, sql, select=True)
     if rec:
-        result = rec[0]
+        result = rec[0][0]
     if not result:
         result = 1
     return result
@@ -40,9 +41,11 @@ def read_setting(task):
     sql = sql[:-2]
     sql += ' FROM SYS_PARAMS'
     db_module = db_modules.get_db_module(task.db_type)
-    connection, (rec, error) = execute_sql(db_module, \
+    connection, (rec, error) = execute_sql(db_module,
         task.db_database, task.db_user, task.db_password,
-        task.db_host, task.db_port, task.db_encoding, None, sql, result_set='ONE')
+        task.db_host, task.db_port, task.db_encoding,
+        None, sql, select=True)
+    rec = rec[0]
     common.SETTINGS = {}
     for i, key in enumerate(keys):
         setting_type = type(common.DEFAULT_SETTINGS[key])

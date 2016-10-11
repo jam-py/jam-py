@@ -190,5 +190,12 @@ dictionary = \
     'months_short':                   [u'Jan', u'Feb', u'Mar', u'Apr', u'May', u'Jun', u'Jul', u'Aug', u'Sep', u'Oct', u'Nov', u'Dec'],
 #grid
     'page':                           u'Page',
-    'of':                             u'of'
+    'of':                             u'of',
+#history
+    'created':                        u'Created',
+    'modified':                       u'Modified',
+    'deleted':                        u'Deleted',
+    'by_user':                        u'by',
+    'old_value':                      u'old value',
+    'new_value':                      u'new value'
 }

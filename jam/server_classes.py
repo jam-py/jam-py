@@ -37,7 +37,12 @@ class ServerDataset(Dataset, SQL):
         self.virtual_table = False
 
     def copy(self, filters=True, details=True, handlers=True):
-        result = super(ServerDataset, self).copy(filters, details, handlers)
+        if self.master:
+            raise DatasetException(u'A detail item can not be copied: %s' % self.item_name)
+        return self._copy(filters, details, handlers)
+
+    def _copy(self, filters=True, details=True, handlers=True):
+        result = super(ServerDataset, self)._copy(filters, details, handlers)
         result.table_name = self.table_name
         result._order_by = self._order_by
         result.soft_delete = self.soft_delete
@@ -137,8 +142,8 @@ class ServerDataset(Dataset, SQL):
             rows = self.task.execute_select(sql)
         return rows, error_mes
 
-    def apply_delta(self, delta, privileges):
-        sql = delta.apply_sql(privileges)
+    def apply_delta(self, delta, privileges=None, user_info=None):
+        sql = delta.apply_sql(user_info, privileges)
         return self.task.execute(sql)
 
     def apply_changes(self, data, privileges, user_info=None, enviroment=None):
@@ -153,7 +158,7 @@ class ServerDataset(Dataset, SQL):
         if self.on_apply:
             result, error = self.on_apply(self, delta, params, privileges, user_info, enviroment)
         else:
-            result, error = self.apply_delta(delta, privileges)
+            result, error = self.apply_delta(delta, privileges, user_info)
         return result, error
 
     def update_deleted(self):
@@ -823,7 +828,7 @@ class Report(AbstrReport):
 
 def execute_sql(db_module, db_database, db_user, db_password,
     db_host, db_port, db_encoding, connection, command,
-    params=None, result_set=None, call_proc=False, commit=True, ddl=False):
+    params=None, call_proc=False, commit=True, select=False, ddl=False):
 
     #~ def execute_command(cursor, command, params=None):
         #~ global log_save_after
@@ -884,15 +889,13 @@ def execute_sql(db_module, db_database, db_user, db_password,
             now = datetime.datetime.now()
 
             result = None
-            if params:
-                cursor.execute(command, params)
+            if params and not select:
+                cursor.execute(command, db_module.process_sql_params(params, cursor))
             else:
                 cursor.execute(command)
-            if result_set == 'ONE':
-                result = cursor.fetchone()
-            elif result_set == 'ALL':
+            if select:
                 result = cursor.fetchall()
-
+                result = db_module.process_sql_result(result)
             return result
         except Exception, x:
             error = '\nError: %s\n command: %s\n params: %s' % (str(x), command, params)
@@ -919,7 +922,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
             changes = []
             result['changes'] = changes
             for sql in sqls:
-                (command, params, info), details = sql
+                (command, params, info, h_sql, h_params, h_table_name), details = sql
                 if info:
                     rec_id = info['primary_key']
                     if info['status'] == common.RECORD_INSERTED:
@@ -948,6 +951,14 @@ def execute_sql(db_module, db_database, db_user, db_password,
                 else:
                     if command:
                         execute_command(cursor, command, params)
+                if h_sql:
+                    next_sequence_value_sql = db_module.next_sequence_value_sql(h_table_name)
+                    if next_sequence_value_sql:
+                        h_id = get_next_id(cursor, next_sequence_value_sql)
+                        h_params[0] = h_id
+                    if not h_params[2]:
+                        h_params[2] = rec_id
+                    execute_command(cursor, h_sql, h_params)
 
         delta = command['delta']
         process_delta(delta, None, delta_result)
@@ -1009,6 +1020,8 @@ def execute_sql(db_module, db_database, db_user, db_password,
             finally:
                 connection = None
         finally:
+            if select:
+                pass
             if ddl:
                 info = ''
                 if messages:
@@ -1038,9 +1051,9 @@ def process_request(parentPID, name, queue, db_type, db_database, db_user, db_pa
             result_queue = request['queue']
             command = request['command']
             params = request['params']
-            result_set = request['result_set']
             call_proc = request['call_proc']
             commit = request['commit']
+            select = request['select']
             cur_mod_count = request['mod_count']
             if cur_mod_count != mod_count or counter > 1000:
                 if con:
@@ -1050,7 +1063,7 @@ def process_request(parentPID, name, queue, db_type, db_database, db_user, db_pa
                 mod_count = cur_mod_count
                 counter = 0
             con, result = execute_sql(db_module, db_database, db_user, db_password,
-                db_host, db_port, db_encoding, con, command, params, result_set, call_proc, commit)
+                db_host, db_port, db_encoding, con, command, params, call_proc, commit, select)
             counter += 1
             result_queue.put(result)
 
@@ -1171,40 +1184,40 @@ class AbstractServerTask(AbstrTask):
     def create_connection(self):
         return self.db_module.connect(self.db_database, self.db_user, self.db_password, self.db_host, self.db_port, self.db_encoding)
 
-    def send_to_pool(self, queue, result_queue, command, params=None, result_set=None, call_proc=False, commit=True):
+    def send_to_pool(self, queue, result_queue, command, params=None, call_proc=False, commit=True, select=False):
         request = {}
         request['queue'] = result_queue
         request['command'] = command
         request['params'] = params
-        request['result_set'] = result_set
         request['call_proc'] = call_proc
         request['commit'] = commit
+        request['select'] = select
         request['mod_count'] = self.mod_count
         queue.put(request)
         return  result_queue.get()
 
-    def execute_in_pool(self, command, params=None, result_set=None, call_proc=False, commit=True):
+    def execute_in_pool(self, command, params=None, call_proc=False, commit=True, select=False):
         result_queue = Queue.Queue()
-        result = self.send_to_pool(self.queue, result_queue, command, params, result_set, call_proc, commit)
+        result = self.send_to_pool(self.queue, result_queue, command, params, call_proc, commit, select)
         return result
 
-    def execute_in_mp_poll(self, command, params=None, result_set=None, call_proc=False, commit=True):
+    def execute_in_mp_poll(self, command, params=None, call_proc=False, commit=True, select=False):
         result_queue = self.mp_manager.Queue()
-        result = self.send_to_pool(self.mp_queue, result_queue, command, params, result_set, call_proc, commit)
+        result = self.send_to_pool(self.mp_queue, result_queue, command, params, call_proc, commit, select)
         return result
 
-    def execute(self, command, params=None, result_set=None, call_proc=False, commit=True):
+    def execute(self, command, params=None, call_proc=False, commit=True, select=False):
         if self.mp_pool:
             if self.persist_con and not self.persist_con_busy:
                 self.persist_con_busy += 1
                 try:
-                    result = self.execute_in_pool(command, params, result_set, call_proc, commit)
+                    result = self.execute_in_pool(command, params, call_proc, commit, select)
                 finally:
                     self.persist_con_busy -= 1
             else:
-                result = self.execute_in_mp_poll(command, params, result_set, call_proc, commit)
+                result = self.execute_in_mp_poll(command, params, call_proc, commit, select)
         else:
-            result = self.execute_in_pool(command, params, result_set, call_proc, commit)
+            result = self.execute_in_pool(command, params, call_proc, commit, select)
         return result
 
     def callproc(self, command, params=None):
@@ -1213,14 +1226,7 @@ class AbstractServerTask(AbstrTask):
             return result_set
 
     def execute_select(self, command, params=None):
-        result, error = self.execute(command, params, result_set='ALL', commit=False)
-        if error:
-            raise Exception, error
-        else:
-            return result
-
-    def execute_select_one(self, command, params=None):
-        result, error = self.execute(command, params, result_set='ONE', commit=False)
+        result, error = self.execute(command, params, commit=False, select=True)
         if error:
             raise Exception, error
         else:
@@ -1338,6 +1344,7 @@ class AbstractServerTask(AbstrTask):
 
 class DebugException(Exception):
     pass
+
 
 class Task(AbstractServerTask):
     def __init__(self, app, name, caption, js_filename,

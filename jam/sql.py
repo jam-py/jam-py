@@ -2,6 +2,7 @@
 
 from __future__ import with_statement
 import sys
+import json
 import traceback
 
 import common, db.db_modules as db_modules
@@ -14,10 +15,10 @@ class SQL(object):
             db_module = self.task.db_module
         sql = db_module.next_sequence_value_sql(self.table_name)
         if sql:
-            rec = self.task.execute_select_one(sql)
+            rec = self.task.execute_select(sql)
             if rec:
-                if rec[0]:
-                    return int(rec[0])
+                if rec[0][0]:
+                    return int(rec[0][0])
 
     def insert_sql(self, db_module):
         if self._deleted_flag:
@@ -32,7 +33,7 @@ class SQL(object):
                 index += 1
                 fields += '"%s", ' % field.field_name
                 values +=  '%s, ' % db_module.value_literal(index)
-                value = field.raw_value
+                value = (field.raw_value, field.data_type)
                 row.append(value)
         fields = fields[:-2]
         values = values[:-2]
@@ -51,9 +52,9 @@ class SQL(object):
                 fields += '"%s"=%s, ' % \
                     (db_module.set_case(field.field_name),
                     db_module.value_literal(index))
-                value = field.raw_value
+                value = (field.raw_value, field.data_type)
                 if field.field_name == self._deleted_flag:
-                    value = 0
+                    value = (0, field.data_type)
                 row.append(value)
         fields = fields[:-2]
         where = db_module.set_case(' WHERE %s = %s' % \
@@ -74,7 +75,7 @@ class SQL(object):
                 self._primary_key_field.value)
         return db_module.set_case(sql)
 
-    def apply_sql(self, priv=None, db_module=None):
+    def apply_sql(self, user_info=None, priv=None, db_module=None):
 
         def get_sql(item, db_module):
             if item.master:
@@ -113,7 +114,8 @@ class SQL(object):
                 'log_id': item.get_rec_info()[common.REC_CHANGE_ID],
                 'master_rec_id_index': master_rec_id_index
                 }
-            return sql, param, info
+            h_sql, h_params, h_table_name = get_history_sql(item, user_info, db_module)
+            return sql, param, info, h_sql, h_params, h_table_name
 
         def delete_detail_sql(item, detail, db_module):
             if item.soft_delete:
@@ -124,7 +126,53 @@ class SQL(object):
                 sql = 'DELETE FROM %s WHERE %s = %s AND %s = %s' % \
                     (detail.table_name, detail._master_id, item.ID, \
                     detail._master_rec_id, self._primary_key_field.value)
-            return db_module.set_case(sql), None, None
+            h_sql, h_params, h_table_name = get_history_sql(item, user_info, db_module)
+            return db_module.set_case(sql), None, None, h_sql, h_params, h_table_name
+
+        def get_history_sql(item, user_info, db_module):
+            h_sql = None
+            h_params = None
+            h_table_name = None
+            if item.task.history_item and item.keep_history or (item.master and item.master.keep_history):
+                h_table_name = item.task.history_item.table_name
+                changes = None
+                user = None
+                if user_info:
+                    user = user_info['user_name']
+                if item.record_status != common.RECORD_DELETED:
+                    old_rec = item.get_rec_info()[3]
+                    new_rec = item._dataset[item.rec_no]
+                    f_list = []
+                    for f in item.fields:
+                        old = None
+                        if old_rec:
+                            old = old_rec[f.bind_index]
+                        new = new_rec[f.bind_index]
+                        if old != new:
+                            f_list.append([f.ID, old, new])
+                    d_list = []
+                    if not item.master:
+                        for detail in item.details:
+                            for d in detail:
+                                d_list.append([d.ID, d._primary_key_field.value, d.record_status])
+                    changes = (json.dumps([f_list, d_list], default=common.json_defaul_handler), common.BLOB)
+                h_fields = ['id', 'item_id', 'item_rec_id', 'operation', 'changes', 'user', 'date']
+                h_params = [None, item.ID, item._primary_key_field.value, item.record_status, changes, user, datetime.datetime.now()]
+                if item.task.history_item._deleted_flag:
+                    h_fields.append('deleted')
+                    h_params.append(0)
+                index = 0
+                fields = ''
+                values = ''
+                for f in h_fields:
+                    index += 1
+                    fields += '"%s", ' % f
+                    values +=  '%s, ' % db_module.value_literal(index)
+                fields = fields[:-2]
+                values = values[:-2]
+                h_sql = db_module.set_case('INSERT INTO "%s" (%s) VALUES ' % \
+                    (item.task.history_item.table_name, fields)) + '(' + values + ')'
+            return h_sql, h_params, h_table_name
 
         def generate_sql(item, db_module, result):
             ID, sql = result
@@ -145,7 +193,6 @@ class SQL(object):
         result = (self.ID, [])
         generate_sql(self, db_module, result)
         return {'delta': result}
-
 
     def table_alias(self):
         return '"%s"' % self.table_name

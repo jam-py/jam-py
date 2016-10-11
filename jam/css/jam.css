@@ -462,3 +462,19 @@ h4.title {
 .empty-bullet {
     margin-left: 26px;
 }
+
+.history-toggle {
+    font-size: 13px;
+    background-color: #eaf5fb;
+    outline: 0;
+}
+
+.history-heading a:focus,
+.history-heading a:hover {
+    text-decoration: none;
+    outline: 0;
+}
+
+.history-group {
+    border-color: #cceeff;
+}

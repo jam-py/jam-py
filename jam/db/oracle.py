@@ -72,6 +72,33 @@ def get_select(query, start, end, fields):
             (flds, result, rownum, rnum)
     return result
 
+def process_sql_params(params, cursor):
+    result = []
+    for i, p in enumerate(params):
+        if type(p) == tuple:
+            value, data_type = p
+            if data_type == BLOB:
+                if type(value) == unicode:
+                    value = value.encode('utf-8')
+                blob = cursor.var(cx_Oracle.BLOB)
+                blob.setvalue(0, value)
+                value = blob
+        else:
+            value = p
+        result.append(value)
+    return result
+
+def process_sql_result(rows):
+    result = []
+    for row in rows:
+        fields = []
+        for field in row:
+            if isinstance(field, cx_Oracle.LOB):
+                field = field.read()
+            fields.append(field)
+        result.append(fields)
+    return result
+
 def cast_date(date_str):
     return "TO_DATE('" + date_str + "', 'YYYY-MM-DD')"
 
@@ -79,7 +106,7 @@ def cast_datetime(datetime_str):
     return "TO_DATE('" + date_str + "', 'YYYY-MM-DD  HH24:MI')"
 
 def value_literal(index):
-    return ':%d' % index
+    return ':f%d' % index
 
 def upper_function():
     return 'UPPER'
