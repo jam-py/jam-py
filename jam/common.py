@@ -12,13 +12,10 @@ import zipfile
 import gzip
 import cStringIO
 
-DEMO = False
-
 DEFAULT_SETTINGS = {
     'LANGUAGE': 1,
     'SAFE_MODE': False,
     'DEBUGGING': False,
-    'LOG_FILE': '',
     'VERSION': '',
     'DECIMAL_POINT': '.',
     'MON_DECIMAL_POINT': '.',

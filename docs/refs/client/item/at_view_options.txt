@@ -32,6 +32,14 @@ Use the ``view_options`` attribute to specify parameters of the modal view form.
 * ``close_on_escape`` - if true, pressing on the Escape key will trigger the 
   :doc:`close_view_form <m_close_view_form>`
   method.
+* ``close_focusout`` - if true, the 
+  :doc:`close_view_form <m_close_view_form>`
+  method will be called when a form loses focus
+* ``template_class`` - if specified, the div with this class will be searched in 
+  the task 
+  :doc:`templates </refs/client/task/at_templates>` 
+  attribute and used as a form html template when creating a form
+ 
 
 Example
 =======
@@ -39,7 +47,6 @@ Example
 .. code-block:: js
 
     function on_view_form_created(item) {
-        item.view_options.width = 800;
         item.view_options.close_button = false;
         item.view_options.close_on_escape = false;    
     }
@@ -49,7 +56,7 @@ See also
 
 :doc:`Forms </programming/interface/forms>`
 
-:doc:`Creating view forms </programming/interface/view_forms>`
+:doc:`Form templates </programming/interface/form_templates>`
 
 :doc:`view <m_view>`
 

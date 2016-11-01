@@ -536,8 +536,8 @@ function Events0() { // admin
 	function set_project_params(task, caption) {
 		open_sys_params(task);
 		task.sys_params.params = true;
-		task.sys_params.edit_options.fields = ['f_safe_mode', 'f_debugging', 'f_con_pool_size', 'f_mp_pool',
-			'f_persist_con', 'f_compressed_js', 'f_single_file_js', 'f_dynamic_js', 'f_version'];
+		task.sys_params.edit_options.fields = ['f_safe_mode', 'f_debugging', 'f_con_pool_size',
+			'f_mp_pool', 'f_persist_con', 'f_compressed_js', 'f_single_file_js', 'f_dynamic_js', 'f_version'];
 		task.sys_params.edit_options.title = caption;
 		task.sys_params.edit_record();
 	}
@@ -1145,14 +1145,11 @@ function Events3() { // admin.catalogs.sys_items
 	function on_edit_form_created(item) {
 		var parent_type_id = item.task.item_tree.type_id.value,
 			types = item.task.item_types,
-			caption = item.f_item_name.value + ' - Item Editor',
 			fields,
 			row_count,
 			height = 450,
 			width = 560,
 			item_tree = item.task.item_tree;
-	
-		$("title").html(caption);
 	
 		if (item.type_id.value === types.ITEM_TYPE || item.type_id.value === types.TABLE_TYPE) {
 			item.fields_editor = true;
@@ -1242,6 +1239,15 @@ function Events3() { // admin.catalogs.sys_items
 	
 		if (item.type_id.value === item.task.item_types.REPORT_TYPE) {
 			caption = 'Report Editor';
+		}
+		else if (item.type_id.value === item.task.item_types.ITEMS_TYPE) {
+			caption = 'Item Group Editor';
+		}
+		else if (item.type_id.value === item.task.item_types.TABLES_TYPE) {
+			caption = 'Table Group Editor';
+		}
+		else if (item.type_id.value === item.task.item_types.REPORTS_TYPE) {
+			caption = 'Report Group Editor';
 		}
 		if (item.is_new()) {
 			item.edit_form.find('h4.modal-title').html(caption);
@@ -1480,6 +1486,7 @@ function Events3() { // admin.catalogs.sys_items
 			parent = table.parent.value;
 			fields.set_where({owner_rec_id__in: [item.table_id.value, parent]});
 		}
+		fields.set_order_by(['f_field_name']);
 		fields.open({fields: ['id', 'f_field_name']});
 		fields.each(function (f) {
 			list.push([f.id.value, f.f_field_name.value]);
@@ -1767,6 +1774,9 @@ function Events3() { // admin.catalogs.sys_items
 		var item = field.owner;
 		if (lookup_item.item_name === 'sys_fields') {
 			lookup_item.set_view_fields(['f_field_name', 'f_name']);
+		}
+		if (lookup_item.item_name === 'sys_fields') {
+			lookup_item.set_order_by(['f_field_name']);
 		}
 		if (field.field_name === 'f_primary_key' ||
 			field.field_name === 'f_deleted_flag' ||
@@ -2336,6 +2346,9 @@ function Events14() { // admin.catalogs.sys_code_editor
 	
 	function save_edit(item) {
 		var error = false;
+		if (task.user_info.user_id) {
+	
+		}
 		if (item.field_name) {
 			error = save_to_field(item);
 		}
@@ -3025,12 +3038,17 @@ function Events18() { // admin.catalogs.sys_lookup_lists
 		});
 		item.f_lookup_values_text.value = JSON.stringify(list);
 	}
+	
+	function on_view_form_closed(item) {
+		item.task.editing_finished();
+	}
 	this.init_view_table = init_view_table;
 	this.can_delete = can_delete;
 	this.on_view_form_created = on_view_form_created;
 	this.on_edit_form_created = on_edit_form_created;
 	this.init_lookups = init_lookups;
 	this.on_before_post = on_before_post;
+	this.on_view_form_closed = on_view_form_closed;
 }
 
 task.events.events18 = new Events18();
@@ -3215,6 +3233,7 @@ function Events10() { // admin.tables.sys_indices
 				parent,
 				list = [];
 			fields.set_where({owner_rec_id__in: [item.id.value, item.parent.value]});
+			fields.set_order_by(['f_field_name']);
 			fields.open({fields: ['id', 'f_field_name', 'f_master_field']});
 			fields.each(function (f) {
 				if (!f.f_master_field.value) {
@@ -3410,10 +3429,15 @@ function Events7() { // admin.tables.sys_privileges
 		item.apply(function() {});
 		copy.apply(function() {});
 	}
+	
+	function on_view_form_closed(item) {
+		item.task.editing_finished();
+	}
 	this.on_view_form_created = on_view_form_created;
 	this.select_all_clicked = select_all_clicked;
 	this.unselect_all_clicked = unselect_all_clicked;
 	this.on_view_form_close_query = on_view_form_close_query;
+	this.on_view_form_closed = on_view_form_closed;
 }
 
 task.events.events7 = new Events7();
@@ -3579,6 +3603,7 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 			lookup_item.set_view_fields(['id', 'f_item_name', 'f_name']);
 			}
 		else if (lookup_item.item_name === 'sys_fields') {
+			lookup_item.set_order_by(['f_field_name']);
 			lookup_item.set_view_fields(['f_field_name', 'f_name']);
 		}
 		else if (lookup_item.item_name === 'sys_lookup_lists') {

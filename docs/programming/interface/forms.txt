@@ -2,96 +2,115 @@
 Forms
 =====
 
-One of the key concepts of the framework is the concept of form. The forms are 
-based on html templates. 
+One of the key concepts of the framework is the concept of form.
+Forms are based on HTML templates that generally determine their layout.
 
-For each element, working with data (:doc:`Item class </refs/client/item_api>`), 
-you can specify form templates for viewing and editing data, as well as form 
-template for specifying filters. For reports, a form templates for editing 
-the report parameters.
+You can define form templates for viewing and editing data, as well as
+for specifying filters. For reports, form templates for editing 
+report parameters can be specified. Form templates are defined in the
+*index.html* file, located in the root folder of the project. See 
+:doc:`Form templates <form_templates>`
+for details
 
-Form templates of the project are located in the div with the **template** class
-inside the **body** tag in the index.html file of the project directory. 
+For example, the edit form of the Customers catalog in the
+:doc:`Demo project </intro/demo_project>`
 
-.. image:: /admin/_images/index_html.png
+
+.. image:: /programming/_images/customer_edit.png
 	:align: center
-	:alt: index.html
+	:alt: Customer edit form
 
-When 
-:doc:`load </refs/client/task/m_load>` 
-method is executed, it cuts out the **template** div from the **body** and stores 
-it the
-:doc:`templates </refs/client/task/at_templates>`
-attribute as a JQuery object.
-
-To add a form template for an item you should add a div with the **name-suffix** 
-class in the templates div, where name is the name of the item and suffix is the 
-form type: view, edit, filter, param. 
-
-For example:
+is based on the following template:
 
 .. code-block:: html
 
-	<div class="invoices-edit">
-		...
-	</div>
-	
-is an edit form template of the Invoices journal. 
-
-For a detail item before its name should be the name of its owner (master) 
-separated by a hyphen: 
-
-.. code-block:: html
-
-	<div class="invoices-invoice_table-edit">
-		...
-	</div>
-	
-If an item doesn't have a form template then its owner form template will be used. 
-
-So the template
-
-.. code-block:: html
-
-	<div class="journals-edit">
-		...
-	</div>
-
-will be used to create edit form of the journals, that do not have its own 
-edit form template. When a new project is created the index.html contains only 
-such templates.
-
-Bellow is the view form template of the Invoices journal:
-
-.. code-block:: html
-
-    <div class="invoices-view">
+    <div class="customers-edit">
         <div class="modal-body">
-            <div class="view-title">
-                <div class="row-fluid">
-                    <div id="title-left" class="span4"></div>
-                    <div id="title-right" class="span8"></div>
-                </div>
-            </div>
-            <div class="view-table">
-            </div>
-            <div class="view-detail">
+            <div class="edit-body">
             </div>
         </div>
         <div class="modal-footer">
-            <button id="delete-btn" class="btn pull-left" type="button"> Delete</button>
-            <button id="new-btn" class="btn pull-right" type="button"> New</button>
-            <button id="edit-btn" class="btn pull-right" type="button"> Edit</button>
-            <button id="filter-btn" class="btn pull-right" type="button"> Filter</button>
-            <div id="report-btn" class="btn-group dropup pull-right">
-                <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
-                    <i class="icon-print"></i> Reports
-                    <span class="caret"></span>
-                </a>
-                <ul class="dropdown-menu bottom-up">
-                </ul>
-            </div>
+            <button type="button" id="cancel-btn" class="btn pull-right">
+                <i class="icon-remove"></i> Cancel
+            </button>
+            <button type="button" id="ok-btn" class="btn pull-right">
+                <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
+            </button>
         </div>
     </div>
     
-    
+To create a form you can use a ``create_prefix_form`` method, where 
+``prefix`` is a type of the form (view, edit, filter, param). For example, the
+:doc:`create_edit_form </refs/client/item/m_create_edit_form>`
+will create an edit form.
+
+The method finds corresponding html template. If ``container`` (a Jquery object) 
+parameter is specified, the method empties it and appends the html template to 
+it, otherwise, it creates an empty modal form and appends the template to the 
+form. After this it assigns item's ``prefix_form`` attibute to the template, 
+triggers an ``on_prefix_form_created`` events, shows the form and triggers 
+``on_prefix_form_shown`` events. See :doc:`Form events <form_events>` for details.
+
+.. note::
+
+    Usually the create form method is used internally by other items method.
+
+Below is an example of the ``on_edit_form_created`` event handler:
+
+.. code-block:: js
+
+    function on_edit_form_created(item) {
+        item.create_inputs(item.edit_form.find(".edit-body"));
+        item.edit_form.find("#cancel-btn").on('click', function() { 
+            item.cancel_edit() 
+        });
+        item.edit_form.find("#ok-btn").on('click', function() { 
+            item.apply_record() 
+        });
+    }
+
+In this example, the 
+:doc:`edit_form </refs/client/item/at_edit_form>`
+attribute, that is a JQuery object representing the form, is used to find 
+elements on the form - a div element with edit-body class and two buttons. 
+
+Then the 
+:doc:`create_inputs </refs/client/item/m_create_inputs>`
+method is used to create inputs in the div element and the JQuery ``on`` method 
+attaches event handlers to the buttons.
+
+So 
+:doc:`cancel_edit </refs/client/item/m_cancel_edit>`
+and
+:doc:`apply_record </refs/client/item/m_apply_record>` methods will be executed 
+when user clicks on the buttons. This methods cancel or apply changes made to 
+the record respectfully and call the 
+:doc:`close_edit_form </refs/client/item/m_close_edit_form>`
+method to close the form.
+
+The ``close_prefix_form``, where ``prefix`` is the type of the form, closes the
+form of this type. But before form is closed the ``on_prefix_form_close_query`` 
+and ``on_prefix_form_closed`` events are triggered. After form is closed it is 
+removed from the DOM.
+
+The methods to create and close forms are used internally by other methods:
+
+* :doc:`view </refs/client/item/m_view>` - the method check if the javascript 
+  modules of an item and its owner are loaded (see 
+  :doc:`Dynamic JS modules loading parameter </admin/project/parameters>`
+  of the project), and if not, it loads them, after that it creates a view form 
+  of an item.
+  
+* :doc:`append_record </refs/client/item/m_append_record>`,
+  :doc:`insert_record </refs/client/item/m_insert_record>` and
+  :doc:`edit_record </refs/client/item/m_edit_record>` methods - this methods
+  set an item in an insert or edit mode respectfully (see
+  :doc:`Modifying datasets </programming/data/modifying_datasets>`
+  ) and after that create an edit form of an item.
+  
+* :doc:`apply_record </refs/client/item/m_apply_record>` - this method makes an
+  asyncronious call to the server to write data changes to the database and, when 
+  changes are written, closes edit form.
+
+* :doc:`cancel_edit </refs/client/item/m_cancel_edit>` - cancel changes and 
+  closes an edit form

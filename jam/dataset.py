@@ -44,7 +44,7 @@ class DBField(object):
         self.lookup_values = field_def[FIELD_LOOKUP_VALUES]
         self.field_type = common.FIELD_TYPE_NAMES[self.data_type]
         self.filter = None
-        self.on_get_field_text_called = None
+        self.on_field_get_text_called = None
 
     def get_row(self):
         if self.owner._dataset:
@@ -354,15 +354,15 @@ class DBField(object):
             else:
                 result = self.text
         if self.owner and not self.filter:
-            if self.owner.on_get_field_text:
-                if not self.on_get_field_text_called:
-                    self.on_get_field_text_called = True
+            if self.owner.on_field_get_text:
+                if not self.on_field_get_text_called:
+                    self.on_field_get_text_called = True
                     try:
-                        res = self.owner.on_get_field_text(self)
+                        res = self.owner.on_field_get_text(self)
                         if not res is None:
                             result = res
                     finally:
-                        self.on_get_field_text_called = False
+                        self.on_field_get_text_called = False
         return result
 
     display_text = property(get_display_text)
@@ -957,7 +957,7 @@ class AbstractDataSet(object):
         self.on_before_field_changed = None
         self.on_filter_value_changed = None
         self.on_field_validate = None
-        self.on_get_field_text = None
+        self.on_field_get_text = None
 
     def __getitem__(self, key):
         if key == 0:
@@ -1448,7 +1448,7 @@ class AbstractDataSet(object):
                 raise RuntimeError('%s: set_where method arument error %s: ' % (self.item_name, field_arg))
             value = field_dict[field_arg]
             if not value is None:
-                result.append((field_name, filter_type, value))
+                result.append([field_name, filter_type, value])
         return result
 
     def set_fields(self, *fields):

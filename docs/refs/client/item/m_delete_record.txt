@@ -31,8 +31,6 @@ Description
 See also
 ========
 
-:doc:`Visual editing of records </programming/interface/visual_editing>`
-
 :doc:`Modifying datasets </programming/data/modifying_datasets>`
 
 :doc:`delete <m_delete>`

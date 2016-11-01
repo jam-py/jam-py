@@ -2,4 +2,46 @@
 Import
 ======
 
-Press this button to import project metadata from zip file.
+Use this button to import project metadata from zip file.
+
+.. note::
+    Import is not supported for SQlite databases.
+    
+When Import button is pressed, 
+:doc:`Administrator </admin/index>`
+opens a Dialog to select the 
+file to be imported.
+
+After the file is selected, the Administrator uploads it to the server and sends 
+the server a request to import it.
+
+The server while importing the metadata performs the following operations:
+
+* checks the data integrity - items with the same ID must have the same 
+  type and the same table_name attribute if one is specified for an item
+
+* analizes the metadata to generate sql queries to update the project 
+  database structure and records of the *admin.sqlite* database
+
+* waits for 5 minits or until all previous request to the server will be processed
+
+* starts to execute sql statments to update the project database.
+
+* if an error occurs while updating the project database, for databases, that 
+  support DDL statment rollback (Postgress, Firebird), rollbacks changes, stops the 
+  import process and returns the import log to the Administrator. If the database 
+  do not support DDL statment rollback (MySql, Oracle) writes error to the 
+  import log and continues until all statments will be processed
+  
+* Commits changes to the project database if it supports DDL statment rollback 
+  and modifies the records of the *admin.sqlite*
+  
+* Copies all the files from zip file to the project folder
+
+* Rebuilds the task on the server
+
+* Send the import log to the Administrator
+  
+.. note::
+    It is strongly recommended that you make a backup of the project database 
+    and *admin.sqlite* before performing the import.

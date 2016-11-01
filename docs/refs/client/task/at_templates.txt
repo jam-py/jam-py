@@ -18,4 +18,6 @@ The ``templates`` attribute stores the form templates of the project.
 See also
 ========
 
+:doc:`Form templates </programming/interface/form_templates>`
+
 :doc:`Forms </programming/interface/forms>`

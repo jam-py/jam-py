@@ -4,7 +4,7 @@ view_form
 
 .. js:attribute:: view_form
 
-**domain**: client 
+**domain**: client  
 
 **language**: javascript
 
@@ -43,9 +43,9 @@ See also
 
 :doc:`Forms </programming/interface/forms>`
 
-:doc:`Creating view forms </programming/interface/view_forms>`
-
 :doc:`view <m_view>`
+
+:doc:`create_view_form <m_create_view_form>`
 
 :doc:`close_view_form <m_close_view_form>`
     

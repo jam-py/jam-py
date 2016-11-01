@@ -16,17 +16,11 @@ To run Administrator go to a Web browser and type in the browser address bar
     Please note that *server.py* must be running
     
 On the left side of the Administrator page there is a panel that contains the 
-project tree. When you select any node of the project tree, as a rule, we open 
-its content in the central part of the page, and the bottom and right side of 
-the page may have buttons that allow you to modify its contents.
+project tree. When you select any node of the project tree, as a rule, its 
+content will be opend in the central part of the page, and the bottom and right 
+side of the page may have buttons that allow you to modify the content.
 
-.. image:: _images/admin.png
-	:align: center
-	:alt: Admin
-
-
-To see the changes made in Administrator go to the Project page and reload it 
-(press F5).
+To see the changes made in Administrator go to the Project page and reload it. 
 
 .. toctree::
    :maxdepth: 1
@@ -36,6 +30,11 @@ To see the changes made in Administrator go to the Project page and reload it
    users
    code_editor
    task
-   groups
+   groups/index
    items/index
    details
+   lookup_lists
+
+.. image:: _images/admin.png
+	:align: center
+	:alt: Admin

@@ -73,21 +73,19 @@
     </nav>
 
     <div id="doc-layout" class=".container-fluid">
-        <div>
-            <h3 class="title">Jam.py documentation</h3>
-        </div>
+        <h3 class="title">Jam.py documentation</h3>
         <div id="doc-content" class="row">
-          {% if pagename != 'index' %}
-          <div id="doc-body" class="col-md-9">
-          {% else %}
-          <div id="doc-body" class="col-md-12">
-          {% endif %}
+            <div id="doc-body" class="col-md-9">
 <!--
-                <div id="dev-warning" class="small text-danger">Documentation is under development</div>
+            {% if pagename != 'index' %}
+            <div id="doc-body" class="col-md-9">
+            {% else %}
+            <div id="doc-body" class="col-md-12">
+            {% endif %}
 -->
                 {% block body %}{% endblock %}
-          </div>
-          {% block sidebarwrapper %}
+            </div>
+            {% block sidebarwrapper %}
             {% if pagename != 'index' %}
               <div id="doc-sidebar" class="col-md-3" >
                 {{ sidebar() }}
@@ -96,8 +94,25 @@
                   <p class="topless">{{ last_updated }}</p>
                 {%- endif %}
               </div>
+            {% else %}
+              <div id="doc-sidebar" class="col-md-3" >
+                <h3>Search documentation</h3>
+                <script>
+                  (function() {
+                    var cx = '007960695956208259036:ec4fwpmtig0';
+                    var gcse = document.createElement('script');
+                    gcse.type = 'text/javascript';
+                    gcse.async = true;
+                    gcse.src = 'https://cse.google.com/cse.js?cx=' + cx;
+                    var s = document.getElementsByTagName('script')[0];
+                    s.parentNode.insertBefore(gcse, s);
+                  })();
+                </script>
+                <gcse:search></gcse:search>
+
+              </div>
             {% endif %}
-          {% endblock %}
+            {% endblock %}
         </div>
     </div>
 
@@ -114,29 +129,42 @@
 {% endblock %}
 
 {% block sidebarrel %}
-  <h3>Browse</h3>
-  <ul>
-    {% if prev %}
-      <li>Prev: <a href="{{ prev.link }}">{{ prev.title }}</a></li>
-    {% endif %}
-    {% if next %}
-      <li>Next: <a href="{{ next.link }}">{{ next.title }}</a></li>
-    {% endif %}
-    <li>
-        <a href="{{ pathto('contents') }}">Table of contents</a>
-    </li>
-  </ul>
-  <h3>You are here:</h3>
-  <ul>
-      <li>
-        <a href="{{ pathto('index') }}">{{ docstitle }}</a>
-        {% for p in parents %}
-          <ul><li><a href="{{ p.link }}">{{ p.title }}</a>
-        {% endfor %}
-        <ul><li>{{ title }}</li></ul>
-        {% for p in parents %}</li></ul>{% endfor %}
-      </li>
-  </ul>
+    <h3>Browse</h3>
+    <ul>
+        {% if prev %}
+            <li>Prev: <a href="{{ prev.link }}">{{ prev.title }}</a></li>
+        {% endif %}
+        {% if next %}
+            <li>Next: <a href="{{ next.link }}">{{ next.title }}</a></li>
+        {% endif %}
+        <li>
+            <a href="{{ pathto('contents') }}">Table of contents</a>
+        </li>
+    </ul>
+    <h3>You are here:</h3>
+    <ul>
+        <li>
+            <a href="{{ pathto('index') }}">{{ docstitle }}</a>
+            {% for p in parents %}
+                <ul><li><a href="{{ p.link }}">{{ p.title }}</a>
+            {% endfor %}
+            <ul><li>{{ title }}</li></ul>
+            {% for p in parents %}</li></ul>{% endfor %}
+        </li>
+    </ul>
+    <h3>Search documentation</h3>
+    <script>
+      (function() {
+        var cx = '007960695956208259036:ec4fwpmtig0';
+        var gcse = document.createElement('script');
+        gcse.type = 'text/javascript';
+        gcse.async = true;
+        gcse.src = 'https://cse.google.com/cse.js?cx=' + cx;
+        var s = document.getElementsByTagName('script')[0];
+        s.parentNode.insertBefore(gcse, s);
+      })();
+    </script>
+    <gcse:search></gcse:search>
 {% endblock %}
 
 {# Empty some default blocks out #}

@@ -2,4 +2,20 @@
 Export
 ======
 
-Press this button to export project metadata to zip file.
+Press this button to export project metadata to zip file. This zip file will
+contain:
+
+* Information about project data structure, code and interface settings that 
+  is strored in the *admin.sqlite* database.
+  
+* Files from the following folders:
+
+  * css
+  * js
+  * static/css
+  * static/js
+  * static/img
+  * reports (*ods* files of project report templates)
+  * utils (this folder may contain some python libraries used in the project)
+        
+    

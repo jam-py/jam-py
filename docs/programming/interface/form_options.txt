@@ -1,0 +1,60 @@
+============
+Form options
+============
+
+For each type of form an item has an attribute that controls the modal form 
+behavior:
+
+* :doc:`view_options </refs/client/item/at_view_options>`
+
+* :doc:`edit_options </refs/client/item/at_edit_options>`
+
+* :doc:`filter_options </refs/client/item/at_filter_options>`
+
+* :doc:`param_options </refs/client/report/at_param_options>`
+
+This is an object that has the following attributes, specifing parameters of the 
+modal form:
+
+* ``width`` - the width of the modal form, the default value is 560 px,
+* ``title`` - the title of the modal form, the default value is the value of a
+  :doc:`item_caption </refs/client/abstr_item/at_item_caption>`
+  attribute,
+* ``close_button`` - if true, the close button will be created in the upper-right 
+  corner of the form, the default value is true,
+* ``close_caption`` - if true and close_button is true, will display 'Close - [Esc]'
+  near the button
+* ``close_on_escape`` - if true, pressing on the Escape key will trigger the 
+  corresponding close_form  method.
+* ``close_focusout`` - if true, the corresponding close_form method will be called 
+  when a form loses focus
+* ``template_class`` - if specified, the div with this class will be searched in 
+  the task 
+  :doc:`templates </refs/client/task/at_templates>` 
+  attribute and used as a form html template when creating a form
+  
+The 
+:doc:`edit_options </refs/client/item/at_edit_options>` 
+has a ``fields`` attribute, that specify a list of field names that the
+:doc:`create_inputs </refs/client/item/m_create_inputs>`
+method will use, if ``fields`` attribute of its ``options`` parameter is not 
+specified, the default value is a list of field names set in the 
+:doc:`Edit Fields Dialog </admin/items/edit_fields_dialog>` 
+in the Administrator. 
+
+The 
+:doc:`view_options </refs/client/item/at_view_options>` 
+has a ``fields`` attribute, that specify a list of field names that the
+:doc:`create_table </refs/client/item/m_create_table>`
+method will use, if ``fields`` attribute of its ``options`` parameter is not 
+specified, the default value is a list of field names set in the 
+:doc:`View Fields Dialog </admin/items/view_fields_dialog>`
+in the Administrator. 
+
+The width of the modal form, created in the following example, will be 800 px.
+
+.. code-block:: js
+
+    function on_edit_form_created(item) {
+        item.edit_options.width = 700;
+    }

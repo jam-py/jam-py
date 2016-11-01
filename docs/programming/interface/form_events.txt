@@ -1,0 +1,196 @@
+===========
+Form events
+===========
+
+We'll consider how form events are triggered on example of view forms. 
+For forms of other types, events are triggered the same way.
+
+After the form is created, and the form's html template have been added to the 
+DOM, the application triggers the following events:
+
+* :doc:`on_view_form_created </refs/client/task/on_view_form_created>`
+  of the task, if one is defined. 
+* :doc:`on_view_form_created </refs/client/group/on_view_form_created>`
+  of the group that owners the item, if one is defined for the group.
+* :doc:`on_view_form_created </refs/client/item/on_view_form_created>`
+  of the item, if one is defined.
+  
+This way we can define a basic behavior for all items in the 
+:doc:`on_view_form_created </refs/client/task/on_view_form_created>`
+event handler of the task, that can be expanded in the event handler of the 
+group, and finally, if nessesary, can be specified in the event handler of the 
+item itself.
+  
+For example, the
+:doc:`Demo project </intro/demo_project>` 
+has the following event handler, 
+defined in the client module of the task:
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        var table_options = {
+                height: 480,
+                word_wrap: false,
+                sortable: true
+            };
+    
+        if (item.view_form.hasClass('modal')) {
+            item.view_options.width = 960;
+        }
+        else {
+            item.view_form.find(".view-title #title-left")
+                .append($('<h4>' + item.item_caption + '<h4>'));
+            table_options.height = $(window).height() - $('body').height() - 10;
+        }
+    
+        item.view_form.find("#new-btn").on('click.task', function() {
+            item.insert_record();
+        });
+        item.view_form.find("#edit-btn").on('click.task', function() {
+            item.edit_record();
+        });
+        item.view_form.find("#delete-btn").on('click.task', function() {
+            item.delete_record();
+        });
+    
+        item.paginate = true;
+        
+        if (item.init_table) {
+            item.init_table(item, table_options);
+        }
+        item.create_table(item.view_form.find(".view-table"), table_options);
+    }
+    
+This code is executed for every item, whose 
+:doc:`view </refs/client/item/m_view>`
+method was called. The item itself is passed as a parameter. The 
+:doc:`view_form </refs/client/item/at_view_form>`
+attribute is a JQuery object of the form’s html.
+
+This event performs the following:
+
+* Defines the options for an html table that will be created later by 
+  :doc:`create_table </refs/client/item/m_create_table>`
+  method.
+
+* Checks, if the form is modal, and sets the width of the modal form, using the 
+  :doc:`view_options </refs/client/item/at_view_options>`
+  attribute, see :doc:`Form options <form_options>` for details. For a modless 
+  form it sets the title and calculates the height of the table, depending on 
+  the height of the Web browser page.
+  
+* Uses JQuery to assign event handlers for the buttons, specified in the html 
+  template of the form, to the methods of the item.
+  
+* Sets the 
+  :doc:`paginate </refs/client/item/at_paginate>`
+  atrribute to true, so the table will paginate the item’s 
+  dataset.
+  
+* Uses 
+  :doc:`create_table </refs/client/item/m_create_table>`
+  method of the item to creates the html table in the div 
+  with class=“view-table”. But before doing so, the event checks if the client 
+  module of the item has init_table function, and if the init_table function is 
+  defined, calls it, passing table_options as a parameter, see 
+  :doc:`Working with modules </programming/modules>`.
+  
+After the 
+:doc:`on_view_form_created </refs/client/task/on_view_form_created>`
+of the task is executed, the application triggers the 
+:doc:`on_view_form_created </refs/client/group/on_view_form_created>`
+event of the group that owns the item. In the 
+:doc:`Demo project </intro/demo_project>` 
+this event is only defined for **Catalogs** group, in which the search 
+functionality for catalogs is added.
+
+And finally, the on_view_form_created of the item itself is triggered (if defined).
+
+In the Demo, the client module of the **Invoices** journal has the following 
+event handler:
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        item.invoice_table.create_table(item.view_form.find(".view-detail"),
+            {height: 200 - 4, dblclick_edit: false, column_width: {"track": "60%"}});
+    
+        item.filters.invoicedate1.value = new Date(new Date().setYear(new Date().getFullYear() - 1));
+        item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});
+    }
+    
+This event performs the following:
+
+* Creates a table for the **InvoiceTable** detail of the item, see 
+  :doc:`Details </programming/data/details>`
+
+* Sets a value of the ``invoicedate1`` filter of the journal to a date one year 
+  ago, see 
+  :doc:`Filters </programming/data/filters>`
+
+* Attaches the event handler to the filter button to create a form for editing 
+  of filter values of the item.
+  
+In this module the init_table function is defined. In this function the options 
+passed to the 
+:doc:`create_table </refs/client/item/m_create_table>`
+method of the 
+:doc:`on_view_form_created </refs/client/task/on_view_form_created>`
+event handler of the task are specified.
+
+.. code-block:: js
+
+    function init_table(item, table_options) {
+        table_options.height = $(window).height() - $('body').height() - 200 - 10;
+        if (table_options.height < 200) {
+            table_options.height = 200;
+        }
+        table_options.show_footer = true;    
+        table_options.row_callback = function(row, it) {
+            var font_weight = 'normal';
+            if (it.total.value > 10) {
+                font_weight = 'bold';
+            }
+            row.find('td.total').css('font-weight', font_weight);
+        };
+    }
+
+The same way the 
+
+* ``on_view_form_shown``
+
+* ``on_view_form_keydown``
+
+* ``on_view_form_keyup``
+
+events are triggered. First for the task, then for the group and finally for 
+the item.
+
+The only exception is ``on_view_close_query`` event that is triggered by
+:doc:`close_view_form </refs/client/item/m_close_view_form>` 
+method.
+
+The developed can use this method to close view form of an item. But it as well, 
+is called by an apllication when a user clicks on the close button of a modal 
+form or an attempt is made to destroy a modeless form.
+
+The 
+:doc:`close_view_form </refs/client/item/m_close_view_form>`
+method triggers on_view_form_close_query events in reverse order.
+
+First, it triggers the item’s 
+:doc:`on_view_form_close_query </refs/client/item/on_view_form_close_query>`
+(if defined) event handler. If the event handler is defined and returns true - 
+the form is destroyed, the item’s view_form atrribute is set to undefined and 
+the methods exits, if it returns false - the operation is aborted and the 
+methods exits.
+
+If the item’s event handler don’t return a value (returns ``undefined``), the 
+event handler of the item’s group is processed the same way, and after that the 
+:doc:`on_view_form_close_query </refs/client/task/on_view_form_close_query>`
+event handler of the task.
+
+If no event handler is defined or none of these event handlers return false, the 
+form is destroyed and the item’s view_form atrribute is set to undefined.
+

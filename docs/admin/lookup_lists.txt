@@ -1,0 +1,27 @@
+==================
+Lookup List Dialog
+==================
+
+Lookup list is a list of integer-text pairs that can used as a datasource for 
+:doc:`lookup fields </programming/data/lookup_fields>`.
+
+.. note::
+
+    The length of the lookup list should not exceed 10
+
+.. image:: _images/lookup_lists.png
+	:align: center
+	:alt: Lookup List Dialog
+
+Click on the **Edit**/**New** buttons to edit/create a lookup list.
+
+.. image:: _images/lookup_list.png
+	:align: center
+	:alt: Lookup List 
+
+Then use the **Edit**/**New** buttons to edit/add a lookup pairs to the list.
+
+.. image:: _images/lookup_paire.png
+	:align: center
+	:alt: Lookup Pair
+

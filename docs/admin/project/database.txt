@@ -9,19 +9,18 @@ Database
 
 In this dialog project database pararameters are displayed. When they have been 
 changed and OK button is clicked, the Administrator will check connection to the 
-database and if it failed to connect the error will be displayed.
+database and if it failed to connect an error will be displayed.
 
 .. note::
-   When **Database** parameter is changed, *server.py* must be restarted 
-   for changes to take effect.
-
+   When any **Database** parameter is changed, except **DB manual update**, 
+   the server application must be restarted for changes to take effect.
 
 If **DB manual update** checkbox is unchecked (default), then when changes to an 
 item, that have an associated database table, are saved, this database table is 
-automatically modified. For example, if we add a new field to some catalog in the 
-project, the new field will be create if the database table associated with this
-catalog as well. If this checkbox is checked, no modifications to the database 
-tables are made. 
+automatically modified. For example, if we add a new field to some item in the
+:doc:`Item Editor Dialog </admin/items/item_editor_dialog>`
+, the new field will be added to the associated database table. If this checkbox 
+is checked, no modifications to the database tables are made. 
 
 .. note::
     Please be very carefull when using this option.

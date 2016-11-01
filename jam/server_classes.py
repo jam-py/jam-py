@@ -31,7 +31,7 @@ class ServerDataset(Dataset, SQL):
         self.on_open = None
         self.on_apply = None
         self.on_count = None
-        self.on_get_field_text = None
+        self.on_field_get_text = None
         self.deleted_field_name = None
         self.soft_delete = soft_delete
         self.virtual_table = False
@@ -121,45 +121,49 @@ class ServerDataset(Dataset, SQL):
         return self
 
     def get_record_count(self, params, user_info=None, enviroment=None):
-        result = 0;
-        if self.on_count:
-            result, error_mes = self.on_count(self, params, user_info, enviroment)
-        else:
-            error_mes = ''
-            result = 0
+        result = None
+        if self.task.on_count:
+            result = self.task.on_count(self, params, user_info, enviroment)
+        if result is None and self.on_count:
+            result = self.on_count(self, params, user_info, enviroment)
+        elif result is None:
+            error_mess = ''
             sql = self.get_record_count_query(params)
             rows = self.task.execute_select(sql)
-            result = rows[0][0]
-        return result, error_mes
+            count = rows[0][0]
+            result = count, error_mess
+        return result
 
     def select_records(self, params, user_info=None, enviroment=None):
-        if self.on_open:
-            rows, error_mes = self.on_open(self, params, user_info, enviroment)
-        else:
-            sql = self.get_select_statement(params)
+        result = None
+        if self.task.on_open:
+            result = self.task.on_open(self, params, user_info, enviroment)
+        if result is None and self.on_open:
+            result = self.on_open(self, params, user_info, enviroment)
+        elif result is None:
             error_mes = ''
-            rows = []
+            sql = self.get_select_statement(params)
             rows = self.task.execute_select(sql)
-        return rows, error_mes
+            result = rows, error_mes
+        return result
 
     def apply_delta(self, delta, privileges=None, user_info=None):
         sql = delta.apply_sql(user_info, privileges)
         return self.task.execute(sql)
 
     def apply_changes(self, data, privileges, user_info=None, enviroment=None):
-        if common.DEMO:
-            raise Exception, u'Demo version - changes are not allowed.'
-        error = None
         result = None
         changes, params = data
         if not params:
             params = {}
         delta = self.delta(changes)
-        if self.on_apply:
-            result, error = self.on_apply(self, delta, params, privileges, user_info, enviroment)
-        else:
-            result, error = self.apply_delta(delta, privileges, user_info)
-        return result, error
+        if self.task.on_apply:
+            result = self.task.on_apply(self, delta, params, privileges, user_info, enviroment)
+        if result is None and self.on_apply:
+            result = self.on_apply(self, delta, params, privileges, user_info, enviroment)
+        elif result is None:
+            result = self.apply_delta(delta, privileges, user_info)
+        return result
 
     def update_deleted(self):
         if self._is_delta and len(self.details):
@@ -314,7 +318,7 @@ class Report(AbstrReport):
         self.on_before_field_changed = None
         self.on_filter_value_changed = None
         self.on_field_validate = None
-        self.on_get_field_text = None
+        self.on_field_get_text = None
 
 
     def add_param(self, caption='', name='', data_type=common.INTEGER,
@@ -1137,6 +1141,9 @@ class AbstractServerTask(AbstrTask):
         self.db_encoding = encoding
         self.db_module = db_modules.get_db_module(self.db_type)
         self.on_request = None
+        self.on_open = None
+        self.on_apply = None
+        self.on_count = None
         self.work_dir = os.getcwd()
         self.con_pool_size = 0
         self.mod_count = 0
@@ -1387,39 +1394,43 @@ class AdminTask(AbstractServerTask):
     def login(self, log, psw_hash, is_admin, env):
         privileges = None
         if not is_admin and self.app.task and self.app.task.on_login:
-            user_info = self.app.task.on_login(self.app.task, log, psw_hash, env)
+            user_uuid = self.app.task.on_login(self.app.task, log, psw_hash, env)
         else:
             user_info = adm_server.login(self, log, psw_hash, is_admin)
-        user_uuid = None
-        if user_info:
-            for key in self.users.iterkeys():
-                if self.users[key]["user_id"] == user_info["user_id"] and \
-                    self.users[key]["admin"] == user_info["admin"]:
-                    if user_info["admin"]:
-                        adm_server.clear_docs_on_logout(self, user_info)
-                    del self.users[key]
-                    break
-            user_uuid = str(uuid.uuid4())
-            self.users[user_uuid] = user_info
+            user_uuid = None
+            if user_info:
+                for key in self.users.iterkeys():
+                    if self.users[key]["user_id"] == user_info["user_id"] and \
+                        self.users[key]["admin"] == user_info["admin"]:
+                        if user_info["admin"]:
+                            adm_server.clear_docs_on_logout(self, user_info)
+                        del self.users[key]
+                        break
+                user_uuid = str(uuid.uuid4())
+                self.users[user_uuid] = user_info
         return user_uuid, ''
 
     def logout(self, user_uuid, admin, env):
-        try:
-            user_info = self.users.get(user_uuid)
-            adm_server.clear_docs_on_logout(self, user_info)
-            if user_info:
-                if not admin and self.app.task and self.app.task.on_logout:
-                    self.app.task.on_logout(self.app.task, user_info, env)
-                del self.users[user_uuid]
-        except:
-            pass
+        if not admin and self.app.task and self.app.task.on_logout:
+            self.app.task.on_logout(self.app.task, user_uuid, env)
+        else:
+            try:
+                user_info = self.users.get(user_uuid)
+                adm_server.clear_docs_on_logout(self, user_info)
+                if user_info:
+                    del self.users[user_uuid]
+            except:
+                pass
         return None, ''
 
     def get_user_info(self, user_uuid, admin, env):
-        user_info = self.users.get(user_uuid)
-        if user_info:
-            if not admin or (admin and user_info['admin']):
-                return user_info
+        if not admin and self.app.task and self.app.task.on_get_user_info:
+            return self.app.task.on_get_user_info(self.app.task, user_uuid, env)
+        else:
+            user_info = self.users.get(user_uuid)
+            if user_info:
+                if not admin or (admin and user_info['admin']):
+                    return user_info
 
     def get_privileges(self, role_id):
         if self.roles is None:

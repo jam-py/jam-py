@@ -93,7 +93,7 @@ detail_client_events = \
         'on_filter_changed': 'filter',
         'on_filter_select_value': 'field, lookup_item',
         'on_field_validate': 'field',
-        'on_get_field_text': 'field'
+        'on_field_get_text': 'field'
     }
 
 item_client_events = detail_client_events
@@ -115,9 +115,13 @@ report_client_events = \
 task_server_events = \
     {
         'on_created': 'task',
+        'on_open': 'item, params, user_info, enviroment',
+        'on_count': 'item, params, user_info, enviroment',
+        'on_apply': 'item, delta, params, privileges, user_info, enviroment'
+
         #~ 'on_login': 'task, login, password_hash, env',
         #~ 'on_get_user_info': 'task, user_uuid, env',
-        #~ 'on_logout': 'task, user_info, env',
+        #~ 'on_logout': 'task, user_uuid, env',
         #~ 'on_ext_request': 'task, request, params, env',
         #~ 'on_request': 'task, user_info, env, request, item, params, ext'
     }
@@ -135,7 +139,7 @@ detail_server_events = \
     {
         'on_open': 'item, params, user_info, enviroment',
         'on_count': 'item, params, user_info, enviroment',
-#        'on_get_field_text': 'field'
+#        'on_field_get_text': 'field'
     }
 
 item_server_events = detail_server_events

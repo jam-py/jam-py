@@ -3,17 +3,17 @@
 
 function Events1() { // demo 
 
-	function on_page_loaded(task) { 
-		
+	function on_page_loaded(task) {  
+	
 		$("#title").text(task.item_caption);
 		if (task.safe_mode) {
 			$("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
 			$('#log-out')
-			.show()
+			.show() 
 			.click(function(e) {
-				e.preventDefault(); 
+				e.preventDefault();
 				task.logout();
-			});
+			}); 
 		}
 	
 		$("#taskmenu").show();
@@ -43,12 +43,12 @@ function Events1() { // demo
 								)
 							);
 						}
-					}
+					} 
 				}
 			}
 		));
 		$('#submenu').on('click', 'a', (function(e) {
-			var item = $(this).data('item');
+			var item = $(this).data('item'); 
 			e.preventDefault();
 			$("#submenu > li" ).removeClass('active');
 			$(this).parent().addClass('active');
@@ -63,21 +63,18 @@ function Events1() { // demo
 		$("#menu").append($('<li></li>').append($('<a href="#">About</a>').click(function(e) {
 			e.preventDefault();
 			task.message(
-				'<a href="http://jam-py.com/" target="_blank"><h3>Jam.py</h3></a>' +
-				'<h3>Demo application</h3>' +
-				' with <a href="http://chinookdatabase.codeplex.com/" target="_blank">Chinook Database</a>' +
-				'<p>by Andrew Yushev</p>' +
-				'<p>2016</p>',
-				{title: 'Jam.py framework', margin: 0, text_center: true, buttons: {"OK": undefined}, center_buttons: true}
+				task.templates.find('.about'),
+				{title: 'Jam.py framework', margin: 0, text_center: true, 
+					buttons: {"OK": undefined}, center_buttons: true}
 			);
 		})));
-		$("#menu").append($('<li><a href="http://jam-py.com/" target="_blank">Jam.py</a></li>'));	
+		$("#menu").append($('<li><a href="http://jam-py.com/" target="_blank">Jam.py</a></li>'));	 
 		
-		$('#menu').children(":first").find('a').click();
-		$('#submenu').children(":first").find('a').click();	
+		$('#menu').children(":first").find('a').click(); 
+		$('#submenu').children(":first").find('a').click();
 		
-		$(document).ajaxStart(function() { $("html").addClass("wait"); });
-		$(document).ajaxStop(function() { $("html").removeClass("wait"); });
+		// $(document).ajaxStart(function() { $("html").addClass("wait"); });
+		// $(document).ajaxStop(function() { $("html").removeClass("wait"); });
 	
 		$(window).on('resize', function() {
 			resize(task);
@@ -407,6 +404,24 @@ function Events2() { // demo.catalogs
 
 task.events.events2 = new Events2();
 
+function Events10() { // demo.catalogs.customers 
+
+	function on_edit_form_close_query(item) {
+		if (item.is_changing()) {
+			item.cancel();
+		}
+		return true;
+	}
+	
+	function on_edit_form_created(item) {
+		item.edit_options.width = 700;
+	}
+	this.on_edit_form_close_query = on_edit_form_close_query;
+	this.on_edit_form_created = on_edit_form_created;
+}
+
+task.events.events10 = new Events10();
+
 function Events16() { // demo.journals.invoices 
 
 	function on_after_append(item) {
@@ -490,7 +505,7 @@ function Events16() { // demo.journals.invoices
 			.on('click.task', function() { item.invoice_table.delete_record() });
 	}
 	
-	function on_get_field_text(field) {
+	function on_field_get_text(field) {
 		if (field.field_name === 'customer' && field.value) {
 			return field.owner.firstname.lookup_text + ' ' + field.lookup_text;
 		}
@@ -498,7 +513,7 @@ function Events16() { // demo.journals.invoices
 	
 	function on_field_changed(field, lookup_item) {
 		if (field.field_name === 'taxrate') {
-			calculate(field.owner, true);
+			calculate(field.owner, true); 
 		}
 	}
 	
@@ -582,7 +597,7 @@ function Events16() { // demo.journals.invoices
 	this.calc_footer = calc_footer;
 	this.init_inputs = init_inputs;
 	this.on_edit_form_created = on_edit_form_created;
-	this.on_get_field_text = on_get_field_text;
+	this.on_field_get_text = on_field_get_text;
 	this.on_field_changed = on_field_changed;
 	this.calc_total = calc_total;
 	this.calculate = calculate;

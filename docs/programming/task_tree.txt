@@ -23,7 +23,7 @@ All items of the tree have common ancestor class ``AbstractItem`` (
 * ``item_type`` — type of the item — one of the following values:
 
   * "task", 
-  * "itms",
+  * "items",
   * "tables", 
   * "reports",  
   * "item", 
@@ -83,7 +83,7 @@ At the root of the task tree is a task with the ``item_name`` **demo**. It has
 four groups: **catalogs**, **journals**, **tables** and **reports**. The
 **catalogs**, **journals** groups have ``item_type`` "items". The items they own
 are wrappers over the corresponding database tables. There is one table with 
-``tem_name`` **invoice_table**, that also has it's own database table, and three 
+``item_name`` **invoice_table**, that also has it's own database table, and three 
 reports in the **reports** group.
 
 The **invoices** journal has the **invoice_table** detail, which keeps a list 
@@ -121,7 +121,7 @@ For example, some methods of the items, when executed, successively generate
 events for the task, group and the item.
 
 This way we can define a basic behavior for all items in the event handler of 
-the task, than can be expanded in then event handler of the group, and finally, 
+the task, that can be expanded in the event handler of the group, and finally, 
 if nessesary, can be specified in the event handler of the item itself. For more 
 details see
-:doc:`Working with view forms <interface/view_forms>`.
+:doc:`Form events <interface/form_events>`

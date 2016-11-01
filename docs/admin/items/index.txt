@@ -2,14 +2,10 @@
 Items
 =====
 
-Select some group node in the project tree to get access to items that this 
+Select a group node in the project tree to get access to items that this 
 group owns, see 
 :doc:`Task tree </programming/task_tree>`.
 
-.. image:: /admin/_images/items.png
-	:align: center
-	:alt: Task node
-	
 At the bottom of the page there are 3 buttons:
 
 * **New** - click on New to create a new item in the 
@@ -22,7 +18,9 @@ At the bottom of the page there are 3 buttons:
 * **Delete** - click on the button to delete an item and its underlying database 
   table. 
 
- 
+You can use the up and down arrows to arrange the items in the list. This may be 
+useful for creating a menu or display it in some way on the web page. 
+
 The right panel of the page have following buttons:
 
 * **Client module** - click on this button to open the 
@@ -77,7 +75,14 @@ The right panel of the page have following buttons:
   to specify reports that could printed for the item. 
   :doc:`Default code </intro/default_code>`
   has a function that can be used to create a dropup button to print the reports.
+  
+* **Privileges** - click this button to open a dialog to configure the 
+  privileges assigned to user roles for this item.
 
+.. image:: /admin/_images/items.png
+	:align: center
+	:alt: Task node
+	
 
 .. toctree::
    :maxdepth: 1

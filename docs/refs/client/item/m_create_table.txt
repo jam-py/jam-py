@@ -174,8 +174,7 @@ method is executed  in the
 events handler of the task in the 
 :doc:`Demo project </intro/demo_project>`.
 The ``options`` parameter is passed to the function, that is used to 
-specify the common options used in the in the ``create_table`` method. See
-:doc:`Working with view forms </programming/interface/view_forms>`.
+specify the common options used in the in the ``create_table`` method. 
 
 .. code-block:: js
 
@@ -197,8 +196,6 @@ specify the common options used in the in the ``create_table`` method. See
 See also
 ========
 
-:doc:`Working with view forms </programming/interface/view_forms>`
-
-:doc:`Visual editing of records </programming/interface/visual_editing>`
+:doc:`Forms </programming/interface/forms>`
 
 :doc:`Data-aware controls </programming/interface/data_controls>`

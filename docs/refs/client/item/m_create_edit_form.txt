@@ -70,10 +70,10 @@ See also
 
 :doc:`Forms </programming/interface/forms>`
 
-:doc:`Visual editing of records </programming/interface/visual_editing>`
-
 :doc:`edit_form <at_edit_form>`
 
 :doc:`edit_options <at_edit_options>`
+
+:doc:`create_edit_form <m_create_edit_form>`
 
 :doc:`close_edit_form <m_close_edit_form>`

@@ -26,6 +26,14 @@ Use the ``filter_options`` attribute to specify parameters of the modal filter f
 * ``close_on_escape`` - if true, pressing on the Escape key will trigger the 
   :doc:`close_filter_form <m_close_filter_form>`
   method.
+* ``close_focusout`` - if true, the 
+  :doc:`close_filter_form <m_close_filter_form>`
+  method will be called when a form loses focus
+* ``template_class`` - if specified, the div with this class will be searched in 
+  the task 
+  :doc:`templates </refs/client/task/at_templates>` 
+  attribute and used as a form html template when creating a form
+  
 
 Example
 =======
@@ -33,7 +41,7 @@ Example
 .. code-block:: js
 
     function on_filter_form_created(item) {
-        item.filter_options.width = 800;
+        item.filter_options.width = 700;
     }
 
 See also

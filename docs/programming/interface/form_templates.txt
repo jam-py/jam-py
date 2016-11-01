@@ -1,0 +1,72 @@
+==============
+Form templates
+==============
+
+Form templates of the project are located in the div with the ``templates`` class
+inside the ``body`` tag in the 
+:doc:`Index.html <index_html>`
+file. 
+
+When 
+:doc:`load </refs/client/task/m_load>` 
+method is executed, it cuts out the div with ``templates`` class from the 
+``body`` and stores it in the
+:doc:`templates </refs/client/task/at_templates>`
+attribute as a JQuery object.
+
+To add a form template for an item you should add a div with the ``name-suffix``
+class in the templates div, where ``name`` is the 
+:doc:`item_name </refs/client/abstr_item/at_item_name>`
+of the item and ``suffix`` 
+is the form type: view, edit, filter, param. 
+
+For example:
+
+.. code-block:: html
+
+	<div class="invoices-edit">
+		...
+	</div>
+	
+is an edit form template of the **invoices** item. 
+
+For a detail item before its name there should be the name of its master, 
+separated by a hyphen: 
+
+.. code-block:: html
+
+	<div class="invoices-invoice_table-edit">
+		...
+	</div>
+	
+If an item doesn't have a form template then its owner form template, if 
+defined, will be used. 
+
+So the template
+
+.. code-block:: html
+
+	<div class="journals-edit">
+		...
+	</div>
+
+will be used to create edit forms of items that **Journals** group owns and that 
+do not have its own edit form template. 
+
+If, after searching this way, no template was found for an item, the template
+with the ``default-suffix`` (``default-details-suffix`` for details) class will 
+be used to create a form. 
+
+So the template
+
+.. code-block:: html
+
+	<div class="default-edit">
+		...
+	</div>
+
+will be used to create edit forms for items that have no templates defined for 
+them and their owners.
+
+When a new project is created the index.html already contains such templates.
+

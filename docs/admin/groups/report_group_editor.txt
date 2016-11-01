@@ -1,0 +1,30 @@
+===================
+Report Group Editor
+===================
+
+**Report Group Editor** opens when a developer wants to create a new report group 
+or modify an existing one. See 
+:doc:`Task tree </programming/task_tree>`
+
+The upper part of the **Report Group Editor** have the following fields:
+
+* **Caption** - the group name that appears to users.
+
+* **Name** - the name of the group that will be used in programming code to 
+  get access to the group object. It should be unique in the project and should 
+  be a valid python identifier.
+
+* **Visible** - use this checkbox to set group's visible attribute. The value of 
+  this attribute can be used in code on the client to create menu items and so 
+  on.
+
+In the bottom-right corner of the Dialog form there are two buttons:
+
+* **OK** - click this button to save change you made. 
+
+* **Cancel** - click this buttons to cancel the operation.
+
+.. image:: /admin/_images/report_group.png
+	:align: center
+	:alt: Item Group Editor
+

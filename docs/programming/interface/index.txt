@@ -5,8 +5,10 @@ Client side programming
 .. toctree::
     :maxdepth: 1
 
+    index_html
+    initializing_application
     forms
-    view_forms
-    visual_editing
+    form_templates
+    form_events
+    form_options
     data_controls
-    working_with_filters

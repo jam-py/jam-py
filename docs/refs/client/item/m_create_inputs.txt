@@ -72,8 +72,6 @@ See also
 
 :doc:`fields <at_fields>`
 
-:doc:`Visual editing of records </programming/interface/visual_editing>`
-
 :doc:`Data-aware controls </programming/interface/data_controls>`
 
 :doc:`create_edit_form <m_create_edit_form>`

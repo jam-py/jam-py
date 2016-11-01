@@ -8,6 +8,12 @@ body {
     color: #fff;
     margin: 0px;
     padding: 12px;
+    height: 50px;
+    width: 100%;
+}
+
+.inline {
+    display: inline-block;
 }
 
 #doc-body {
@@ -103,4 +109,28 @@ table {
     font-weight: bold;
     font-size: 14px;
     background-color: #ffffff;
+}
+
+input.gsc-input, .gsc-input-box, .gsc-input-box-hover, .gsc-input-box-focus, .gsc-search-button
+{
+  box-sizing: content-box;
+  line-height: normal;
+}
+
+.gsc-tabsArea div
+{
+  /*By default, Google custom search CSS sets it as AUTO, which shows scroll bars*/
+  overflow: visible;
+}
+
+code {
+  padding: 2px 4px;
+  font-size: 18px;
+  border-radius: 4px;
+  background-color: #ffffff;
+  color: #076654;
+}
+
+dt {
+  font-size: 18px;
 }

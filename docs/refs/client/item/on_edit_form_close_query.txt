@@ -24,8 +24,6 @@ See also
 
 :doc:`Forms </programming/interface/forms>`
 
-:doc:`Visual editing of records </programming/interface/visual_editing>`
-
 :doc:`create_edit_form <m_create_edit_form>`
 
 :doc:`edit_form <at_edit_form>`

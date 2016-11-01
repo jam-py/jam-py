@@ -33,5 +33,6 @@ Fill in the following fields:
   :doc:`create_filter_inputs </refs/client/item/m_create_filter_inputs>` and 
   the filters attribute in options is not specified.
 
-
-
+Use the up and down arrows to place the filters in the order in which they will 
+be displayed. See 
+:doc:`create_filter_inputs </refs/client/item/m_create_filter_inputs>`

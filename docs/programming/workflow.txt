@@ -30,7 +30,7 @@ The the Jam.py workflow is the following:
   login and password, the client task sends the server a request to login.
 * After successfull login or if the project
   :doc:`safe mode </admin/project/parameters>`
-  parameter is not set, the server sends the client iformation about the 
+  parameter is not set, the server sends the client information about the 
   requested task. The task on the client builds its tree, based on this 
   information, assigns event handlers to its objects and executes 
   :doc:`on_page_loaded </refs/client/task/on_page_loaded>`

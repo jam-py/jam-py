@@ -3,7 +3,9 @@ Code editor
 ===========
 
 For every item of the project :doc:`task tree </programming/task_tree>` there 
-are two buttons in the upper-right corner of Administrator: **Client module** 
+are two buttons in the upper-right corner of the
+:doc:`Administrator <index>`
+: **Client module** 
 and **Server module**.
 
 
@@ -16,11 +18,7 @@ By clicking on these buttons the Code Editor for the client or server
 module of the item will be opened. 
 (See :doc:`Working with modules </programming/modules>`)
 
-.. image:: _images/editor.png
-	:align: center
-	:alt: code editor
-
-In the event editor to the right there is an information pane with four tabs: 
+To the left of the **Edior** there is an information pane with four tabs: 
 
 * **Module** - this tab displays all events and functions defined in the editor, 
   double-click on one of them to move the cursor to the proper function. 
@@ -41,3 +39,6 @@ Jam.py uses the `ace editor`_  editor to implement its code editor.
 
 .. _Hear are Keyboard Shortcuts for the ace editor: https://github.com/ajaxorg/ace/wiki/Default-Keyboard-Shortcuts
 
+.. image:: _images/editor.png
+	:align: center
+	:alt: code editor

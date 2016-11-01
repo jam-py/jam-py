@@ -17,6 +17,8 @@ def process_html(file_name):
                 content[i + j - 1] = ''
         if cur_line.find('<table') != -1 and cur_line.find('class="docutils"') != -1:
             content[i] = line.replace('class="docutils"', 'class="table-condensed table-bordered table-striped"')
+        if cur_line == '''<script type="text/javascript">$('#searchbox').show(0);</script>''':
+            content[i] = '';
     for line in content:
         if line:
             result.append(line)

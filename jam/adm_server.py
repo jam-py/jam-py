@@ -10,6 +10,7 @@ import shutil
 import traceback
 import sqlite3
 from threading import Lock
+from operator import itemgetter
 
 from jsparser import parse, SyntaxError_
 
@@ -104,33 +105,32 @@ def create_items(task):
     task.sys_params.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_params.add_field(3, 'f_safe_mode', task.lang['safe_mode'], common.BOOLEAN)
     task.sys_params.add_field(4, 'f_debugging', 'Debugging', common.BOOLEAN, edit_visible=False)
-    task.sys_params.add_field(5, 'f_log_file', u'Log file', common.TEXT, size = 30)
-    task.sys_params.add_field(6, 'f_con_pool_size', u'Connection pool size', common.INTEGER, required=True)
-    task.sys_params.add_field(7, 'f_decimal_point', u'Decimal point', common.TEXT, size = 1)
-    task.sys_params.add_field(8, 'f_mon_decimal_point', u'Monetory decimal point', common.TEXT, size = 1)
-    task.sys_params.add_field(9, 'f_mon_thousands_sep', u'Monetory thousands separator', common.TEXT, size = 3)
-    task.sys_params.add_field(10, 'f_currency_symbol', u'Currency symbol', common.TEXT, size = 10)
-    task.sys_params.add_field(11, 'f_frac_digits', u'Number of fractional digits', common.INTEGER)
-    task.sys_params.add_field(12, 'f_p_cs_precedes', u'Currency symbol precedes the value (positive values)', common.BOOLEAN)
-    task.sys_params.add_field(13, 'f_n_cs_precedes', u'Currency symbol precedes the value (negative values)', common.BOOLEAN)
-    task.sys_params.add_field(14, 'f_p_sep_by_space', u'Currency symbol is separated by a space (positive values)', common.BOOLEAN)
-    task.sys_params.add_field(15, 'f_n_sep_by_space', u'Currency symbol is separated by a space (negative values)', common.BOOLEAN)
-    task.sys_params.add_field(16, 'f_positive_sign', u'Symbol for a positive monetary value', common.TEXT, size = 1)
-    task.sys_params.add_field(17, 'f_negative_sign', u'Symbol for a negative monetary value', common.TEXT, size = 1)
-    task.sys_params.add_field(18, 'f_p_sign_posn', u'The position of the sign (positive values)', common.INTEGER)
-    task.sys_params.add_field(19, 'f_n_sign_posn', u'The position of the sign (negative values)', common.INTEGER)
-    task.sys_params.add_field(20, 'f_d_fmt', u'Date format string', common.TEXT, size = 30)
-    task.sys_params.add_field(21, 'f_d_t_fmt', u'Date and time format string', common.TEXT, size = 30)
-    task.sys_params.add_field(22, 'f_language', task.lang['language'], common.INTEGER, required=True,
+    task.sys_params.add_field(5, 'f_con_pool_size', u'Connection pool size', common.INTEGER, required=True)
+    task.sys_params.add_field(6, 'f_decimal_point', u'Decimal point', common.TEXT, size = 1)
+    task.sys_params.add_field(7, 'f_mon_decimal_point', u'Monetory decimal point', common.TEXT, size = 1)
+    task.sys_params.add_field(8, 'f_mon_thousands_sep', u'Monetory thousands separator', common.TEXT, size = 3)
+    task.sys_params.add_field(9, 'f_currency_symbol', u'Currency symbol', common.TEXT, size = 10)
+    task.sys_params.add_field(10, 'f_frac_digits', u'Number of fractional digits', common.INTEGER)
+    task.sys_params.add_field(11, 'f_p_cs_precedes', u'Currency symbol precedes the value (positive values)', common.BOOLEAN)
+    task.sys_params.add_field(12, 'f_n_cs_precedes', u'Currency symbol precedes the value (negative values)', common.BOOLEAN)
+    task.sys_params.add_field(13, 'f_p_sep_by_space', u'Currency symbol is separated by a space (positive values)', common.BOOLEAN)
+    task.sys_params.add_field(14, 'f_n_sep_by_space', u'Currency symbol is separated by a space (negative values)', common.BOOLEAN)
+    task.sys_params.add_field(15, 'f_positive_sign', u'Symbol for a positive monetary value', common.TEXT, size = 1)
+    task.sys_params.add_field(16, 'f_negative_sign', u'Symbol for a negative monetary value', common.TEXT, size = 1)
+    task.sys_params.add_field(17, 'f_p_sign_posn', u'The position of the sign (positive values)', common.INTEGER)
+    task.sys_params.add_field(18, 'f_n_sign_posn', u'The position of the sign (negative values)', common.INTEGER)
+    task.sys_params.add_field(19, 'f_d_fmt', u'Date format string', common.TEXT, size = 30)
+    task.sys_params.add_field(20, 'f_d_t_fmt', u'Date and time format string', common.TEXT, size = 30)
+    task.sys_params.add_field(21, 'f_language', task.lang['language'], common.INTEGER, required=True,
         lookup_values=get_value_list(langs.LANGUAGE, True), edit_visible=False)
-    task.sys_params.add_field(23, 'f_author', task.lang['author'], common.TEXT, size = 30, edit_visible=False)
-    task.sys_params.add_field(24, 'f_version', u'Version', common.TEXT, size = 15)
-    task.sys_params.add_field(25, 'f_mp_pool', u'Multiprocessing connection pool', common.BOOLEAN)
-    task.sys_params.add_field(26, 'f_persist_con', u'Persistent connection', common.BOOLEAN)
-    task.sys_params.add_field(27, 'f_single_file_js', u'All JS modules in a single file', common.BOOLEAN)
-    task.sys_params.add_field(28, 'f_dynamic_js', u'Dynamic JS modules loading', common.BOOLEAN)
-    task.sys_params.add_field(29, 'f_compressed_js', u'Compressed JS, CSS files', common.BOOLEAN)
-    task.sys_params.add_field(30, 'f_field_id_gen', u'f_field_id_gen', common.INTEGER)
+    task.sys_params.add_field(22, 'f_author', task.lang['author'], common.TEXT, size = 30, edit_visible=False)
+    task.sys_params.add_field(23, 'f_version', u'Version', common.TEXT, size = 15)
+    task.sys_params.add_field(24, 'f_mp_pool', u'Multiprocessing connection pool', common.BOOLEAN)
+    task.sys_params.add_field(25, 'f_persist_con', u'Persistent connection', common.BOOLEAN)
+    task.sys_params.add_field(26, 'f_single_file_js', u'All JS modules in a single file', common.BOOLEAN)
+    task.sys_params.add_field(27, 'f_dynamic_js', u'Dynamic JS modules loading', common.BOOLEAN)
+    task.sys_params.add_field(28, 'f_compressed_js', u'Compressed JS, CSS files', common.BOOLEAN)
+    task.sys_params.add_field(29, 'f_field_id_gen', u'f_field_id_gen', common.INTEGER)
 
     task.sys_items = task.sys_catalogs.add_catalog('sys_items', u'Items', 'SYS_ITEMS')
     task.sys_fields = task.sys_tables.add_table('sys_fields', task.lang['fields'], 'SYS_FIELDS')
@@ -1557,6 +1557,7 @@ def server_find_in_task(task, task_id, search_text, case_sencitive, whole_words)
             elif module_type == common.SERVER_MODULE:
                 text = it.f_server_module.value
             result += find_in_text(text, search_text, names_dict[it.id.value])
+        result = sorted(result, key=itemgetter(0, 1, 2))
         for line in result:
             search += '%s:%s: %s\n' % line
         if header:
@@ -1714,7 +1715,7 @@ def update_events_code(task):
         if common.SETTINGS['COMPRESSED_JS']:
             minify(file_name)
     sql = []
-    for key,value in js_filenames.iteritems():
+    for key, value in js_filenames.iteritems():
         sql.append("UPDATE %s SET F_JS_FILENAME = '%s' WHERE ID = %s" % (it.table_name, value, key))
     it.task.execute(sql)
     if it.task.app.task:

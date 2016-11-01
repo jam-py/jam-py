@@ -23,8 +23,10 @@ Use the ``edit_options`` attribute to specify parameters of the modal edit form.
   attribute,
 * ``fields`` - specify the list of field names that the
   :doc:`create_inputs <m_create_inputs>` 
-  method will use, if it is not specified, the field list, set in Administrator 
-  for edting will be used (the default value),
+  method will use, if ``fields`` attribute of its ``options`` parameter is not 
+  specified, the default value is a list of field names set in the 
+  :doc:`Edit Fields Dialog </admin/items/edit_fields_dialog>` in the
+  Administrator 
 * ``close_button`` - if true, the close button will be created in the upper-right 
   corner of the form, the default value is true,
 * ``close_caption`` - if true and close_button is true, will display 'Close - [Esc]'
@@ -32,6 +34,14 @@ Use the ``edit_options`` attribute to specify parameters of the modal edit form.
 * ``close_on_escape`` - if true, pressing on the Escape key will trigger the 
   :doc:`close_edit_form <m_close_edit_form>`
   method.
+* ``close_focusout`` - if true, the 
+  :doc:`close_edit_form <m_close_edit_form>` method will be called when a form 
+  loses focus
+* ``template_class`` - if specified, the div with this class will be searched in 
+  the task 
+  :doc:`templates </refs/client/task/at_templates>` 
+  attribute and used as a form html template when creating a form
+  
 
 Example
 =======
@@ -48,8 +58,6 @@ See also
 ========
 
 :doc:`Forms </programming/interface/forms>`
-
-:doc:`Visual editing of records </programming/interface/visual_editing>`
 
 :doc:`create_edit_form <m_create_edit_form>`
 

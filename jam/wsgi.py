@@ -8,6 +8,7 @@ import traceback
 import datetime
 from threading import Lock
 from types import MethodType
+import mimetypes
 import jam
 
 sys.path.insert(1, os.path.join(os.path.dirname(jam.__file__), 'third_party'))
@@ -16,6 +17,7 @@ from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Map, Rule
 from werkzeug.exceptions import HTTPException, NotFound
 from werkzeug.wsgi import SharedDataMiddleware, peek_path_info, get_path_info
+from werkzeug.http import parse_date, http_date
 
 import common
 from items import AbortException
@@ -34,6 +36,7 @@ def create_application(from_file):
 
 class App():
     def __init__(self, work_dir):
+        mimetypes.add_type('text/cache-manifest', '.appcache')
         self.started = datetime.datetime.now()
         self.work_dir = work_dir
         self._loading = False
@@ -105,20 +108,12 @@ class App():
                 response = e
         return response(environ, start_response)
 
-    def set_no_cache_headers(self, response):
-        response.headers['Content-Type'] = 'text/html'
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = 0
-
-    def serve_himself(self, environ, start_response, file_name):
-        response = Response()
-        self.set_no_cache_headers(response)
-        if file_name == 'admin.html':
-            file_name = os.path.join(self.jam_dir, file_name)
-        with open(file_name, 'r') as f:
-            response.set_data(f.read())
-        return response(environ, start_response)
+    def check_modified(self, file_path, environ):
+        if environ.get('HTTP_IF_MODIFIED_SINCE'):
+            date1 = parse_date(environ['HTTP_IF_MODIFIED_SINCE'])
+            date2 = datetime.datetime.utcfromtimestamp(os.path.getmtime(file_path)).replace(microsecond=0)
+            if date1 != date2:
+                os.utime(file_path, None)
 
     def serve_file(self, environ, start_response, endpoint, file_name=None):
         if endpoint == 'root_file':
@@ -126,32 +121,34 @@ class App():
                 file_name = 'index.html'
                 environ['PATH_INFO'] = environ['PATH_INFO'] + '/index.html'
             if file_name == 'index.html':
+                self.check_modified(file_name, environ)
                 if self.get_task():
                     self.check_task_client_modified()
-                    return self.serve_himself(environ, start_response, file_name)
+                    self.check_task_server_modified()
                 else:
-                    response = Response(self.admin.lang['no_task'])
-                    self.set_no_cache_headers(response)
-                    return response(environ, start_response)
+                    return Response(self.admin.lang['no_task'])(environ, start_response)
             elif file_name == 'admin.html':
-                return self.serve_himself(environ, start_response, file_name)
+                self.check_modified(os.path.join(self.jam_dir, file_name), environ)
+                environ['PATH_INFO'] = os.path.join('jam', file_name)
+        if file_name:
+            base, ext = os.path.splitext(file_name)
+        init_path_info = None
+        if common.SETTINGS['COMPRESSED_JS'] and ext and ext in ['.js', '.css']:
+            init_path_info = environ['PATH_INFO']
+            min_file_name = base + '.min' + ext
+            environ['PATH_INFO'] = environ['PATH_INFO'].replace(file_name, min_file_name)
+
         try:
-            if file_name:
-                base, ext = os.path.splitext(file_name)
-            if common.SETTINGS['COMPRESSED_JS'] and ext and ext in ['.js', '.css']:
-                try:
-                    cur_path_info = environ['PATH_INFO']
-                    min_file_name = base + '.min' + ext
-                    environ['PATH_INFO'] = environ['PATH_INFO'].replace(file_name, min_file_name)
-                    return self.fileserver(environ, start_response)
-                except:
-                    environ['PATH_INFO'] = cur_path_info
-                    return self.fileserver(environ, start_response)
-            else:
+            try:
                 return self.fileserver(environ, start_response)
+            except Exception, e:
+                if init_path_info:
+                    environ['PATH_INFO'] = init_path_info
+                    return self.fileserver(environ, start_response)
+                else:
+                    raise
         except Exception, e:
             return Response('')(environ, start_response)
-
 
     def create_post_response(self, request, result):
         response = Response()
@@ -211,7 +208,7 @@ class App():
                 user_info = self.admin.get_user_info(user_uuid, is_admin, env)
                 if not user_info:
                     return {'status': common.NOT_LOGGED, 'data': common.NOT_LOGGED}
-            elif not user_uuid is None:
+            elif not user_uuid is None and task == self.admin:
                 return {'status': common.NOT_LOGGED, 'data': common.NOT_LOGGED}
             obj = task
             if task:
@@ -285,7 +282,6 @@ class App():
             task = self.admin
         else:
             task = self.task
-            self.check_task_server_modified()
         if user_info:
             priv = self.admin.get_privileges(user_info['role_id'])
         else:
@@ -295,8 +291,7 @@ class App():
             'settings': self.admin.get_settings(),
             'language': self.admin.lang,
             'user_info': user_info,
-            'privileges': priv,
-            'demo': jam.common.DEMO
+            'privileges': priv
         }
         return result, ''
 

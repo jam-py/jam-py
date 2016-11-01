@@ -2,16 +2,16 @@
 Creating a project
 ==================
 
-1. Create a new directory. 
+Create a new directory. 
 
-2. Go into the directory and run from command line:
+Go into the directory and run from command line:
 
 .. code-block:: console
 
     $ jam-project.py
 
 
-3. The following files and folders will be created in the directory::
+The following files and folders will be created in the directory::
 
     /
         css/
@@ -25,7 +25,7 @@ Creating a project
         index.html
 
 
-4. To start Jam.py web server run **server.py** script.
+To start Jam.py web server run **server.py** script.
 
 
 .. code-block:: console
@@ -44,7 +44,7 @@ Creating a project
     use it in a browser in the next steps.
 
 
-5. Open a Web browser and go to “/admin.html” on your local domain – e.g., 
+Open a Web browser and go to “/admin.html” on your local domain – e.g., 
 http://127.0.0.1:8080/admin.html. You should see the select language dialog. 
 
 
@@ -53,12 +53,12 @@ http://127.0.0.1:8080/admin.html. You should see the select language dialog.
     127.0.0.1:8080/admin.html
     
     
-6. In the dialog that will appear, select the language and press OK button.
+In the dialog that will appear, select the language and press OK button.
 
 .. image:: _images/lang.png
 	:alt: Jam.py language dialog
 
-7. In the New project dialog box fill in:
+In the New project dialog box fill in:
 
 * **Caption** - the project name that appears to users
 * **Name** - name of project (task) that will be used in programming code to 
@@ -80,7 +80,8 @@ of failure 	an error message will be displayed.
     
     * to use FireBird database, the python fdb library must be installed 
     * PostgreSQL requires psycopg2 library 
-    * MySQL requires MySQLdb library 
+    * MySQL requires MySQLdb library
+    * Oracle requires cx_Oracle library     
     * to generate reports LibreOffice must be installed
     
 If all goes well a new project will be created and a project tree will appear in 
@@ -91,8 +92,8 @@ Administrator.
 	:align: center
 	:alt: Jam.py Administrator
 
-8. Now to see the project itself create new page in the browser and type in
-   the addres bar:
+Now to see the project itself create new page in the browser and type in
+the addres bar:
    
 .. code-block:: console
 

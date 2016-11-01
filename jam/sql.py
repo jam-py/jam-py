@@ -435,8 +435,14 @@ class SQL(object):
         if result:
             result = result[:-2]
             result = ' ORDER BY ' + result
-        elif query['__limit']:
-            result = ' ORDER BY %s."%s"' % (self.table_alias(), self._primary_key)
+        #~ if result:
+            #~ result = result[:-2]
+            #~ result += ', %s."%s"' % (self.table_alias(), self._primary_key)
+            #~ if order_list[0][1]:
+                #~ result += ' DESC'
+            #~ result = ' ORDER BY ' + result
+        #~ elif query['__limit']:
+            #~ result = ' ORDER BY %s."%s"' % (self.table_alias(), self._primary_key)
         return db_module.set_case(result)
 
     def get_select_statement(self, query, db_module=None):

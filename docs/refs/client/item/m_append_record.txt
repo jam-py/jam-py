@@ -37,8 +37,6 @@ The ``append_record`` method
 See also
 ========
 
-:doc:`Visual editing of records </programming/interface/visual_editing>`
-
 :doc:`Modifying datasets </programming/data/modifying_datasets>`
 
 :doc:`append <m_append>`

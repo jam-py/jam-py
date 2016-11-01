@@ -5,11 +5,6 @@ Users
 If the **Safe mode** checkbox in the project parameters is checked, authentication 
 is needed for a user to work in the system.
 
-
-.. image:: _images/users.png
-	:align: center
-	:alt: Jam.py Administrator Users 
-
 But before that, the user must be registered in the framework. To register a user 
 select Users node, click New and fill in the form that appears: 
 
@@ -25,3 +20,7 @@ select Users node, click New and fill in the form that appears:
 * **Role** – user role
 * **Information** - some additional information
 * **Admin** - if this flag is set, the user has the right to work in Administrator.
+
+.. image:: _images/users.png
+	:align: center
+	:alt: Jam.py Administrator Users 

@@ -246,14 +246,17 @@
         load_script: function(js_filename, callback, onload) {
             var self = this,
                 url,
-                s = document.createElement('script');
-
+                s0,
+                s;
             if (js_filename && !this.task._script_cache[js_filename]) {
+                s = document.createElement('script');
+                s0 = document.getElementsByTagName('script')[0];
                 url = js_filename;
 
                 s.src = url;
                 s.type = "text/javascript";
-                document.getElementsByTagName('head')[0].appendChild(s);
+                s.async = true;
+                s0.parentNode.insertBefore(s, s0);
                 s.onload = function() {
                     self.task._script_cache[js_filename] = true;
                     if (onload) {
@@ -738,6 +741,9 @@
                 $button = $('<button type="button" class="btn">OK</button>'),
                 timeOut;
 
+            if (mess instanceof jQuery) {
+                mess = mess.clone()
+            }
             options = $.extend({}, default_options, options);
             buttons = options.buttons;
 
@@ -1342,7 +1348,6 @@
                 language = info.language;
                 self.settings = info.settings;
                 self.language = info.language;
-                self.is_demo_version = info.demo;
                 self.user_info = info.user_info;
                 self.user_privileges = info.privileges;
                 self.consts = consts;
@@ -1390,27 +1395,29 @@
         _set_history_item: function(item) {
             var self = this;
             this.history_item = item;
-            this.history_item.read_only = true;
-            item.view_options.fields = ['item_id', 'item_rec_id', 'date', 'operation', 'user'];
-            if (!item.on_get_field_text) {
-                item.on_get_field_text = function(field) {
-                    var oper,
-                        it;
-                    if (field.field_name === 'operation') {
-                        if (field.value === consts.RECORD_INSERTED) {
-                            return self.language.created;
+            if (this.history_item) {
+                this.history_item.read_only = true;
+                item.view_options.fields = ['item_id', 'item_rec_id', 'date', 'operation', 'user'];
+                if (!item.on_field_get_text) {
+                    item.on_field_get_text = function(field) {
+                        var oper,
+                            it;
+                        if (field.field_name === 'operation') {
+                            if (field.value === consts.RECORD_INSERTED) {
+                                return self.language.created;
+                            }
+                            else if (field.value === consts.RECORD_MODIFIED || field.value === consts.RECORD_DETAILS_MODIFIED) {
+                                return self.language.modified;
+                            }
+                            else if (field.value === consts.RECORD_DELETED) {
+                                return self.language.deleted;
+                            }
                         }
-                        else if (field.value === consts.RECORD_MODIFIED || field.value === consts.RECORD_DETAILS_MODIFIED) {
-                            return self.language.modified;
-                        }
-                        else if (field.value === consts.RECORD_DELETED) {
-                            return self.language.deleted;
-                        }
-                    }
-                    else if (field.field_name === 'item_id') {
-                        it = self.item_by_ID(field.value);
-                        if (it) {
-                            return it.item_caption;
+                        else if (field.field_name === 'item_id') {
+                            it = self.item_by_ID(field.value);
+                            if (it) {
+                                return it.item_caption;
+                            }
                         }
                     }
                 }
@@ -3286,15 +3293,13 @@
             this.update_controls();
         },
 
-        search: function(field_name, text) {
+        search: function(field_name, text, callback) {
             var searchText = text.trim(),
                 params = {};
 
             if (searchText.length) {
                 params.__search = [field_name, searchText];
-                this.open({
-                    params: params
-                });
+                this.open({params: params}, callback);
             } else {
                 this.open();
             }
@@ -3646,11 +3651,11 @@
                 }
                 if (callback) {
                     this.send_request('apply_changes', [changes, params], function(data) {
-                        self.process_apply(data, callback);
+                        self._process_apply(data, callback);
                     });
                 } else {
                     data = this.send_request('apply_changes', [changes, params]);
-                    result = this.process_apply(data);
+                    result = this._process_apply(data);
                 }
             }
             else if (callback) {
@@ -3658,22 +3663,17 @@
             }
         },
 
-        process_apply: function(data, callback) {
+        _process_apply: function(data, callback) {
             var res,
                 err;
             if (data) {
                 res = data[0]
                 err = data[1]
                 if (err) {
-                    if (this.task.is_demo_version) {
-                        this.warning(err);
+                    if (callback) {
+                        callback.call(this, err);
                     }
-                    else {
-                        if (callback) {
-                            callback.call(this, err);
-                        }
-                        throw err;
-                    }
+                    throw err;
                 } else {
                     this.change_log.update(res)
                     if (this.on_after_apply) {
@@ -4403,11 +4403,11 @@
         view: function(container) {
             var self = this;
             this.load_modules([this, this.owner], function() {
-                self._view(container);
+                self.create_view_form(container);
             })
         },
 
-        _view: function(container) {
+        create_view_form: function(container) {
             var self = this;
             this.create_form('view', {
                 container: container,
@@ -4674,7 +4674,7 @@
         enable_controls: function() {
             this._disabled_count += 1;
             if (this.controls_enabled()) {
-                this.update_controls(consts.UPDATE_CONTROLS);
+                this.update_controls(consts.UPDATE_SCROLLED);
             }
         },
 
@@ -4690,7 +4690,7 @@
             var i = 0,
                 len = this.fields.length;
             if (state === undefined) {
-                state = consts.UPDATE_REFRESH;
+                state = consts.UPDATE_CONTROLS;
             }
             if (this.controls_enabled()) {
                 for (i = 0; i < len; i++) {
@@ -4905,36 +4905,46 @@
             return Number(num.toFixed(dec));
         },
 
+        refresh: function(callback) {
+        },
+
+        _do_on_refresh_record: function(copy, callback) {
+            var i, len;
+            if (copy.record_count() === 1) {
+                len = copy._dataset[0].length;
+                for (i = 0; i < len; i++) {
+                    this._dataset[this.rec_no][i] = copy._dataset[0][i];
+                }
+                this.update_controls(consts.UPDATE_CANCEL);
+                if (callback) {
+                    callback.call(this, this);
+                }
+            }
+        },
+
         refresh_record: function(callback) {
             var self = this,
-                i, len,
                 fields = [],
                 primary_key = this._primary_key,
                 where = {},
-                copy = this.copy({
-                    filters: false,
-                    details: false,
-                    handlers: false
-                });
+                copy;
+            if (this.master) {
+                throw 'The refresh_record method can not be executed for a detail item';
+            }
+            copy = this.copy({filters: false, details: false, handlers: false});
             if (this._primary_key_field.value !== null) {
                 self.each_field(function(field) {
                     fields.push(field.field_name)
                 })
                 where[primary_key] = this._primary_key_field.value;
-                copy.open({
-                    expanded: this.expanded,
-                    fields: fields,
-                    where: where
-                })
-                if (copy.record_count() === 1) {
-                    len = copy._dataset[0].length;
-                    for (i = 0; i < len; i++) {
-                        self._dataset[self.rec_no][i] = copy._dataset[0][i];
-                    }
-                    self.update_controls(consts.UPDATE_CANCEL);
-                    if (callback) {
-                        callback.call(this, this);
-                    }
+
+                if (callback) {
+                    copy.open({expanded: this.expanded, fields: fields, where: where}, function() {
+                        self._do_on_refresh_record(copy, callback);
+                    });
+                } else {
+                    copy.open({expanded: this.expanded, fields: fields, where: where});
+                    this._do_on_refresh_record(copy);
                 }
             }
         }
@@ -5901,16 +5911,21 @@
                     result = this.get_text();
                 }
             }
-            if (this.owner && this.owner.on_get_field_text) {
-                if (!this.on_get_field_text_called) {
-                    this.on_get_field_text_called = true;
+            if (this.owner && (this.owner.on_field_get_text || this.owner.on_get_field_text)) {
+                if (!this.on_field_get_text_called) {
+                    this.on_field_get_text_called = true;
                     try {
-                        res = this.owner.on_get_field_text.call(this.owner, this);
+                        if (this.owner.on_field_get_text) {
+                            res = this.owner.on_field_get_text.call(this.owner, this);
+                        }
+                        else if (this.owner.on_get_field_text) {
+                            res = this.owner.on_get_field_text.call(this.owner, this);
+                        }
                         if (res !== undefined) {
                             result = res;
                         }
                     } finally {
-                        this.on_get_field_text_called = false;
+                        this.on_field_get_text_called = false;
                     }
                 }
             }
@@ -6760,13 +6775,13 @@
                     this.syncronize();
                     break;
                 case consts.UPDATE_CONTROLS:
-                    this.syncronize();
+                    this.build();
                     break;
                 case consts.UPDATE_CLOSE:
                     this.$element.empty();
                     break;
                 case consts.UPDATE_REFRESH:
-                    this.build();
+//                    this.build();
                     break;
             }
         },
@@ -8039,13 +8054,13 @@
                     this.syncronize();
                     break;
                 case consts.UPDATE_CONTROLS:
-                    this.syncronize();
+                    this.build();
                     break;
                 case consts.UPDATE_CLOSE:
                     this.$table.empty();
                     break;
                 case consts.UPDATE_REFRESH:
-                    this.build();
+//                    this.build();
                     break;
             }
         },
@@ -8712,7 +8727,7 @@
             this.$foot.hide();
             this.$outer_table.find('#top-td').attr('colspan', this.colspan);
 
-            clone.on_get_field_text = this.item.on_get_field_text;
+            clone.on_field_get_text = this.item.on_field_get_text;
             rows = ''
             item_rec_no = this.item.rec_no;
             try {
@@ -9354,7 +9369,7 @@
                     this.errorValue = text;
                     this.error = e;
                     this.updateState(false);
-                    if (this.field.owner && this.field.owner.task.settings.DEBUGGING) {
+                    if (this.field && this.field.owner && this.field.owner.task.settings.DEBUGGING) {
                         throw 'change_field_text error: ' + e
                     }
                     result = false;

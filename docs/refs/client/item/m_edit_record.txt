@@ -37,7 +37,7 @@ The ``edit_record`` method
 See also
 ========
 
-:doc:`Visual editing of records </programming/interface/visual_editing>`
+:doc:`Forms </programming/interface/forms>`
 
 :doc:`Modifying datasets </programming/data/modifying_datasets>`
 

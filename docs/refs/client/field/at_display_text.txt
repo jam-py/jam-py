@@ -24,11 +24,11 @@ handler. Otherwise, display_text is the value of the
 :doc:`lookup_text <at_lookup_text>` 
 property for 
 :doc:`lookup fields </programming/data/lookup_fields>`
-and 
+, and 
 :doc:`text <at_text>` 
-property converted according to the
+property, converted according to the
 :doc:`project locale </admin/project/project_locale>`
-settings
+settings,
 for other fields.
 
 **Display_text** is the string representation of the field's value property when 

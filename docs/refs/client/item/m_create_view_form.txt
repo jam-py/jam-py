@@ -1,0 +1,75 @@
+================
+create_view_form
+================
+
+.. js:function:: create_view_form(container)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Use ``create_view_form`` method to create a view form of the item.
+
+Then it searches for an item html template in the task 
+:doc:`templates </refs/client/task/at_templates>`
+attribute (See 
+:doc:`Forms </programming/interface/forms>`
+) and creates a 
+clone of the template and assigns it to the item 
+:doc:`view_form <at_view_form>`
+attribute.
+
+If ``container`` parameter is specified the method empties it and appends the 
+html template to it. Otherwise it creates a modal form and appends the 
+html to it.
+
+Triggers the 
+:doc:`on_view_form_created </refs/client/task/on_view_form_created>`
+of the task.
+
+Triggers the 
+:doc:`on_view_form_created </refs/client/group/on_view_form_created>`
+of the group that owners the item, if one is defined for the group.
+
+Triggers the 
+:doc:`on_view_form_created <on_view_form_created>`
+of the item, if one is defined.
+
+Assigns the JQuery keyup and keydown events to the view_form so 
+that when an JQuery event of the window occurs, the ``on_view_form_keyup`` and 
+``on_view_form_keydown`` events are triggered. They are triggered (if defined) 
+in the same way: first the task event handler, the group event handler and 
+then the event handler of the item itself. After that the JQuery stopPropagation 
+method of the event is called.
+
+If the form is modal, shows it. Before showing the form the method applies 
+options specidied in the 
+:doc:`view_options <at_view_options>` 
+attribute.
+
+Triggers the 
+:doc:`on_view_form_shown </refs/client/task/on_view_form_shown>`
+of the task.
+
+Triggers the 
+:doc:`on_view_form_shown </refs/client/group/on_view_form_shown>`
+of the group that owners the item, if one is defined for the group.
+
+Triggers the 
+:doc:`on_view_form_shown <on_view_form_shown>`
+of the item, if one is defined.
+
+:doc:`Forms </programming/interface/forms>`
+
+:doc:`view_form <at_view_form>`
+
+:doc:`view_options <at_view_options>`
+
+:doc:`close_view_form <m_close_view_form>`
+
+

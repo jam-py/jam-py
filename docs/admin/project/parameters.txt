@@ -2,7 +2,7 @@
 Parameters
 ==========
 
-AFter clicking on the Parameters button the following dialog will appear:
+After clicking on the Parameters button the following dialog will appear:
 
 
 .. image:: /admin/_images/parameters.png
@@ -15,34 +15,45 @@ AFter clicking on the Parameters button the following dialog will appear:
   and 
   :doc:`Roles </admin/roles>`
   ). 
-* **Debugging** - If this button is checked, compressed project javascript and 
-  css files are send to the client.
+  
+* **Debugging** - If this button is checked, the Werkzeug libarary bebugger will
+  be invoked when an error on the server occurs.
+  
 * **Connection pool size** — the size of the server database connection pool. 
+
 * **Multiprocessing connection pool** - if this checkbox is checked the framework 
-  creates connection pool by using multiprocessing python module
+  creates connection pool by using multiprocessing python module - the 
+  connections will be created in different processes.
+  
 * **Persistent connection** - if this checkbox is checked and multiprocessing 
   connection pool is selected, the framework creates connection in the main 
   process. Before executing any statement, the framework checks if this 
   connection is busy, if not, the statment is executed by this connection, 
   otherwise multiprocessing connection pool is used.
+  
+* **Compressed JS, CSS files** - If this button is checked the server returns 
+  compressed *js* and *css* files when *index.html* page is loaded.
+
 * **All JS modules in a single file** - If this checkbox is unchecked, the 
   application will generate a javascript file in the project *js* folder for 
   every item in the :doc:`task tree </programming/task_tree>`, that has code in
   its Client module, with the name *item_name.js*, where *item_name* is the name 
   of an item. 
-  Otherwise the application will generate a javascript file with the name 
+  Otherwise, the application will generate a javascript file with the name 
   *task_name.js*, where *task_name* is the name of the project 
-  :doc:`task </admin/task>` (for example *demo.js*) that will contain javascript
-  code of all items, except items whose **External js module** checkbox in the 
+  :doc:`task </admin/task>` (for example *demo.js*), that will contain javascript
+  code of all items, except items, whose **External js module** checkbox in the 
   :doc:`Item Editor Dialog </admin/items/item_editor_dialog>`
   is checked (separate files will be created for them). 
+  
 * **Dynamic JS modules loading** - If this checkbox is unchecked and the 
   application generates more than one javascript file, only file named 
   *task_name.js* will be loaded when application is run. All other files must be 
   loaded dynamically. See :doc:`Working with modules </programming/modules>`.
+  
 * **Version** — specify the version of the project here.
 
 .. note::
    When **Connection pool size**, **Multiprocessing connection pool** or
-   **Persistent connection** parameters are changed, *server.py* must be 
+   **Persistent connection** parameters are changed, the server applicaton must be 
    restarted for changes to take effect.

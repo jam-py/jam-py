@@ -4,7 +4,7 @@ Item Editor Dialog
 
 **Item Editor dialog** opens when a developer selects a Group node in the project 
 tree of the Administrator and click on the **New** or **Edit** button to create 
-a new item or modify the selected one. See 
+a new item or modify a selected one. See 
 :doc:`Items <index>`.
 
 .. image:: /admin/_images/item_editor_dialog.png
@@ -22,6 +22,17 @@ The upper part of the **Item Editor dialog** have the following fields:
 * **Table** - the name of the table that will be created in the project 
   database. This name is specified when creating an item, and can not be 
   changed later.
+  
+* **Primary key field** - by clicking on the button to the right of this 
+  attribute you can specify the primary key field for the item. If the primary 
+  key field was defined for the group that owns the item it will be displayed 
+  there by default, otherwise you have to create this field first.
+
+* **Deleted flag field** - by clicking on the button to the right of this 
+  attribute you can specify the field that will serve as a deleted flag 
+  for the item. If the deleted flag field was defined for the group that owns 
+  the item it will be displayed there by default, otherwise you have to create 
+  this field first.
   
 * **Virtual table** - if this checkbox is checked, no database table will be 
   created. Use this options to create an in memory item or to get access to the 

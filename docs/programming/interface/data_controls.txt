@@ -40,9 +40,5 @@ To update visual controls use the
 :doc:`update_controls </refs/client/item/m_update_controls>`
 method. 
 
-To learn about the state of visual controls use the 
-:doc:`controls_disabled </refs/client/item/m_controls_disabled>`
-method.
-
 
 

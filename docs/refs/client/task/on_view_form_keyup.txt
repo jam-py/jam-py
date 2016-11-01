@@ -27,7 +27,5 @@ See also
 
 :doc:`Forms </programming/interface/forms>`
 
-:doc:`Creating view forms </programming/interface/view_forms>`
-
 :doc:`view </refs/client/item/m_view>`
 

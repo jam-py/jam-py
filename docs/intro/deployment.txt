@@ -1,0 +1,49 @@
+==========================================
+Jam.py delpoyment with Apache and mod_wsgi
+==========================================
+
+Once you’ve got ``mod_wsgi`` installed and activated, edit your Apache server’s 
+httpd.conf file and add the following. If you are using a version of Apache older 
+than 2.4, replace **Require all granted** with **Allow from all** and also add 
+the line **Order deny,allow** above it.
+
+.. code-block:: apache
+
+    WSGIScriptAlias / /path/to/mysite.com/mysite/wsgi.py
+    WSGIPythonPath /path/to/mysite.com
+
+    <Directory /path/to/mysite.com/mysite>
+    <Files wsgi.py>
+    Require all granted
+    </Files>
+    </Directory>
+    
+    Alias /static/ /path/to/mysite.com/static/
+
+    <Directory /path/to/mysite.com/static>
+    Require all granted
+    </Directory>
+    
+
+The first bit in the ``WSGIScriptAlias`` line is the base URL path you want to
+serve your application at (``/`` indicates the root url), and the second is the
+location of a "WSGI file" -- see below -- on your system, usually inside of
+your project package (``mysite`` in this example). This tells Apache to serve
+any request below the given URL using the WSGI application defined in that
+file.
+
+The ``WSGIPythonPath`` line ensures that your project package is available for
+import on the Python path; in other words, that ``import mysite`` works.
+
+The ``<Directory>`` piece just ensures that Apache can access your
+:file:`wsgi.py` file.
+
+The next lines ensure that anything in the ``/static/`` URL space is explicitly 
+served as a static files.
+
+.. note::
+	Please note that if the server runs on Windows the **Multiprocessing 
+	connection pool** flag in the 
+	:doc:`Project Parameters </admin/project/parameters>`
+	must be turned off.
+	

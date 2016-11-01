@@ -1,0 +1,48 @@
+========================
+Initializing application
+========================
+
+The
+:doc:`on_page_loaded </refs/client/task/on_page_loaded>`
+event is the first event triggered by an application on the client.
+
+Write this event handler to initialize the application.
+
+The 
+:doc:`Demo project </intro/demo_project>`
+uses 
+:doc:`on_page_loaded </refs/client/task/on_page_loaded>`
+event handler to dynamically build the application's main menu and attach the
+on click event handler to menu items using JQuery.
+
+Let's look at 
+:doc:`Todo list </intro/first_project/index>`
+:doc:`on_page_loaded </refs/client/task/on_page_loaded>`
+event handler:
+
+.. code-block:: js
+
+    function on_page_loaded(task) {
+        $("#title").text(task.item_caption);
+        
+        task.tasks.view($("#content"));
+        
+        $(window).on('resize', function() {
+            resize(task);
+        });
+    }
+
+In this event handler, the application, first, sets the text of the ``h3`` div with
+id="title" to the value of the
+:doc:`item_caption </refs/client/abstr_item/at_item_caption>` attribute of the
+task.
+
+Then it calls the 
+:doc:`view </refs/client/item/m_view>`
+method of the **Tasks** item to show the content of the todo list in the ``div``
+with id="content". See
+:doc:`Forms <forms>`.
+
+And, finally, uses JQuery's ``on`` method to attach the resize function, 
+declared in the task module, to the window resize event.
+

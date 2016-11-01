@@ -14,7 +14,9 @@ To see it you should go to the demo folder and run *server.py* script.
 
 Open a Web browser and enter 127.0.0.1:8080 in the address bar. 
 
-To see Administrator open a new page in a browser and enter 127.0.0.1:8080/admin.html
+To see 
+:doc:`Administrator </admin/index>`
+open a new page in a browser and enter 127.0.0.1:8080/admin.html
 
 
 .. image:: _images/demo.png

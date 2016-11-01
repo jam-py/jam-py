@@ -21,10 +21,6 @@ Use the ``param_options`` attribute to specify parameters of the modal param for
 * ``title`` - the title of the modal form, the default value is the value of a
   :doc:`report_caption </refs/client/abstr_item/at_item_caption>`
   attribute,
-* ``params`` - specify the list of parameter names that the
-  :doc:`create_param_inputs <m_create_param_inputs>`
-  method will use, if it is not specified, the field list, set in Administrator 
-  for edting will be used (the default value),
 * ``close_button`` - if true, the close button will be created in the upper-right 
   corner of the form, the default value is true,
 * ``close_caption`` - if true and close_button is true, will display 'Close - [Esc]'
@@ -32,6 +28,13 @@ Use the ``param_options`` attribute to specify parameters of the modal param for
 * ``close_on_escape`` - if true, pressing on the Escape key will trigger the 
   :doc:`close_param_form <m_close_param_form>`
   method.
+* ``close_focusout`` - if true, the 
+  :doc:`close_param_form <m_close_param_form>`
+  method will be called when a form loses focus
+* ``template_class`` - if specified, the div with this class will be searched in 
+  the task 
+  :doc:`templates </refs/client/task/at_templates>` 
+  attribute and used as a form html template when creating a form
 
 Example
 =======

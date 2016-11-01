@@ -1,0 +1,74 @@
+==================
+Table Group Editor
+==================
+
+**Table Group Editor** opens when a developer wants to create a new table group 
+or modify an existing one. See 
+:doc:`Task tree </programming/task_tree>`
+
+The upper part of the **Table Group Editor** have the following fields:
+
+* **Caption** - the group name that appears to users.
+
+* **Name** - the name of the group that will be used in programming code to 
+  get access to the group object. It should be unique in the project and should 
+  be a valid python identifier.
+
+* **Visible** - use this checkbox to set group's visible attribute. The value of 
+  this attribute can be used in code on the client to create menu items and so 
+  on.
+
+* **Primary key field** - by clicking on the button to the right of this 
+  attribute you can specify the common primary field for items that the group 
+  will own. You have to create this field first, see below
+  
+* **Deleted flag field** - by clicking on the button to the right of this 
+  attribute you can specify the common field that will serve as a deleted flag 
+  for items that the group will own. You have to create this field first, 
+  see below 
+
+* **Master ID field** - by clicking on the button to the right of this 
+  attribute you can specify the common field that will store ID of a master item
+  for all tables that the group will own, see
+  :doc:`Details </programming/data/details>`. You have to create this field first, 
+  see below 
+
+* **Master record id field** - by clicking on the button to the right of this 
+  attribute you can specify the common field that will store primary key value 
+  of a master item record for all tables that the group will own, see
+  :doc:`Details </programming/data/details>`. You have to 
+  create this field first, see below 
+  
+In the center part of the **Table Group Editor** dialog there is a table 
+containing a list of fields, defined for the item. Thsese fields are common to 
+all items the group will own. 
+
+To add, modify or delete a field use the following buttons:
+
+* **New** - click this button to invoke the 
+  :doc:`Field Editor Dialog </admin/items/field_editor_dialog>`
+  to create a new field.
+
+* **Edit** - click this button to invoke the 
+  :doc:`Field Editor Dialog </admin/items/field_editor_dialog>`
+  to modify a selected field.
+
+* **Delete** - click this button to delete a field selected in in the field list.
+
+In the bottom-right corner of the Dialog form there are two buttons:
+
+* **OK** - click this button to save change you made. 
+
+* **Cancel** - click this buttons to cancel the operation.
+
+.. note::
+    You can create new or modify existing fields and set **Primary key field**, 
+    **Deleted flag field** and **Master ID field**, **Master record id field** 
+    attributes only when creating a new group or editing an ampty one.
+    
+    For existing table groups, that already own items you can only change 
+    **Caption**, **Name** and  **Visible** attributes.
+
+.. image:: /admin/_images/item_group.png
+	:align: center
+	:alt: Table Group Editor

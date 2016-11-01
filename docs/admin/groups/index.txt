@@ -1,0 +1,43 @@
+======
+Groups
+======
+
+Select the node with the name of the task to get to the groups of the project
+:doc:`task tree </programming/task_tree>`.
+
+At the bottom of the page there are 3 buttons:
+
+* **Delete** - click on the button to delete an empty group.
+
+* **Edit** - click on this button to modify the selected group, the 
+  corresponding Group Editor will appear.
+
+* **New** -  use this button to create a new group. After that the you have to 
+  select a new group type in the Dialog box that will appear.
+  
+.. image:: /admin/_images/group_type.png
+    :align: center
+    :alt: Group type
+    
+There are groups of three types: Item group, Report group, Table group, see
+:doc:`task tree </programming/task_tree>`.
+For each of this group, its own editor will be shown:
+
+.. toctree::
+    :maxdepth: 1
+    
+    item_group_editor
+    report_group_editor
+    table_group_editor
+
+	
+Use buttons in the right panel of the page to edit Client and Server modules of 
+a selected group, see 
+
+* :doc:`Working with modules </programming/modules>`, 
+* :doc:`Code editor </admin/code_editor>`
+
+
+.. image:: /admin/_images/groups.png
+	:align: center
+	:alt: Group node
