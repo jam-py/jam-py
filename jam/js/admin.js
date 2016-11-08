@@ -3611,7 +3611,7 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 		}
 		if (field === item.f_object) {
 			if (item.owner === item.task.sys_items) {
-	//		  lookup_item.filters.not_id.value = item.owner.id.value;
+				lookup_item.filters.not_id.value = item.owner.id.value;
 				if (item.owner.type_id.value === item.task.item_types.TASK_TYPE) {
 					lookup_item.filters.task_id.value = item.owner.id.value;
 				}

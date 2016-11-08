@@ -2,28 +2,44 @@
 Dataset
 =======
 
-All catalogs, journals and tables as well as their details (items of the 
-:doc:`task tree </programming/task_tree>`
-with 
-:doc:`item_type </refs/client/abstr_item/at_item_type>`
-of "catalog", "journal", "table" and "detail") can access data from associated 
-tables from the project database and make changes to it. They all are objects of 
+Jam.py framework uses a dataset concept that is very close to 
+datasets of `Embarcadero Delphi`_.
+
+.. _Embarcadero Delphi: https://en.wikipedia.org/wiki/Delphi_(programming_language)
+
+.. note::
+
+    There are other ways to read and modify the database data. You can use
+    :doc:`execute </refs/server/task/m_execute>` and 
+    :doc:`execute_select </refs/server/task/m_execute_select>` 
+    methods or just 
+    create a connection by using, for example,   
+    :doc:`create_connection </refs/server/task/m_create_connection>` 
+    method and exchange data between client and server by 
+    :doc:`server </refs/client/abstr_item/m_server>`
+    method.
+
+All items with ``item_type`` "item" or "table" as well as their details (see
+:doc:`Task tree </programming/task_tree>`)
+can access data from associated tables from the project database and write 
+changes to it. They all are objects of 
 the Item class
 
-* :doc:`Item class </refs/client/item_api>` (on the cient)
-* :doc:`Item class </refs/server/item_api>` (on the cient)
+* :doc:`Item class </refs/client/item_api>` (on the client)
+* :doc:`Item class </refs/server/item_api>` (on the server)
 
 Both of these classes have the same attributes, methods, and events associated 
 with the data handling.
 
-To get a dataset (a set of records) from the project dataset table use the open
-method. This method, based on parameters, generates an SQL query to get a dataset.
+To get a dataset (a set of records) from the project dataset table, use the open
+method. This method, based on parameters, generates an SQL query to get a 
+dataset.
 
-After dataset is opened, the application can navigate it, change it records or 
-insert new ones and save changes to the item database table.
+After dataset is opened, the application can navigate it, change its records or 
+insert new ones and write changes to the item's database table.
 
-For example, the following functions will set *support_rep_id* field values
-on the client and server respectively:
+For example, the following functions will set *support_rep_id* field values to
+the values of the *id* field on the client and server respectively:
 
 .. code-block:: js
 
@@ -49,9 +65,9 @@ on the client and server respectively:
             customers.next()
         customers.apply();
 
-These functions get the **Customers** item as a parameter. Then the *open* 
+These functions get the **customers** item as a parameter. Then the *open* 
 method is used to get a list of records from the customers table and each 
-record is modified. In the end the changes are saves in the database table using
+record is modified. In the end the changes are saved in the database table, using
 the apply method (see
 :doc:`Modifying datasets <modifying_datasets>`
 ).

@@ -171,8 +171,8 @@ The only exception is ``on_view_close_query`` event that is triggered by
 :doc:`close_view_form </refs/client/item/m_close_view_form>` 
 method.
 
-The developed can use this method to close view form of an item. But it as well, 
-is called by an apllication when a user clicks on the close button of a modal 
+The developer can use this method to close view form of an item. But it as well, 
+called by an apllication when a user clicks on the close button of a modal 
 form or an attempt is made to destroy a modeless form.
 
 The 

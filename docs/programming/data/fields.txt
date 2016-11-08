@@ -2,9 +2,9 @@
 Fields
 ======
 
-All items, working with database data have a 
+All items, working with database table data have a 
 :doc:`fields </refs/client/item/at_fields>`
-attribute - a list of field objects, which are used to represent fields in item
+attribute - a list of field objects, which are used to represent fields in item's
 table records. 
 
 Every field have the following attributes:
@@ -27,20 +27,24 @@ To get access to the item dataset data, the Field class have the following prope
    :header: Client, Server, Description
    :widths: 10, 10, 80
 
-   :doc:`value </refs/client/field/at_value>`, :doc:`value </refs/server/field/at_value>`, "Use this property to get or set the field's value of the current record. When reading the value is converted to the type of the field. So for fields of type integer, float и currency, if value for this field in database table record is NULL, value of this property is 0. To get unconverted value use the raw_value property."
+   :doc:`value </refs/client/field/at_value>`, :doc:`value </refs/server/field/at_value>`, "Use this property to get or set the field's value of the current record. When reading the value is converted to the type of the field. So for fields of type integer, float and currency, if value for this field in database table record is NULL, value of this property is 0. To get unconverted value use the raw_value property."
    :doc:`text </refs/client/field/at_text>`, :doc:`text </refs/server/field/at_text>`, "Use this property to get or set the value of the field as text."
    :doc:`lookup_value </refs/client/field/at_lookup_value>`, :doc:`lookup_value </refs/server/field/at_lookup_value>`, "Use this property to get or set lookup value, see :doc:`Lookup fields <lookup_fields>`."
    :doc:`lookup_text </refs/client/field/at_lookup_text>`, :doc:`lookup_text </refs/server/field/at_lookup_text>`, "Use this property to get or set the lookup value of the field as text, see :doc:`Lookup fields <lookup_fields>`."
-   :doc:`display_text </refs/client/field/at_display_text>`, :doc:`display_text </refs/server/field/at_display_text>`, "Represents the field's value as it is displayed in data-aware controls. When the field is lookup field it's value is the lookup_text value, otherwise it is the text value, with regard of project locale parameters. This behavior can be overriden by the on_get_field_text event handler of the item that owns the field."   
+   :doc:`display_text </refs/client/field/at_display_text>`, :doc:`display_text </refs/server/field/at_display_text>`, "Represents the field's value as it is displayed in data-aware controls. When the field is a lookup field it's value is the lookup_text value, otherwise it is the text value, with regard of project locale parameters. This behavior can be overriden by the on_field_get_text event handler of the item that owns the field."   
    :doc:`raw_value </refs/client/field/at_raw_value>`, :doc:`raw_value </refs/server/field/at_raw_value>`, "Use this property to get field value of the current record as it is stored in database. No conversion is used."      
 
 In addition every field is an attribute of the item that owns it. So, to get 
-access to a field of an item use the following syntax: item.field_name 
+access to a field of an item use the following syntax: ``item.field_name``
 
 .. code-block:: js
     
-    invoices.total.value // is the value of the **Total** field of the **Invoices** journal
+    invoices.total.value  
     
+``invoices.total`` is the reference to the
+**Total** field of the **Invoices** item and the 
+``invoices.total.value`` is the value of this field
+
     
 The following 
 :doc:`on_created </refs/server/task/on_created>`
@@ -57,7 +61,7 @@ events handler, when executed on the server of the Demo application
         invoices = task.invoices.copy()
         invoices.open(fields=['customer', 'firstname', 'billing_address', 'id', 
             'invoicedate', 'total'], limit=1)
-        invoices.on_get_field_text = get_field_text
+        invoices.on_field_get_text = get_field_text
         for field in invoices.fields:
             print field.field_name, field.field_type
             print '   value: ', field.value
@@ -114,7 +118,7 @@ The similar code in javascript is as follows:
         var invoices = task.invoices.copy();
         invoices.open({fields: ['customer', 'firstname', 'billing_address', 'id', 
             'invoicedate', 'total'], limit: 1});
-        invoices.on_get_field_text = function(field) {
+        invoices.on_field_get_text = function(field) {
             if (field.field_name == 'customer') {
                 return field.owner.firstname.lookup_value + ' ' + field.lookup_value; 
             }

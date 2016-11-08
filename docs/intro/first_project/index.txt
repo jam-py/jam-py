@@ -19,5 +19,4 @@ Please follow the steps below:
    writing_some_code
    preliminary_results
    changing_interface
-   setting_privileges
 

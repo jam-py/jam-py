@@ -13,8 +13,8 @@ For more information about scrolling from record to record, see
 From *browse* state all other dataset states can be set. For example, calling 
 the *insert* or *append* methods changes its state from *browse* to *insert*. 
 
-Two methods can return a dataset to *browse* state. appendCancel** ends the current 
-edit, insert, and returns a dataset to *browse* state. **Post** writes changes 
+Two methods can return a dataset to *browse* state. ``Cancel`` ends the current 
+edit, insert, and returns a dataset to *browse* state. ``Post`` writes changes 
 to the dataset, and if successful, also returns a dataset to *browse* state. If 
 this operations fail, the current state remains unchanged.
 

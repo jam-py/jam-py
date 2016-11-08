@@ -6,7 +6,7 @@ Now we'll create **Tasks** jounal where we store the tasks of our to-do list.
 In the following dialog, fill in the caption and name of the journal and click
 the **New** button in the bottom right corner of the dialog.
 
-.. image:: /intro/_images/tasks.png
+    .. image:: /intro/_images/tasks.png
 	:align: center
 	:alt: New journal tasks
 
@@ -24,4 +24,4 @@ The same way add the **Description** and **Completed** fields and click **OK**
 	:alt: Tasks fields
 
 We created **Tasks** journal. If we open todo.sqlite database in the SQLite 
-manager, we'll see that jam.py created todo_tasks table in the database as well.
+manager, we'll see that jam.py created TOOD_TASKS table in the database as well.

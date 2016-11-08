@@ -86,32 +86,32 @@
                 {% block body %}{% endblock %}
             </div>
             {% block sidebarwrapper %}
+            <div id="doc-sidebar" class="col-md-3" >
+            <p class="small">Created with <a href="http://jam-py.com/jamdocs" target="_blank">JamDocs</a> - <a href="http://jam-py.com" target="_blank">Jam.py</a> shell for <a href="http://sphinx-doc.org/" target="_blank">Sphinx</a></p>
             {% if pagename != 'index' %}
-              <div id="doc-sidebar" class="col-md-3" >
                 {{ sidebar() }}
                 {%- if last_updated %}
                   <h3>Last update:</h3>
                   <p class="topless">{{ last_updated }}</p>
                 {%- endif %}
-              </div>
             {% else %}
-              <div id="doc-sidebar" class="col-md-3" >
                 <h3>Search documentation</h3>
-                <script>
-                  (function() {
-                    var cx = '007960695956208259036:ec4fwpmtig0';
-                    var gcse = document.createElement('script');
-                    gcse.type = 'text/javascript';
-                    gcse.async = true;
-                    gcse.src = 'https://cse.google.com/cse.js?cx=' + cx;
-                    var s = document.getElementsByTagName('script')[0];
-                    s.parentNode.insertBefore(gcse, s);
-                  })();
-                </script>
-                <gcse:search></gcse:search>
-
-              </div>
+                <div id="google-search">
+                    <script>
+                      (function() {
+                        var cx = '007960695956208259036:ec4fwpmtig0';
+                        var gcse = document.createElement('script');
+                        gcse.type = 'text/javascript';
+                        gcse.async = true;
+                        gcse.src = 'https://cse.google.com/cse.js?cx=' + cx;
+                        var s = document.getElementsByTagName('script')[0];
+                        s.parentNode.insertBefore(gcse, s);
+                      })();
+                    </script>
+                    <gcse:search></gcse:search>
+                </div>
             {% endif %}
+            </div>
             {% endblock %}
         </div>
     </div>
@@ -120,7 +120,7 @@
         <div class="container-fluid">
             <div class="row">
                 <div class="col-lg-12">
-                    Copyright &copy; Andrew Yushev 2015-2016
+                    Copyright &copy; <a href="http://yushev.ru/en" target="_blank">Andrew Yushev</a> 2015-2016
                 </div>
             </div>
         </div>

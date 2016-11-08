@@ -19,11 +19,11 @@ method:
     item.create_inputs(item.edit_form.find(".edit-body"), input_options);
     
 These methods have two parameters - **container** and **options**. The first 
-parameter is a JQuery container in wich the controls will be placed. The second 
-- options, scesifying the way the data will be displayed. For detailed 
+parameter is a JQuery container in which the controls will be placed. The second 
+- options, satisfying the way the data will be displayed. For detailed 
 information see their API reference.
 
-The methods are usially used in the **on_view_form_created** and  
+The methods are usually used in the **on_view_form_created** and  
 **on_edit_form_created** event handlers.
 
 All visual controls (tables, inputs, checkboxes), created by this methods

@@ -1,8 +1,8 @@
 =================
-on_get_field_text
+on_field_get_text
 =================
 
-on_get_field_text(field)
+on_field_get_text(field)
 
 **domain**: client 
 
@@ -13,7 +13,7 @@ on_get_field_text(field)
 Description
 ===========
 
-Write an ``on_get_field_text`` event handler to perform custom processing for the 
+Write an ``on_field_get_text`` event handler to perform custom processing for the 
 :doc:`display_text </refs/client/field/at_display_text>`
 property. If the event handler does not return a value, the application uses
 the 
@@ -33,7 +33,7 @@ Example
 
 .. code-block:: js
 
-    function on_get_field_text(field) {
+    function on_field_get_text(field) {
         if (field.field_name === 'customer') {
             return field.owner.firstname.lookup_text + ' ' + field.lookup_text;
         }

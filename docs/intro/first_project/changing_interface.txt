@@ -10,16 +10,20 @@ button:
 	:align: center
 	:alt: Index.html button
 
-The 'index.html' file from the project folder will be displayed in the 
+The 
+:doc:`index.html </programming/interface/index_html>`
+file from the project folder will be displayed in the 
 **Editor**.
 
 .. image:: /intro/_images/index_html_editor.png
 	:align: center
 	:alt: Index.html editor
 	
-There is a div with the 'templates' class. It contains the default templates of 
-catalogs, journals, their filters and so on. By default, the template of view 
-forms of jounals of a project is defined in div with class 'journals-view'
+There is a div with class="templates". It contains the default templates of 
+project 
+:doc:`form templates </programming/interface/form_templates>`
+. By default, the template of view 
+forms of jounals of a project is defined in div with class="journals-view"
 
 Let's make a copy this div and replace 'journals-view' with 'tasks-view'. This 
 div will now be used as the template of our **Tasks** journal. We'll add the 
@@ -33,9 +37,12 @@ div will now be used as the template of our **Tasks** journal. We'll add the
 	:align: center
 	:alt: Tasks view template
 
-To write a code that will be executed when the button is clicked open client
+To write a code that will be executed when the button is clicked open the client
 module of the **Tasks** journal in the code editor. Add a 
-on_view_form_created event handler and the following lines of code:
+:doc:`on_view_form_created </refs/client/item/on_view_form_created>`
+event handler (see
+:doc:`Form events </programming/interface/form_events>`
+) and the following lines of code:
     
 .. image:: /intro/_images/on_view_form_created.png
 	:align: center

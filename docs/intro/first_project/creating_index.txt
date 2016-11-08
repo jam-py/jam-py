@@ -1,9 +1,10 @@
-====================================================
-Creating a journal index and setting a default order
-====================================================
+========================================
+Creating index and setting default order
+========================================
 
 To create an index to the **Tasks** jounal database table click on the 
-**Indices** button:
+:doc:`Indices </admin/items/indices_dialog>`
+button:
 
 .. image:: /intro/_images/indices.png
 	:align: center
@@ -15,8 +16,10 @@ then click on the **New** button and specify fields and order of the index:
 	:align: center
 	:alt: Tasks new index
 
-To set a default order the records of the jourbal will be displayed use the 
-**Order** button:
+To set the default order, in which the records of the journal will be displayed, 
+use the 
+:doc:`Order </admin/items/order_dialog>`
+button:
 
 .. image:: /intro/_images/order.png
 	:align: center

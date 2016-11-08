@@ -3,9 +3,9 @@ Navigating datasets
 ===================
 
 Each active dataset has a cursor, or pointer, to the current row in the dataset. 
-The current row in a dataset is the one whose values can be manipulated by edit, 
-insert, and delete methods, and the one whose field values currently show 
-data-aware controls on a form.
+The current row in a dataset is the one whose values can be manipulated by 
+``edit``, ``insert``, and ``delete`` methods, and the one, whose field values, 
+data-aware controls on a form currently show.
 
 You can change the current row by moving the cursor to point at a different row. 
 The following table lists methods you can use in application code to move to 
@@ -29,7 +29,7 @@ provide useful information when iterating through the records in a dataset:
    :widths: 10, 10, 80
    
    :doc:`bof </refs/client/item/m_bof>`, :doc:`bof </refs/server/item/m_bof>`,  "If the method returns true, the cursor is at the first row in the dataset, otherwise, the cursor is not known to be at the first row in the dataset."
-   :doc:`bof </refs/client/item/m_bof>`, :doc:`bof </refs/server/item/m_bof>`,  "If the method returns true, the cursor is at the last row in the dataset, otherwise, the cursor is not known to be at the last row in the dataset."
+   :doc:`eof </refs/client/item/m_eof>`, :doc:`bof </refs/server/item/m_eof>`,  "If the method returns true, the cursor is at the last row in the dataset, otherwise, the cursor is not known to be at the last row in the dataset."
 
 Each time the cursor move to another record in the dataset the following events
 are triggered:
@@ -38,8 +38,8 @@ are triggered:
    :header: Client event, Server event, Description
    :widths: 10, 10, 80
    
-   :doc:`on_before_scroll </refs/client/item/on_before_scroll>`, :doc:`on_before_scroll </refs/server/item/on_before_scroll>`,  "Occurs before an application scrolls from one record to another.."
-   :doc:`on_after_scroll </refs/client/item/on_after_scroll>`, :doc:`on_after_scroll </refs/server/item/on_after_scroll>`,  "Occurs after an application scrolls from one record to another.."
+   :doc:`on_before_scroll </refs/client/item/on_before_scroll>`, :doc:`on_before_scroll </refs/server/item/on_before_scroll>`,  "Occurs before an application scrolls from one record to another."
+   :doc:`on_after_scroll </refs/client/item/on_after_scroll>`, :doc:`on_after_scroll </refs/server/item/on_after_scroll>`,  "Occurs after an application scrolls from one record to another."
 
 Using this methods we can navigate a dataset. For example,
 

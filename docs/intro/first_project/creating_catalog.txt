@@ -11,7 +11,8 @@ catalog and add the **Priority** field.
 	:alt: Priorities
 
 Let's open a new page in the browser and enter 127.0.0.1:8080 in the address bar.
-We should see the project that we've just created. It uses the default interface. 
+We should see the project that we've just created. It uses the 
+:doc:`Default interface </intro/default_code>`. 
 We'll change it later. 
 
 .. image:: /intro/_images/project_page.png

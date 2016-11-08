@@ -13,13 +13,14 @@ item's table. For example in the Demo application **Albums** catalog there is th
 This field stores the value of the **id** field of the record in the **Artists** 
 item table, that have information about the artist of the current album.
 
-This define such fields *Lookup item* and *Lookup field* must be specified.
+For such fields *Lookup item* and *Lookup field* must be specified.
 
-The SQL query that is generated on the server, when the open method is called, 
-uses **JOIN** clause to get lookup values for such fields. Thus each such field
-has a pair of values: a first value, which stores a reference to a record in the 
-lookup item table (the value of its **id** field), and the second value, which
-have the value of the lookup field in this record.
+The SQL query that is generated on the server, when the ``open`` method is called 
+and ``expanded`` parameter is set to true (default), uses ``JOIN`` clause to 
+get lookup values for such fields. Thus each such field has a pair of values: 
+the first value stores a reference to a record in the lookup item table (the value 
+of its primary key field), and the second value have the value of the lookup 
+field in this record.
 
 To get access to this values use the following properties of lookup fields:
 
@@ -36,7 +37,7 @@ lookup fields (**Customer**, **Billing Address**, **Billing City**, and so on)
 that have information about a customer, all stored in one record in the 
 **Customers** item table, describing that customer. In order to avoid creating 
 unnecessary fields in the **Invoices** item table, storing the same reference 
-to a record, and creating **JOIN** s for each such field, all lookup fields 
+to a record, and creating ``JOIN`` s for each such field, all lookup fields 
 except **Customers** have *Master field* value pointing to the **Customers** 
 field. These fields don't have corresponding fields in the items' underlying 
 database table. Their value property is always equal to the value property of 
@@ -54,4 +55,16 @@ triggers
 :doc:`on_field_select_value </refs/client/item/on_field_select_value>`
 event. Write this event handler to specify fields that will be displayed, 
 set up filters for the lookup item, before it will be opened and displayed for 
-user to select a value for the field
+a user to select a value for the field.
+
+Sometimes a source of a lookup field can be defined as a lookup list. For 
+example, a **MediaType** field in the **Tracks** catalog of the 
+:doc:`Demo project </intro/demo_project>` has a **Lookup values** attribute set
+to the MediaTypes lookup list:
+
+.. image:: /programming/_images/mediatype_field.png
+	:align: center
+	:alt:  MediaType field definition
+
+Use the :doc:`Lookup List Dialog </admin/lookup_lists>` of the task to define 
+such lookup lists.

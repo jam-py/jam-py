@@ -52,10 +52,28 @@ inherits all its attributes, methods and events.
     
     To make any changes to a detail its master must be in an edit or insert mode
     
-Example
-=======
+Examples
+========
 
-Just as an example:
+In this example from the client module of the **Invoices** item of 
+:doc:`Demo project </intro/demo_project>`, the **Invoice_table** detail is 
+reopened every time the cursor of its master moves to another record.
+
+.. code-block:: js
+
+    var ScrollTimeOut;
+    
+    function on_after_scroll(item) {
+        clearTimeout(ScrollTimeOut);
+        ScrollTimeOut = setTimeout(
+            function() {
+                item.invoice_table.open(function() {});
+            },
+            100
+        );
+    }
+
+And just as an example:
 
 .. code-block:: py
 

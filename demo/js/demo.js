@@ -178,7 +178,6 @@ function Events1() { // demo
 	
 	function on_filter_form_created(item) {
 		item.filter_options.title = item.item_caption + ' - filter';
-		item.filter_options.close_focusout = true;
 		item.create_filter_inputs(item.filter_form.find(".edit-body"));
 		item.filter_form.find("#cancel-btn")
 			.on('click.task', function() { item.close_filter_form() });
@@ -406,18 +405,16 @@ task.events.events2 = new Events2();
 
 function Events10() { // demo.catalogs.customers 
 
-	function on_edit_form_close_query(item) {
-		if (item.is_changing()) {
-			item.cancel();
-		}
-		return true;
-	}
+	// function on_edit_form_close_query(item) {
+	//	 if (item.is_changing()) {
+	//		 item.cancel();
+	//	 }
+	//	 return true;
+	// }
 	
-	function on_edit_form_created(item) {
-		item.edit_options.width = 700;
-	}
-	this.on_edit_form_close_query = on_edit_form_close_query;
-	this.on_edit_form_created = on_edit_form_created;
+	// function on_edit_form_created(item) {
+	//	 item.edit_options.width = 700;
+	// }
 }
 
 task.events.events10 = new Events10();

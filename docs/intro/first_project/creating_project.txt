@@ -33,7 +33,7 @@ appear.
 	:align: center
 	:alt: Todo params
 
-After filling in the form, click OK button. Now you should see the project tree 
+Filling in the form and click OK button. Now you should see the project tree 
 in the left panel. Let's select **Journals** node and click **New** button in the
 bottom panel of the page
 

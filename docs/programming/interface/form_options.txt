@@ -51,7 +51,7 @@ specified, the default value is a list of field names set in the
 :doc:`View Fields Dialog </admin/items/view_fields_dialog>`
 in the Administrator. 
 
-The width of the modal form, created in the following example, will be 800 px.
+The width of the modal form, created in the following example, will be 700 px.
 
 .. code-block:: js
 

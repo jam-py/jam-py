@@ -123,6 +123,10 @@ input.gsc-input, .gsc-input-box, .gsc-input-box-hover, .gsc-input-box-focus, .gs
   overflow: visible;
 }
 
+#google-search {
+    min-height: 310px;
+}
+
 code {
   padding: 2px 4px;
   font-size: 18px;

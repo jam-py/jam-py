@@ -2,28 +2,31 @@
 Creating lookup field
 =====================
 
-Now go back to **Tasks** journal and add a **Priority** lookup field that will 
-store a reference to the record in the **Priorities** catalog
+Let's go back to the **Tasks** journal and add a **Priority** 
+:doc:`lookup field </programming/data/lookup_fields>`
+that will store a reference to a record in the **Priorities** catalog.
 
 .. image:: /intro/_images/priority_field.png
 	:align: center
 	:alt: Adding priority field
 
-To create a lookup field we need to select lookup item. Click on the to the right 
-of a lookup item input and double click on the record.
+To create a lookup field we need to select lookup item. Click on the button to 
+the right of the **Lookup item** input.
 
 .. image:: /intro/_images/select_priority.png
 	:align: center
 	:alt: Select priority lokkup item
 
-The same way select lookup field and save the changes.
+Double click on the record to select it.
+ 
+The same way select **Lookup field** and save the changes.
 
 .. image:: /intro/_images/priority_finished.png
 	:align: center
 	:alt: Priority finished
 
 Let's change the **Decription** field. Open it for edit and check the required 
-checkbox. So the user won't be able to save a new record if the description is 
+checkbox. So a user won't be able to save a new record if the description is 
 not defined.
 
 .. image:: /intro/_images/description_required.png

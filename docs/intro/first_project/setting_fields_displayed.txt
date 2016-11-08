@@ -1,20 +1,20 @@
-===========================================
-Setting up how the fields will be displayed
-===========================================
+=======================================
+Setting up how fields will be displayed
+=======================================
 
-When we opened the **Task** journal in the browser the fields in the table and 
+When we opened the **Tasks** journal in the browser the fields in the table and 
 in the edit form were displayed in the order they've been created. To change the 
-way fields are displayed in a view form click on the **View** button to change 
-the default order of the fields and to hide/show some of them. See 
-:doc:`View Fields Dialog </admin/items/view_fields_dialog>`.
+way the fields are displayed in the table, click on the 
+:doc:`View </admin/items/view_fields_dialog>` 
+button.
 
 .. image:: /intro/_images/tasks_view.png
 	:align: center
 	:alt: Tasks view
 
-To change the way fields are displayed in an edit form click on the **Edit** 
-button. See
-:doc:`Edit Fields Dialog </admin/items/edit_fields_dialog>`.
+To change the way the fields are displayed in the edit form click on the 
+:doc:`Edit </admin/items/edit_fields_dialog>`
+button. 
 
 .. image:: /intro/_images/tasks_edit.png
 	:align: center

@@ -2,15 +2,18 @@
 Adding filters
 ==============
 
-Filters are used to select records from a database table by specified criteria.
-Click on the **Filters** button. 
+:doc:`Filters </programming/data/filters>`
+are used to select records from a database table by specified criteria.
+Click on the 
+:doc:`Filters </admin/items/filters_dialog>`
+button. 
 
 .. image:: /intro/_images/tasks_filters.png
 	:align: center
 	:alt: Tasks filters dialog
 
-In the **Filters** dialog that will be displayed click on the **New** button and 
-fill in a new filter form:
+In the dialog that will be displayed click on the **New** button and 
+fill in the following form:
 
 .. image:: /intro/_images/tasks_new_filter.png
 	:align: center
@@ -22,8 +25,8 @@ The same way we'll created another three filters:
 	:align: center
 	:alt: Tasks filters ready
 	
-This filters we'be displayed in the project the following way:
+These filters we’ll be displayed the following way:
 
-.. image:: /intro/_images/tasks_filter_ready.png
+.. image:: /intro/_images/tasks_filters_form.png
 	:align: center
-	:alt: Set tasks filter
+	:alt: Tasks filter ready
