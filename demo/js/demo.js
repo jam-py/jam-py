@@ -327,6 +327,21 @@ function Events1() { // demo
 
 task.events.events1 = new Events1();
 
+function Events3() { // demo.journals 
+
+	function on_view_form_created(item) {
+		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});	
+		if (!item.on_filters_applied && item.view_form) {
+			item.on_filters_applied = function() {
+				item.view_form.find("#filter-text").text(item.get_filter_text());		
+			};
+		}
+	}
+	this.on_view_form_created = on_view_form_created;
+}
+
+task.events.events3 = new Events3();
+
 function Events2() { // demo.catalogs 
 
 	function on_view_form_created(item) {
@@ -443,8 +458,6 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_view_form_created(item) {
-		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});	
-	
 		item.invoice_table.create_table(item.view_form.find(".view-detail"),
 			{height: 200 - 4, dblclick_edit: false, column_width: {"track": "60%"}});
 	}
@@ -455,8 +468,7 @@ function Events16() { // demo.journals.invoices
 	
 	function on_filters_applied(item) {
 		if (item.view_form) {
-			item.view_form.find(".view-title #title-right")
-				.html('<h5 class="pull-right">' + item.get_filter_text() + '<h5>');
+			item.view_form.find("#filter-text").text(item.get_filter_text());
 			calc_footer(item);
 		}
 	}

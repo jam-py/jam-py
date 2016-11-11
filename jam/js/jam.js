@@ -6497,6 +6497,9 @@
             if (this.field_name) {
                 field = this.owner._field_by_ID(this.field_name);
                 this.field = this.create_field(field);
+                if (this.field.lookup_values && (typeof this.field.lookup_values === "number")) {
+                    this.field.lookup_values = this.owner.task.lookup_lists[this.field.lookup_values];
+                }
                 this.field.field_help = this.filter_help;
                 this.field.field_placeholder = this.filter_placeholder;
                 if (this.filter_type === consts.FILTER_RANGE) {
