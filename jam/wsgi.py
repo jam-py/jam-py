@@ -113,7 +113,10 @@ class App():
             date1 = parse_date(environ['HTTP_IF_MODIFIED_SINCE'])
             date2 = datetime.datetime.utcfromtimestamp(os.path.getmtime(file_path)).replace(microsecond=0)
             if date1 != date2:
-                os.utime(file_path, None)
+                try:
+                    os.utime(file_path, None)
+                except:
+                    pass
 
     def serve_file(self, environ, start_response, endpoint, file_name=None):
         if endpoint == 'root_file':
