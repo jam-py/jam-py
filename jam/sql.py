@@ -133,12 +133,15 @@ class SQL(object):
             h_sql = None
             h_params = None
             h_table_name = None
-            if item.task.history_item and item.keep_history or (item.master and item.master.keep_history):
+            if item.task.history_item and item.keep_history:
                 h_table_name = item.task.history_item.table_name
                 changes = None
                 user = None
                 if user_info:
-                    user = user_info['user_name']
+                    try:
+                        user = user_info['user_name']
+                    except:
+                        pass
                 if item.record_status != common.RECORD_DELETED:
                     old_rec = item.get_rec_info()[3]
                     new_rec = item._dataset[item.rec_no]
@@ -197,11 +200,17 @@ class SQL(object):
     def table_alias(self):
         return '"%s"' % self.table_name
 
-    def ref_table_alias(self, field):
+    def lookup_table_alias(self, field):
         if field.master_field:
             return '%s_%d' % (field.lookup_item.table_name, field.master_field.ID)
         else:
             return '%s_%d' % (field.lookup_item.table_name, field.ID)
+
+    def lookup_table_alias1(self, field):
+        return self.lookup_table_alias(field) + '_' + field.lookup_field
+
+    def lookup_table_alias2(self, field):
+        return self.lookup_table_alias1(field) + '_' + field.lookup_field1
 
     def fields_clause(self, query, fields, db_module=None):
         if db_module is None:
@@ -227,13 +236,30 @@ class SQL(object):
         if query['__expanded']:
             for field in fields:
                 if field.lookup_item:
-                    field_sql = '%s."%s" %s %s_LOOKUP' % \
-                    (self.ref_table_alias(field), field.lookup_field, db_module.FIELD_AS, field.field_name)
-                    if funcs:
-                        func = functions.get(field.field_name.upper())
-                        if func:
-                            field_sql = '%s(%s."%s") %s %s_LOOKUP' % \
-                            (func, self.ref_table_alias(field), field.lookup_field, db_module.FIELD_AS, field.field_name)
+                    if field.lookup_field2:
+                        field_sql = '%s."%s" %s %s_LOOKUP' % \
+                        (self.lookup_table_alias2(field), field.lookup_field2, db_module.FIELD_AS, field.field_name)
+                        if funcs:
+                            func = functions.get(field.field_name.upper())
+                            if func:
+                                field_sql = '%s(%s."%s") %s %s_LOOKUP' % \
+                                (func, self.lookup_table_alias2(field), field.lookup_field2, db_module.FIELD_AS, field.field_name)
+                    elif field.lookup_field1:
+                        field_sql = '%s."%s" %s %s_LOOKUP' % \
+                        (self.lookup_table_alias1(field), field.lookup_field1, db_module.FIELD_AS, field.field_name)
+                        if funcs:
+                            func = functions.get(field.field_name.upper())
+                            if func:
+                                field_sql = '%s(%s."%s") %s %s_LOOKUP' % \
+                                (func, self.lookup_table_alias1(field), field.lookup_field1, db_module.FIELD_AS, field.field_name)
+                    else:
+                        field_sql = '%s."%s" %s %s_LOOKUP' % \
+                        (self.lookup_table_alias(field), field.lookup_field, db_module.FIELD_AS, field.field_name)
+                        if funcs:
+                            func = functions.get(field.field_name.upper())
+                            if func:
+                                field_sql = '%s(%s."%s") %s %s_LOOKUP' % \
+                                (func, self.lookup_table_alias(field), field.lookup_field, db_module.FIELD_AS, field.field_name)
                     sql += field_sql + ', '
         sql = sql[:-2]
         return db_module.set_case(sql)
@@ -243,13 +269,35 @@ class SQL(object):
             db_module = self.task.db_module
         result = db_module.FROM % (self.table_name, self.table_alias())
         if query['__expanded']:
+            joins = {}
             for field in fields:
-                if field.lookup_item and not field.master_field:
-                    primary_key_field_name = field.lookup_item._primary_key
-                    result = '(' + result
-                    result += ' ' + db_module.LEFT_OUTER_JOIN % (field.lookup_item.table_name, self.ref_table_alias(field))
-                    result += ' ON %s."%s"' % (self.table_alias(), field.field_name)
-                    result += ' = %s."%s")'  % (self.ref_table_alias(field), primary_key_field_name)
+                if field.lookup_item:
+                    alias = self.lookup_table_alias(field)
+                    cur_field = field
+                    if field.master_field:
+                        cur_field = field.master_field
+                    if not joins.get(alias):
+                        primary_key_field_name = field.lookup_item._primary_key
+                        result += ' ' + db_module.LEFT_OUTER_JOIN % (field.lookup_item.table_name, self.lookup_table_alias(field))
+                        result += ' ON %s."%s"' % (self.table_alias(), cur_field.field_name)
+                        result += ' = %s."%s"'  % (self.lookup_table_alias(field), primary_key_field_name)
+                        joins[alias] = True
+                if field.lookup_item1:
+                    alias = self.lookup_table_alias1(field)
+                    if not joins.get(alias):
+                        primary_key_field_name = field.lookup_item1._primary_key
+                        result += ' ' + db_module.LEFT_OUTER_JOIN % (field.lookup_item1.table_name, self.lookup_table_alias1(field))
+                        result += ' ON %s."%s"' % (self.lookup_table_alias(field), field.lookup_field)
+                        result += ' = %s."%s"'  % (self.lookup_table_alias1(field), primary_key_field_name)
+                        joins[alias] = True
+                if field.lookup_item2:
+                    alias = self.lookup_table_alias2(field)
+                    if not joins.get(alias):
+                        primary_key_field_name = field.lookup_item2._primary_key
+                        result += ' ' + db_module.LEFT_OUTER_JOIN % (field.lookup_item2.table_name, self.lookup_table_alias2(field))
+                        result += ' ON %s."%s"' % (self.lookup_table_alias1(field), field.lookup_field1)
+                        result += ' = %s."%s"'  % (self.lookup_table_alias2(field), primary_key_field_name)
+                        joins[alias] = True
         return db_module.set_case(result)
 
     def where_clause(self, query, db_module=None):
@@ -342,7 +390,10 @@ class SQL(object):
                 if filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
                     value, esc_found = escape_search(value, esc_char)
                     if field.lookup_item:
-                        cond_field_name = db_module.set_case('%s."%s"' % (self.ref_table_alias(field), field.lookup_field))
+                        if field.lookup_item1:
+                            cond_field_name = db_module.set_case('%s."%s"' % (self.lookup_table_alias1(field), field.lookup_field1))
+                        else:
+                            cond_field_name = db_module.set_case('%s."%s"' % (self.lookup_table_alias(field), field.lookup_field))
                     if filter_type == common.FILTER_CONTAINS:
                         value = '%' + value + '%'
                     elif filter_type == common.FILTER_STARTWITH:
@@ -435,14 +486,6 @@ class SQL(object):
         if result:
             result = result[:-2]
             result = ' ORDER BY ' + result
-        #~ if result:
-            #~ result = result[:-2]
-            #~ result += ', %s."%s"' % (self.table_alias(), self._primary_key)
-            #~ if order_list[0][1]:
-                #~ result += ' DESC'
-            #~ result = ' ORDER BY ' + result
-        #~ elif query['__limit']:
-            #~ result = ' ORDER BY %s."%s"' % (self.table_alias(), self._primary_key)
         return db_module.set_case(result)
 
     def get_select_statement(self, query, db_module=None):

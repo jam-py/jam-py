@@ -58,20 +58,23 @@ class ServerDataset(Dataset, SQL):
     def add_field(self, field_id, field_name, field_caption, data_type, required = False,
         item = None, object_field = None, visible = True, index=0, edit_visible = True, edit_index = 0, read_only = False,
         expand = False, word_wrap = False, size = 0, default_value=None, default = False, calculated = False, editable = False,
-        master_field = None, alignment=None, lookup_values=None, enable_typeahead=False, field_help=None, field_placeholder=None):
+        master_field = None, alignment=None, lookup_values=None, enable_typeahead=False, field_help=None,
+        field_placeholder=None, lookup_field1=None, lookup_field2=None):
 
-        field_def = self.add_field_def(field_id, field_name, field_caption, data_type, required, item, object_field, visible,
-            index, edit_visible, edit_index, read_only, expand, word_wrap, size, default_value, default, calculated, editable,
-            master_field, alignment, lookup_values, enable_typeahead, field_help, field_placeholder)
+        field_def = self.add_field_def(field_id, field_name, field_caption, data_type, required, item, object_field,
+            lookup_field1, lookup_field2, visible, index, edit_visible, edit_index, read_only, expand, word_wrap, size,
+            default_value, default, calculated, editable, master_field, alignment, lookup_values, enable_typeahead,
+            field_help, field_placeholder)
         field = DBField(self, field_def)
         self._fields.append(field)
         return field
 
     def add_filter(self, name, caption, field_name, filter_type = common.FILTER_EQ,
-        data_type = None, visible = True, filter_help=None, filter_placeholder=None):
+        multi_select_all=None, data_type = None, visible = True, filter_help=None,
+        filter_placeholder=None):
 
         filter_def = self.add_filter_def(name, caption, field_name, filter_type,
-            data_type, visible, filter_help, filter_placeholder)
+            multi_select_all, data_type, visible, filter_help, filter_placeholder)
         fltr = DBFilter(self, filter_def)
         self.filters.append(fltr)
         return fltr
@@ -156,6 +159,8 @@ class ServerDataset(Dataset, SQL):
         changes, params = data
         if not params:
             params = {}
+        if not user_info:
+            user_info = params.get('user_info')
         delta = self.delta(changes)
         if self.task.on_apply:
             result = self.task.on_apply(self, delta, params, privileges, user_info, enviroment)
@@ -322,17 +327,19 @@ class Report(AbstrReport):
 
 
     def add_param(self, caption='', name='', data_type=common.INTEGER,
-        obj=None, obj_field=None, required=True, visible=True, alignment=None,
-        enable_typeahead=None, lookup_values=None, param_help=None, param_placeholder=None):
+            obj=None, obj_field=None, required=True, visible=True, alignment=None,
+            multi_select=None, multi_select_all=None, enable_typeahead=None, lookup_values=None,
+            param_help=None, param_placeholder=None):
         param_def = self.add_param_def(caption, name, data_type, obj,
-            obj_field, required, visible, alignment, enable_typeahead,
-            lookup_values, param_help, param_placeholder)
+            obj_field, required, visible, alignment, multi_select, multi_select_all,
+            enable_typeahead, lookup_values, param_help, param_placeholder)
         param = Param(self, param_def)
         self.params.append(param)
 
     def add_param_def(self, param_caption='', param_name='', data_type=common.INTEGER,
-        lookup_item=None, lookup_field=None, required=True, visible=True,
-        alignment=0, enable_typeahead=False, lookup_values=None, param_help=None,
+            lookup_item=None, lookup_field=None, required=True, visible=True,
+            alignment=0, multi_select=False, multi_select_all=False, enable_typeahead=False,
+            lookup_values=None, param_help=None,
         param_placeholder=None):
         param_def = [None for i in range(len(FIELD_DEF))]
         param_def[FIELD_NAME] = param_name
@@ -343,6 +350,8 @@ class Report(AbstrReport):
         param_def[LOOKUP_FIELD] = lookup_field
         param_def[FIELD_EDIT_VISIBLE] = visible
         param_def[FIELD_ALIGNMENT] = alignment
+        param_def[FIELD_MULTI_SELECT] = multi_select
+        param_def[FIELD_MULTI_SELECT_ALL] = multi_select_all
         param_def[FIELD_ENABLE_TYPEAHEAD] = enable_typeahead
         param_def[FIELD_LOOKUP_VALUES] = lookup_values
         param_def[FIELD_HELP] = param_help
@@ -691,191 +700,9 @@ class Report(AbstrReport):
     def _set_modified(self, value):
         pass
 
-#~ log = {}
-#~ log_counter = 0
-#~ log_save_after = 0
-#~ log_pid = os.getpid()
-#~
-#~ def find_where_fields(command):
-    #~ result = ''
-    #~ where_pos = command.find('WHERE')
-    #~ where = None
-    #~ if where_pos >= 0:
-        #~ a = []
-        #~ where = command[where_pos + 5:]
-        #~ a.append(where.find(' GROUP BY'))
-        #~ a.append(where.find(' ORDER BY'))
-        #~ a.append(where.find(' HAVING'))
-        #~ pos = -1
-        #~ b = []
-        #~ for p in a:
-            #~ if p >= 0:
-                #~ b.append(p)
-        #~ if len(b):
-            #~ pos = min(b)
-        #~ if pos >= 0:
-            #~ where = where[:pos + 1]
-        #~ if where:
-            #~ parts = where.split('AND')
-            #~ fields = []
-            #~ for p in parts:
-                #~ p = p.strip()
-                #~ p = p.strip('(')
-                #~ w = ''
-                #~ for ch in p:
-                    #~ if ch in [' ', '>', '<', '=']:
-                        #~ break
-                    #~ else:
-                        #~ w += ch
-                #~ w = w.replace('"', '')
-                #~ pos = w.find('.')
-                #~ if pos >= 0:
-                    #~ w = w[pos + 1:]
-                #~ fields.append(w)
-            #~ result = ' '.join(fields)
-    #~ return result
-#~
-#~ def find_table_name(command):
-    #~ result = ''
-    #~ s = ''
-    #~ if command[:12] ==   'SELECT NEXT ':
-        #~ result = ''
-    #~ elif command[:12] == 'INSERT INTO ':
-        #~ result = ''
-    #~ elif command[:6] == 'UPDATE':
-        #~ s = command[7:]
-        #~ s = s.lstrip('"')
-    #~ else:
-        #~ pos = command.find(' FROM ')
-        #~ s = command[pos+5:pos+105]
-        #~ s = s.lstrip(' ')
-        #~ s = s.lstrip('(')
-        #~ s = s.lstrip('"')
-    #~ if s:
-        #~ w = ''
-        #~ for ch in s:
-            #~ if ch in [' ', '"']:
-                #~ break
-            #~ else:
-                #~ w += ch
-        #~ result = w
-    #~ return result
-#~
-#~ def save_log(log):
-#~
-    #~ def get_reqs_key(item):
-        #~ key, (dur, freq) = item
-        #~ return dur / 1000000.0 / freq
-#~
-    #~ def get_tables_key(item):
-        #~ key, (dur, freq, reqs) = item
-        #~ return dur / 1000000.0 / freq
-#~
-    #~ text = ''
-#~
-    #~ tlist = sorted(log.iteritems(), key=get_tables_key, reverse=True)
-    #~ for table, (dur, freq, reqs) in tlist:
-        #~ sec = dur / 1000000.0
-        #~ per_request = sec / freq
-        #~ text += '%-20s %f %d %f\n' % (table, per_request, freq, sec)
-#~
-    #~ text += '\n'
-#~
-    #~ tables = sorted(log.keys())
-    #~ for table in tables:
-        #~ dur, freq, reqs = log[table]
-        #~ sec = dur / 1000000.0
-        #~ per_request = sec / freq
-        #~ text += '\n%-20s %f %d %f\n' % (table, per_request, freq, sec)
-        #~ rlist = sorted(reqs.iteritems(), key=get_reqs_key, reverse=True)
-        #~ for fields, (dur, freq) in rlist:
-            #~ sec = dur / 1000000.0
-            #~ per_request = sec / freq
-            #~ text += '      %f %d %f %s\n' % (per_request, freq, sec, fields)
-    #~ with open('log.info', 'w') as f:
-        #~ f.write(text.encode('utf-8'))
-#~
-#~
-#~ def log_request(command, duration):
-    #~ global log_counter
-    #~ global log_pid
-    #~ global log
-    #~ global log_save_after
-#~
-    #~ if log_pid == os.getpid():
-        #~ command = command.upper().strip()
-        #~ table_name = find_table_name(command)
-        #~ if table_name:
-            #~ where_fields = find_where_fields(command)
-#~
-            #~ msec = duration.microseconds
-#~
-            #~ table = log.get(table_name)
-            #~ if not table:
-                #~ table = [0, 0, {}]
-                #~ log[table_name] = table
-            #~ table[0] += msec
-            #~ table[1] += 1
-            #~ reqs = table[2]
-#~
-            #~ req = reqs.get(where_fields)
-            #~ if not req:
-                #~ req = [0, 0]
-                #~ reqs[where_fields] = req
-            #~ req[0] += msec
-            #~ req[1] += 1
-#~
-        #~ log_counter += 1
-        #~ if log_counter % log_save_after == 0:
-            #~ save_log(log)
-#~
-
 def execute_sql(db_module, db_database, db_user, db_password,
     db_host, db_port, db_encoding, connection, command,
     params=None, call_proc=False, commit=True, select=False, ddl=False):
-
-    #~ def execute_command(cursor, command, params=None):
-        #~ global log_save_after
-        #~ print_command = False
-        #~ log_command = False
-        #~ try:
-            #~ if print_command:
-                #~ print ''
-                #~ print command
-                #~ print params
-#~
-            #~ now = datetime.datetime.now()
-#~
-            #~ result = None
-            #~ if params:
-                #~ cursor.execute(command, params)
-            #~ else:
-                #~ cursor.execute(command)
-            #~ if result_set == 'ONE':
-                #~ result = cursor.fetchone()
-            #~ elif result_set == 'ALL':
-                #~ result = cursor.fetchall()
-#~
-            #~ if log_save_after:
-                #~ log_request(command, datetime.datetime.now() - now)
-#~
-            #~ if log_command and command.upper().find('SELECT') == -1:
-                #~ try:
-                    #~ with open("sql_log.txt", "a") as f:
-                        #~ f.write('\n')
-                        #~ f.write(command + '\n')
-                        #~ f.write(json.dumps(params, default=common.json_defaul_handler) + '\n')
-                #~ except:
-                    #~ pass
-#~
-            #~ return result
-        #~ except Exception, x:
-            #~ error = '\nError: %s\n command: %s\n params: %s' % (str(x), command, params)
-            #~ print error
-            #~ if not ddl:
-                #~ raise
-            #~ elif db_module.DDL_ROLLBACK:
-                #~ raise
 
     def execute_command(cursor, command, params=None):
         print_command = ddl

@@ -95,15 +95,13 @@ The ``options`` parameter is an object that may have the following attributes:
   ``on_dblclick`` options is not set, the edit form will be shown when a user 
   double click on a table row. The the default value is true.
 
-* ``multi_select`` - if this option is set to true, a leftmost column with 
-  check-boxes will be created to select records. So, if the function-option 
-  ``multi_select_get_selected`` returns true for the record, this record's 
-  check-box will be checked. When a user clicks on the check-box, the 
-  ``multi_select_set_selected`` function will be called with the state of the
-  check-box as a parameter. If the function-option ``multi_select_select_all`` 
-  is specified, then a check-box will be created in the leftmost column of the 
-  table title and this function will be called when user clicks on this 
-  check-box. 
+* ``selections`` - if this option is set to a javascript ``set`` object, a leftmost 
+  column with check-boxes will be created to select records. So, that when a user 
+  clicks on the check-box, the value of the primary key field of the record will 
+  be added to or deleted from the set. If ``select_all`` option is set to true,
+  then clicking on the checkbox in leftmost column of the table head will fill 
+  the set with primary key values, by executing a request to the database 
+  table.
 
 * ``row_callback`` - the callback functions called each time fields of the record
   are changed. Two parameters are passed to the function - item, whose record has 
@@ -142,30 +140,21 @@ The code below creates an edit form of the optionsInvoices** journal in the
     }
 
 In the following code a selections attribute of the item is created, that will 
-store values of the **id** field of records that have been selected:
+store values of primary key field of records that have been selected. 
 
 .. code-block:: js
 
     function on_view_form_created(item) {
-        item.selections = {};
+        item.selections = new Set();
         item.create_table(item.view_form.find(".view-table"), 
-            {
-                multi_select: true,
-                multi_select_get_selected: function(item) {
-                        return item.selections[item.id.value];
-                    },
-                multi_select_set_selected: function(item, value) {
-                        if (value) {
-                            item.selections[item.id.value] = true;
-                        }
-                        else {
-                            delete item.selections[item.id.value];
-                        }
-                    }
-                    
-            }
-        );
+            {selections: item.selections});
     }
+    
+This set could be converted to an array by the following code:
+
+.. code-block:: js
+
+    Array.from(item.selections);
 
 
 Below is the ``init_table`` function that is called before the ``create_table``

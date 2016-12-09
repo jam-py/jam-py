@@ -4,8 +4,9 @@
 function Events1() { // demo 
 
 	function on_page_loaded(task) {  
-	
+		$("title").text(task.item_caption);
 		$("#title").text(task.item_caption);
+		
 		if (task.safe_mode) {
 			$("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
 			$('#log-out')
@@ -135,7 +136,7 @@ function Events1() { // demo
 	
 	
 	function on_view_form_close_query(item) {
-		item.close();
+	//	item.close();
 	}
 	
 	function on_edit_form_created(item) {
@@ -336,6 +337,12 @@ function Events3() { // demo.journals
 				item.view_form.find("#filter-text").text(item.get_filter_text());		
 			};
 		}
+		setTimeout(
+			function() {
+				item.view_form.find('.dbtable.' + item.item_name + ' .inner-table').focus();
+			},
+			100
+		);	
 	}
 	this.on_view_form_created = on_view_form_created;
 }
@@ -348,7 +355,7 @@ function Events2() { // demo.catalogs
 		var timeOut,
 			search;
 		if (item.default_field) {
-			if (item.lookup_field && item.lookup_field.value) {
+			if (item.lookup_field && item.lookup_field.value && !item.lookup_field.multi_select) {
 				item.view_form.find(".view-title #title-left")
 					.append($('<p><a href="#" id="cur_value" tabindex="-1">' + item.lookup_field.lookup_text + '</a></p>'))
 					.css('padding-top', '12px');
@@ -383,7 +390,7 @@ function Events2() { // demo.catalogs
 			});
 			item.view_form.on('keydown', function(e) {
 				var code = e.which;
-				if (isCharCode(code) || code === 32 || code === 8) {
+				if (isCharCode(code) || code === 8) {				
 					if (!search.is(":focus")) {
 						if (code !== 8) {
 							search.val('');
@@ -405,8 +412,14 @@ function Events2() { // demo.catalogs
 	}
 	
 	function on_view_form_shown(item) {
-		setTimeout(function() {
-				item.view_form.find(".view-title input").focus();
+		setTimeout(
+			function() {
+				if (item.default_field) {
+					item.view_form.find(".view-title input").focus();
+				}
+				else {
+					item.view_form.find('.dbtable.' + item.item_name + ' .inner-table').focus();
+				}
 			},
 			100
 		);	
@@ -417,22 +430,6 @@ function Events2() { // demo.catalogs
 }
 
 task.events.events2 = new Events2();
-
-function Events10() { // demo.catalogs.customers 
-
-	// function on_edit_form_close_query(item) {
-	//	 if (item.is_changing()) {
-	//		 item.cancel();
-	//	 }
-	//	 return true;
-	// }
-	
-	// function on_edit_form_created(item) {
-	//	 item.edit_options.width = 700;
-	// }
-}
-
-task.events.events10 = new Events10();
 
 function Events16() { // demo.journals.invoices 
 
@@ -459,11 +456,11 @@ function Events16() { // demo.journals.invoices
 	
 	function on_view_form_created(item) {
 		item.invoice_table.create_table(item.view_form.find(".view-detail"),
-			{height: 200 - 4, dblclick_edit: false, column_width: {"track": "60%"}});
-	}
-	
-	function on_view_form_shown(item) {
-		item.view_form.find(".dbtable.invoices .inner-table").focus();
+			{
+				height: 200 - 4, 
+				dblclick_edit: false, 
+				column_width: {'track': '25%', 'album': '25%', 'artists': '10%'}
+			});
 	}
 	
 	function on_filters_applied(item) {
@@ -504,7 +501,7 @@ function Events16() { // demo.journals.invoices
 				editable: true,
 				editable_fields: ['track', 'quantity'],
 				sortable: true,
-				column_width: {"track": "60%"}
+				column_width: {'track': '25%', 'album': '25%', 'artists': '10%'}
 			});
 		item.edit_form.find("#new-btn")
 			.on('click.task', function() { item.invoice_table.append_record() });
@@ -601,7 +598,6 @@ function Events16() { // demo.journals.invoices
 	this.on_after_append = on_after_append;
 	this.init_table = init_table;
 	this.on_view_form_created = on_view_form_created;
-	this.on_view_form_shown = on_view_form_shown;
 	this.on_filters_applied = on_filters_applied;
 	this.calc_footer = calc_footer;
 	this.init_inputs = init_inputs;
@@ -620,25 +616,26 @@ task.events.events16 = new Events16();
 function Events15() { // demo.catalogs.tracks 
 
 	function init_table(item, options) {
-	//	options.sortable = false;
 		options.row_line_count = 2;
 		options.expand_selected_row = 3;
-	}
-	
-	function on_before_post(item) {
-	   item.track.value = item.name.value;
-	   if (item.album.value) {
-		   item.track.value += '; album: ' + item.album.display_text;
-	   }
-	   if (item.composer.value) {
-		   item.track.value += '; composer: ' + item.composer.display_text;
-	   }
+		options.column_width = {'artist': '7%'};
 	}
 	this.init_table = init_table;
-	this.on_before_post = on_before_post;
 }
 
 task.events.events15 = new Events15();
+
+function Events12() { // demo.catalogs.albums 
+
+	function init_table(item, options) {
+		item.selections = new Set();	
+		options.selections = item.selections;	
+	//	options.select_all = true;
+	}
+	this.init_table = init_table;
+}
+
+task.events.events12 = new Events12();
 
 function Events19() { // demo.reports.invoice 
 

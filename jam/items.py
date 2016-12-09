@@ -238,10 +238,15 @@ class AbstrItem(AbstractItem):
     def bind_item(self):
         self.prepare_fields()
         self.prepare_filters()
-        self.fields = list(self._fields)
+#        self.fields = list(self._fields)
 
 
 class AbstrDetail(AbstrItem):
+
+    def write_info(self, info):
+        super(AbstrDetail, self).write_info(info)
+        print 1111111, self.prototype.ID
+        info['prototype_ID'] = self.prototype.ID
 
     def read_info(self, info):
         super(AbstrDetail, self).read_info(info)

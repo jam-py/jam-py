@@ -13,6 +13,7 @@ body {
   line-height: 16px;
 }
 
+
 .row-fluid [class*="span"] {
     min-height: 24px;
 }
@@ -411,7 +412,27 @@ h4.title {
 }
 
 .datepicker {
-  font-size: 12px;
+    font-size: 12px;
+}
+
+.dbtable thead th {
+    vertical-align: middle;
+}
+
+.dbtable td.multi-select {
+    width: 4%;
+}
+
+.dbtable th .multi-select .sel-count {
+    margin-top: 4px;
+    margin-bottom: 0;
+    font-size: 10px;
+    font-style: italic;
+    color: #3a87ad;
+}
+
+.dbtable th .multi-select .sel-count.select-all {
+    color: #b94a48;
 }
 
 .dbtree {

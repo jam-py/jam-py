@@ -88,7 +88,7 @@
         this.item_name = item_name || '';
         this.item_caption = caption || '';
         this.visible = visible;
-        this.ID = ID || undefined;
+        this.ID = ID || null;
         this.item_type_id = type;
         this.item_type = '';
         if (type) {
@@ -217,6 +217,7 @@
                 child._master_id = item_info.master_id;
                 child._master_rec_id = item_info.master_rec_id;
                 child.keep_history = item_info.keep_history;
+                child.prototype_ID = item_info.prototype_ID
                 if (child.initAttr) {
                     child.initAttr(item_info);
                 }
@@ -241,6 +242,15 @@
             } else {
                 return true;
             }
+        },
+
+        _check_args: function(args) {
+            var i,
+                result = {};
+            for (i = 0; i < args.length; i++) {
+                result[typeof args[i]] = args[i];
+            }
+            return result;
         },
 
         load_script: function(js_filename, callback, onload) {
@@ -414,14 +424,15 @@
         },
 
         server: function(func_name, params, callback) {
-            var res,
+            var args,
+                res,
                 err,
                 result;
-            if (arguments.length == 2 && typeof arguments[1] === "function") {
-                callback = arguments[1];
-                params = [];
+            if (!callback) {
+                args = this._check_args(arguments);
+                callback = args['function'];
             }
-            if (!params) {
+            if (!params || params === callback) {
                 params = [];
             } else if (!$.isArray(params)) {
                 params = [params];
@@ -541,7 +552,7 @@
             header.append(title);
             header.find("#close-btn").css('cursor', 'default').click(function(e) {
                 if (form_name) {
-                    self.close_form(form_name);
+                    self._close_form(form_name);
                 }
             });
             header.find('#print-btn').css('cursor', 'default').click(function(e) {
@@ -555,7 +566,7 @@
         _close_modeless_form: function(formName) {
             var self = this;
             if (this[formName]) {
-                this.close_form(formName);
+                this._close_form(formName);
             }
             if (this[formName]) {
                 this[formName].bind('destroyed', function() {
@@ -565,7 +576,23 @@
             }
         },
 
-        create_form: function(suffix, options) {
+        _process_key_event: function(form, handler, event) {
+            if (form._form_disabled) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+            }
+            else {
+                if (event.which !== 116) { //F5
+                    event.stopPropagation();
+                }
+                if (handler) {
+                    handler.call(this, event);
+                }
+            }
+        },
+
+        _create_form: function(suffix, options) {
             var self = this,
                 formName = suffix + '_form',
                 keySuffix = formName + '.' + this.item_name,
@@ -584,16 +611,10 @@
                 if (options.container) {
                     options.container.empty();
                     $(window).on("keyup." + keySuffix, function(e) {
-                        e.stopPropagation();
-                        if (options.onKeyUp) {
-                            options.onKeyUp.call(self, e);
-                        }
+                        self._process_key_event(self[formName], options.onKeyUp, e);
                     });
                     $(window).on("keydown." + keySuffix, function(e) {
-                        e.stopPropagation();
-                        if (options.onKeyDown) {
-                            options.onKeyDown.call(self, e);
-                        }
+                        self._process_key_event(self[formName], options.onKeyDown, e);
                     });
                     options.container.append(this[formName]);
                     this[formName].bind('destroyed', function() {
@@ -650,19 +671,11 @@
                         });
 
                         this[formName].on("keydown." + keySuffix, function(e) {
-                            if (e.which !== 116) {
-                                e.stopPropagation();
-                            }
-                            if (options.onKeyDown) {
-                                options.onKeyDown.call(self, e);
-                            }
+                            self._process_key_event(self[formName], options.onKeyDown, e);
                         });
 
                         this[formName].on("keyup." + keySuffix, function(e) {
-                            e.stopPropagation();
-                            if (options.onKeyUp) {
-                                options.onKeyUp.call(self, e);
-                            }
+                            self._process_key_event(self[formName], options.onKeyUp, e);
                         });
 
                         this[formName].modal({
@@ -675,7 +688,7 @@
             }
         },
 
-        close_form: function(formName) {
+        _close_form: function(formName) {
             var self = this,
                 form = this[formName],
                 canClose,
@@ -700,6 +713,20 @@
                         form.remove();
                     }
                 }
+            }
+        },
+
+        _disable_form: function(form) {
+            if (form) {
+                form.css('pointer-events', 'none');
+                form._form_disabled = true;
+            }
+        },
+
+        _enable_form: function(form) {
+            if (form) {
+                form.css('pointer-events', 'auto');
+                form._form_disabled = false;
             }
         },
 
@@ -818,9 +845,14 @@
             });
 
             $element.on("keyup keydown", function(e) {
-                var code = (e.keyCode ? e.keyCode : e.which);
+                var event;
                 e.stopPropagation();
-                if (code === 80 && e.ctrlKey) {
+                if (e.which === 37 || e.which === 39) {
+                    event = jQuery.Event(e.type);
+                    event.which = e.which + 1;
+                    $(e.target).trigger(event);
+                }
+                else if (e.which === 80 && e.ctrlKey) {
                     e.preventDefault();
                     self.print_message($element.find(".modal-body").clone());
                 }
@@ -882,162 +914,176 @@
             });
         },
 
+        display_history: function(hist) {
+            var self = this,
+                html = '',
+                acc_div = $('<div class="accordion history-accordion" id="accordion1">'),
+                item,
+                master,
+                lookups = {},
+                lookup_keys,
+                lookup_fields,
+                keys,
+                fields,
+                where,
+                lookup_item,
+                mess;
+            if (self.master) {
+                master = self.master.copy({handlers: false}),
+                item = master.item_by_ID(self.ID);
+                master.open({open_empty: true});
+                master.append();
+            }
+            else {
+                item = self.copy({handlers: false, details: false});
+            }
+            item.open({open_empty: true});
+            item.append();
+            hist.each(function(h) {
+                var acc = $(
+                    '<div class="accordion-group history-group">' +
+                        '<div class="accordion-heading history-heading">' +
+                            '<a class="history-toggle accordion-toggle" data-toggle="collapse" data-parent="#accordion1" href="#collapse' + h.rec_no + '">' +
+                            '</a>' +
+                        '</div>' +
+                        '<div id="collapse' + h.rec_no + '" class="accordion-body collapse">' +
+                            '<div class="accordion-inner history-inner">' +
+                            '</div>' +
+                        '</div>' +
+                     '</div>'
+                    ),
+                    i,
+                    user = '',
+                    content = '',
+                    old_value,
+                    new_value,
+                    field,
+                    field_name,
+                    changes = JSON.parse(h.changes.value),
+                    field_arr,
+                    details_arr;
+
+                if (h.operation.value === consts.RECORD_DELETED) {
+                    content = '<p>Record deleted</p>'
+                }
+                else if (h.operation.value === consts.RECORD_DETAILS_MODIFIED) {
+                    content = '<p>Details modified</p>'
+                }
+                else if (changes) {
+                    field_arr = changes[0];
+                    details_arr = changes[1];
+                    if (field_arr) {
+                        for (i = 0; i < field_arr.length; i++) {
+                            field = item.field_by_ID(field_arr[i][0]);
+                            if (field && !field.system_field()) {
+                                field_name = field.field_caption;
+                                if (field.lookup_item) {
+                                    if (!lookups[field.lookup_item.ID]) {
+                                        lookups[field.lookup_item.ID] = [];
+                                    }
+                                    field.set_data(field_arr[i][1]);
+                                    old_value = field.value;
+                                    field.set_data(field_arr[i][2]);
+                                    new_value = field.value;
+                                    if (old_value) {
+                                        lookups[field.lookup_item.ID].push([field.lookup_field, old_value]);
+                                        old_value = '<span class="' + field.lookup_field + '_' + old_value + '">value is loading</span>';
+                                    }
+                                    if (new_value) {
+                                        lookups[field.lookup_item.ID].push([field.lookup_field, new_value]);
+                                        new_value = '<span class="' + field.lookup_field + '_' + new_value + '">value is loading</span>'
+                                    }
+                                }
+                                else {
+                                    field.set_data(field_arr[i][1]);
+                                    old_value = field.display_text;
+                                    if (field.raw_value === null) {
+                                        old_value = ' '
+                                    }
+                                    field.set_data(field_arr[i][2]);
+                                    new_value = field.display_text;
+                                    if (field.raw_value === null) {
+                                        new_value = ' '
+                                    }
+                                }
+                                if (h.operation.value === consts.RECORD_INSERTED) {
+                                    content += '<p>' + self.task.language.field + ' <b>' + field_name + '</b>: ' +
+                                        self.task.language.new_value + ': <b>' + new_value + '</b></p>';
+                                }
+                                else if (h.operation.value === consts.RECORD_MODIFIED) {
+                                    content += '<p>' + self.task.language.field + ' <b>' + field_name + '</b>: ' +
+                                        self.task.language.old_value + ': <b>' + old_value + '</b> ' +
+                                        self.task.language.new_value + ': <b>' + new_value + '</b></p>';
+                                }
+                            }
+                        }
+                    }
+                }
+                if (h.user.value) {
+                    user = self.task.language.by_user + ' ' + h.user.value;
+                }
+                acc.find('.accordion-toggle').html(h.date.display_text + ': ' +
+                    h.operation.display_text + ' ' + user);
+                acc.find('.accordion-inner').html(content);
+                if (h.rec_no === 0) {
+                    acc.find('.accordion-body').addClass('in');
+                }
+                acc_div.append(acc)
+            })
+            if (hist.record_count()) {
+                html = acc_div;
+            }
+            mess = self.task.message(html, {width: 700, height: 600,
+                title: hist.item_caption + ': ' + self.item_caption, footer: false, print: true});
+            acc_div = mess.find('#accordion1.accordion');
+            for (var ID in lookups) {
+                if (lookups.hasOwnProperty(ID)) {
+                    lookup_item = self.task.item_by_ID(parseInt(ID, 10));
+                    if (lookup_item) {
+                        lookup_item = lookup_item.copy({handlers: false});
+                        lookup_keys = {};
+                        lookup_fields = {};
+                        lookup_fields[lookup_item._primary_key] = true;
+                        for (var i = 0; i < lookups[ID].length; i++) {
+                            lookup_fields[lookups[ID][i][0]] = true;
+                            lookup_keys[lookups[ID][i][1]] = true;
+                        }
+                        keys = [];
+                        for (var key in lookup_keys) {
+                            if (lookup_keys.hasOwnProperty(key)) {
+                                keys.push(parseInt(key, 10));
+                            }
+                        }
+                        fields = [];
+                        for (var field in lookup_fields) {
+                            if (lookup_fields.hasOwnProperty(field)) {
+                                fields.push(field);
+                            }
+                        }
+                        where = {}
+                        where[lookup_item._primary_key + '__in'] = keys
+                        lookup_item.open({where: where, fields: fields}, function() {
+                            var lookup_item = this;
+                            lookup_item.each(function(l) {
+                                l.each_field(function(f) {
+                                    if (!f.system_field()) {
+                                        acc_div.find("." + f.field_name + '_' + l._primary_key_field.value).text(f.value);
+                                    }
+                                });
+                            });
+                        })
+                    }
+                }
+            }
+        },
+
         show_history: function() {
             var self = this,
                 hist = this.task.history_item.copy();
             hist.set_where({item_id: this.ID, item_rec_id: this.field_by_name(this._primary_key).value})
             hist.set_order_by(['-date']);
             hist.open(function() {
-                var html = '',
-                    acc_div = $('<div class="accordion" id="accordion1">'),
-                    item,
-                    master,
-                    lookups = {},
-                    lookup_keys,
-                    lookup_fields,
-                    keys,
-                    fields,
-                    where,
-                    lookup_item;
-                if (self.master) {
-                    master = self.master.copy({handlers: false}),
-                    item = master.item_by_ID(self.ID);
-                    master.open({open_empty: true});
-                    master.append();
-                }
-                else {
-                    item = self.copy({handlers: false, details: false});
-                }
-                item.open({open_empty: true});
-                item.append();
-                hist.each(function(h) {
-                    var acc = $(
-                        '<div class="accordion-group history-group">' +
-                            '<div class="accordion-heading history-heading">' +
-                                '<a class="history-toggle accordion-toggle" data-toggle="collapse" data-parent="#accordion1" href="#collapse' + h.rec_no + '">' +
-                                '</a>' +
-                            '</div>' +
-                            '<div id="collapse' + h.rec_no + '" class="accordion-body collapse">' +
-                                '<div class="accordion-inner history-inner">' +
-                                '</div>' +
-                            '</div>' +
-                         '</div>'
-                        ),
-                        i,
-                        user = '',
-                        content = '',
-                        old_value,
-                        new_value,
-                        field,
-                        field_name,
-                        changes = JSON.parse(h.changes.value),
-                        field_arr,
-                        details_arr;
-
-                    if (h.operation.value === consts.RECORD_DELETED) {
-                        content = '<p>Record deleted</p>'
-                    }
-                    else if (h.operation.value === consts.RECORD_DETAILS_MODIFIED) {
-                        content = '<p>Details modified</p>'
-                    }
-                    else if (changes) {
-                        field_arr = changes[0];
-                        details_arr = changes[1];
-                        if (field_arr) {
-                            for (i = 0; i < field_arr.length; i++) {
-                                field = item.field_by_ID(field_arr[i][0]);
-                                if (field && !field.system_field()) {
-                                    field_name = field.field_caption;
-                                    if (field.lookup_item) {
-                                        if (!lookups[field.lookup_item.ID]) {
-                                            lookups[field.lookup_item.ID] = [];
-                                        }
-                                        field.set_data(field_arr[i][1]);
-                                        old_value = field.value;
-                                        field.set_data(field_arr[i][2]);
-                                        new_value = field.value;
-                                        if (old_value) {
-                                            lookups[field.lookup_item.ID].push([field.lookup_field, old_value]);
-                                            old_value = '<span class="' + field.lookup_field + '_' + old_value + '">value is loading</span>';
-                                        }
-                                        if (new_value) {
-                                            lookups[field.lookup_item.ID].push([field.lookup_field, new_value]);
-                                            new_value = '<span class="' + field.lookup_field + '_' + new_value + '">value is loading</span>'
-                                        }
-                                    }
-                                    else {
-                                        field.set_data(field_arr[i][1]);
-                                        old_value = field.display_text;
-                                        field.set_data(field_arr[i][2]);
-                                        new_value = field.display_text;
-                                    }
-                                    if (h.operation.value === consts.RECORD_INSERTED) {
-                                        content += '<p>' + self.task.language.field + ' <b>' + field_name + '</b>: ' +
-                                            self.task.language.new_value + ': <b>' + new_value + '</b></p>';
-                                    }
-                                    else if (h.operation.value === consts.RECORD_MODIFIED) {
-                                        content += '<p>' + self.task.language.field + ' <b>' + field_name + '</b>: ' +
-                                            self.task.language.old_value + ': <b>' + old_value + '</b> ' +
-                                            self.task.language.new_value + ': <b>' + new_value + '</b></p>';
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (h.user.value) {
-                        user = self.task.language.by_user + ' ' + h.user.value;
-                    }
-                    acc.find('.accordion-toggle').html(h.date.display_text + ': ' +
-                        h.operation.display_text + ' ' + user);
-                    acc.find('.accordion-inner').html(content);
-                    if (h.rec_no === 0) {
-                        acc.find('.accordion-body').addClass('in');
-                    }
-                    acc_div.append(acc)
-                })
-                if (hist.record_count()) {
-                    html = acc_div;
-                }
-                self.task.message(html, {width: 700, height: 600,
-                    title: self.item_caption + ': history', footer: false, print: true});
-                for (var ID in lookups) {
-                    if (lookups.hasOwnProperty(ID)) {
-                        lookup_item = self.task.item_by_ID(parseInt(ID, 10));
-                        if (lookup_item) {
-                            lookup_item = lookup_item.copy({handlers: false});
-                            lookup_keys = {};
-                            lookup_fields = {};
-                            lookup_fields[lookup_item._primary_key] = true;
-                            for (var i = 0; i < lookups[ID].length; i++) {
-                                lookup_fields[lookups[ID][i][0]] = true;
-                                lookup_keys[lookups[ID][i][1]] = true;
-                            }
-                            keys = [];
-                            for (var key in lookup_keys) {
-                                if (lookup_keys.hasOwnProperty(key)) {
-                                    keys.push(parseInt(key, 10));
-                                }
-                            }
-                            fields = [];
-                            for (var field in lookup_fields) {
-                                if (lookup_fields.hasOwnProperty(field)) {
-                                    fields.push(field);
-                                }
-                            }
-                            where = {}
-                            where[lookup_item._primary_key + '__in'] = keys
-                            lookup_item.open({where: where, fields: fields}, function() {
-                                lookup_item.each(function(l) {
-                                    l.each_field(function(f) {
-                                        if (!f.system_field()) {
-                                            acc_div.find("." + f.field_name + '_' + l._primary_key_field.value).text(f.value);
-                                        }
-                                    });
-                                });
-                            })
-                        }
-                    }
-                }
+                self.display_history(hist);
             });
         },
 
@@ -1393,11 +1439,12 @@
         },
 
         _set_history_item: function(item) {
-            var self = this;
+            var self = this,
+                doc_name;
             this.history_item = item;
             if (this.history_item) {
                 this.history_item.read_only = true;
-                item.view_options.fields = ['item_id', 'item_rec_id', 'date', 'operation', 'user'];
+//                item.view_options.fields = ['item_id', 'item_rec_id', 'date', 'operation', 'user'];
                 if (!item.on_field_get_text) {
                     item.on_field_get_text = function(field) {
                         var oper,
@@ -1416,7 +1463,11 @@
                         else if (field.field_name === 'item_id') {
                             it = self.item_by_ID(field.value);
                             if (it) {
-                                return it.item_caption;
+                                doc_name = it.item_caption;
+                                if (it.master) {
+                                    doc_name = it.master.item_caption + ' - ' + doc_name;
+                                }
+                                return doc_name;
                             }
                         }
                     }
@@ -1831,7 +1882,7 @@
                     info = this.item.get_rec_info(undefined, record);
                     if (info[consts.REC_STATUS] !== consts.RECORD_UNCHANGED) {
                         details = record_log.details;
-                        if (this.item.keep_history || this.item.master && this.item.master.keep_history) {
+                        if (this.item.keep_history) {
                             old_record = record_log.old_record;
                         }
                         new_record = this.copy_record(record, false)
@@ -2228,7 +2279,7 @@
         });
         Object.defineProperty(this, "default_field", {
             get: function() {
-                return this.find_default_field();
+                return this.get_default_field();
             }
         });
         Object.defineProperty(this, "log_changes", {
@@ -2314,13 +2365,36 @@
         prepare_fields: function() {
             var i = 0,
                 len = this._fields.length,
-                field;
+                field,
+                lookup_field,
+                lookup_field1;
             for (; i < len; i++) {
                 field = this._fields[i];
                 if (field.lookup_item && (typeof field.lookup_item === "number")) {
                     field.lookup_item = this.task.item_by_ID(field.lookup_item);
                     if (field.lookup_field && (typeof field.lookup_field === "number")) {
-                        field.lookup_field = field.lookup_item._field_by_ID(field.lookup_field).field_name;
+                        lookup_field = field.lookup_item._field_by_ID(field.lookup_field);
+                        field.lookup_field = lookup_field.field_name;
+                        if (lookup_field.lookup_item && field.lookup_field1) {
+                            field.lookup_item1 = lookup_field.lookup_item
+                            if (typeof field.lookup_item1 === "number") {
+                                field.lookup_item1 = this.task.item_by_ID(field.lookup_item1);
+                            }
+                            if (typeof field.lookup_field1 === "number") {
+                                lookup_field1 = field.lookup_item1._field_by_ID(field.lookup_field1)
+                                field.lookup_field1 = lookup_field1.field_name
+                            }
+                            if (lookup_field1.lookup_item && field.lookup_field2) {
+                                field.lookup_item2 = lookup_field1.lookup_item;
+                                if (typeof field.lookup_item2 === "number") {
+                                    field.lookup_item2 = self.task.item_by_ID(field.lookup_item2);
+                                }
+                                if (typeof field.lookup_field2 === "number") {
+                                    field.lookup_field2 = field.lookup_item2._field_by_ID(field.lookup_field2).field_name;
+                                }
+                            }
+
+                        }
                     }
                 }
                 if (field.master_field && (typeof field.master_field === "number")) {
@@ -2643,6 +2717,10 @@
 
             result.field_defs = this.field_defs;
             result.filter_defs = this.filter_defs;
+            result._primary_key = this._primary_key
+            result._deleted_flag = this._deleted_flag
+            result._master_id = this._master_id
+            result._master_rec_id = this._master_rec_id
 
             len = result.field_defs.length;
             for (i = 0; i < len; i++) {
@@ -3024,9 +3102,10 @@
         },
 
         open: function() {
-            var i,
-                options,
-                callback,
+            var args = this._check_args(arguments),
+                callback = args['function'],
+                options = args['object'],
+                async = args['boolean'],
                 expanded,
                 fields,
                 where,
@@ -3036,7 +3115,6 @@
                 group_by,
                 params,
                 callback,
-                async,
                 log,
                 limit,
                 offset,
@@ -3044,16 +3122,6 @@
                 rec_info,
                 records,
                 self = this;
-            for (i = 0; i < arguments.length; i++) {
-                switch (typeof arguments[i]) {
-                    case "function":
-                        callback = arguments[i];
-                        break;
-                    case "object":
-                        options = arguments[i];
-                        break;
-                }
-            }
             this._check_open_options(options);
             if (options) {
                 expanded = options.expanded;
@@ -3075,7 +3143,9 @@
             } else {
                 this.expanded = expanded;
             }
-            async = callback ? true : false;
+            if (!async) {
+                async = callback ? true : false;
+            }
             if (this.master) {
                 if (!this.disabled && this.master.record_count() > 0) {
                     params.__master_id = this.master.ID;
@@ -3613,25 +3683,14 @@
         },
 
         apply: function() {
-            var i = 0,
-                len = arguments.length,
+            var args = this._check_args(arguments),
+                callback = args['function'],
+                params = args['object'],
                 self = this,
                 changes = {},
-                callback,
-                params,
                 result,
                 data,
                 result = true;
-            for (; i < len; i++) {
-                switch (typeof arguments[i]) {
-                    case "function":
-                        callback = arguments[i];
-                        break;
-                    case "object":
-                        params = arguments[i];
-                        break;
-                }
-            }
             if (this.master) {
                 if (callback) {
                     callback.call(this);
@@ -4334,40 +4393,36 @@
         },
 
         apply_record: function() {
-            var i,
-                callback,
-                params,
+            var args = this._check_args(arguments),
+                callback = args['function'],
+                params = args['object']
                 self = this;
-
-            for (i = 0; i < arguments.length; i++) {
-                switch (typeof arguments[i]) {
-                    case "function":
-                        callback = arguments[i];
-                        break;
-                    case "object":
-                        params = arguments[i];
-                        break;
+            if (this.is_changing()) {
+                this._disable_form(this.edit_form);
+                try {
+                    this.post();
+                    this.apply(params, function(error) {
+                        if (error) {
+                            self.warning(error);
+                            this._enable_form(this.edit_form);
+                            if (!self.is_changing()) {
+                                self.edit();
+                            }
+                        }
+                        else {
+                            if (callback) {
+                                callback.call(self, self);
+                            }
+                            self.close_edit_form();
+                        }
+                    });
+                }
+                catch (e) {
+                    if (this.edit_form._form_disabled) {
+                        this._enable_form(this.edit_form);
+                    }
                 }
             }
-            this.post();
-
-            //~ this.apply(params);
-            //~ self.close_edit_form();
-
-            this.apply(params, function(error) {
-                if (error) {
-                    self.warning(error);
-                    if (!self.is_changing()) {
-                        self.edit();
-                    }
-                }
-                else {
-                    if (callback) {
-                        callback.call(self, self);
-                    }
-                    self.close_edit_form();
-                }
-            });
         },
 
         do_on_view_keyup: function(e) {
@@ -4409,7 +4464,7 @@
 
         create_view_form: function(container) {
             var self = this;
-            this.create_form('view', {
+            this._create_form('view', {
                 container: container,
                 beforeShow: function() {
                     if (this.task.on_view_form_created) {
@@ -4464,7 +4519,7 @@
         },
 
         close_view_form: function() {
-            this.close_form('view_form');
+            this._close_form('view_form');
         },
 
         do_on_edit_keyup: function(e) {
@@ -4493,20 +4548,11 @@
 
         create_edit_form: function() {
             var self = this,
-                container,
-                onReady,
-                argLen = arguments.length;
-            if (argLen) {
-                for (var i = 0; i < argLen; i++) {
-                    if (!container && arguments[i] instanceof jQuery) {
-                        container = arguments[i];
-                    } else if (!onReady && typeof arguments[i] === "function") {
-                        onReady = arguments[i];
-                    }
-                }
-            }
+                args = this._check_args(arguments),
+                callback = args['function'],
+                container = args['object'];
             this.edit_options.show_history = true;
-            this.create_form('edit', {
+            this._create_form('edit', {
                 container: container,
                 beforeShow: function() {
                     if (self.task.on_edit_form_created) {
@@ -4529,8 +4575,8 @@
                     if (self.on_edit_form_shown) {
                         self.on_edit_form_shown.call(self, self);
                     }
-                    if (onReady) {
-                        onReady.call(self);
+                    if (callback) {
+                        callback.call(self, self);
                     }
                 },
                 onHide: function(e) {
@@ -4564,24 +4610,14 @@
         },
 
         close_edit_form: function() {
-            this.close_form('edit_form');
+            this._close_form('edit_form');
         },
 
         create_filter_form: function() {
             var self = this,
-                container,
-                onReady,
-                argLen = arguments.length;
-            if (argLen) {
-                for (var i = 0; i < argLen; i++) {
-                    if (!container && arguments[i] instanceof jQuery) {
-                        container = arguments[i];
-                    } else if (!onReady && typeof arguments[i] === "function") {
-                        onReady = arguments[i];
-                    }
-                }
-            }
-            this.create_form('filter', {
+                args = this._check_args(arguments),
+                container = args['object'];
+            this._create_form('filter', {
                 container: container,
                 beforeShow: function() {
                     if (self.task.on_filter_form_created) {
@@ -4634,7 +4670,7 @@
         },
 
         close_filter_form: function() {
-            this.close_form('filter_form');
+            this._close_form('filter_form');
         },
 
         apply_filters: function() {
@@ -4643,8 +4679,9 @@
                     this.on_filters_apply.call(this, this);
                 }
                 this.check_filters_valid();
-                this.open();
-                this.close_filter_form();
+                this.open(function() {
+                    this.close_filter_form();
+                });
             }
             catch (e) {
             }
@@ -4844,33 +4881,53 @@
             }
         },
 
+        _find_lookup_value: function(field, lookup_field) {
+            if (lookup_field.field_kind === consts.ITEM_FIELD) {
+                if (field.field_name === lookup_field.lookup_field &&
+                    field.lookup_field === lookup_field.lookup_field1 &&
+                    field.lookup_field1 === lookup_field.lookup_field2) {
+                    return field.lookup_value;
+                }
+                else if (field.field_kind === consts.ITEM_FIELD && field.owner.ID === lookup_field.lookup_item.ID &&
+                    field.lookup_field === lookup_field.lookup_field1 &&
+                    field.lookup_field1 === lookup_field.lookup_field2) {
+                    return field.lookup_value;
+                }
+            }
+            else  if (field.field_name === lookup_field.lookup_field) {
+                return field.lookup_value;
+            }
+        },
+
         set_lookup_field_value: function() {
             if (this.record_count()) {
                 var lookup_field = this.lookup_field,
                     item_field = this.field_by_name(lookup_field.lookup_field),
                     lookup_value = null,
-                    lookup_field_item = this.lookup_field.owner,
+                    item = this.lookup_field.owner,
                     ids = [],
                     slave_field_values = {},
                     self = this;
 
                 if (item_field) {
-                    lookup_value = item_field.get_value();
+                    lookup_value = this._find_lookup_value(item_field, lookup_field);
                 }
                 if (lookup_field.owner && lookup_field.owner.is_changing && !lookup_field.owner.is_changing()) {
                     lookup_field.owner.edit();
                 }
-                if (lookup_field.filter && lookup_field.filter.filter_type ===
-                    consts.FILTER_IN) {
-                    lookup_field.set_value([this._primary_key_field.value], lookup_value);
+                if (lookup_field.multi_select) {
+                    lookup_field.set_value(new Set([this._primary_key_field.value]), lookup_value);
                 } else {
-                    if (lookup_field_item) {
-                        lookup_field_item.each_field(function(field) {
-                            if (field.master_field === lookup_field) {
-                                item_field = self.field_by_name(field.lookup_field)
-                                if (item_field) {
-                                    slave_field_values[field.field_name] = item_field.value;
-                                }
+                    if (item) {
+                        item.each_field(function(item_field) {
+                            if (item_field.master_field === lookup_field) {
+                                self.each_field(function(field) {
+                                    var lookup_value = self._find_lookup_value(field, item_field);
+                                    if (lookup_value) {
+                                        slave_field_values[item_field.field_name] = lookup_value;
+                                        return false;
+                                    }
+                                })
                             }
                         });
                     }
@@ -4882,14 +4939,18 @@
             }
         },
 
-        find_default_field: function() {
-            var i = 0,
-                len = this.fields.length;
-            for (; i < len; i++) {
-                if (this.fields[i].is_default) {
-                    return this.fields[i];
+        get_default_field: function() {
+            var i = 0;
+            if (this._default_field === undefined) {
+                this._default_field = null;
+                for (i = 0; i < this.fields.length; i++) {
+                    if (this.fields[i].is_default) {
+                        this._default_field = this.fields[i];
+                        break;
+                    }
                 }
             }
+            return this._default_field;
         },
 
         set_edit_fields: function(fields) {
@@ -5039,19 +5100,9 @@
 
         create_param_form: function() {
             var self = this,
-                container,
-                onReady,
-                argLen = arguments.length;
-            if (argLen) {
-                for (var i = 0; i < argLen; i++) {
-                    if (!container && arguments[i] instanceof jQuery) {
-                        container = arguments[i];
-                    } else if (!onReady && typeof arguments[i] === "function") {
-                        onReady = arguments[i];
-                    }
-                }
-            }
-            this.create_form('param', {
+                args = this._check_args(arguments),
+                container = args['object'];
+            this._create_form('param', {
                 container: container,
                 beforeShow: function() {
                     if (self.task.on_param_form_created) {
@@ -5104,7 +5155,7 @@
         },
 
         close_param_form: function() {
-            this.close_form('param_form');
+            this._close_form('param_form');
         },
 
         print: function(p1, p2) {
@@ -5115,20 +5166,9 @@
         },
 
         _print: function() {
-            var i = 0,
-                len = arguments.length,
-                create_form = true,
-                callback;
-            for (; i < len; i++) {
-                switch (typeof arguments[i]) {
-                    case "function":
-                        callback = arguments[i];
-                        break;
-                    case "boolean":
-                        create_form = arguments[i];
-                        break;
-                }
-            }
+            var args = this._check_args(arguments),
+                callback = args['function'],
+                create_form = args['boolean'];
             if (!create_form) {
                 this.eachParam(function(param) {
                     if (param.edit_visible) {
@@ -5142,7 +5182,6 @@
             } else {
                 this.process_report(callback);
             }
-
         },
 
         checkParams: function() {
@@ -5394,6 +5433,8 @@
             "lookup_item",
             "master_field",
             "lookup_field",
+            "lookup_field1",
+            "lookup_field2",
             "view_visible",
             "view_index",
             "edit_visible",
@@ -5408,6 +5449,8 @@
             "editable",
             "_alignment",
             "lookup_values",
+            "multi_select",
+            "multi_select_all",
             "enable_typeahead",
             "field_help",
             "field_placeholder"
@@ -5613,6 +5656,14 @@
             if (this.data_type === consts.DATETIME && result) {
                 result = result.replace('T', ' ');
             }
+            else if (this.multi_select) {
+                if (result instanceof Set) {
+                    result = Array.from(result);
+                    if (!result.length) {
+                        result = null;
+                    }
+                }
+            }
             return result;
         },
 
@@ -5638,7 +5689,8 @@
                             break;
                     }
                 }
-            } else {
+            }
+            else {
                 switch (this.data_type) {
                     case consts.DATE:
                         value = this.convert_date(value);
@@ -5716,17 +5768,6 @@
             }
         },
 
-        _is_filter_value: function(value) {
-            if (this.field_kind === consts.FILTER_FIELD) {
-                if ($.inArray(this.filter.filter_type, [consts.FILTER_IN, consts.FILTER_NOT_IN]) !== -1) {
-                    if (!$.isArray(value)) {
-                        this.do_on_error('Filter "' + this.filter.filter_name + '" value must be an array');
-                    }
-                    return true;
-                }
-            }
-        },
-
         set_value: function(value, lookup_value, slave_field_values, lookup_item) {
             var error;
             if (value === undefined) {
@@ -5737,7 +5778,7 @@
             this.new_lookup_value = lookup_value;
             if (value !== null) {
                 this.new_value = value;
-                if (!this._is_filter_value(value)) {
+                if (!this.multi_select) {
                     switch (this.data_type) {
                         case consts.INTEGER:
                             this.new_value = value;
@@ -5804,7 +5845,15 @@
             if (this.lookup_values) {
                 return consts.TEXT;
             } else if (this.lookup_item) {
-                return this.lookup_item._field_by_name(this.lookup_field).data_type;
+                if (this.lookup_field2) {
+                    return this.lookup_item2._field_by_name(this.lookup_field2).data_type;
+                }
+                else if (this.lookup_field1) {
+                    return this.lookup_item1._field_by_name(this.lookup_field1).data_type;
+                }
+                else {
+                    return this.lookup_item._field_by_name(this.lookup_field).data_type;
+                }
             } else {
                 return this.data_type
             }
@@ -5895,8 +5944,27 @@
 
         get_display_text: function() {
             var res,
+                len,
+                value,
                 result = '';
-            if (this.lookup_values) {
+            if (this.multi_select) {
+                value = this.raw_value;
+                if (value instanceof Set) {
+                    len = value.size;
+                }
+                else if (value instanceof Array) {
+                    len = value.length;
+                }
+                if (len) {
+                    if (len === 1 && this.lookup_value) {
+                        result = this.lookup_value;
+                    }
+                    else {
+                        result = language.items_selected.replace('%s', len);
+                    }
+                }
+            }
+            else if (this.lookup_values) {
                 try {
                     result = this._get_value_in_list();
                 } catch (e) {}
@@ -6502,6 +6570,10 @@
                 }
                 this.field.field_help = this.filter_help;
                 this.field.field_placeholder = this.filter_placeholder;
+                this.field.multi_select_all = this.multi_select_all;
+                if (this.filter_type === consts.FILTER_IN || this.filter_type === consts.FILTER_NOT_IN) {
+                    this.field.multi_select = true;
+                }
                 if (this.filter_type === consts.FILTER_RANGE) {
                     this.field1 = this.create_field(field);
                     this.field1.field_help = undefined;
@@ -6531,6 +6603,7 @@
             "filter_caption",
             "field_name",
             "filter_type",
+            "multi_select_all",
             "data_type",
             "visible",
             "filter_help",
@@ -7086,12 +7159,9 @@
                     row_line_count: 1,
                     expand_selected_row: 0,
                     auto_fit_width: true,
-                    multi_select: false,
-                    multi_select_title: '',
-                    multi_select_colum_width: undefined,
-                    multi_select_get_selected: undefined,
-                    multi_select_set_selected: undefined,
-                    multi_select_select_all: undefined,
+                    selections: undefined,
+                    select_all: false,
+                    selection_limit: 1500,
                     tabindex: 0,
                     striped: true,
                     dblclick_edit: true,
@@ -7106,6 +7176,7 @@
                     append_on_lastrow_keydown: false,
                     sortable: false,
                     sort_fields: undefined,
+                    sort_add_primary: false,
                     row_callback: undefined,
                     title_callback: undefined,
                     show_footer: undefined,
@@ -7127,40 +7198,7 @@
             this._sorted_fields = [];
             this._multiple_sort = false;
             this.on_dblclick = this.options.on_dblclick;
-            if (!this.options.multi_select &&
-                this.item.lookup_field &&
-                this.item.lookup_field.field_kind === consts.FILTER_FIELD &&
-                (this.item.lookup_field.filter.filter_type === consts.FILTER_IN ||
-                this.item.lookup_field.filter.filter_type === consts.FILTER_NOT_IN)) {
-                this.options.multi_select = true;
-                this._filter_dict = {}
-                if (this.item.lookup_field.value && this.item.lookup_field.value.length) {
-                    for (var i = 0; i < this.item.lookup_field.value.length; i++) {
-                        this._filter_dict[this.item.lookup_field.value[i]] = true;
-                    }
-                }
-                this.options.multi_select_get_selected = function(item) {
-                        return self._filter_dict[item._primary_key_field.value]
-                    },
-                this.options.multi_select_set_selected = function(item, value) {
-                    var ids = [];
-                    if (value) {
-                        self._filter_dict[item._primary_key_field.value] = true;
-                    } else {
-                        delete self._filter_dict[item._primary_key_field.value];
-                    }
-                    for (var id in self._filter_dict) {
-                        if (self._filter_dict.hasOwnProperty(id)) {
-                            ids.push(parseInt(id, 10));
-                        }
-                    }
-                    if (ids.length) {
-                        self.item.lookup_field.set_value(ids, language.items_selected.replace('%s', ids.length));
-                    } else {
-                        self.item.lookup_field.set_value(null, '');
-                    }
-                }
-            }
+            this.init_selections();
             this.page = 0;
             this.recordCount = 0;
             this.cellWidths = {};
@@ -7187,6 +7225,160 @@
                     },
                     0
                 );
+            }
+        },
+
+        init_selections: function() {
+            var value;
+            if (this.options.selections && this.options.selections instanceof Set) {
+                this.selections = this.options.selections;
+            }
+            else if (this.item.lookup_field && this.item.lookup_field.multi_select) {
+                value = this.item.lookup_field.raw_value;
+                this.options.select_all = this.item.lookup_field.multi_select_all;
+                if (value instanceof Set) {
+                    this.selections = value;
+                }
+                else if (value instanceof Array) {
+                    this.selections = new Set(value);
+                }
+                else {
+                    this.selections = new Set();
+                }
+            }
+        },
+
+        selections_update_lookup_field: function() {
+            if (this.item.lookup_field && this.item.lookup_field.multi_select) {
+                if (this.selections.size === 1 && this.selections.has(this.item._primary_key_field.value)) {
+                    this.item.lookup_field.set_value(this.selections, this.item.field_by_name(this.item.lookup_field.lookup_field).display_text);
+                }
+                else {
+                    this.item.lookup_field.set_value(this.selections, '');
+                }
+            }
+            this.$element.find('th .multi-select .sel-count').text(this.selections.size);
+        },
+
+        selections_get_selected: function() {
+            return this.selections.has(this.item._primary_key_field.value);
+        },
+
+        selections_can_change: function(value) {
+            var valid = true;
+            if (value && this.options.selection_limit) {
+                valid = (this.options.selection_limit &&
+                    this.options.selection_limit >= this.selections.size + 1);
+                if (!valid) {
+                    this.item.warning(language.selection_limit_exceeded.replace('%s', this.options.selection_limit))
+                }
+            }
+            return valid;
+        },
+
+        selections_set_selected: function(value) {
+            var result = value,
+                all_selected = false;
+            if (this.selections_can_change(value)) {
+                if (value) {
+                    this.selections.add(this.item._primary_key_field.value);
+                    all_selected = true;
+                } else {
+                    this.selections.delete(this.item._primary_key_field.value);
+                    all_selected = this.selections_get_all_selected();
+                }
+                this.selections_update_lookup_field();
+                this.$outer_table.find('th input.multi-select').prop('checked', all_selected);
+            }
+            else {
+                result = false;
+            }
+            return result;
+        },
+
+        selections_get_all_selected: function() {
+            var self = this,
+                clone = this.item.clone(),
+                result = false;
+            if (this.options.select_all) {
+                result = this.selections.size > 0;
+            }
+            else {
+                clone.each(function(c) {
+                    if (self.selections.has(c._primary_key_field.value)) {
+                        result = true;
+                        return false;
+                    }
+                })
+            }
+            return result;
+        },
+
+        selections_set_all_selected: function(value) {
+            var self = this,
+                i,
+                field,
+                fields = [],
+                limit,
+                exceeded,
+                mess,
+                copy,
+                clone;
+            if (this.options.select_all) {
+                if (value) {
+                    copy = this.item.copy({handlers: false})
+                    copy._where_list = this.item._open_params.__filters;
+                    copy._order_by_list = this.item._open_params.__order;
+                    if (this.options.selection_limit) {
+                        limit = this.options.selection_limit;
+                    }
+                    fields.push(copy._primary_key);
+                    for (i = 0; i < copy._order_by_list.length; i++) {
+                        field = this.item.field_by_ID(copy._order_by_list[i][0]);
+                        if (fields.indexOf(field.field_name) === -1) {
+                            fields.push(field.field_name);
+                        }
+                    }
+                    copy.open({fields: fields, limit: limit}, function() {
+                        if (self.options.selection_limit && copy.record_count() >= self.options.selection_limit) {
+                            self.item.warning(language.selected_first.replace('%s', self.options.selection_limit));
+                        }
+                        self.selections.clear();
+                        copy.each(function(c) {
+                            self.selections.add(c._primary_key_field.value);
+                        });
+                        self.$table.find('td input.multi-select').prop('checked', value);
+                        self.selections_update_lookup_field();
+                    })
+                }
+                else {
+                    this.selections.clear();
+                    this.$table.find('td input.multi-select').prop('checked', value);
+                    this.selections_update_lookup_field();
+                }
+            }
+            else {
+                clone = this.item.clone();
+                clone.each(function(c) {
+                    if (self.selections_can_change(value)) {
+                        if (value) {
+                            self.selections.add(c._primary_key_field.value);
+                        } else {
+                            self.selections.delete(c._primary_key_field.value)
+                        }
+                    }
+                    else {
+                        exceeded = true;
+                        return false;
+                    }
+                })
+                if (exceeded) {
+                    this.build();
+                }
+                else {
+                    self.$table.find('td input.multi-select').prop('checked', value);
+                }
+                this.selections_update_lookup_field();
             }
         },
 
@@ -7233,7 +7425,7 @@
             }
             this.initSelectedField();
             this.colspan = this.fields.length;
-            if (this.options.multi_select) {
+            if (this.selections) {
                 this.colspan += 1;
             }
         },
@@ -7269,7 +7461,7 @@
                 delta = 0,
                 mouseX;
             this.colspan = this.fields.length;
-            if (this.options.multi_select) {
+            if (this.selections) {
                 this.colspan += 1;
             }
             this.$element.append($(
@@ -7367,25 +7559,27 @@
                 }
             });
 
-            if (this.options.multi_select) {
-                var self = this;
-                this.$table.on('mousedown', 'td input.multi_select', function(e) {
+            if (this.selections) {
+                this.$table.on('mousedown', 'td input.multi-select', function(e) {
                     var $this = $(this),
                         checked = $this.is(':checked');
-                    e.preventDefault();
-                    e.stopPropagation();
                     self.clicked(e, $this.closest('td'));
-                    if (self.options.multi_select_set_selected) {
-                        self.options.multi_select_set_selected.call(self.item, self.item, !checked);
-                        self.update_select_all_checkbox();
-                    }
+                    self.selections_set_selected(!checked);
+                    $this.prop('checked', self.selections_get_selected());
                 });
-            }
 
-            if (this.options.multi_select_select_all) {
-                var self = this;
-                this.$outer_table.on('click', 'th input.multi_select', function(e) {
-                    self.options.multi_select_select_all.call(self.item, self.item, $(this).is(':checked'));
+                this.$table.on('click', 'td input.multi-select', function(e) {
+                    var $this = $(this);
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setTimeout(function() {
+                            $this.prop('checked', self.selections_get_selected());
+                        }, 0
+                    );
+                });
+
+                this.$outer_table.on('click', 'th input.multi-select', function(e) {
+                    self.selections_set_all_selected($(this).is(':checked'));
                 });
             }
 
@@ -7546,6 +7740,11 @@
                     if (self.item.master || !self.item.paginate) {
                         self.item._sort(self._sorted_fields);
                     } else {
+                        if (self.options.sort_add_primary) {
+                            field = self.item[self.item._primary_key]
+                            desc = self._sorted_fields[self._sorted_fields.length - 1][1]
+                            self._sorted_fields.push([field.ID, desc]);
+                        }
                         self.item._open_params.__order = self._sorted_fields;
                         self.item.open({
                             params: self.item._open_params,
@@ -7594,7 +7793,7 @@
             this.fillTitle($element);
             this.createFooter($element);
             $table = $element.find("table.inner-table");
-            if (this.options.multi_select) {
+            if (this.selections) {
                 row = '<tr><td><div><input type="checkbox"></div></td><td><div>W</div></td></tr>';
             } else {
                 row = '<tr><td><div>W</div></td></tr>';
@@ -7882,7 +8081,9 @@
                 div,
                 cell,
                 input,
+                checked = '',
                 field_name,
+                sel_count,
                 desc,
                 order_fields = {},
                 title = '',
@@ -7906,18 +8107,20 @@
 
             heading = $element.find("table.outer-table thead tr:first");
             heading.empty();
-            if (this.options.multi_select) {
-                if (this.options.multi_select_select_all) {
-                    input = $('<input class="multi_select" type="checkbox">');
-                } else if (this.options.multi_select_title) {
-                    title = this.options.multi_select_title;
+            if (this.selections) {
+                if (this.selections_get_all_selected()) {
+                    checked = 'checked';
                 }
-                div = $('<div class="text-center multi_select" style="overflow: hidden">' + title + '</div>')
-                if (input) {
-                    div.append(input);
+                div = $('<div class="text-center multi-select" style="overflow: hidden">' + title + '</div>')
+                sel_count = $('<p class="sel-count text-center">' + this.selections.size + '</p>')
+                if (this.options.select_all) {
+                    sel_count.addClass('select-all');
                 }
-                cell = $('<th class="bottom-border multi_select"></th>').append(div);
-                cellWidth = this.getCellWidth('multi_select');
+                div.append(sel_count);
+                input = $('<input class="multi-select" type="checkbox" ' + checked + '>');
+                div.append(input);
+                cell = $('<th class="bottom-border multi-select"></th>').append(div);
+                cellWidth = this.getCellWidth('multi-select');
                 if (cellWidth && this.fields.length) {
                     cell.width(cellWidth);
                     div.width(cellWidth);
@@ -7928,8 +8131,7 @@
             for (i = 0; i < len; i++) {
                 field = this.fields[i];
                 div = $('<div class="text-center ' + field.field_name +
-                    '" style="overflow: hidden"><p style="vertical-align: middle; margin: 0;">' +
-                    field.field_caption + '</p></div>');
+                    '" style="overflow: hidden"><p>' + field.field_caption + '</p></div>');
                 cell = $('<th class="' + field.field_name + '" data-field_name="' + field.field_name + '" bottom-border"></th>').append(div);
                 if (!this.options.title_word_wrap) {
                     div.css('height', this.textHeight);
@@ -7964,9 +8166,9 @@
             }
             footer = $element.find("table.outer-table tfoot tr:first");
             footer.empty();
-            if (this.options.multi_select) {
-                div = $('<div class="text-center multi_select" style="overflow: hidden"></div>')
-                cell = $('<th class="multi_select"></th>').append(div);
+            if (this.selections) {
+                div = $('<div class="text-center multi-select" style="overflow: hidden"></div>')
+                cell = $('<th class="multi-select"></th>').append(div);
                 footer.append(cell);
             }
             len = this.fields.length;
@@ -8135,9 +8337,9 @@
                 len = this.fields.length;
             if (this.item.record_count()) {
                 $row = this.$table.find("tr:first-child");
-                if (this.options.multi_select) {
-                    $th = this.$head.find('th.' + 'multi_select');
-                    $td = $row.find('td.' + 'multi_select');
+                if (this.selections) {
+                    $th = this.$head.find('th.' + 'multi-select');
+                    $td = $row.find('td.' + 'multi-select');
                     width = $th.find('div').width()
                     $th.find('div').width(width)
                     $td.find('div').width(width);
@@ -8161,19 +8363,8 @@
         },
 
         update_selected: function(row) {
-            var multi_sel,
-                checked = false;
             if (!row) {
                 row = this.itemRow();
-            }
-            if (this.options.multi_select && this.options.multi_select_get_selected) {
-                if (this.options.multi_select_get_selected.call(this.item, this.item)) {
-                    checked = true;
-                }
-                multi_sel = row.find('input.multi_select');
-                if (multi_sel.length) {
-                    multi_sel[0].checked = checked;
-                }
             }
             if (this.options.row_callback) {
                 this.options.row_callback(row, this.item);
@@ -8431,12 +8622,10 @@
                         break;
                     case 32:
                         e.preventDefault();
-                        if (this.options.multi_select_set_selected) {
-                            multi_sel = this.itemRow().find('input.multi_select');
-                            if (multi_sel.length) {
-                                multi_sel[0].checked = !multi_sel[0].checked;
-                                this.options.multi_select_set_selected.call(this.item, this.item, multi_sel[0].checked);
-                            }
+                        if (this.selections) {
+                            multi_sel = this.itemRow().find('input.multi-select');
+                            this.selections_set_selected(!multi_sel[0].checked);
+                            multi_sel.prop('checked', this.selections_get_selected());
                         }
                         break
                 }
@@ -8655,13 +8844,11 @@
                 (this.autoFieldWidth && this.fieldWidthUpdated);
             len = this.fields.length;
             rowStr = '';
-            if (this.options.multi_select) {
-                if (this.options.multi_select_get_selected) {
-                    if (this.options.multi_select_get_selected.call(this.item, this.item)) {
-                        checked = 'checked';
-                    }
+            if (this.selections) {
+                if (this.selections_get_selected()) {
+                    checked = 'checked';
                 }
-                rowStr += this.newColumn('multi_select', 'center', '<input class="multi_select" type="checkbox" ' + checked + '>', -1, setFieldWidth);
+                rowStr += this.newColumn('multi-select', 'center', '<input class="multi-select" type="checkbox" ' + checked + '>', -1, setFieldWidth);
             }
             for (i = 0; i < len; i++) {
                 field = this.fields[i];
@@ -8763,13 +8950,9 @@
                 this.$table.css('table-layout', 'auto');
                 this.$outer_table.css('table-layout', 'auto');
                 tmpRow = '<tr>'
-                if (this.options.multi_select) {
-                    if (this.options.multi_select_title) {
-                        title = this.options.multi_select_title
-                    }
-                    tmpRow = tmpRow + '<th class="multi_select">' +
-                        '<div class="text-center multi_select" style="overflow: hidden">' + title +
-                        '</div>' +
+                if (this.selections) {
+                    tmpRow = tmpRow + '<th class="multi-select">' +
+                        '<div class="text-center multi-select" style="overflow: hidden"></div>' +
                         '</th>';
                 }
                 len = this.fields.length;
@@ -8779,21 +8962,14 @@
                 }
                 tmpRow = $(tmpRow + '</tr>');
                 this.$table.prepend(tmpRow);
-                if (this.options.multi_select) {
-                    if (this.options.multi_select_colum_width) {
-                        tmpRow.find(".multi_select").css("width", this.options.multi_select_colum_width);
-                    } else {
-                        tmpRow.find(".multi_select").css("width", '3%');
-                    }
-                }
                 for (var field_name in this.options.column_width) {
                     if (this.options.column_width.hasOwnProperty(field_name)) {
                         tmpRow.find("." + field_name).css("width", this.options.column_width[field_name]);
                     }
                 }
-                if (this.options.multi_select) {
-                    cell = row.find("td." + 'multi_select');
-                    this.setCellWidth('multi_select', cell.width())
+                if (this.selections) {
+                    cell = row.find("td." + 'multi-select');
+                    this.setCellWidth('multi-select', cell.width())
                 }
                 for (i = 0; i < len; i++) {
                     field = this.fields[i];
@@ -8803,11 +8979,11 @@
                 this.$table.css('table-layout', 'fixed');
                 this.$outer_table.css('table-layout', 'fixed');
                 this.fillTitle(container);
-                if (this.options.multi_select) {
-                    cell = row.find("td." + 'multi_select');
-                    headCell = this.$head.find("th." + 'multi_select');
-                    footCell = this.$foot.find("th." + 'multi_select');
-                    cellWidth = this.getCellWidth('multi_select');
+                if (this.selections) {
+                    cell = row.find("td." + 'multi-select');
+                    headCell = this.$head.find("th." + 'multi-select');
+                    footCell = this.$foot.find("th." + 'multi-select');
+                    cellWidth = this.getCellWidth('multi-select');
                     cell.find('div').width(cellWidth);
                     cell.width(cellWidth);
                     headCell.find('div').width(cellWidth);
@@ -8847,8 +9023,6 @@
 
             container.remove();
 
-            this.update_select_all_checkbox();
-
             this.syncronize();
             if (is_focused) {
                 this.focus();
@@ -8859,18 +9033,6 @@
             }
             if (callback) {
                 callback.call(this);
-            }
-        },
-
-        update_select_all_checkbox: function() {
-            var self = this;
-            if (this.options.multi_select_select_all) {
-                setTimeout(function() {
-                        self.$outer_table.find('th input.multi_select')
-                            .prop('checked', self.$table.find('td input.multi_select').is(":checked"));
-                    },
-                    200
-                );
             }
         },
 
@@ -9200,9 +9362,9 @@
                 }
                 if (this.field.get_lookup_data_type() === consts.BOOLEAN) {
                     if (this.field.get_lookup_value()) {
-                        this.$input.attr("checked", "checked");
+                        this.$input.prop("checked", true);
                     } else {
-                        this.$input.removeAttr("checked", "checked");
+                        this.$input.prop("checked", false);
                     }
                 }
                 if (this.field.lookup_values) {

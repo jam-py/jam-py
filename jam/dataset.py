@@ -4,13 +4,13 @@ import datetime
 import traceback
 import common
 
-FIELD_DEF = FIELD_ID, FIELD_NAME, NAME, FIELD_DATA_TYPE, REQUIRED, LOOKUP_ITEM, MASTER_FIELD, LOOKUP_FIELD, \
-    FIELD_VISIBLE, FIELD_VIEW_INDEX, FIELD_EDIT_VISIBLE, FIELD_EDIT_INDEX, FIELD_READ_ONLY, FIELD_EXPAND, FIELD_WORD_WRAP, \
-    FIELD_SIZE, FIELD_DEFAULT_VALUE, FIELD_DEFAULT, FIELD_CALCULATED, FIELD_EDITABLE, FIELD_ALIGNMENT, FIELD_LOOKUP_VALUES, \
-    FIELD_ENABLE_TYPEAHEAD, FIELD_HELP, FIELD_PLACEHOLDER = range(25)
+FIELD_DEF = FIELD_ID, FIELD_NAME, NAME, FIELD_DATA_TYPE, REQUIRED, LOOKUP_ITEM, MASTER_FIELD, LOOKUP_FIELD, LOOKUP_FIELD1, \
+    LOOKUP_FIELD2, FIELD_VISIBLE, FIELD_VIEW_INDEX, FIELD_EDIT_VISIBLE, FIELD_EDIT_INDEX, FIELD_READ_ONLY, FIELD_EXPAND, \
+    FIELD_WORD_WRAP, FIELD_SIZE, FIELD_DEFAULT_VALUE, FIELD_DEFAULT, FIELD_CALCULATED, FIELD_EDITABLE, FIELD_ALIGNMENT, \
+    FIELD_LOOKUP_VALUES, FIELD_MULTI_SELECT, FIELD_MULTI_SELECT_ALL, FIELD_ENABLE_TYPEAHEAD, FIELD_HELP, FIELD_PLACEHOLDER = range(29)
 
-FILTER_DEF = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, FILTER_TYPE, FILTER_DATA_TYPE, FILTER_VISIBLE, \
-    FILTER_HELP, FILTER_PLACEHOLDER = range(8)
+FILTER_DEF = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, FILTER_TYPE, FILTER_MULTI_SELECT, FILTER_DATA_TYPE, \
+    FILTER_VISIBLE, FILTER_HELP, FILTER_PLACEHOLDER = range(9)
 
 class DatasetException(Exception):
     pass
@@ -28,6 +28,10 @@ class DBField(object):
         self.lookup_item = field_def[LOOKUP_ITEM]
         self.master_field = field_def[MASTER_FIELD]
         self.lookup_field = field_def[LOOKUP_FIELD]
+        self.lookup_item1 = None
+        self.lookup_field1 = field_def[LOOKUP_FIELD1]
+        self.lookup_item2 = None
+        self.lookup_field2 = field_def[LOOKUP_FIELD2]
         self.read_only = field_def[FIELD_READ_ONLY]
         self.view_visible = field_def[FIELD_VISIBLE]
         self.view_index = field_def[FIELD_VIEW_INDEX]
@@ -42,6 +46,12 @@ class DBField(object):
         self.editable = field_def[FIELD_EDITABLE]
         self.alignment = field_def[FIELD_ALIGNMENT]
         self.lookup_values = field_def[FIELD_LOOKUP_VALUES]
+        self.multi_select = field_def[FIELD_MULTI_SELECT]
+        self.multi_select_all = field_def[FIELD_MULTI_SELECT_ALL]
+        self.enable_typeahead = field_def[FIELD_ENABLE_TYPEAHEAD]
+        self.field_help = field_def[FIELD_HELP]
+        self.field_placeholder = field_def[FIELD_PLACEHOLDER]
+
         self.field_type = common.FIELD_TYPE_NAMES[self.data_type]
         self.filter = None
         self.on_field_get_text_called = None
@@ -233,20 +243,12 @@ class DBField(object):
             if self.field_name == self.owner._deleted_flag and self.value != value:
                 raise DatasetException, u'%s, field - %s: сhanging of the deleted flag field is forbidden' % (self.owner.item_name, self.field_name)
 
-    def _is_filter_value(self, value):
-        if self.field_kind == common.FILTER_FIELD:
-            if self.filter.filter_type in (common.FILTER_IN, common.FILTER_NOT_IN):
-                if not type(value) in [list, tuple]:
-                    error = u'Filter "%s" value must be an array' % self.filter.filter_name
-                    self.do_on_error(error);
-                return True
-
     def set_value(self, value, lookup_value=None, lookup_item=None):
         self._check_system_field_value(value)
         self.new_value = None
         if not value is None:
             self.new_value = value
-            if not self._is_filter_value(value):
+            if not self.multi_select:
                 if self.data_type == common.BOOLEAN:
                     if bool(value):
                         self.new_value = 1
@@ -546,6 +548,7 @@ class DBFilter(object):
         self.field_name = filter_def[FILTER_FIELD_NAME]
         self.filter_type = filter_def[FILTER_TYPE]
         self.data_type = filter_def[FILTER_DATA_TYPE]
+        self.multi_select_all = filter_def[FILTER_MULTI_SELECT]
         self.visible = filter_def[FILTER_VISIBLE]
         self.filter_help = filter_def[FILTER_HELP]
         if type(self.field_name) == int:
@@ -554,6 +557,8 @@ class DBFilter(object):
         if self.field_name:
             self.field = FilterField(self, field, self.owner)
             setattr(self, self.field_name, self.field)
+            if self.filter_type in (common.FILTER_IN, common.FILTER_NOT_IN):
+                self.field.multi_select = True;
             if self.filter_type == common.FILTER_RANGE:
                 self.field1 = FilterField(self, field, self.owner)
 
@@ -929,9 +934,7 @@ class AbstractDataSet(object):
         self._filtered = False
         self.expanded = True
         self._open_params = {}
-        self.post_local = False
         self._disabled_count = 0
-        self.open_params = {}
         self._is_delta = False
         self.keep_history = False
         self.parent_read_only = True
@@ -969,8 +972,8 @@ class AbstractDataSet(object):
         return self
 
     def add_field_def(self, field_ID, field_name, field_caption, data_type, required, lookup_item, lookup_field,
-            view_visible, view_index, edit_visible, edit_index, read_only, expand, word_wrap,
-            field_size, default_value, is_default, calculated, editable, master_field, alignment,
+            lookup_field1, lookup_field2, view_visible, view_index, edit_visible, edit_index, read_only, expand,
+            word_wrap, field_size, default_value, is_default, calculated, editable, master_field, alignment,
             lookup_values, enable_typeahead, field_help, field_placeholder):
         field_def = [None for i in range(len(FIELD_DEF))]
         field_def[FIELD_ID] = field_ID
@@ -981,6 +984,8 @@ class AbstractDataSet(object):
         field_def[LOOKUP_ITEM] = lookup_item
         field_def[MASTER_FIELD] = master_field
         field_def[LOOKUP_FIELD] = lookup_field
+        field_def[LOOKUP_FIELD1] = lookup_field1
+        field_def[LOOKUP_FIELD2] = lookup_field2
         field_def[FIELD_READ_ONLY] = read_only
         field_def[FIELD_VISIBLE] = view_visible
         field_def[FIELD_VIEW_INDEX] = view_index
@@ -1001,13 +1006,14 @@ class AbstractDataSet(object):
         self.field_defs.append(field_def)
         return field_def
 
-    def add_filter_def(self, filter_name, filter_caption, field_name, filter_type, \
-        data_type, visible, filter_help, filter_placeholder):
+    def add_filter_def(self, filter_name, filter_caption, field_name, filter_type,
+            multi_select_all, data_type, visible, filter_help, filter_placeholder):
         filter_def = [None for i in range(len(FILTER_DEF))]
         filter_def[FILTER_OBJ_NAME] = filter_name
         filter_def[FILTER_NAME] = filter_caption
         filter_def[FILTER_FIELD_NAME] = field_name
         filter_def[FILTER_TYPE] = filter_type
+        filter_def[FILTER_MULTI_SELECT] = multi_select_all
         filter_def[FILTER_DATA_TYPE] = data_type
         filter_def[FILTER_VISIBLE] = visible
         filter_def[FILTER_HELP] = filter_help
@@ -1091,7 +1097,21 @@ class AbstractDataSet(object):
             if field.master_field and type(field.master_field) == int:
                 field.master_field = self._field_by_ID(field.master_field)
             if field.lookup_field and type(field.lookup_field) == int:
-                field.lookup_field = field.lookup_item._field_by_ID(field.lookup_field).field_name
+                lookup_field = field.lookup_item._field_by_ID(field.lookup_field)
+                field.lookup_field = lookup_field.field_name
+                if lookup_field.lookup_item and field.lookup_field1:
+                    field.lookup_item1 = lookup_field.lookup_item
+                    if type(field.lookup_item1) == int:
+                        field.lookup_item1 = self.task.item_by_ID(field.lookup_item1)
+                    if type(field.lookup_field1) == int:
+                        lookup_field1 = field.lookup_item1._field_by_ID(field.lookup_field1)
+                        field.lookup_field1 = lookup_field1.field_name
+                    if lookup_field1.lookup_item and field.lookup_field2:
+                        field.lookup_item2 = lookup_field1.lookup_item
+                        if type(field.lookup_item2) == int:
+                            field.lookup_item2 = self.task.item_by_ID(field.lookup_item2)
+                        if type(field.lookup_field2) == int:
+                            field.lookup_field2 = field.lookup_item2._field_by_ID(field.lookup_field2).field_name
             if field.lookup_values and type(field.lookup_values) == int:
                 try:
                     field.lookup_values = self.task.lookup_lists[field.lookup_values]
@@ -1626,7 +1646,6 @@ class AbstractDataSet(object):
         self.item_state = common.STATE_INSERT
         self._dataset.append(self.new_record())
         self._cur_row = len(self._dataset) - 1
-#        self._modified = False
         self.record_status = common.RECORD_INSERTED
         self.update_controls(common.UPDATE_APPEND)
         self._do_after_scroll()
@@ -1866,12 +1885,18 @@ class AbstractDataSet(object):
             except Exception, e:
                 raise RuntimeError('%s: set_filters method arument error %s=%s: %s' % (self.item_name, filter_name, filters[filter_name], e))
 
-    def find_default_field(self):
-        for field in self.fields:
-            if field.is_default:
-                return field
+    def get_default_field(self):
+        try:
+            return self._default_field
+        except:
+            self._default_field = None
+            for field in self.fields:
+                if field.is_default:
+                    self._default_field = field
+                    break
+            return self._default_field
 
-    default_field = property (find_default_field)
+    default_field = property (get_default_field)
 
     def round(self, value, dec):
         return round(value, dec)
