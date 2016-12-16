@@ -36,7 +36,7 @@ def read_language(task):
 
 def read_setting(task):
     sql = 'SELECT '
-    keys = common.DEFAULT_SETTINGS.keys()
+    keys = list(common.DEFAULT_SETTINGS.iterkeys())
     for key in keys:
         sql += 'F_%s, ' % key
     sql = sql[:-2]
@@ -57,7 +57,7 @@ def read_setting(task):
                 common.SETTINGS[key] = setting_type(rec[i])
         except:
             common.SETTINGS[key] = common.DEFAULT_SETTINGS[key]
-    for key in common.SETTINGS.keys():
+    for key in common.SETTINGS.iterkeys():
         common.__dict__[key] = common.SETTINGS[key]
 
 def get_value_list(str_list, order=False):
@@ -75,8 +75,7 @@ def get_value_list(str_list, order=False):
 def write_setting(task):
     sql = 'UPDATE SYS_PARAMS SET '
     params = []
-    keys = common.DEFAULT_SETTINGS.keys()
-    for key in keys:
+    for key in common.DEFAULT_SETTINGS.iterkeys():
         value = common.SETTINGS[key]
         setting_type = type(common.DEFAULT_SETTINGS[key])
         if setting_type == bool:
@@ -99,13 +98,13 @@ def create_items(task):
     task.sys_catalogs = Group(task, 'catalogs', task.lang['catalogs'])
     task.sys_tables = Group(task, 'tables', task.lang['tables'], visible=False)
 
-    task.sys_params = task.sys_catalogs.add_catalog('sys_params', u'', 'SYS_PARAMS')
+    task.sys_params = task.sys_catalogs.add_catalog('sys_params', '', 'SYS_PARAMS')
 
-    task.sys_params.add_field(1, 'id', u'ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_params.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_params.add_field(1, 'id', 'ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_params.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_params.add_field(3, 'f_safe_mode', task.lang['safe_mode'], common.BOOLEAN)
-    task.sys_params.add_field(4, 'f_debugging', 'Debugging', common.BOOLEAN, edit_visible=False)
-    task.sys_params.add_field(5, 'f_con_pool_size', u'Connection pool size', common.INTEGER, required=True)
+    task.sys_params.add_field(4, 'f_debugging', task.lang['debugging'], common.BOOLEAN, edit_visible=False)
+    task.sys_params.add_field(5, 'f_con_pool_size', task.lang['con_pool_size'], common.INTEGER, required=True)
     task.sys_params.add_field(6, 'f_decimal_point', task.lang['decimal_point'], common.TEXT, size = 1)
     task.sys_params.add_field(7, 'f_mon_decimal_point', task.lang['mon_decimal_point'], common.TEXT, size = 1)
     task.sys_params.add_field(8, 'f_mon_thousands_sep', task.lang['mon_thousands_sep'], common.TEXT, size = 3)
@@ -124,88 +123,88 @@ def create_items(task):
     task.sys_params.add_field(21, 'f_language', task.lang['language'], common.INTEGER, required=True,
         lookup_values=get_value_list(langs.LANGUAGE, True), edit_visible=False)
     task.sys_params.add_field(22, 'f_author', task.lang['author'], common.TEXT, size = 30, edit_visible=False)
-    task.sys_params.add_field(23, 'f_version', u'Version', common.TEXT, size = 15)
-    task.sys_params.add_field(24, 'f_mp_pool', u'Multiprocessing connection pool', common.BOOLEAN)
-    task.sys_params.add_field(25, 'f_persist_con', u'Persistent connection', common.BOOLEAN)
-    task.sys_params.add_field(26, 'f_single_file_js', u'All JS modules in a single file', common.BOOLEAN)
-    task.sys_params.add_field(27, 'f_dynamic_js', u'Dynamic JS modules loading', common.BOOLEAN)
-    task.sys_params.add_field(28, 'f_compressed_js', u'Compressed JS, CSS files', common.BOOLEAN)
-    task.sys_params.add_field(29, 'f_field_id_gen', u'f_field_id_gen', common.INTEGER)
+    task.sys_params.add_field(23, 'f_version', task.lang['version'], common.TEXT, size = 15)
+    task.sys_params.add_field(24, 'f_mp_pool', task.lang['mp_pool'], common.BOOLEAN)
+    task.sys_params.add_field(25, 'f_persist_con', task.lang['persist_con'], common.BOOLEAN)
+    task.sys_params.add_field(26, 'f_single_file_js', task.lang['single_file_js'], common.BOOLEAN)
+    task.sys_params.add_field(27, 'f_dynamic_js', task.lang['dynamic_js'], common.BOOLEAN)
+    task.sys_params.add_field(28, 'f_compressed_js', task.lang['compressed_js'], common.BOOLEAN)
+    task.sys_params.add_field(29, 'f_field_id_gen', 'f_field_id_gen', common.INTEGER)
 
-    task.sys_items = task.sys_catalogs.add_catalog('sys_items', u'Items', 'SYS_ITEMS')
+    task.sys_items = task.sys_catalogs.add_catalog('sys_items', 'Items', 'SYS_ITEMS')
     task.sys_fields = task.sys_tables.add_table('sys_fields', task.lang['fields'], 'SYS_FIELDS')
 
-    task.sys_items.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.sys_items.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_items.add_field(3, 'parent', u'Parent id', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_items.add_field(4, 'task_id', u'Task id', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_items.add_field(5, 'type_id', u'Type id', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_items.add_field(6, 'table_id', u'Table id', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_items.add_field(7, 'has_children', u'Has_children', common.BOOLEAN, visible=False, edit_visible=False)
-    task.sys_items.add_field(8, 'f_index', u'Index', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_items.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.sys_items.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_items.add_field(3, 'parent', 'Parent id', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_items.add_field(4, 'task_id', 'Task id', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_items.add_field(5, 'type_id', 'Type id', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_items.add_field(6, 'table_id', 'Table id', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_items.add_field(7, 'has_children', 'Has_children', common.BOOLEAN, visible=False, edit_visible=False)
+    task.sys_items.add_field(8, 'f_index', 'Index', common.INTEGER, visible=False, edit_visible=False)
     task.sys_items.add_field(9, 'f_name', task.lang['caption'], common.TEXT, required=True, size=256)
     task.sys_items.add_field(10, 'f_item_name', task.lang['name'], common.TEXT, required=True, size=256)
     task.sys_items.add_field(11, 'f_table_name', task.lang['table_name'], common.TEXT, size=256)
     task.sys_items.add_field(12, 'f_view_template', task.lang['report_template'], common.TEXT, size=256)
     task.sys_items.add_field(13, 'f_visible', task.lang['visible'], common.BOOLEAN)
-    task.sys_items.add_field(14, 'f_soft_delete', u'Soft delete', common.BOOLEAN)
+    task.sys_items.add_field(14, 'f_soft_delete', task.lang['soft_delete'], common.BOOLEAN)
     task.sys_items.add_field(15, 'f_client_module', task.lang['client_module'], common.BLOB, visible=False, edit_visible=False)
-    task.sys_items.add_field(16, 'f_web_client_module', u'Web_client_module', common.BLOB, visible=False, edit_visible=False)
+    task.sys_items.add_field(16, 'f_web_client_module', task.lang['client_module'], common.BLOB, visible=False, edit_visible=False)
     task.sys_items.add_field(17, 'f_server_module', task.lang['server_module'], common.BLOB, visible=False, edit_visible=False)
-    task.sys_items.add_field(18, 'f_info', u'Info', common.BLOB, visible=False, edit_visible=False)
-    task.sys_items.add_field(19, 'f_virtual_table', u'Virtual table', common.BOOLEAN)
-    task.sys_items.add_field(20, 'f_js_external', u'External js module', common.BOOLEAN)
-    task.sys_items.add_field(21, 'f_js_filename', u'js_file_name', common.TEXT, size=1024)
-    task.sys_items.add_field(22, 'f_primary_key', u'Primary key field', common.INTEGER, False, task.sys_fields, 'f_field_name')
-    task.sys_items.add_field(23, 'f_deleted_flag', u'Deleted flag field', common.INTEGER, False, task.sys_fields, 'f_field_name')
-    task.sys_items.add_field(24, 'f_master_id', u'Master ID field', common.INTEGER, False, task.sys_fields, 'f_field_name')
-    task.sys_items.add_field(25, 'f_master_rec_id', u'Master record id field', common.INTEGER, False, task.sys_fields, 'f_field_name')
+    task.sys_items.add_field(18, 'f_info', 'Info', common.BLOB, visible=False, edit_visible=False)
+    task.sys_items.add_field(19, 'f_virtual_table', task.lang['virtual_table'], common.BOOLEAN)
+    task.sys_items.add_field(20, 'f_js_external', task.lang['js_external'], common.BOOLEAN)
+    task.sys_items.add_field(21, 'f_js_filename', 'js_file_name', common.TEXT, size=1024)
+    task.sys_items.add_field(22, 'f_primary_key', task.lang['primary_key'], common.INTEGER, False, task.sys_fields, 'f_field_name')
+    task.sys_items.add_field(23, 'f_deleted_flag', task.lang['deleted_flag'], common.INTEGER, False, task.sys_fields, 'f_field_name')
+    task.sys_items.add_field(24, 'f_master_id', task.lang['master_id'], common.INTEGER, False, task.sys_fields, 'f_field_name')
+    task.sys_items.add_field(25, 'f_master_rec_id', task.lang['master_rec_id'], common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_items.add_field(26, 'f_js_funcs', 'f_js_funcs', common.BLOB, visible=False, edit_visible=False)
 
-    task.sys_items.add_filter('id', u'ID', 'id', common.FILTER_EQ, visible=False)
-    task.sys_items.add_filter('not_id', u'ID', 'id', common.FILTER_NE, visible=False)
-    task.sys_items.add_filter('parent', u'Parent', 'parent', common.FILTER_EQ, visible=False)
-    task.sys_items.add_filter('task_id', u'Task', 'task_id', common.FILTER_EQ, visible=False)
-    task.sys_items.add_filter('type_id', u'Type', 'type_id', common.FILTER_IN, visible=False)
-    task.sys_items.add_filter('table_id', u'Type', 'table_id', common.FILTER_EQ, visible=False)
-    task.sys_items.add_filter('type_id_gt', u'Type', 'type_id', common.FILTER_GT, visible=False)
+    task.sys_items.add_filter('id', 'ID', 'id', common.FILTER_EQ, visible=False)
+    task.sys_items.add_filter('not_id', 'ID', 'id', common.FILTER_NE, visible=False)
+    task.sys_items.add_filter('parent', 'Parent', 'parent', common.FILTER_EQ, visible=False)
+    task.sys_items.add_filter('task_id', 'Task', 'task_id', common.FILTER_EQ, visible=False)
+    task.sys_items.add_filter('type_id', 'Type', 'type_id', common.FILTER_IN, visible=False)
+    task.sys_items.add_filter('table_id', 'Type', 'table_id', common.FILTER_EQ, visible=False)
+    task.sys_items.add_filter('type_id_gt', 'Type', 'type_id', common.FILTER_GT, visible=False)
 
-    task.sys_tasks = task.sys_catalogs.add_catalog('sys_tasks', u'', 'SYS_TASKS')
-    task.sys_tasks.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_tasks.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_tasks.add_field(3, 'task_id', u'Task ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_tasks = task.sys_catalogs.add_catalog('sys_tasks', '', 'SYS_TASKS')
+    task.sys_tasks.add_field(1, 'id', 'Record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_tasks.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_tasks.add_field(3, 'task_id', 'Task ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_tasks.add_field(4, 'f_name', task.lang['caption'], common.TEXT, required=True, size=256, edit_visible=False)
     task.sys_tasks.add_field(5, 'f_item_name', task.lang['name'], common.TEXT, required=True, size=256, edit_visible=False)
-    task.sys_tasks.add_field(6, 'f_manual_update', u'DB manual mode', common.BOOLEAN, visible=False, edit_visible=False)
+    task.sys_tasks.add_field(6, 'f_manual_update', task.lang['manual_update'], common.BOOLEAN, visible=False, edit_visible=False)
     task.sys_tasks.add_field(7, 'f_db_type', task.lang['db_type'], common.INTEGER, required=True, lookup_values=get_value_list(db_modules.DB_TYPE))
     task.sys_tasks.add_field(8, 'f_alias', task.lang['db_name'], common.TEXT, required=True, size = 30)
     task.sys_tasks.add_field(9, 'f_login', task.lang['login'], common.TEXT, size = 30)
     task.sys_tasks.add_field(10, 'f_password', task.lang['password'], common.TEXT, size = 30)
-    task.sys_tasks.add_field(11, 'f_host', u'Host', common.TEXT, size = 30)
-    task.sys_tasks.add_field(12, 'f_port', u'Port', common.TEXT, size = 10)
-    task.sys_tasks.add_field(13, 'f_encoding', u'Charset', common.TEXT, size = 30)
+    task.sys_tasks.add_field(11, 'f_host', task.lang['host'], common.TEXT, size = 30)
+    task.sys_tasks.add_field(12, 'f_port', task.lang['port'], common.TEXT, size = 10)
+    task.sys_tasks.add_field(13, 'f_encoding', task.lang['encoding'], common.TEXT, size = 30)
 
-    task.sys_tasks.add_filter('task_id', u'Task ID', 'task_id', common.FILTER_EQ, visible=False)
+    task.sys_tasks.add_filter('task_id', 'Task ID', 'task_id', common.FILTER_EQ, visible=False)
 
-    task.sys_lookup_lists = task.sys_catalogs.add_catalog('sys_lookup_lists', u'Lookup lists', 'SYS_LOOKUP_LISTS')
+    task.sys_lookup_lists = task.sys_catalogs.add_catalog('sys_lookup_lists', 'Lookup lists', 'SYS_LOOKUP_LISTS')
 
-    task.sys_lookup_lists.add_field(1, 'id', u'ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_lookup_lists.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_lookup_lists.add_field(1, 'id', 'ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_lookup_lists.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_lookup_lists.add_field(3, 'f_name', task.lang['name'], common.TEXT, required=True, size=256)
-    task.sys_lookup_lists.add_field(4, 'f_lookup_values_text', u'Text to store lookup_values',  common.BLOB)
+    task.sys_lookup_lists.add_field(4, 'f_lookup_values_text', 'Text to store lookup_values',  common.BLOB)
 
-    task.sys_field_lookups = task.sys_tables.add_table('sys_field_lookups', u'Lookup item', 'SYS_FIELD_LOOKUPS')
+    task.sys_field_lookups = task.sys_tables.add_table('sys_field_lookups', 'Lookup item', 'SYS_FIELD_LOOKUPS')
 
-    task.sys_field_lookups.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_field_lookups.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_field_lookups.add_field(3, 'f_value', u'Value', common.INTEGER)
-    task.sys_field_lookups.add_field(4, 'f_lookup', u'Lookup value', common.TEXT, size=612)
+    task.sys_field_lookups.add_field(1, 'id', 'Record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_field_lookups.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_field_lookups.add_field(3, 'f_value', task.lang['value'], common.INTEGER)
+    task.sys_field_lookups.add_field(4, 'f_lookup', task.lang['lookup_value'], common.TEXT, size=612)
 
-    task.sys_fields.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_fields.add_field(2, 'deleted', u'Deleted', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_fields.add_field(3, 'owner_id', u'Owner ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_fields.add_field(4, 'owner_rec_id', u'Owner record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_fields.add_field(5, 'task_id', u'Task ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_fields.add_field(1, 'id', 'Record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_fields.add_field(2, 'deleted', 'Deleted', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_fields.add_field(3, 'owner_id', 'Owner ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_fields.add_field(4, 'owner_rec_id', 'Owner record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_fields.add_field(5, 'task_id', 'Task ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_fields.add_field(6, 'f_name',         task.lang['caption'], common.TEXT, True, size=256)
     task.sys_fields.add_field(7, 'f_field_name',   task.lang['name'], common.TEXT, True, size=256)
     task.sys_fields.add_field(8, 'f_data_type',    task.lang['data_type'], common.INTEGER, True,  False, lookup_values=get_value_list(common.FIELD_TYPES))
@@ -215,36 +214,36 @@ def create_items(task):
     task.sys_fields.add_field(12, 'f_object_field1',   task.lang['object_field'], common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_fields.add_field(13, 'f_object_field2',   task.lang['object_field'], common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_fields.add_field(14, 'f_master_field', task.lang['master_field'], common.INTEGER, False, task.sys_fields, 'f_field_name')
-    task.sys_fields.add_field(15, 'f_multi_select',    u'Multiple selection',  common.BOOLEAN)
-    task.sys_fields.add_field(16, 'f_multi_select_all',    u'Select all enabled',  common.BOOLEAN)
-    task.sys_fields.add_field(17, 'f_enable_typehead', u'Typeahead',  common.BOOLEAN)
+    task.sys_fields.add_field(15, 'f_multi_select', task.lang['multi_select'],  common.BOOLEAN)
+    task.sys_fields.add_field(16, 'f_multi_select_all', task.lang['multi_select_all'],  common.BOOLEAN)
+    task.sys_fields.add_field(17, 'f_enable_typehead', task.lang['enable_typehead'],  common.BOOLEAN)
     task.sys_fields.add_field(18, 'f_lookup_values', task.lang['lookup_values'], common.INTEGER, False, task.sys_lookup_lists, 'f_name')
     task.sys_fields.add_field(19, 'f_required',     task.lang['required'], common.BOOLEAN)
     task.sys_fields.add_field(20, 'f_calculated',   task.lang['calculated'], common.BOOLEAN, visible=False, edit_visible=False)
     task.sys_fields.add_field(21, 'f_default',      task.lang['default'], common.BOOLEAN)
     task.sys_fields.add_field(22, 'f_read_only',    task.lang['read_only'], common.BOOLEAN)
     task.sys_fields.add_field(23, 'f_alignment',    task.lang['alignment'], common.INTEGER, lookup_values=get_value_list(common.ALIGNMENT))
-    task.sys_fields.add_field(24, 'f_default_value', u'Default value', common.TEXT, False,  False, size =256)
-    task.sys_fields.add_field(25, 'f_help',          u'Help', common.BLOB, visible=False)
-    task.sys_fields.add_field(26, 'f_placeholder',   u'Placeholder', common.TEXT, visible=False, size=256)
+    task.sys_fields.add_field(24, 'f_default_value', task.lang['default_value'], common.TEXT, False,  False, size =256)
+    task.sys_fields.add_field(25, 'f_help',          task.lang['help'], common.BLOB, visible=False)
+    task.sys_fields.add_field(26, 'f_placeholder',   task.lang['placeholder'], common.TEXT, visible=False, size=256)
 
-    task.sys_fields.add_filter('id', u'ID', 'id', common.FILTER_EQ, visible=False)
-    task.sys_fields.add_filter('owner_rec_id', u'Owner record ID', 'owner_rec_id', common.FILTER_IN, visible=False)
-    task.sys_fields.add_filter('task_id', u'Task', 'task_id', common.FILTER_EQ, visible=False)
-    task.sys_fields.add_filter('not_id', u'not ID', 'id', common.FILTER_NE, visible=False)
-    task.sys_fields.add_filter('object', u'Object ID', 'f_object', common.FILTER_EQ, visible=False)
-    task.sys_fields.add_filter('master_field_is_null', u'Master field', 'f_master_field', common.FILTER_ISNULL, visible=False)
-    task.sys_fields.add_filter('master_field', u'Master field', 'f_master_field', common.FILTER_EQ, visible=False)
+    task.sys_fields.add_filter('id', 'ID', 'id', common.FILTER_EQ, visible=False)
+    task.sys_fields.add_filter('owner_rec_id', 'Owner record ID', 'owner_rec_id', common.FILTER_IN, visible=False)
+    task.sys_fields.add_filter('task_id', 'Task', 'task_id', common.FILTER_EQ, visible=False)
+    task.sys_fields.add_filter('not_id', 'not ID', 'id', common.FILTER_NE, visible=False)
+    task.sys_fields.add_filter('object', 'Object ID', 'f_object', common.FILTER_EQ, visible=False)
+    task.sys_fields.add_filter('master_field_is_null', 'Master field', 'f_master_field', common.FILTER_ISNULL, visible=False)
+    task.sys_fields.add_filter('master_field', 'Master field', 'f_master_field', common.FILTER_EQ, visible=False)
 
     task.item_fields = task.sys_items.add_detail(task.sys_fields)
 
     task.sys_report_params = task.sys_tables.add_table('sys_report_params', task.lang['report_params'], 'SYS_REPORT_PARAMS')
 
-    task.sys_report_params.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_report_params.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_report_params.add_field(3, 'owner_id', u'Owner ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_report_params.add_field(4, 'owner_rec_id', u'Owner record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_report_params.add_field(5, 'task_id', u'Task ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_report_params.add_field(1, 'id', 'Record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_report_params.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_report_params.add_field(3, 'owner_id', 'Owner ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_report_params.add_field(4, 'owner_rec_id', 'Owner record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_report_params.add_field(5, 'task_id', 'Task ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_report_params.add_field(6, 'f_index',        task.lang['index'],   common.INTEGER, visible=False, edit_visible=False)
     task.sys_report_params.add_field(7, 'f_name',         task.lang['caption'],      common.TEXT, True, size = 30)
     task.sys_report_params.add_field(8, 'f_param_name',   task.lang['name'],          common.TEXT, True, size = 30)
@@ -254,156 +253,156 @@ def create_items(task):
     task.sys_report_params.add_field(12, 'f_object_field',   task.lang['object_field'],  common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_report_params.add_field(13, 'f_object_field1',   task.lang['object_field'], common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_report_params.add_field(14, 'f_object_field2',   task.lang['object_field'], common.INTEGER, False, task.sys_fields, 'f_field_name')
-    task.sys_report_params.add_field(15, 'f_multi_select', u'Multiple selection',  common.BOOLEAN)
-    task.sys_report_params.add_field(16, 'f_multi_select_all',    u'Select all enabled',  common.BOOLEAN)
-    task.sys_report_params.add_field(17, 'f_enable_typehead', u'Typeahead',  common.BOOLEAN)
+    task.sys_report_params.add_field(15, 'f_multi_select', task.lang['multi_select'],  common.BOOLEAN)
+    task.sys_report_params.add_field(16, 'f_multi_select_all', task.lang['multi_select_all'],  common.BOOLEAN)
+    task.sys_report_params.add_field(17, 'f_enable_typehead', task.lang['enable_typehead'],  common.BOOLEAN)
     task.sys_report_params.add_field(18, 'f_lookup_values', task.lang['lookup_values'], common.INTEGER, False, task.sys_lookup_lists, 'f_name')
     task.sys_report_params.add_field(19, 'f_required',     task.lang['required'],        common.BOOLEAN)
     task.sys_report_params.add_field(20, 'f_visible',      task.lang['visible'],    common.BOOLEAN)
     task.sys_report_params.add_field(21, 'f_alignment',    task.lang['alignment'], common.INTEGER, lookup_values=get_value_list(common.ALIGNMENT))
     task.sys_report_params.add_field(22, 'f_master_field', task.lang['master_field'], common.INTEGER, False, task.sys_fields, 'f_field_name')
-    task.sys_report_params.add_field(23, 'f_help',         u'Help', common.BLOB, visible=False)
-    task.sys_report_params.add_field(24, 'f_placeholder',  u'Placeholder', common.TEXT, visible=False, size=256)
+    task.sys_report_params.add_field(23, 'f_help',         task.lang['help'], common.BLOB, visible=False)
+    task.sys_report_params.add_field(24, 'f_placeholder',  task.lang['placeholder'], common.TEXT, visible=False, size=256)
 
-    task.sys_report_params.add_filter('owner_rec_id', u'Owner rec ID ', 'owner_rec_id', common.FILTER_EQ, visible=False)
-    task.sys_report_params.add_filter('task_id', u'Task ID', 'task_id', common.FILTER_EQ, visible=False)
+    task.sys_report_params.add_filter('owner_rec_id', 'Owner rec ID ', 'owner_rec_id', common.FILTER_EQ, visible=False)
+    task.sys_report_params.add_filter('task_id', 'Task ID', 'task_id', common.FILTER_EQ, visible=False)
 
     task.sys_indices = task.sys_tables.add_table('sys_indices', task.lang['indices'], 'SYS_INDICES')
 
-    task.sys_indices.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_indices.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_indices.add_field(3, 'owner_id', u'Owner ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_indices.add_field(4, 'owner_rec_id', u'Owner record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_indices.add_field(5, 'task_id', u'Task ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_indices.add_field(1, 'id', 'Record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_indices.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_indices.add_field(3, 'owner_id', 'Owner ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_indices.add_field(4, 'owner_rec_id', 'Owner record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_indices.add_field(5, 'task_id', 'Task ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_indices.add_field(6, 'f_index_name', task.lang['index_name'], common.TEXT, True, size = 100)
-    task.sys_indices.add_field(7, 'descending', u'Descending', common.BOOLEAN)
-    task.sys_indices.add_field(8, 'f_unique_index', u'Unique', common.BOOLEAN)
-    task.sys_indices.add_field(9, 'f_foreign_index', u'Foreign Index', common.BOOLEAN, visible=False, edit_visible=False)
-    task.sys_indices.add_field(10, 'f_foreign_field', u'Foreign Field', common.INTEGER, False, task.item_fields, 'f_field_name', visible=False, edit_visible=False)
+    task.sys_indices.add_field(7, 'descending', task.lang['descending'], common.BOOLEAN)
+    task.sys_indices.add_field(8, 'f_unique_index', task.lang['unique_index'], common.BOOLEAN)
+    task.sys_indices.add_field(9, 'f_foreign_index', task.lang['foreign_index'], common.BOOLEAN, visible=False, edit_visible=False)
+    task.sys_indices.add_field(10, 'f_foreign_field', task.lang['foreign_field'], common.INTEGER, False, task.item_fields, 'f_field_name', visible=False, edit_visible=False)
     task.sys_indices.add_field(11, 'f_fields', task.lang['fields'], common.BLOB, visible=False, edit_visible=False)
 
-    task.sys_indices.add_filter('id', u'ID', 'id', common.FILTER_EQ, visible=False)
-    task.sys_indices.add_filter('owner_rec_id', u'Owner record ID', 'owner_rec_id', common.FILTER_EQ, visible=False)
-    task.sys_indices.add_filter('task_id', u'Task ID', 'task_id', common.FILTER_EQ, visible=False)
-    task.sys_indices.add_filter('foreign_index', u'Owner record ID', 'f_foreign_index', common.FILTER_EQ, visible=False)
+    task.sys_indices.add_filter('id', 'ID', 'id', common.FILTER_EQ, visible=False)
+    task.sys_indices.add_filter('owner_rec_id', 'Owner record ID', 'owner_rec_id', common.FILTER_EQ, visible=False)
+    task.sys_indices.add_filter('task_id', 'Task ID', 'task_id', common.FILTER_EQ, visible=False)
+    task.sys_indices.add_filter('foreign_index', 'Owner record ID', 'f_foreign_index', common.FILTER_EQ, visible=False)
 
     task.sys_filters = task.sys_tables.add_table('sys_filters', task.lang['filters'], 'SYS_FILTERS')
 
-    task.sys_filters.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_filters.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_filters.add_field(3, 'owner_id', u'Owner ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_filters.add_field(4, 'owner_rec_id', u'Owner record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_filters.add_field(5, 'task_id', u'Task ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_filters.add_field(1, 'id', 'Record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_filters.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_filters.add_field(3, 'owner_id', 'Owner ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_filters.add_field(4, 'owner_rec_id', 'Owner record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_filters.add_field(5, 'task_id', 'Task ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_filters.add_field(6, 'f_index',     task.lang['index'],   common.INTEGER, visible=False, edit_visible=False)
     task.sys_filters.add_field(7, 'f_field',     task.lang['field'],    common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_filters.add_field(8, 'f_name',      task.lang['caption'], common.TEXT, True)
     task.sys_filters.add_field(9, 'f_filter_name',  task.lang['name'],     common.TEXT, True)
     task.sys_filters.add_field(10, 'f_data_type', task.lang['data_type'], common.INTEGER, False,  visible=False, edit_visible=False, lookup_values=get_value_list(common.FIELD_TYPES))
     task.sys_filters.add_field(11, 'f_type',      task.lang['filter_type'], common.INTEGER, False, lookup_values=get_value_list(common.FILTER_STRING))
-    task.sys_filters.add_field(12, 'f_multi_select_all',    u'Select all enabled',  common.BOOLEAN)
+    task.sys_filters.add_field(12, 'f_multi_select_all', task.lang['multi_select_all'],  common.BOOLEAN)
     task.sys_filters.add_field(13, 'f_visible',   task.lang['visible'],    common.BOOLEAN)
-    task.sys_filters.add_field(14, 'f_help',      u'Help', common.BLOB, visible=False)
-    task.sys_filters.add_field(15, 'f_placeholder', u'Placeholder', common.TEXT, visible=False, size=256)
+    task.sys_filters.add_field(14, 'f_help',      task.lang['help'], common.BLOB, visible=False)
+    task.sys_filters.add_field(15, 'f_placeholder', task.lang['placeholder'], common.TEXT, visible=False, size=256)
 
 
-    task.sys_filters.add_filter('owner_rec_id', u'Owner rec ID ', 'owner_rec_id', common.FILTER_EQ, visible=False)
-    task.sys_filters.add_filter('task_id', u'Task ID', 'task_id', common.FILTER_EQ, visible=False)
+    task.sys_filters.add_filter('owner_rec_id', 'Owner rec ID ', 'owner_rec_id', common.FILTER_EQ, visible=False)
+    task.sys_filters.add_filter('task_id', 'Task ID', 'task_id', common.FILTER_EQ, visible=False)
 
     task.sys_users = task.sys_catalogs.add_catalog('sys_users', task.lang['users'], 'SYS_USERS')
     task.sys_roles = task.sys_catalogs.add_catalog('sys_roles', task.lang['roles'], 'SYS_ROLES')
 
-    task.sys_users.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_users.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_users.add_field(1, 'id', 'Record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_users.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_users.add_field(3, 'f_name', task.lang['name'], common.TEXT, required=True, size=30)
     task.sys_users.add_field(4, 'f_login', task.lang['login'], common.TEXT, required=True, size=30)
     task.sys_users.add_field(5, 'f_password', task.lang['password'], common.TEXT, required=True, size=30)
     task.sys_users.add_field(6, 'f_role', task.lang['role'], common.INTEGER, True, task.sys_roles, 'f_name')
     task.sys_users.add_field(7, 'f_info', task.lang['info'], common.TEXT, edit_visible=False, size=100)
-    task.sys_users.add_field(8, 'f_admin', u'Admin', common.BOOLEAN)
+    task.sys_users.add_field(8, 'f_admin', task.lang['admin'], common.BOOLEAN)
 
-    task.sys_roles.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.sys_roles.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_roles.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.sys_roles.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_roles.add_field(3, 'f_name', task.lang['roles'], common.TEXT, required=True, size=30)
 
-    task.sys_roles.add_filter('id', u'ID', 'id', common.FILTER_EQ, visible=False)
+    task.sys_roles.add_filter('id', 'ID', 'id', common.FILTER_EQ, visible=False)
 
     task.sys_privileges = task.sys_tables.add_table('sys_privileges', task.lang['privileges'], 'SYS_PRIVILEGES')
 
-    task.sys_privileges.add_field(1, 'id', u'Record ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_privileges.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_privileges.add_field(3, 'owner_id', u'Owner ID', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_privileges.add_field(4, 'owner_rec_id', u'Owner record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_privileges.add_field(1, 'id', 'Record ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_privileges.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_privileges.add_field(3, 'owner_id', 'Owner ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_privileges.add_field(4, 'owner_rec_id', 'Owner record ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_privileges.add_field(5, 'item_id', task.lang['item'], common.INTEGER, False, task.sys_items, 'f_name')
     task.sys_privileges.add_field(6, 'f_can_view', task.lang['can_view'], common.BOOLEAN, editable=True)
     task.sys_privileges.add_field(7, 'f_can_create', task.lang['can_create'], common.BOOLEAN, editable=True)
     task.sys_privileges.add_field(8, 'f_can_edit', task.lang['can_edit'], common.BOOLEAN, editable=True)
     task.sys_privileges.add_field(9, 'f_can_delete', task.lang['can_delete'], common.BOOLEAN, editable=True)
 
-    task.sys_privileges.add_filter('owner_rec_id', u'Owner record ID', 'owner_rec_id', common.FILTER_EQ, visible=False)
+    task.sys_privileges.add_filter('owner_rec_id', 'Owner record ID', 'owner_rec_id', common.FILTER_EQ, visible=False)
 
     task.role_privileges = task.sys_roles.add_detail(task.sys_privileges)
 
-    task.sys_code_editor = task.sys_catalogs.add_catalog('sys_code_editor', u'Editor', '')
+    task.sys_code_editor = task.sys_catalogs.add_catalog('sys_code_editor', 'Editor', '')
 
-    task.sys_code_editor.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.sys_code_editor.add_field(2, 'parent', u'parent', common.INTEGER)
-    task.sys_code_editor.add_field(3, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_code_editor.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.sys_code_editor.add_field(2, 'parent', 'parent', common.INTEGER)
+    task.sys_code_editor.add_field(3, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_code_editor.add_field(4, 'name', task.lang['caption'], common.TEXT, size = 10000)
 
-    task.sys_fields_editor = task.sys_catalogs.add_catalog('sys_fields_editor', u'Editor', '')
+    task.sys_fields_editor = task.sys_catalogs.add_catalog('sys_fields_editor', 'Editor', '')
 
-    task.sys_fields_editor.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.sys_fields_editor.add_field(2, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_fields_editor.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.sys_fields_editor.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_fields_editor.add_field(3, 'name', task.lang['caption'], common.TEXT, required=True, size = 256)
-    task.sys_fields_editor.add_field(4, 'param1', u'param1', common.BOOLEAN)
-    task.sys_fields_editor.add_field(5, 'param2', u'param2', common.BOOLEAN)
-    task.sys_fields_editor.add_field(6, 'param3', u'param3', common.BOOLEAN)
+    task.sys_fields_editor.add_field(4, 'param1', 'param1', common.BOOLEAN)
+    task.sys_fields_editor.add_field(5, 'param2', 'param2', common.BOOLEAN)
+    task.sys_fields_editor.add_field(6, 'param3', 'param3', common.BOOLEAN)
 
-    task.sys_search = task.sys_catalogs.add_catalog('sys_search', u'Find in task', '')
+    task.sys_search = task.sys_catalogs.add_catalog('sys_search', task.lang['find_in_task'], '')
 
-    task.sys_search.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.sys_search.add_field(2, 'parent', u'parent', common.INTEGER)
-    task.sys_search.add_field(3, 'deleted', u'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_search.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.sys_search.add_field(2, 'parent', 'parent', common.INTEGER)
+    task.sys_search.add_field(3, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_search.add_field(4, 'find_text', task.lang['find'], common.TEXT, size = 1000)
     task.sys_search.add_field(5, 'case_sensitive', task.lang['case_sensitive'], common.BOOLEAN)
     task.sys_search.add_field(6, 'whole_words', task.lang['whole_words'], common.BOOLEAN)
 
-    task.sys_new_group = task.sys_catalogs.add_catalog('sys_new_group', u'Select new group type', '')
+    task.sys_new_group = task.sys_catalogs.add_catalog('sys_new_group', task.lang['new_group_type'], '')
 
     task.sys_new_group.add_field(1, 'group_type',  'Group type', common.INTEGER, required=True, lookup_values=get_value_list(common.GROUP_TYPES))
 
-    task.sys_lang = task.sys_catalogs.add_catalog('sys_lang', u'Languages', '')
+    task.sys_lang = task.sys_catalogs.add_catalog('sys_lang', 'Languages', '')
 
-    task.sys_lang.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.sys_lang.add_field(2, 'f_abr', u'', common.INTEGER, required=True, visible=False, edit_visible=False)
-    task.sys_lang.add_field(3, 'f_name', u'language', common.TEXT, required=True, size = 20)
-    task.sys_lang.add_field(4, 'f_decimal_point', u'Decimal point', common.TEXT, size = 1)
-    task.sys_lang.add_field(5, 'f_mon_decimal_point', u'Monetory decimal point', common.TEXT, size = 1)
-    task.sys_lang.add_field(6, 'f_mon_thousands_sep', u'Monetory thousands separator', common.TEXT, size = 3)
-    task.sys_lang.add_field(7, 'f_currency_symbol', u'Currency symbol', common.TEXT, size = 10)
-    task.sys_lang.add_field(8, 'f_frac_digits', u'Number of fractional digits', common.INTEGER)
-    task.sys_lang.add_field(9, 'f_p_cs_precedes', u'Currency symbol precedes the value (positive values)', common.BOOLEAN)
-    task.sys_lang.add_field(10, 'f_n_cs_precedes', u'Currency symbol precedes the value (negative values)', common.BOOLEAN)
-    task.sys_lang.add_field(11, 'f_p_sep_by_space', u'Currency symbol is separated by a space (positive values)', common.BOOLEAN)
-    task.sys_lang.add_field(12, 'f_n_sep_by_space', u'Currency symbol is separated by a space (negative values)', common.BOOLEAN)
-    task.sys_lang.add_field(13, 'f_positive_sign', u'Symbol for a positive monetary value', common.TEXT, size = 1)
-    task.sys_lang.add_field(14, 'f_negative_sign', u'Symbol for a negative monetary value', common.TEXT, size = 1)
-    task.sys_lang.add_field(15, 'f_p_sign_posn', u'The position of the sign (positive values)', common.INTEGER)
-    task.sys_lang.add_field(16, 'f_n_sign_posn', u'The position of the sign (negative values)', common.INTEGER)
-    task.sys_lang.add_field(17, 'f_d_fmt', u'Date format string', common.TEXT, size = 30)
-    task.sys_lang.add_field(18, 'f_d_t_fmt', u'Date and time format string', common.TEXT, size = 30)
+    task.sys_lang.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.sys_lang.add_field(2, 'f_abr', '', common.INTEGER, required=True, visible=False, edit_visible=False)
+    task.sys_lang.add_field(3, 'f_name', task.lang['language'], common.TEXT, required=True, size = 20)
+    task.sys_lang.add_field(4, 'f_decimal_point', task.lang['decimal_point'], common.TEXT, size = 1)
+    task.sys_lang.add_field(5, 'f_mon_decimal_point', task.lang['mon_decimal_point'], common.TEXT, size = 1)
+    task.sys_lang.add_field(6, 'f_mon_thousands_sep', task.lang['mon_thousands_sep'], common.TEXT, size = 3)
+    task.sys_lang.add_field(7, 'f_currency_symbol', task.lang['currency_symbol'], common.TEXT, size = 10)
+    task.sys_lang.add_field(8, 'f_frac_digits', task.lang['frac_digits'], common.INTEGER)
+    task.sys_lang.add_field(9, 'f_p_cs_precedes', task.lang['p_cs_precedes'], common.BOOLEAN)
+    task.sys_lang.add_field(10, 'f_n_cs_precedes', task.lang['n_cs_precedes'], common.BOOLEAN)
+    task.sys_lang.add_field(11, 'f_p_sep_by_space', task.lang['p_sep_by_space'], common.BOOLEAN)
+    task.sys_lang.add_field(12, 'f_n_sep_by_space', task.lang['n_sep_by_space'], common.BOOLEAN)
+    task.sys_lang.add_field(13, 'f_positive_sign', task.lang['positive_sign'], common.TEXT, size = 1)
+    task.sys_lang.add_field(14, 'f_negative_sign', task.lang['negative_sign'], common.TEXT, size = 1)
+    task.sys_lang.add_field(15, 'f_p_sign_posn', task.lang['p_sign_posn'], common.INTEGER)
+    task.sys_lang.add_field(16, 'f_n_sign_posn', task.lang['n_sign_posn'], common.INTEGER)
+    task.sys_lang.add_field(17, 'f_d_fmt', task.lang['d_fmt'], common.TEXT, size = 30)
+    task.sys_lang.add_field(18, 'f_d_t_fmt', task.lang['d_t_fmt'], common.TEXT, size = 30)
 
-    task.sys_lang_keys = task.sys_catalogs.add_catalog('sys_lang_keys', u'Language keys', '')
+    task.sys_lang_keys = task.sys_catalogs.add_catalog('sys_lang_keys', 'Language keys', '')
 
-    task.sys_lang_keys.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.sys_lang_keys.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_lang_keys.add_field(2, 'f_keyword', 'Keyword', common.TEXT, required=True, size = 128)
 
-    task.sys_lang_values = task.sys_catalogs.add_catalog('sys_lang_values', u'Language values', '')
+    task.sys_lang_values = task.sys_catalogs.add_catalog('sys_lang_values', 'Language values', '')
 
-    task.sys_lang_values.add_field(1, 'id', u'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.sys_lang_values.add_field(2, 'f_lang', u'Key', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_lang_values.add_field(3, 'f_key', u'Key', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_lang_values.add_field(4, 'f_value', u'value', common.TEXT, size = 1048)
+    task.sys_lang_values.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.sys_lang_values.add_field(2, 'f_lang', 'Key', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_lang_values.add_field(3, 'f_key', task.lang['key'], common.INTEGER, visible=False, edit_visible=False)
+    task.sys_lang_values.add_field(4, 'f_value', task.lang['value'], common.TEXT, size = 1048)
 
 
     def init_item(item, id_value, *order_by):
@@ -466,7 +465,6 @@ def create_items(task):
 def update_admin_fields(task):
 
     def update_system_fields(cursor, id_value, parent, type_id, name):
-        print name
         cursor.execute("SELECT ID, F_FIELD_NAME FROM SYS_FIELDS WHERE OWNER_REC_ID IN (%d, %d)" % (id_value, parent))
         rows = cursor.fetchall()
         for (field_id, field_name) in rows:
@@ -497,7 +495,6 @@ def update_admin_fields(task):
             cursor.execute("SELECT MAX(ID) FROM SYS_FIELDS")
             rows = cursor.fetchall()
             max_field_id = rows[0][0]
-            print 'max_field_id', max_field_id
             cursor.execute("UPDATE SYS_PARAMS SET F_FIELD_ID_GEN = %d" % max_field_id)
             con.commit()
         if field.field_name.lower() == 'f_master_rec_id':
@@ -528,7 +525,7 @@ def update_admin_fields(task):
                 sql = 'ALTER TABLE %s ADD COLUMN %s %s' % \
                     (table_name, field.field_name.upper(), \
                     task.db_module.FIELD_TYPES[field.data_type])
-                print sql
+                print(sql)
                 cursor.execute(sql)
                 con.commit()
                 do_updates(con, field, item.item_name)
@@ -564,7 +561,7 @@ def update_admin_fields(task):
 
 
 def create_admin(app):
-    task = AdminTask(app, 'admin', u'Administrator', '', db_modules.SQLITE, db_database='admin.sqlite')
+    task = AdminTask(app, 'admin', 'Administrator', '', db_modules.SQLITE, db_database='admin.sqlite')
 
     task.language = read_language(task)
     create_items(task)
@@ -907,8 +904,7 @@ def load_task(target, app, first_build=True, after_import=False):
             target.lookup_lists[l.id.value] = json.loads(l.f_lookup_values_text.value)
 
     def remove_attr(target):
-        keys = target.__dict__.keys()
-        for key in keys:
+        for key in list(target.__dict__.iterkeys()):
             try:
                 value = target.init_dict[key]
                 if hasattr(target.__dict__[key], '__call__'):
@@ -967,7 +963,7 @@ def server_check_connection(task, db_type, database, user, password, host, port,
             connection = db_module.connect(database, user, password, host, port, encoding)
             if connection:
                 connection.close()
-        except Exception, e:
+        except Exception as e:
             error = e.message
             if not error:
                 error = str(e)
@@ -1001,8 +997,8 @@ def server_set_project_langage(task, lang):
         it.edit()
         try:
             it.f_name.value = task.lang[it.f_item_name.value]
-        except Exception, e:
-            print traceback.format_exc()
+        except Exception as e:
+            print(traceback.format_exc())
         it.post()
     it.apply()
 
@@ -1376,9 +1372,9 @@ def server_import_task(task, task_id, file_name, from_client=False):
             delta = get_delta('sys_lookup_lists')
             adm_sql.append(delta.apply_sql())
 
-        except Exception, e:
+        except Exception as e:
             error = traceback.format_exc()
-            print u'Import error: %s' % error
+            print('Import error: %s' % error)
         return error, db_sql, adm_sql
 
     def reload_utils():
@@ -1394,14 +1390,14 @@ def server_import_task(task, task_id, file_name, from_client=False):
                         if module:
                             try:
                                 reload(module)
-                            except Exception, e:
-                                print module_name, e
+                            except Exception as e:
+                                print(module_name, e)
 
     error = ''
     task._import_message = ''
 
     def show_progress(string):
-        print string
+        print(string)
         task._import_message += '<h5>' + string + '</h5>'
 
     def show_info(info):
@@ -1409,30 +1405,30 @@ def server_import_task(task, task_id, file_name, from_client=False):
 
     db_type = get_db_type(task)
     if db_type == db_modules.SQLITE:
-        return False, error, '<h5>Import is not supported for SQlite database.</h5>'
+        return False, error, '<h5>' + task.lang['import_sqlite_not_supported'] + '</h5>'
     task.app.under_maintenance = True
     try:
         request_count = 0
         if from_client:
             request_count = 1
         file_name = os.path.join(os.getcwd(), os.path.normpath(file_name))
-        show_progress(u'Import: reading data')
+        show_progress(task.lang['import_reading_data'])
         dir = copy_tmp_files(file_name)
         new_dict, old_dict = get_items(dir)
         success = False
-        show_progress(u'Import: checking data integrity')
+        show_progress(task.lang['import_checking_integrity'])
         error = check_items()
         info = ''
         if error:
             show_info(error)
         else:
-            show_progress(u'Import: analyzing changes')
+            show_progress(task.lang['import_analyzing'])
             error, db_sql, adm_sql = analize(dir, db_type)
             if error:
                 show_info(error)
         if not error:
             success = True
-            show_progress(u'Import: waiting for connections to close')
+            show_progress(task.lang['import_waiting_close'])
             while True:
                 i = 0
                 if task.app._busy > request_count:
@@ -1443,7 +1439,7 @@ def server_import_task(task, task_id, file_name, from_client=False):
                 else:
                     break
             if len(db_sql):
-                show_progress(u'Import: applying changes to the database')
+                show_progress(task.lang['import_changing_db'])
                 connection = None
                 db_type, db_database, db_user, db_password, db_host, db_port, db_encoding = db_info(task)
                 db_module = db_modules.get_db_module(db_type)
@@ -1459,12 +1455,12 @@ def server_import_task(task, task_id, file_name, from_client=False):
                 if connection:
                     connection.close()
             if success:
-                show_progress(u'Import: applying changes to admin.sqlite')
+                show_progress(task.lang['import_changing_admin'])
                 result, error = task.execute(adm_sql)
                 if error:
                     success = False
             if success:
-                show_progress(u'Import: copying files')
+                show_progress(task.lang['import_copying'])
                 copy_files(dir)
             if success:
                 read_setting(task)
@@ -1475,13 +1471,13 @@ def server_import_task(task, task_id, file_name, from_client=False):
                     task.app.roles = None
                     task.app.task.mod_count += 1
                     update_events_code(task)
-    except Exception, e:
+    except Exception as e:
         error = str(e)
         if os.name != 'nt':
-            print u'Import error traceback:', traceback.format_exc()
-        print u'Import error:', error
+            print('Import error traceback:', traceback.format_exc())
+        print('Import error:', error)
     finally:
-        show_progress(u'Import: deleteing tmp files')
+        show_progress(task.lang['import_deleteing_files'])
         try:
             delete_tmp_files(dir)
         except:
@@ -1884,7 +1880,7 @@ def server_save_edit(task, item_id, text, is_server):
                 error += ' - line %s' % line
         except:
             error = e.message
-    except Exception, e:
+    except Exception as e:
         try:
             line = e.args[1][1]
             col = e.args[1][2]
@@ -1912,8 +1908,8 @@ def server_save_edit(task, item_id, text, is_server):
                 item.apply()
                 module_info = common.get_funcs_info(code, module_type)
             else:
-                error = u'item with id %s not found' % item_id
-        except Exception, e:
+                error = task.lang['item_with_id_not found'] % item_id
+        except Exception as e:
             error = e.message
         if is_server:
             task.app.task_server_modified = True
@@ -1981,8 +1977,8 @@ def server_save_file(task, file_name, code):
             f.write(code)
         if file_name == 'index.html':
             result['Templates'] = get_templates(code)
-    except Exception, e:
-        print traceback.format_exc()
+    except Exception as e:
+        print(traceback.format_exc())
         error = e.message
     result['error'] = error
     return result
@@ -2024,7 +2020,7 @@ def server_can_delete_lookup_list(task, list_id):
         used.append((task.sys_items.field_by_id(f.owner_rec_id.value, 'f_item_name'), f.f_field_name.value))
     if len(used) != 0:
         names = ',<br>'.join([task.lang['field_mess'] % use for use in used])
-        mess = u'Lookup list is used in <br> %s' % names
+        mess = task.lang['lookup_list_is_used_in'] % names
         return mess
 
 def server_create_task(task):
@@ -2073,8 +2069,8 @@ def clear_docs_on_logout(task, user):
         else:
             docs = []
         task.edited_docs = docs
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
 
 def find_edited_doc(task, item_ID, item_id, doc_type, user):
     for i, (c_item_ID, c_item_id, c_doc_type, c_user) in enumerate(list(task.edited_docs)):
@@ -2269,7 +2265,7 @@ def items_execute_insert(item, delta, manual_update):
     if sql:
         error = execute(item.task, delta.task_id.value, sql)
         if error:
-            raise Exception, u'Error while creating table: %s' % (error)
+            raise Exception(item.task.lang['error_creating_table'] % (error))
     sql = delta.apply_sql()
     result = item.task.execute(sql)
     exec_result = result[0]
@@ -2298,7 +2294,7 @@ def items_execute_update(item, delta, manual_update):
     if sql:
         error = execute(item.task, delta.task_id.value, sql)
         if error:
-            raise Exception, u'Error while modifying table: %s' % error
+            raise Exception(item.task.lang['error_modifying_table'] % error)
     sql = delta.apply_sql()
     result = item.task.execute(sql)
     update_interface(delta, delta.type_id.value, delta.id.value)
@@ -2316,7 +2312,7 @@ def items_execute_delete(item, delta, manual_update):
     if sql:
         error = execute(item.task, delta.task_id.value, sql)
         if error:
-            raise Exception, u'Error while deleting table %s: %s' % (delta.table_name.upper(), error)
+            raise Exception(item.task.lang['error_deleting_table'] % (delta.table_name.upper(), error))
     commands = []
     sql = delta.apply_sql()
     commands.append(sql)
@@ -2329,7 +2325,7 @@ def items_apply_changes(item, delta, params, priv, user_info, env):
     manual_update = params['manual_update']
     for f in delta.sys_fields:
         if not f.id.value:
-            raise Exception, u'Field %s id value is not set' % (f.field_name)
+            raise Exception(item.task.lang['field_no_id'] % (f.field_name))
     if delta.rec_inserted():
         result = items_execute_insert(item, delta, manual_update)
     elif delta.rec_modified():
@@ -2492,7 +2488,7 @@ def server_can_delete_field(item, id_value):
             used.append((item.task.sys_items.field_by_id(f.owner_rec_id.value, 'f_item_name'),
                 f.f_field_name.value))
     if len(used) != 0:
-        names = ',<br>'.join([u'<p>%s - %s</p>' % use for use in used])
+        names = ',<br>'.join(['<p>%s - %s</p>' % use for use in used])
         mess = item.task.lang['field_used_in_fields'] % \
             (item.f_field_name.value, names)
         return mess
@@ -2570,7 +2566,7 @@ def indices_execute_insert(item, delta, manual_update):
     if sql:
         error = execute(item.task, delta.task_id.value, sql)
         if error:
-            raise Exception, u'Error while creating index %s: %s' % (delta.f_index_name.value.upper(), error)
+            raise Exception(item.task.lang['error_creating_index'] % (delta.f_index_name.value.upper(), error))
     sql = delta.apply_sql()
     return item.task.execute(sql)
 
@@ -2587,7 +2583,7 @@ def indices_execute_delete(item, delta, manual_update):
     if sql:
         error = execute(item.task, delta.task_id.value, sql)
         if error:
-            raise Exception, u'Error while deleting index %s' % error
+            raise Exception(item.task.lang['error_deleting_index'] % error)
     sql = delta.apply_sql()
     return item.task.execute(sql)
 
@@ -2634,7 +2630,7 @@ def privileges_table_get_select(item, query, user_info, enviroment):
     error_mes = ''
     try:
         rows = item.task.execute_select(result_sql)
-    except Exception, e:
+    except Exception as e:
         error_mes = e.message
     return rows, error_mes
 
@@ -2665,7 +2661,7 @@ def privileges_open(item, params, user_info, enviroment):
     error_mes = ''
     try:
         rows = item.task.execute_select(result_sql)
-    except Exception, e:
+    except Exception as e:
         error_mes = e.message
     return rows, error_mes
 

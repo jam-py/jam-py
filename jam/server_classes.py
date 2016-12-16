@@ -84,15 +84,13 @@ class ServerDataset(Dataset, SQL):
 
     def do_apply(self, params=None):
         if not self.master and self.log_changes:
-            if self.item_state != common.STATE_BROWSE:
-                raise Exception, u'Item: %s is not in browse state. Apply requires browse state.'
             changes = {}
             self.change_log.get_changes(changes)
             if changes['data']:
                 data, error = self.apply_changes((changes, params),
                     {'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': True})
                 if error:
-                    raise Exception, error
+                    raise Exception(error)
                 else:
                     self.change_log.update(data)
 
@@ -528,7 +526,7 @@ class Report(AbstrReport):
                     start = end + 2
                 columns_end = start
                 header = data[0:columns_start]
-                assert len(band_tags) > 0, u'No bands in report template'
+                assert len(band_tags) > 0, 'No bands in the report template'
                 positions = []
                 start = 0
                 for tag in band_tags:
@@ -614,7 +612,7 @@ class Report(AbstrReport):
         text = self.template_content['bands'][band]
         if dic:
             d = dic.copy()
-            for key, value in d.items():
+            for key, value in d.iteritems():
                 if type(value) in (str, unicode):
                     d[key] = escape(value)
             cell_start = 0
@@ -648,8 +646,9 @@ class Report(AbstrReport):
                                         if type(value) == float:
                                             val = val.replace('.', common.DECIMAL_POINT)
                                     else:
-                                        if not key in d.keys():
-                                            print 'Report: "%s" band: "%s" key "%s" not found in the dictionary' % (self.item_name, band, key)
+                                        if not key in d.iterkeys():
+                                            print('Report: "%s" band: "%s" key "%s" not found in the dictionary' % \
+                                                (self.item_name, band, key))
                                     if  isinstance(cell_text, unicode):
                                         cell_text = cell_text.encode('utf8')
                                     if  isinstance(val, unicode):
@@ -708,10 +707,10 @@ def execute_sql(db_module, db_database, db_user, db_password,
         print_command = ddl
         try:
             if print_command:
-                print ''
-                print command
+                print('')
+                print(command)
                 if params:
-                    print params
+                    print(params)
                     messages.append('<p>' + command + '<br>' + \
                         json.dumps(params, default=common.json_defaul_handler) + '</p>')
                 else:
@@ -730,7 +729,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
             return result
         except Exception, x:
             error = '\nError: %s\n command: %s\n params: %s' % (str(x), command, params)
-            print error
+            print(error)
             if ddl:
                 arr = str(x).split('\\n')
                 error = '<br>'.join(arr)
@@ -808,7 +807,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
                     elif isinstance(com, tuple):
                         res = execute_command(cursor, com[0], com[1])
                     else:
-                        raise Exception, 'server_classes execute_list: invalid argument - command: %s' % command
+                        raise Exception('server_classes execute_list: invalid argument - command: %s' % command)
             return res
 
     def execute(connection):
@@ -822,7 +821,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
                     cursor.callproc(command, params)
                     result = cursor.fetchone()
                 except Exception, x:
-                    print '\nError: %s in command: %s' % (str(x), command)
+                    print('\nError: %s in command: %s' % (str(x), command))
                     raise
             else:
                 if isinstance(command, str) or isinstance(command, unicode):
@@ -847,7 +846,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
                 error = str(x)
                 if not error:
                     error = 'SQL execution error'
-                print traceback.format_exc()
+                print(traceback.format_exc())
             finally:
                 connection = None
         finally:
@@ -866,7 +865,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
         try:
             connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
         except Exception, x:
-             print str(x)
+             print(str(x))
              return  None, (None, str(x))
     return execute(connection)
 
@@ -1062,7 +1061,7 @@ class AbstractServerTask(AbstrTask):
     def execute_select(self, command, params=None):
         result, error = self.execute(command, params, commit=False, select=True)
         if error:
-            raise Exception, error
+            raise Exception(error)
         else:
             return result
 
@@ -1083,8 +1082,8 @@ class AbstractServerTask(AbstrTask):
         if code:
             try:
                 code = code.encode('utf-8')
-            except Exception, e:
-                print e
+            except Exception as e:
+                print(e)
             comp_code = compile(code, item.module_name, "exec")
             exec comp_code in item_module.__dict__
 
@@ -1121,8 +1120,8 @@ class AbstractServerTask(AbstrTask):
                     stderr=STDOUT,stdout = PIPE)#, shell=True)
                 out, err = convertion.communicate()
                 converted = True
-            except Exception, e:
-                print e
+            except Exception as e:
+                print(e)
         return converted
 
     def copy_database(self, dbtype, database=None, user=None, password=None,
@@ -1166,10 +1165,10 @@ class AbstractServerTask(AbstrTask):
                                         item.post()
                                     item.apply()
                                 else:
-                                    raise Exception, error
+                                    raise Exception(error)
                                 records = len(result)
                                 loaded += records
-                                print 'coping table %s: %d%%' % (item.item_name, int(loaded * 100 / record_count))
+                                print('coping table %s: %d%%' % (item.item_name, int(loaded * 100 / record_count)))
                                 if records == 0 or records < limit:
                                     break
                             if self.db_module.restart_sequence_sql:
@@ -1194,7 +1193,7 @@ class Task(AbstractServerTask):
         self.on_logout = None
         self.on_ext_request = None
         self.init_dict = {}
-        for key, value in self.__dict__.items():
+        for key, value in self.__dict__.iteritems():
             self.init_dict[key] = value
 
 class AdminTask(AbstractServerTask):
@@ -1226,7 +1225,7 @@ class AdminTask(AbstractServerTask):
             user_info = adm_server.login(self, log, psw_hash, is_admin)
             user_uuid = None
             if user_info:
-                for key in self.users.iterkeys():
+                for key in list(self.users.iterkeys()):
                     if self.users[key]["user_id"] == user_info["user_id"] and \
                         self.users[key]["admin"] == user_info["admin"]:
                         if user_info["admin"]:
@@ -1342,7 +1341,7 @@ class Detail(AbstrDetail, ServerDataset):
                 result = ' WHERE ' + clause
             return db_module.set_case(result)
         else:
-            raise Exception, 'Invalid request parameter'
+            raise Exception('Invalid request parameter')
 
     def get_filters(self):
         return self.prototype.filters

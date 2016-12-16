@@ -84,23 +84,24 @@ class SQL(object):
             if item.record_status == common.RECORD_INSERTED:
                 if not item.master:
                     if priv and not priv['can_create']:
-                        raise Exception, self.task.lang['cant_create'] % self.item_caption
+                        raise Exception(self.task.lang['cant_create'] % self.item_caption)
                 sql, param = item.insert_sql(db_module)
             elif item.record_status == common.RECORD_MODIFIED:
                 if not item.master:
                     if priv and not priv['can_edit']:
-                        raise Exception, self.task.lang['cant_edit'] % self.item_caption
+                        raise Exception(self.task.lang['cant_edit'] % self.item_caption)
                 sql, param = item.update_sql(db_module)
             elif item.record_status == common.RECORD_DETAILS_MODIFIED:
                 sql, param = '', None
             elif item.record_status == common.RECORD_DELETED:
                 if not item.master:
                     if priv and not priv['can_delete']:
-                        raise Exception, self.task.lang['cant_delete'] % self.item_caption
+                        raise Exception(self.task.lang['cant_delete'] % self.item_caption)
                 sql = item.delete_sql(db_module)
                 param = None
             else:
-                raise Exception, u'apply_sql - invalid %s record_status %s, record: %s' % (item.item_name, item.record_status, item._dataset[item.rec_no])
+                raise Exception('apply_sql - invalid %s record_status %s, record: %s' % \
+                    (item.item_name, item.record_status, item._dataset[item.rec_no]))
             primary_key_index = item.fields.index(item._primary_key_field)
             master_rec_id_index = None
             if item.master:
@@ -415,7 +416,7 @@ class SQL(object):
                 elif filter_sign == '<>':
                     sql = '(' + sql + ' AND %s IS NOT NULL)' % cond_field_name
                 else:
-                    raise Exception, 'sql.py where_clause method: boolen field condition may give ambiguious results.'
+                    raise Exception('sql.py where_clause method: boolen field condition may give ambiguious results.')
             return sql
 
         if db_module is None:
@@ -505,9 +506,8 @@ class SQL(object):
                 self.order_clause(query, db_module),
                 fields)
             return sql
-        except Exception, e:
-            print self.item_name
-            print traceback.format_exc()
+        except Exception as e:
+            print(traceback.format_exc())
             raise
 
     def get_record_count_query(self, query, db_module=None):
@@ -539,7 +539,7 @@ class SQL(object):
         db_module = db_modules.get_db_module(db_type)
         result = db_module.create_table_sql(table_name, fields, foreign_fields)
         for i, s in enumerate(result):
-            print result[i]
+            print(result[i])
         return result
 
     def delete_table_sql(self, db_type):
@@ -547,7 +547,7 @@ class SQL(object):
         db_module = db_modules.get_db_module(db_type)
         result = db_module.delete_table_sql(table_name)
         for i, s in enumerate(result):
-            print result[i]
+            print(result[i])
         return result
 
     def recreate_table_sql(self, db_type, old_fields, new_fields, fk_delta=None):
@@ -631,7 +631,7 @@ class SQL(object):
     def change_table_sql(self, db_type, old_fields, new_fields):
 
         def recreate(comp):
-            for key, (old_field, new_field) in comp.items():
+            for key, (old_field, new_field) in comp.iteritems():
                 if old_field and new_field:
                     if old_field['field_name'] != new_field['field_name']:
                         return True
@@ -657,10 +657,10 @@ class SQL(object):
         if db_type == db_modules.SQLITE and recreate(comp):
             result += self.recreate_table_sql(db_type, old_fields, new_fields)
         else:
-            for key, (old_field, new_field) in comp.items():
+            for key, (old_field, new_field) in comp.iteritems():
                 if old_field and not new_field and db_type != db_modules.SQLITE:
                     result.append(db_module.del_field_sql(table_name, old_field))
-            for key, (old_field, new_field) in comp.items():
+            for key, (old_field, new_field) in comp.iteritems():
                 if old_field and new_field and db_type != db_modules.SQLITE:
                     if (old_field['field_name'] != new_field['field_name']) or \
                         (db_module.FIELD_TYPES[old_field['data_type']] != db_module.FIELD_TYPES[new_field['data_type']]) or \
@@ -671,11 +671,11 @@ class SQL(object):
                             result += sql
                         else:
                             result.append()
-            for key, (old_field, new_field) in comp.items():
+            for key, (old_field, new_field) in comp.iteritems():
                 if not old_field and new_field:
                     result.append(db_module.add_field_sql(table_name, new_field))
         for i, s in enumerate(result):
-            print result[i]
+            print(result[i])
         return result
 
     def create_index_sql(self, db_type, table_name, fields=None, new_fields=None, foreign_key_dict=None):
@@ -726,7 +726,7 @@ class SQL(object):
             else:
                 field_str = '"' + '", "'.join(fields) + '"'
             sql = db_module.create_index_sql(index_name, table_name, unique, field_str, desc)
-        print sql
+        print(sql)
         return sql
 
     def delete_index_sql(self, db_type):
@@ -737,5 +737,5 @@ class SQL(object):
             sql = db_module.delete_foreign_index(table_name, index_name)
         else:
             sql = db_module.delete_index(table_name, index_name)
-        print sql
+        print(sql)
         return sql

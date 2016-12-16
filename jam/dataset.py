@@ -60,8 +60,8 @@ class DBField(object):
         if self.owner._dataset:
             return self.owner._dataset[self.owner.rec_no]
         else:
-            print traceback.format_exc()
-            raise Exception, u'An attempt to get a field value in the empty dataset - item: %s, field: %s ' % (self.owner.item_name, self.field_name)
+            print(traceback.format_exc())
+            raise Exception(self.owner.task.lang['value_in_empty_dataset'] % self.owner.item_name)
 
     def get_data(self):
         row = self.get_row()
@@ -110,18 +110,18 @@ class DBField(object):
                         if self.owner:
                             result = self.owner.task.lang['yes']
                         else:
-                            result = u'True'
+                            result = 'True'
                     else:
                         if self.owner:
                             result = self.owner.task.lang['no']
                         else:
-                            result = u'False'
+                            result = 'False'
                 else:
                     result = str(result)
             else:
                 result = ''
-        except Exception, e:
-            print traceback.format_exc()
+        except Exception as e:
+            print(traceback.format_exc())
             self.do_on_error(self.type_error() % (''), e)
         return result
 
@@ -147,14 +147,14 @@ class DBField(object):
                         else:
                             self.set_value(False)
                     else:
-                        if len(value) and value[0] in [u'T', u't']:
+                        if len(value) and value[0] in ['T', 't']:
                             self.set_value(True)
                         else:
                             self.set_value(False)
                 else:
                     self.set_value(value)
-            except Exception, e:
-                print traceback.format_exc()
+            except Exception as e:
+                print(traceback.format_exc())
                 self.do_on_error(self.type_error() % (value), e)
 
     text = property (get_text, set_text)
@@ -185,8 +185,8 @@ class DBField(object):
                 if type(value) in [str, unicode]:
                     value = self.convert_date_time(value)
             return value
-        except Exception, e:
-            print traceback.format_exc()
+        except Exception as e:
+            print(traceback.format_exc())
             self.do_on_error(self.type_error() % (''), e)
 
     raw_value = property (get_raw_value)
@@ -212,8 +212,8 @@ class DBField(object):
                     else:
                         value = False
             return value
-        except Exception, e:
-            print traceback.format_exc()
+        except Exception as e:
+            print(traceback.format_exc())
             self.do_on_error(self.type_error() % (''), e)
 
     def _change_lookup_field(self, lookup_value=None):
@@ -232,16 +232,16 @@ class DBField(object):
     def _do_before_changed(self):
         if self.owner:
             if not self.owner.item_state in (common.STATE_INSERT, common.STATE_EDIT):
-                raise DatasetException, u'%s is not in edit or insert mode' % self.owner.item_name
+                raise DatasetException(self.owner.task.lang['not_edit_insert_state'] % self.owner.item_name)
             if self.owner.on_before_field_changed:
                 self.owner.on_before_field_changed(self)
 
     def _check_system_field_value(self, value):
         if self.field_kind == common.ITEM_FIELD:
             if self.field_name == self.owner._primary_key and self.value and self.value != value:
-                raise DatasetException, u'%s: сhanging of the primary field is forbidden' % self.owner.item_name
+                raise DatasetException(self.owner.task.lang['no_primary_field_changing'] % self.owner.item_name)
             if self.field_name == self.owner._deleted_flag and self.value != value:
-                raise DatasetException, u'%s, field - %s: сhanging of the deleted flag field is forbidden' % (self.owner.item_name, self.field_name)
+                raise DatasetException(self.owner.task.lang['no_deleted_field_changing'] % self.owner.item_name)
 
     def set_value(self, value, lookup_value=None, lookup_item=None):
         self._check_system_field_value(value)
@@ -262,8 +262,8 @@ class DBField(object):
             self._do_before_changed()
             try:
                 self.set_data(self.new_value)
-            except Exception, e:
-                print traceback.format_exc()
+            except Exception as e:
+                print(traceback.format_exc())
                 self.do_on_error(self.type_error() % (value), e)
             finally:
                 self.new_value = None
@@ -324,8 +324,8 @@ class DBField(object):
                         elif data_type == common.CURRENCY:
                             result = self.cur_to_str(result)
             result = unicode(result)
-        except Exception, e:
-            print traceback.format_exc()
+        except Exception as e:
+            print(traceback.format_exc())
         return result
 
     lookup_text = property (get_lookup_text)
@@ -420,7 +420,7 @@ class DBField(object):
         self.get_value()
         if (self.data_type == common.TEXT) and (self.field_size != 0) and \
             (len(self.text) > self.field_size):
-            print self.text, len(self.text), type(self.text)
+            print(self.text, len(self.text), type(self.text))
             self.do_on_error(self.owner.task.lang['invalid_length'] % self.field_size)
         return True
 
@@ -458,8 +458,8 @@ class DBField(object):
             mess = str(err)
         if mess:
             if self.owner:
-                print u'%s %s - %s: %s' % (self.owner.item_name,
-                    self.owner.task.lang['error'].lower(), self.field_name, mess)
+                print('%s %s - %s: %s' % (self.owner.item_name,
+                    self.owner.task.lang['error'].lower(), self.field_name, mess))
         raise TypeError(mess)
 
     def type_error(self):
@@ -698,7 +698,7 @@ class ChangeLog(object):
                 else:
                     self.item.record_status = common.RECORD_DELETED
             else:
-                raise Exception, u'%s: change log invalid records state' % self.item.item_name
+                raise Exception('Item %s: change log invalid records state' % self.item.item_name)
             if self.item.master:
                 if self.item.master.record_status == common.RECORD_UNCHANGED:
                     self.item.master.record_status = common.RECORD_DETAILS_MODIFIED
@@ -1450,7 +1450,7 @@ class AbstractDataSet(object):
 
     def get_where_list(self, field_dict):
         result = []
-        for field_arg in field_dict.keys():
+        for field_arg in field_dict.iterkeys():
             field_name = field_arg
             pos = field_name.find('__')
             if pos > -1:
@@ -1507,7 +1507,7 @@ class AbstractDataSet(object):
                 if field:
                     self.fields.append(field)
                 else:
-                    raise Exception, '%s - _do_before_open method error: there is no field with field_name: %s' % (self.item_name, field_name)
+                    raise Exception('%s - _do_before_open method error: there is no field with field_name: %s' % (self.item_name, field_name))
         else:
             self.fields = list(self._fields)
         for field in self.fields:
@@ -1637,9 +1637,9 @@ class AbstractDataSet(object):
 
     def append(self):
         if not self.active:
-            raise DatasetException(u"Can't insert record in %s: %s is not active" % (self.item_name, self.item_name))
+            raise DatasetException(self.task.lang['append_not_active'] % self.item_name)
         if self.item_state != common.STATE_BROWSE:
-            raise DatasetException(u"Can't insert record in %s: %s is not in browse state" % (self.item_name, self.item_name))
+            raise DatasetException(self.task.lang['append_not_browse'] % self.item_name)
         self._do_before_append()
         self._do_before_scroll()
         self._old_row = self.rec_no
@@ -1653,9 +1653,9 @@ class AbstractDataSet(object):
 
     def insert(self):
         if not self.active:
-            raise DatasetException(u"Can't insert record in %s: %s is not active" % (self.item_name, self.item_name))
+            raise DatasetException(self.task.lang['insert_not_active'] % self.item_name)
         if self.item_state != common.STATE_BROWSE:
-            raise DatasetException(u"Can't insert record in %s: %s is not in browse state" % (self.item_name, self.item_name))
+            raise DatasetException(self.task.lang['insert_not_browse'] % self.item_name)
         self._do_before_append()
         self._do_before_scroll()
         self._old_row = self.rec_no
@@ -1702,11 +1702,11 @@ class AbstractDataSet(object):
 
     def edit(self):
         if not self.active:
-            raise DatasetException(u"Can't edit record in %s: %s is not active" % (self.item_name, self.item_name))
+            raise DatasetException(self.task.lang['edit_not_active'] % self.item_name)
         if self.item_state != common.STATE_BROWSE:
-            raise DatasetException(u"Can't edit record in %s: %s is not in browse state" % (self.item_name, self.item_name))
+            raise DatasetException(self.task.lang['edit_not_browse'] % self.item_name)
         if self.record_count() == 0:
-            raise DatasetException(u"Can't edit record in %s: %s' record list is empty" % (self.item_name, self.item_name))
+            raise DatasetException(self.task.lang['edit_no_records'] % self.item_name)
         self._do_before_edit()
         self.change_log.log_change()
         self._buffer = self.change_log.store_record_log()
@@ -1726,9 +1726,9 @@ class AbstractDataSet(object):
 
     def delete(self):
         if not self.active:
-            raise DatasetException(u"Can't delete record in %s: %s is not active" % (self.item_name, self.item_name))
+            raise DatasetException(self.task.lang['delete_not_active'] % self.item_name)
         if self.record_count() == 0:
-            raise DatasetException(u"Can't delete record in %s: %s' record list is empty" % (self.item_name, self.item_name))
+            raise DatasetException(self.task.lang['delete_no_records'] % self.item_name)
         self.item_state = common.STATE_DELETE
         try:
             self._do_before_delete()
@@ -1765,7 +1765,7 @@ class AbstractDataSet(object):
             self.update_controls(common.UPDATE_DELETE)
             del self._dataset[self.rec_no]
         else:
-            raise Exception, '%s cancel error: invalid item state' % self.item_name
+            raise Exception(self.task.lang['cancel_invalid_state'] % self.item_name)
         prev_state = self.item_state
         self.item_state = common.STATE_BROWSE
         if prev_state in [common.STATE_INSERT]:
@@ -1788,7 +1788,7 @@ class AbstractDataSet(object):
 
     def post(self):
         if not self.is_changing():
-            raise DatasetException, u'%s: dataset is not in edit or insert mode' % self.item_name
+            raise DatasetException(self.task.lang['not_edit_insert_state'] % self.item_name)
         self.check_record_valid()
         self._do_before_post()
         if self.master:
@@ -1878,11 +1878,11 @@ class AbstractDataSet(object):
 
     def set_filters(self, **filters):
         self.clear_filters()
-        for filter_name in filters.keys():
+        for filter_name in filters.iterkeys():
             try:
                 filter = self.filter_by_name(filter_name)
                 filter.value = filters[filter_name]
-            except Exception, e:
+            except Exception as e:
                 raise RuntimeError('%s: set_filters method arument error %s=%s: %s' % (self.item_name, filter_name, filters[filter_name], e))
 
     def get_default_field(self):
@@ -2062,12 +2062,13 @@ class MasterDetailDataset(MasterDataSet):
             if not args in ['self', 'ids', 'params', 'slice_ids']:
                 params[args] = value
         if type(ids) == dict:
-            id_field_name = ids.keys()[0]
+            keys = list(ids.iterkeys())
+            id_field_name = keys[0]
             ids = ids[id_field_name]
         elif type(ids) == list:
             id_field_name = 'id'
         else:
-            raise Exception, u'Invalid ids parameter in open_for_ids method of item "%s"' % self.item_name
+            raise Exception('Item %s: invalid ids parameter in open__in method' % self.item_name)
         if params['where'] is None:
             params['where'] = {}
         on_after_open = self.on_after_open
@@ -2091,22 +2092,22 @@ class MasterDetailDataset(MasterDataSet):
 
     def insert(self):
         if self.master and not self.master.is_changing():
-            raise DatasetException, u"%s: can't insert record - master item is not in edit or insert mode" % self.owner.item_name
+            raise DatasetException(self.task.lang['insert_master_not_changing'] % self.item_name)
         super(MasterDetailDataset, self).insert()
 
     def append(self):
         if self.master and not self.master.is_changing():
-            raise DatasetException, u"%s: can't append record - master item is not in edit or insert mode" % self.owner.item_name
+            raise DatasetException(self.task.lang['append_master_not_changing'] % self.item_name)
         super(MasterDetailDataset, self).append()
 
     def edit(self):
         if self.master and not self.master.is_changing():
-            raise DatasetException, u"%s: can't edit record - master item is not in edit or insert mode" % self.owner.item_name
+            raise DatasetException(self.task.lang['edit_master_not_changing'] % self.item_name)
         super(MasterDetailDataset, self).edit()
 
     def delete(self):
         if self.master and not self.master.is_changing():
-            raise DatasetException, u"%s: can't delete record - master item is not in edit or insert mode" % self.owner.item_name
+            raise DatasetException(self.task.lang['delete_master_not_changing'] % self.item_name)
         super(MasterDetailDataset, self).delete()
 
     def _set_modified(self, value):

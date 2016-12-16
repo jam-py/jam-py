@@ -387,13 +387,13 @@ class SingleInstance(object):
             self.cur.execute('CREATE TABLE IF NOT EXISTS PID (ID INTEGER NOT NULL)')
             self.con.commit()
             self.cur.execute('INSERT INTO PID (ID) VALUES (?)', (1,))
-        except sqlite3.OperationalError, e:
+        except sqlite3.OperationalError as e:
             if e.args[0].lower().find('database is locked') != -1:
                 self.con.close()
                 if port:
-                    print '%s port %s: another instance is already running, quitting' % (file_name, port)
+                    print('%s port %s: another instance is already running, quitting' % (file_name, port))
                 else:
-                    print '%s: another instance is already running, quitting' % file_name
+                    print('%s: another instance is already running, quitting' % file_name)
                 sys.exit(-1)
 
     def close(self):

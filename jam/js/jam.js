@@ -1210,21 +1210,6 @@
                             }
                             return;
                         }
-                        //~ else if (self.ID > 0) {
-                            //~ if (!self.server_date) {
-                                //~ self.server_date = data.result.server_date;
-                            //~ } else if (self.server_date !== data.result.server_date) {
-                                //~ if (!self.task._server_restarted) {
-                                    //~ self.task._server_restarted = true;
-                                    //~ self.message('<h4>' + language.server_restarted + '</h4>', {
-                                        //~ margin: '50px 0px',
-                                        //~ width: 500,
-                                        //~ text_center: true
-                                    //~ });
-                                //~ }
-                                //~ return;
-                            //~ }
-                        //~ }
                     }
                     if (callback) {
                         callback.call(item, data.result.data);
@@ -3433,13 +3418,13 @@
 
         append: function() {
             if (!this._active) {
-                throw this.item_name + ": can't append record - item is not active";
+                throw language.append_not_active.replace('%s', this.item_name);
             }
             if (this.master && !this.master.is_changing()) {
-                throw this.item_name + ": can't append record - master item is not in edit or insert mode";
+                throw language.append_master_not_changing.replace('%s', this.item_name);
             }
             if (this._get_item_state() !== consts.STATE_BROWSE) {
-                throw this.item_name + ": can't append record - item is not in browse mode";
+                throw language.append_not_browse.replace('%s', this.item_name);
             }
             this._do_before_append();
             this._do_before_scroll();
@@ -3447,7 +3432,6 @@
             this._set_item_state(consts.STATE_INSERT);
             this._dataset.push(this.new_record());
             this._cur_row = this._dataset.length - 1;
-//            this._modified = false;
             this._set_record_status(consts.RECORD_INSERTED);
             this.update_controls(consts.UPDATE_APPEND);
             this._do_after_scroll();
@@ -3456,13 +3440,13 @@
 
         insert: function() {
             if (!this._active) {
-                throw this.item_name + ": can't insert record - item is not active";
+                throw language.insert_not_active.replace('%s', this.item_name);
             }
             if (this.master && !this.master.is_changing()) {
-                throw this.item_name + ": can't insert record - master item is not in edit or insert mode";
+                throw language.insert_master_not_changing.replace('%s', this.item_name);
             }
             if (this._get_item_state() !== consts.STATE_BROWSE) {
-                throw this.item_name + ": can't insert record - item is not in browse mode";
+                throw language.insert_not_browse.replace('%s', this.item_name);
             }
             this._do_before_append();
             this._do_before_scroll();
@@ -3491,16 +3475,16 @@
 
         edit: function() {
             if (!this._active) {
-                throw this.item_name + ": can't edit record - item is not active";
+                throw language.edit_not_active.replace('%s', this.item_name);
             }
             if (this.record_count() === 0) {
-                throw this.item_name + ": can't edit record - item record list is empty";
+                throw language.edit_no_records.replace('%s', this.item_name);
             }
             if (this.master && !this.master.is_changing()) {
-                throw this.item_name + ": can't edit record - master item is not in edit or insert mode";
+                throw language.edit_master_not_changing.replace('%s', this.item_name);
             }
             if (this._get_item_state() !== consts.STATE_BROWSE) {
-                throw this.item_name + ": can't edit record - item is not in browse mode";
+                throw language.edit_not_browse.replace('%s', this.item_name);
             }
             this._do_before_edit();
             this.change_log.log_change();
@@ -3543,7 +3527,7 @@
                 this.update_controls(consts.UPDATE_DELETE);
                 this._dataset.splice(rec, 1);
             } else {
-                throw this.item_name + ' cancel error: invalid item state';
+                throw language.cancel_invalid_state.replace('%s', this.item_name);
             }
 
             prev_state = this._get_item_state();
@@ -3603,13 +3587,13 @@
         "delete": function() {
             var rec = this._get_rec_no();
             if (!this._active) {
-                throw this.item_name + ": can't delete record - item is not active";
+                throw language.delete_not_active.replace('%s', this.item_name);
             }
             if (this.record_count() === 0) {
-                throw this.item_name + ": can't delete record - item record list is empty";
+                throw language.delete_no_records.replace('%s', this.item_name);
             }
             if (this.master && !this.master.is_changing()) {
-                throw this.item_name + ": can't delete record - master item is not in edit or insert mode";
+                throw language.delete_master_not_changing.replace('%s', this.item_name);
             }
             this._set_item_state(consts.STATE_DELETE);
             try {
@@ -4888,7 +4872,8 @@
                     field.lookup_field1 === lookup_field.lookup_field2) {
                     return field.lookup_value;
                 }
-                else if (field.field_kind === consts.ITEM_FIELD && field.owner.ID === lookup_field.lookup_item.ID &&
+                else if (field.field_kind === consts.ITEM_FIELD &&
+                    field.owner.ID === lookup_field.lookup_item.ID && field.lookup_field &&
                     field.lookup_field === lookup_field.lookup_field1 &&
                     field.lookup_field1 === lookup_field.lookup_field2) {
                     return field.lookup_value;
@@ -5491,7 +5476,7 @@
             if (this.owner._dataset) {
                 return this.owner._dataset[this.owner._get_rec_no()];
             } else {
-                throw 'An attempt to get a field value in the empty dataset - item: ' + this.owner.item_name;
+                throw language.value_in_empty_dataset.replace('%s', this.owner.item_name);
             }
         },
 
@@ -5569,9 +5554,9 @@
                             break;
                         case consts.BOOLEAN:
                             if (this.get_value()) {
-                                result = language['yes']
+                                result = language.yes;
                             } else {
-                                result = language['no']
+                                result = language.no;
                             }
                             break;
                     }
@@ -5580,7 +5565,7 @@
                 }
             } catch (e) {
                 result = '';
-                this.do_on_error(e);
+                throw e;
             }
             if (typeof result !== 'string') {
                 result = ''
@@ -5632,7 +5617,7 @@
                     }
                 } catch (e) {
                     error = this.field_caption + ": " + this.type_error();
-                    this.do_on_error(error);
+                    throw error;
                 }
             }
         },
@@ -5737,7 +5722,7 @@
         _do_before_changed: function() {
             if (this.field_kind === consts.ITEM_FIELD) {
                 if (this.owner._get_item_state() !== consts.STATE_INSERT && this.owner._get_item_state() !== consts.STATE_EDIT) {
-                    throw this.owner.item_name + ' is not in edit or insert mode';
+                    throw language.not_edit_insert_state.replace('%s', this.owner.item_name);
                 }
                 if (this.owner.on_before_field_changed) {
                     this.owner.on_before_field_changed.call(this.owner, this);
@@ -5760,16 +5745,15 @@
         _check_system_field_value: function(value) {
             if (this.field_kind === consts.ITEM_FIELD) {
                 if (this.field_name === this.owner._primary_key && this.value && this.value !== value) {
-                    this.do_on_error(this.owner.item_name + ': сhanging of the primary field is forbidden');
+                    throw language.no_primary_field_changing.replace('%s', this.owner.item_name);
                 }
                 if (this.field_name === this.owner._deleted_flag && this.value !== value) {
-                    this.do_on_error(this.owner.item_name + ': сhanging of the primary field is forbidden');
+                    throw language.no_deleted_field_changing.replace('%s', this.owner.item_name);
                 }
             }
         },
 
         set_value: function(value, lookup_value, slave_field_values, lookup_item) {
-            var error;
             if (value === undefined) {
                 value = null;
             }
@@ -5818,8 +5802,7 @@
                 try {
                     this.set_data(this.new_value);
                 } catch (e) {
-                    error = this.field_name + ": " + this.type_error();
-                    this.do_on_error(error);
+                    throw this.field_name + ": " + this.type_error();
                 }
                 this._change_lookup_field(lookup_value, slave_field_values);
                 this._set_modified(true);
@@ -5861,26 +5844,28 @@
 
         get_lookup_value: function() {
             var value = null;
-            if (this.lookup_item && this.get_value()) {
-                value = this.get_lookup_data();
-                switch (this.get_lookup_data_type()) {
-                    case consts.DATE:
-                        if (typeof(value) === "string") {
-                            value = this.convert_date(value);
-                        }
-                        break;
-                    case consts.DATETIME:
-                        if (typeof(value) === "string") {
-                            value = this.convert_date_time(value);
-                        }
-                        break;
-                    case consts.BOOLEAN:
-                        if (value) {
-                            return true;
-                        } else {
-                            return false;
-                        }
-                        break;
+            if (this.lookup_item) {
+                if (this.get_value()) {
+                    value = this.get_lookup_data();
+                    switch (this.get_lookup_data_type()) {
+                        case consts.DATE:
+                            if (typeof(value) === "string") {
+                                value = this.convert_date(value);
+                            }
+                            break;
+                        case consts.DATETIME:
+                            if (typeof(value) === "string") {
+                                value = this.convert_date_time(value);
+                            }
+                            break;
+                        case consts.BOOLEAN:
+                            if (value) {
+                                return true;
+                            } else {
+                                return false;
+                            }
+                            break;
+                    }
                 }
             } else {
                 value = this.get_value();
@@ -6055,7 +6040,7 @@
         check_type: function() {
             this.get_value();
             if ((this.data_type === consts.TEXT) && (this.field_size !== 0) && (this.get_text().length > this.field_size)) {
-                this.do_on_error(this.field_caption + ': ' + language.invalid_length.replace('%s', this.field_size));
+                throw this.field_caption + ': ' + language.invalid_length.replace('%s', this.field_size);
             }
             return true;
         },
@@ -6066,7 +6051,7 @@
             } else if (this.get_raw_value() !== null) {
                 return true;
             } else {
-                this.do_on_error(this.field_caption + ': ' + language.value_required);
+                throw this.field_caption + ': ' + language.value_required;
             }
         },
 
@@ -6077,14 +6062,14 @@
                     if (this.owner && this.owner.on_field_validate) {
                         err = this.owner.on_field_validate.call(this.owner, this);
                         if (err) {
-                            this.do_on_error(err);
+                            throw err;
                             return;
                         }
                     }
                     if (this.filter) {
                         err = this.filter.check_value(this)
                         if (err) {
-                            this.do_on_error(err);
+                            throw err;
                             return;
                         }
                     }
@@ -6164,10 +6149,6 @@
                 },
             }
             return def;
-        },
-
-        do_on_error: function(error) {
-            throw error;
         },
 
         system_field: function() {
@@ -9478,7 +9459,7 @@
             }
 
             this.$input.datepicker({
-                    weekStart: language.week_start,
+                    weekStart: parseInt(language.week_start, 10),
                     format: format,
                     daysMin: language.days_min,
                     months: language.months,

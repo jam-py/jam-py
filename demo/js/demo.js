@@ -263,8 +263,8 @@ function Events1() { // demo
 					height = 200;
 				}
 				table.height(height);
-				item.update_controls();
-				item.each_detail(function(d) {
+				table.item.update_controls();
+				table.item.each_detail(function(d) {
 					d.update_controls();
 				});
 			}
@@ -287,7 +287,7 @@ function Events1() { // demo
 						height = 200;
 					}
 					table.height(height);
-					item.update_controls();
+					table.item.update_controls();
 				}			
 			}
 		});
@@ -454,6 +454,12 @@ function Events16() { // demo.journals.invoices
 		};
 	}
 	
+	function init_inputs(item, input_options) {
+		input_options.col_count = 2;	
+		// input_options.col_count = 4;
+		// input_options.label_on_top = true;
+	}
+	
 	function on_view_form_created(item) {
 		item.invoice_table.create_table(item.view_form.find(".view-detail"),
 			{
@@ -486,10 +492,6 @@ function Events16() { // demo.journals.invoices
 				});
 			}
 		);
-	}
-	
-	function init_inputs(item, input_options) {
-		input_options.col_count = 2;
 	}
 	
 	function on_edit_form_created(item) {
@@ -597,10 +599,10 @@ function Events16() { // demo.journals.invoices
 	}
 	this.on_after_append = on_after_append;
 	this.init_table = init_table;
+	this.init_inputs = init_inputs;
 	this.on_view_form_created = on_view_form_created;
 	this.on_filters_applied = on_filters_applied;
 	this.calc_footer = calc_footer;
-	this.init_inputs = init_inputs;
 	this.on_edit_form_created = on_edit_form_created;
 	this.on_field_get_text = on_field_get_text;
 	this.on_field_changed = on_field_changed;

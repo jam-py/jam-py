@@ -99,18 +99,18 @@ class AbstractItem(object):
 
     def store_handlers(self):
         result = {}
-        for key, value in self.__dict__.items():
+        for key, value in self.__dict__.iteritems():
             if key[0:3] == 'on_':
                 result[key] = self.__dict__[key]
         return result
 
     def clear_handlers(self):
-        for key, value in self.__dict__.items():
+        for key, value in self.__dict__.iteritems():
             if key[0:3] == 'on_':
                 self.__dict__[key] = None
 
     def load_handlers(self, handlers):
-        for key, value in handlers.items():
+        for key, value in handlers.iteritems():
             self.__dict__[key] = handlers[key]
 
     def get_master_field(self, fields, master_field):
@@ -119,7 +119,7 @@ class AbstractItem(object):
                 return field
 
     def abort(self, message=''):
-        raise AbortException, message
+        raise AbortException(message)
 
     def register(self, func):
         setattr(self, func.__name__, func)
@@ -245,7 +245,6 @@ class AbstrDetail(AbstrItem):
 
     def write_info(self, info):
         super(AbstrDetail, self).write_info(info)
-        print 1111111, self.prototype.ID
         info['prototype_ID'] = self.prototype.ID
 
     def read_info(self, info):

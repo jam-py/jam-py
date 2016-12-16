@@ -83,7 +83,7 @@ class App():
                     with self._load_lock:
                         self.task = self.admin.create_task()
                 except:
-                    print traceback.format_exc()
+                    print(traceback.format_exc())
                     raise
                 finally:
                     self._loading = False
@@ -101,7 +101,7 @@ class App():
                 return self.serve_file(environ, start_response, endpoint, **values)
             elif endpoint in ['api', 'upload']:
                 response = getattr(self, 'on_' + endpoint)(request, **values)
-        except HTTPException, e:
+        except HTTPException as e:
             if peek_path_info(environ) == 'ext':
                 response = self.on_ext(request)
             else:
@@ -144,13 +144,13 @@ class App():
         try:
             try:
                 return self.fileserver(environ, start_response)
-            except Exception, e:
+            except Exception as e:
                 if init_path_info:
                     environ['PATH_INFO'] = init_path_info
                     return self.fileserver(environ, start_response)
                 else:
                     raise
-        except Exception, e:
+        except Exception as e:
             return Response('')(environ, start_response)
 
     def create_post_response(self, request, result):
@@ -176,12 +176,12 @@ class App():
             try:
                 method, user_id, task_id, item_id, params, date = json.loads(request.get_data())
                 r['result'] = self.process_request(request.environ, method, user_id, task_id, item_id, params)
-            except AbortException, e:
-                print traceback.format_exc()
+            except AbortException as e:
+                print(traceback.format_exc())
                 r['result'] = {'data': [None, e.message]}
                 r['error'] = e.message
-            except Exception, e:
-                print traceback.format_exc()
+            except Exception as e:
+                print(traceback.format_exc())
                 if common.SETTINGS['DEBUGGING'] and task_id != 0:
                     raise
                 r['result'] = {'data': [None, e.message]}
@@ -267,7 +267,7 @@ class App():
             #~ else:
                 #~ result = func(obj, *params)
         else:
-            raise Exception, 'item: %s no server function with name %s' % (obj.item_name, func_name)
+            raise Exception('item: %s no server function with name %s' % (obj.item_name, func_name))
         return result, error
 
     def check_task_server_modified(self):
@@ -310,12 +310,12 @@ class App():
             try:
                 r['result'] = self.process_request(request.environ,
                     method, user_id, task_id, item_id, params, ext)
-            except AbortException, e:
-                print traceback.format_exc()
+            except AbortException as e:
+                print(traceback.format_exc())
                 r['result'] = {'data': [None, e.message]}
                 r['error'] = e.message
-            except Exception, e:
-                print traceback.format_exc()
+            except Exception as e:
+                print(traceback.format_exc())
                 if common.SETTINGS['DEBUGGING'] and task_id != 0:
                     raise
                 r['result'] = {'data': [None, e.message]}
@@ -377,7 +377,7 @@ class App():
                     os.chmod(file_name, 0o666)
                     start = start + header[index]
             except:
-                print traceback.format_exc()
+                print(traceback.format_exc())
             return Response()
 
     def stop(self, sigvalue):

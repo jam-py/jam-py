@@ -1505,9 +1505,9 @@ function Events3() { // admin.catalogs.sys_items
 		dest_def = [
 			['id', '', false],
 			['name', item.task.language.caption_name, true, '60%'],
-			['param1', item.task.language.caption_word_wrap, false],
-			['param2', item.task.language.caption_expand, false],
-			['param3', item.task.language.caption_edit, false]
+			['param1', 'Word wrap', false],
+			['param2', 'Expand', false],
+			['param3', 'Edit', false]
 		];
 		title = item.task.language.viewing + ' <span class="editor-title">' + item.f_item_name.value + '</span>';
 		item.task.sys_fields_editor.fields_editor(item, title, source_def, get_fields_list(item.task), dest_def, info.view_list, save_view);

@@ -10,9 +10,9 @@ def get_lang_dict(language):
     if language == ENG:
         import english as lang
     elif language == RUS:
+        import english as en_lang
         import russian as lang
-    #~ elif language == HUN:
-        #~ import hungarian as lang
-    #~ elif language == POR:
-        #~ import portuguese as lang
+        for key, value in en_lang.dictionary.iteritems():
+            if not lang.dictionary.get(key):
+                lang.dictionary[key] = value
     return lang.dictionary
