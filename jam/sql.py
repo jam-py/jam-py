@@ -507,7 +507,7 @@ class SQL(object):
                 fields)
             return sql
         except Exception as e:
-            print(traceback.format_exc())
+            traceback.print_exc()
             raise
 
     def get_record_count_query(self, query, db_module=None):

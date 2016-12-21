@@ -83,7 +83,7 @@ class App():
                     with self._load_lock:
                         self.task = self.admin.create_task()
                 except:
-                    print(traceback.format_exc())
+                    traceback.print_exc()
                     raise
                 finally:
                     self._loading = False
@@ -140,7 +140,6 @@ class App():
             init_path_info = environ['PATH_INFO']
             min_file_name = base + '.min' + ext
             environ['PATH_INFO'] = environ['PATH_INFO'].replace(file_name, min_file_name)
-
         try:
             try:
                 return self.fileserver(environ, start_response)
@@ -177,11 +176,11 @@ class App():
                 method, user_id, task_id, item_id, params, date = json.loads(request.get_data())
                 r['result'] = self.process_request(request.environ, method, user_id, task_id, item_id, params)
             except AbortException as e:
-                print(traceback.format_exc())
+                traceback.print_exc()
                 r['result'] = {'data': [None, e.message]}
                 r['error'] = e.message
             except Exception as e:
-                print(traceback.format_exc())
+                traceback.print_exc()
                 if common.SETTINGS['DEBUGGING'] and task_id != 0:
                     raise
                 r['result'] = {'data': [None, e.message]}
@@ -311,11 +310,11 @@ class App():
                 r['result'] = self.process_request(request.environ,
                     method, user_id, task_id, item_id, params, ext)
             except AbortException as e:
-                print(traceback.format_exc())
+                traceback.print_exc()
                 r['result'] = {'data': [None, e.message]}
                 r['error'] = e.message
             except Exception as e:
-                print(traceback.format_exc())
+                traceback.print_exc()
                 if common.SETTINGS['DEBUGGING'] and task_id != 0:
                     raise
                 r['result'] = {'data': [None, e.message]}
@@ -377,7 +376,7 @@ class App():
                     os.chmod(file_name, 0o666)
                     start = start + header[index]
             except:
-                print(traceback.format_exc())
+                traceback.print_exc()
             return Response()
 
     def stop(self, sigvalue):

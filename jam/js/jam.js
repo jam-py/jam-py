@@ -1514,14 +1514,18 @@
                 var login = $form.find("#inputLoging").val(),
                     passWord = $form.find("#inputPassword").val(),
                     pswHash = hex_md5(passWord);
-                self.user_id = self.send_request('login', [login, pswHash])[0];
-                self.create_cookie(location.port + ':user_id', self.user_id, 0.5);
-                if (self.user_id) {
-                    if ($form) {
-                        $form.modal('hide');
+                $form.find("#inputLoging").val('');
+                $form.find("#inputPassword").val('');
+                self.send_request('login', [login, pswHash], function(data) {
+                    self.user_id = data[0];
+                    self.create_cookie(location.port + ':user_id', self.user_id, 0.5);
+                    if (self.user_id) {
+                        if ($form) {
+                            $form.modal('hide');
+                        }
+                        self.load();
                     }
-                    location.reload();
-                }
+                });
             });
 
             $form.find("#close-btn").click(function(e) {
@@ -4749,6 +4753,8 @@
                 fields: [],
                 col_count: 1,
                 label_on_top: false,
+                controls_margin_left: undefined,
+                label_width: undefined,
                 row_count: undefined,
                 autocomplete: false,
                 tabindex: undefined
@@ -4798,7 +4804,7 @@
             }
             for (i = 0; i < len; i++) {
                 new DBInput(fields[i], i + tabindex, cols[Math.floor(i / options.row_count)],
-                    options.label_on_top);
+                    options.label_on_top, options.controls_margin_left, options.label_width);
             }
         },
 
@@ -4815,11 +4821,13 @@
                     filters: [],
                     col_count: 1,
                     label_on_top: false,
+                    controls_margin_left: undefined,
+                    label_width: undefined,
                     autocomplete: false,
                     tabindex: undefined
-                },
+            };
 
-                options = $.extend({}, default_options, options);
+            options = $.extend({}, default_options, options);
 
             if (options.filters.length) {
                 len = options.filters.length;
@@ -4854,13 +4862,16 @@
                 filter = filters[i];
                 if (filter.filter_type === consts.FILTER_RANGE) {
                     new DBInput(filter.field, i + 1, cols[Math.floor(i % options.col_count)],
-                        options.label_on_top, filter.filter_caption + ' ' + language.range_from);
+                        options.label_on_top, options.controls_margin_left, options.label_width,
+                        filter.filter_caption + ' ' + language.range_from);
                     new DBInput(filter.field1, i + 1, cols[Math.floor(i % options.col_count)],
-                        options.label_on_top, filter.filter_caption + ' ' + language.range_to);
+                        options.label_on_top, options.controls_margin_left, options.label_width,
+                        filter.filter_caption + ' ' + language.range_to);
                 }
                 else {
                     new DBInput(filter.field, i + 1, cols[Math.floor(i % options.col_count)],
-                        options.label_on_top, filter.filter_caption);
+                        options.label_on_top, options.controls_margin_left, options.label_width,
+                        filter.filter_caption);
                 }
             }
         },
@@ -5260,14 +5271,16 @@
                 tabindex;
 
             default_options = {
-                    params: [],
-                    col_count: 1,
-                    label_on_top: false,
-                    autocomplete: false,
-                    tabindex: undefined
-                },
+                params: [],
+                col_count: 1,
+                label_on_top: false,
+                controls_margin_left: undefined,
+                label_width: undefined,
+                autocomplete: false,
+                tabindex: undefined
+            }
 
-                options = $.extend({}, default_options, options);
+            options = $.extend({}, default_options, options);
 
             if (options.params.length) {
                 len = options.params.length;
@@ -5309,7 +5322,8 @@
                 this.param_form.tabindex += len;
             }
             for (i = 0; i < len; i++) {
-                new DBInput(params[i], i + tabindex, cols[Math.floor(i % options.col_count)], options.label_on_top)
+                new DBInput(params[i], i + tabindex, cols[Math.floor(i % options.col_count)],
+                    options.label_on_top, options.controls_margin_left, options.label_width);
             }
         }
     });
@@ -9075,6 +9089,9 @@
                 $label = $('<label class="control-label"></label>')
                     .attr("for", field.field_name).text(this.label).
                 addClass(field.field_name);
+                if (this.label_width) {
+                    $label.width(this.label_width);
+                }
             }
             if (field.get_lookup_data_type() === consts.BOOLEAN) {
                 $input = $('<input>')
@@ -9095,7 +9112,10 @@
                     .attr("type", "text")
                     .attr("tabindex", tabIndex + "");
             }
-            $controls = $('<div></div>').addClass("controls");
+            $controls = $('<div class="controls"></div>');
+            if (this.controls_margin_left) {
+                $controls.css('margin-left', this.controls_margin_left);
+            }
             this.$input = $input;
             this.$input.addClass(field.field_name)
             this.$input.addClass('dbinput')
@@ -9222,6 +9242,7 @@
             if (container) {
                 container.append(this.$controlGroup);
             }
+
             this.$modalForm = this.$input.closest('.modal');
             this.field.controls.push(this);
 
@@ -9628,13 +9649,16 @@
     DBInput.prototype = new DBAbstractInput();
     DBInput.prototype.constructor = DBInput;
 
-    function DBInput(field, index, container, label_on_top, label) {
+    function DBInput(field, index, container, label_on_top,
+        controls_margin_left, label_width, label) {
         DBAbstractInput.call(this, field);
         if (this.field.owner && this.field.owner.edit_form &&
             this.field.owner.edit_form.hasClass("modal")) {
             this.$edit_form = this.field.owner.edit_form;
         }
         this.label = label;
+        this.controls_margin_left = controls_margin_left;
+        this.label_width = label_width;
         this.label_on_top = label_on_top
         if (!this.label) {
             this.label = this.field.field_caption;

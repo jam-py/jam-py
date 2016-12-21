@@ -60,7 +60,7 @@ class DBField(object):
         if self.owner._dataset:
             return self.owner._dataset[self.owner.rec_no]
         else:
-            print(traceback.format_exc())
+            traceback.print_exc()
             raise Exception(self.owner.task.lang['value_in_empty_dataset'] % self.owner.item_name)
 
     def get_data(self):
@@ -121,7 +121,7 @@ class DBField(object):
             else:
                 result = ''
         except Exception as e:
-            print(traceback.format_exc())
+            traceback.print_exc()
             self.do_on_error(self.type_error() % (''), e)
         return result
 
@@ -154,7 +154,7 @@ class DBField(object):
                 else:
                     self.set_value(value)
             except Exception as e:
-                print(traceback.format_exc())
+                traceback.print_exc()
                 self.do_on_error(self.type_error() % (value), e)
 
     text = property (get_text, set_text)
@@ -186,7 +186,7 @@ class DBField(object):
                     value = self.convert_date_time(value)
             return value
         except Exception as e:
-            print(traceback.format_exc())
+            traceback.print_exc()
             self.do_on_error(self.type_error() % (''), e)
 
     raw_value = property (get_raw_value)
@@ -213,7 +213,7 @@ class DBField(object):
                         value = False
             return value
         except Exception as e:
-            print(traceback.format_exc())
+            traceback.print_exc()
             self.do_on_error(self.type_error() % (''), e)
 
     def _change_lookup_field(self, lookup_value=None):
@@ -263,7 +263,7 @@ class DBField(object):
             try:
                 self.set_data(self.new_value)
             except Exception as e:
-                print(traceback.format_exc())
+                traceback.print_exc()
                 self.do_on_error(self.type_error() % (value), e)
             finally:
                 self.new_value = None
@@ -325,7 +325,7 @@ class DBField(object):
                             result = self.cur_to_str(result)
             result = unicode(result)
         except Exception as e:
-            print(traceback.format_exc())
+            traceback.print_exc()
         return result
 
     lookup_text = property (get_lookup_text)

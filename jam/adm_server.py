@@ -998,7 +998,7 @@ def server_set_project_langage(task, lang):
         try:
             it.f_name.value = task.lang[it.f_item_name.value]
         except Exception as e:
-            print(traceback.format_exc())
+            traceback.print_exc()
         it.post()
     it.apply()
 
@@ -1978,7 +1978,7 @@ def server_save_file(task, file_name, code):
         if file_name == 'index.html':
             result['Templates'] = get_templates(code)
     except Exception as e:
-        print(traceback.format_exc())
+        traceback.print_exc()
         error = e.message
     result['error'] = error
     return result

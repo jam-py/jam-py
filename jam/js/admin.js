@@ -467,9 +467,13 @@ function Events0() { // admin
 	}
 	
 	function on_edit_form_created(item) {
+		var options = {};
 		if (item.item_name !== 'sys_items' && item.item_name !== 'sys_fields' && item.item_name !== 'sys_code_editor') {
 			item.edit_options.width = 560;
-			item.create_inputs(item.edit_form.find(".edit-body"));
+			if (item.init_edit_options) {
+				item.init_edit_options(item, options);
+			}
+			item.create_inputs(item.edit_form.find(".edit-body"), options);
 			item.edit_form.find("#cancel-btn")
 				.text(item.task.language.cancel)
 				.attr("tabindex", 101)
@@ -551,6 +555,7 @@ function Events0() { // admin
 			'f_n_sep_by_space', 'f_positive_sign', 'f_negative_sign',
 			'f_p_sign_posn', 'f_n_sign_posn', 'f_d_fmt', 'f_d_t_fmt'];
 		task.sys_params.edit_options.title = caption;
+		task.sys_params.edit_options.width = 900;
 		task.sys_params.edit_record();
 	}
 	
@@ -789,11 +794,15 @@ function Events0() { // admin
 		}
 	}
 	
-	function editing_finished(item) {
+	function editing_finished(item, callback) {
 		if (this.edited_doc) {
-			this.server('clear_edited', this.edited_doc, function() {});
-			this.edited_doc = undefined;
-			$("title").html(task.language.admin);
+			this.server('clear_edited', this.edited_doc, function() {
+				this.edited_doc = undefined;
+				$("title").html(task.language.admin);
+				if (item && callback) {
+					callback.call(item, item);
+				}
+			});
 		}
 	}
 	
@@ -2849,21 +2858,27 @@ function Events11() { // admin.catalogs.sys_params
 		}
 		else {
 			if (item._safe_mode !== item.f_safe_mode.value) {
-				item.task.editing_finished(item);
+	//			item.task.editing_finished();
 				item.task.logout();
 				location.reload();
 			}
-			item.task.update_task_info(item.task);
+			else {
+				item.task.update_task_info(item.task);
+			}
 		}
 	}
 	
-	function on_edit_form_created(item) {
-		if (item.params) {
+	function init_edit_options(item, options) {
+		if (item.params === true) {
 			item.edit_options.width = 460;
+			options.controls_margin_left = 220;
+			options.label_width = 200;
 		}
-		item.edit_form.find('.f_version').width('30%');
-		item.edit_form.find('.control-label').width(200);
-		item.edit_form.find('.controls').css('margin-left', 230);
+		else if (item.params === false) {
+			item.edit_options.width = 560;
+			options.controls_margin_left = 380;
+			options.label_width = 360;
+		}
 	}
 	
 	function on_field_validate(field) {
@@ -2884,7 +2899,7 @@ function Events11() { // admin.catalogs.sys_params
 		item.task.editing_finished();
 	}
 	this.on_after_apply = on_after_apply;
-	this.on_edit_form_created = on_edit_form_created;
+	this.init_edit_options = init_edit_options;
 	this.on_field_validate = on_field_validate;
 	this.on_before_apply = on_before_apply;
 	this.on_after_edit = on_after_edit;
@@ -3562,7 +3577,7 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 			.on('click.task', function(e) {item.cancel_edit(e); return false;});
 		item.edit_form.find("#ok-btn")
 			.attr("tabindex", 100)
-			.text(item.task.language.ok)
+			.html(item.task.language.ok + '<small class="muted">&nbsp;[Ctrl+Enter]</small>')
 			.on('click.task', function() {item.apply_record()});
 	}
 	
@@ -3630,10 +3645,15 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 		else if (field.field_name === 'f_master_field' && item.f_object.value) {
 			id_value = item.owner.id.value;
 			parent = item.task.sys_items.field_by_id(id_value, 'parent');
-			lookup_item.filters.owner_rec_id.value = [parent];
-			lookup_item.filters.not_id.value = item.id.value;
-			lookup_item.filters.object.value = item.f_object.value;
-			lookup_item.filters.master_field_is_null.value = true;
+			if (parent) {
+				lookup_item.filters.owner_rec_id.value = [parent];
+				lookup_item.filters.not_id.value = item.id.value;
+				lookup_item.filters.object.value = item.f_object.value;
+				lookup_item.filters.master_field_is_null.value = true;
+			}
+			else {
+				lookup_item.filters.owner_rec_id.value = [-1];
+			}
 			lookup_item.set_fields(['id', 'f_name', 'f_field_name'])
 			lookup_item.on_after_open = function(it) {
 				var clone = item.clone()

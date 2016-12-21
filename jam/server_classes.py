@@ -846,7 +846,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
                 error = str(x)
                 if not error:
                     error = 'SQL execution error'
-                print(traceback.format_exc())
+                traceback.print_exc()
             finally:
                 connection = None
         finally:
