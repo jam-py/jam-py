@@ -1,12 +1,10 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import with_statement
 import sys
 import json
 import traceback
 
-import common, db.db_modules as db_modules
-from dataset import *
+import jam.common as common
+import jam.db.db_modules as db_modules
+from jam.dataset import *
 
 class SQL(object):
 
@@ -75,9 +73,12 @@ class SQL(object):
                 self._primary_key_field.value)
         return db_module.set_case(sql)
 
-    def apply_sql(self, user_info=None, priv=None, db_module=None):
+    def apply_sql(self, safe=False, db_module=None):
 
-        def get_sql(item, db_module):
+        def get_sql(item, safe, db_module):
+            priv = None
+            if safe and item.session:
+                priv = item.session.find_privileges(self)
             if item.master:
                 item._master_id_field.set_data(item.master.ID)
                 item._master_rec_id_field.set_data(item.master._primary_key_field.value)
@@ -115,7 +116,7 @@ class SQL(object):
                 'log_id': item.get_rec_info()[common.REC_CHANGE_ID],
                 'master_rec_id_index': master_rec_id_index
                 }
-            h_sql, h_params, h_table_name = get_history_sql(item, user_info, db_module)
+            h_sql, h_params, h_table_name = get_history_sql(item, db_module)
             return sql, param, info, h_sql, h_params, h_table_name
 
         def delete_detail_sql(item, detail, db_module):
@@ -127,13 +128,15 @@ class SQL(object):
                 sql = 'DELETE FROM %s WHERE %s = %s AND %s = %s' % \
                     (detail.table_name, detail._master_id, item.ID, \
                     detail._master_rec_id, self._primary_key_field.value)
-            h_sql, h_params, h_table_name = get_history_sql(item, user_info, db_module)
+            h_sql, h_params, h_table_name = get_history_sql(item, db_module)
             return db_module.set_case(sql), None, None, h_sql, h_params, h_table_name
 
-        def get_history_sql(item, user_info, db_module):
+        def get_history_sql(item, db_module):
             h_sql = None
             h_params = None
             h_table_name = None
+            if item.session:
+                user_info = item.session.user_info()
             if item.task.history_item and item.keep_history:
                 h_table_name = item.task.history_item.table_name
                 changes = None
@@ -178,11 +181,11 @@ class SQL(object):
                     (item.task.history_item.table_name, fields)) + '(' + values + ')'
             return h_sql, h_params, h_table_name
 
-        def generate_sql(item, db_module, result):
+        def generate_sql(item, safe, db_module, result):
             ID, sql = result
             for it in item:
                 details = []
-                sql.append((get_sql(it, db_module), details))
+                sql.append((get_sql(it, safe, db_module), details))
                 for detail in item.details:
                     detail_sql = []
                     detail_result = (str(detail.ID), detail_sql)
@@ -190,12 +193,12 @@ class SQL(object):
                     if item.record_status == common.RECORD_DELETED:
                         detail_sql.append((delete_detail_sql(item, detail, db_module), []))
                     else:
-                        generate_sql(detail, db_module, detail_result)
+                        generate_sql(detail, safe, db_module, detail_result)
 
         if db_module is None:
             db_module = self.task.db_module
         result = (self.ID, [])
-        generate_sql(self, db_module, result)
+        generate_sql(self, safe, db_module, result)
         return {'delta': result}
 
     def table_alias(self):

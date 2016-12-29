@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import os
 import json
 import hashlib
@@ -14,11 +12,11 @@ from operator import itemgetter
 
 from jsparser import parse, SyntaxError_
 
-import common
-import db.db_modules as db_modules
-from server_classes import *
-import lang.langs as langs
-from events import get_events
+import jam.common as common
+import jam.db.db_modules as db_modules
+from jam.server_classes import *
+import jam.lang.langs as langs
+from jam.events import get_events
 
 def read_language(task):
     result = None
@@ -160,6 +158,7 @@ def create_items(task):
     task.sys_items.add_field(24, 'f_master_id', task.lang['master_id'], common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_items.add_field(25, 'f_master_rec_id', task.lang['master_rec_id'], common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_items.add_field(26, 'f_js_funcs', 'f_js_funcs', common.BLOB, visible=False, edit_visible=False)
+    task.sys_items.add_field(27, 'f_edit_lock', task.lang['js_external'], common.BOOLEAN)
 
     task.sys_items.add_filter('id', 'ID', 'id', common.FILTER_EQ, visible=False)
     task.sys_items.add_filter('not_id', 'ID', 'id', common.FILTER_NE, visible=False)
@@ -479,6 +478,20 @@ def update_admin_fields(task):
                 cursor.execute("UPDATE SYS_ITEMS SET F_MASTER_REC_ID=%d WHERE ID=%d" % (field_id, id_value))
 
     def do_updates(con, field, item_name):
+        if field.field_name.lower() == 'f_edit_lock':
+            cursor = con.cursor()
+            cursor.execute("SELECT ID, F_SERVER_MODULE FROM SYS_ITEMS")
+            rows = cursor.fetchall()
+            for (id_value, code) in rows:
+                if code:
+                    code = code.replace('on_open(item, params, user_info, enviroment)',
+                        'on_open(item, params)')
+                    code = code.replace('on_count(item, params, user_info, enviroment)',
+                        'on_count(item, params)')
+                    code = code.replace('on_apply(item, delta, params, privileges, user_info, enviroment)',
+                        'on_apply(item, delta, params)')
+                    cursor.execute("UPDATE SYS_ITEMS SET F_SERVER_MODULE=? WHERE ID=%d" % id_value, (code,))
+            con.commit()
         if field.field_name.lower() == 'f_js_funcs':
             cursor = con.cursor()
             cursor.execute("SELECT ID, F_WEB_CLIENT_MODULE FROM SYS_ITEMS")
@@ -626,12 +639,14 @@ def get_privileges(task, role_id):
     return result
 
 def get_roles(task):
-    result = {}
-    roles = task.sys_roles.copy()
-    roles.open()
-    for r in roles:
-        result[r.id.value] = get_privileges(task, r.id.value)
-    return result
+    privileges = {}
+    roles = []
+    r = task.sys_roles.copy()
+    r.open()
+    for r in r:
+        privileges[r.id.value] = get_privileges(task, r.id.value)
+        roles.append([r.id.value, r.f_name.value])
+    return roles, privileges
 
 def login(task, log, psw_hash, admin):
     user_id = None
@@ -1407,6 +1422,7 @@ def server_import_task(task, task_id, file_name, from_client=False):
     if db_type == db_modules.SQLITE:
         return False, error, '<h5>' + task.lang['import_sqlite_not_supported'] + '</h5>'
     task.app.under_maintenance = True
+    success = False
     try:
         request_count = 0
         if from_client:
@@ -1415,7 +1431,6 @@ def server_import_task(task, task_id, file_name, from_client=False):
         show_progress(task.lang['import_reading_data'])
         dir = copy_tmp_files(file_name)
         new_dict, old_dict = get_items(dir)
-        success = False
         show_progress(task.lang['import_checking_integrity'])
         error = check_items()
         info = ''
@@ -1468,7 +1483,7 @@ def server_import_task(task, task_id, file_name, from_client=False):
                     reload_utils()
                     read_setting(task)
                     load_task(task.app.task, task.app, first_build=False, after_import=True)
-                    task.app.roles = None
+                    task.app.privileges = None
                     task.app.task.mod_count += 1
                     update_events_code(task)
     except Exception as e:
@@ -1880,6 +1895,7 @@ def server_save_edit(task, item_id, text, is_server):
                 error += ' - line %s' % line
         except:
             error = e.message
+            traceback.print_exc()
     except Exception as e:
         try:
             line = e.args[1][1]
@@ -1892,6 +1908,7 @@ def server_save_edit(task, item_id, text, is_server):
                 error = e.args[0]
         except:
             error = e.message
+            traceback.print_exc()
     if not error:
         try:
             item = task.sys_items.copy()
@@ -1910,6 +1927,7 @@ def server_save_edit(task, item_id, text, is_server):
             else:
                 error = task.lang['item_with_id_not found'] % item_id
         except Exception as e:
+            traceback.print_exc()
             error = e.message
         if is_server:
             task.app.task_server_modified = True
@@ -2026,7 +2044,7 @@ def server_can_delete_lookup_list(task, list_id):
 def server_create_task(task):
     task.create_task()
 
-def do_on_apply_sys_changes(item, delta, params, priv, user_info, env):
+def do_on_apply_sys_changes(item, delta, params):
     task = item.task
     debugging = common.SETTINGS['DEBUGGING']
     safe_mode = common.SETTINGS['SAFE_MODE']
@@ -2321,7 +2339,7 @@ def items_execute_delete(item, delta, manual_update):
     result = item.task.execute(commands)
     return result
 
-def items_apply_changes(item, delta, params, priv, user_info, env):
+def items_apply_changes(item, delta, params):
     manual_update = params['manual_update']
     for f in delta.sys_fields:
         if not f.id.value:
@@ -2335,7 +2353,7 @@ def items_apply_changes(item, delta, params, priv, user_info, env):
     item.task.app.task_server_modified = True
     return result
 
-def do_on_apply_changes(item, delta, params, priv, user_info, env):
+def do_on_apply_changes(item, delta, params):
     sql = delta.apply_sql()
     result = item.task.execute(sql)
     item.task.app.task_server_modified = True
@@ -2587,7 +2605,7 @@ def indices_execute_delete(item, delta, manual_update):
     sql = delta.apply_sql()
     return item.task.execute(sql)
 
-def indices_apply_changes(item, delta, params, priv, user_info, env):
+def indices_apply_changes(item, delta, params):
     manual_update = params['manual_update']
     table_name = item.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
     if table_name:
@@ -2607,7 +2625,7 @@ def server_load_index_fields(item, value):
 #                                  sys_roles                                  #
 ###############################################################################
 
-def privileges_table_get_select(item, query, user_info, enviroment):
+def privileges_table_get_select(item, query):
     owner_id = query['__master_id']
     owner_rec_id = query['__master_rec_id']
     result_sql =  \
@@ -2635,9 +2653,9 @@ def privileges_table_get_select(item, query, user_info, enviroment):
     return rows, error_mes
 
 def roles_changed(item):
-    item.task.app.roles = None
+    item.task.app.privileges = None
 
-def privileges_open(item, params, user_info, enviroment):
+def privileges_open(item, params):
     item_id = params['item_id']
     result_sql =  \
     """

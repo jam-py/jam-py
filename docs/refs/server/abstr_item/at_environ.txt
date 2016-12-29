@@ -1,0 +1,22 @@
+=======
+environ
+=======
+
+.. py:attribute:: environ
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`AbstractItem class </refs/server/abstractitem_api>`
+
+Description
+===========
+
+Specifies the WSGI environment dictionary of the current request from the client.
+
+See also
+========
+
+:doc:`Server side programming </programming/server/index>`
+

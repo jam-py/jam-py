@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
-
 import sys
 import logging
 
-import lang.langs as langs
-import common
+import jam
+import jam.lang.langs as langs
+import jam.common as common
 
 class AbortException(Exception):
     pass
@@ -31,6 +30,16 @@ class AbstractItem(object):
         self.visible = visible
         self.item_type_id = item_type_id
         self._loader = TracebackLoader(self)
+
+    @property
+    def session(self):
+        if hasattr(jam.context, 'session'):
+            return jam.context.session
+
+    @property
+    def environ(self):
+        if hasattr(jam.context, 'environ'):
+            return jam.context.environ
 
     def find(self, name):
         for item in self.items:

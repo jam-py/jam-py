@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import sys
 import os
 import json
@@ -17,10 +15,12 @@ from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Map, Rule
 from werkzeug.exceptions import HTTPException, NotFound
 from werkzeug.wsgi import SharedDataMiddleware, peek_path_info, get_path_info
+from werkzeug.local import Local, LocalManager
 from werkzeug.http import parse_date, http_date
 
-import common
-from items import AbortException
+import jam.common as common
+import jam.sessions as sessions
+from jam.items import AbortException
 
 def create_application(from_file):
     if from_file:
@@ -31,8 +31,14 @@ def create_application(from_file):
     static_files = {
         '/static':  os.path.join(work_dir, 'static')
     }
+
+    jam.context = Local()
+    local_manager = LocalManager([jam.context])
+
     application = App(work_dir)
-    return SharedDataMiddleware(application, static_files)
+    application = SharedDataMiddleware(application, static_files)
+    application = local_manager.make_middleware(application)
+    return application
 
 class App():
     def __init__(self, work_dir):
@@ -41,8 +47,10 @@ class App():
         self.work_dir = work_dir
         self._loading = False
         self._load_lock = Lock()
+        self.sessions = sessions.Sessions(self)
         self.admin = None
         self.task = None
+        self.privileges = None
         self._busy = 0
         self.pid = os.getpid()
         self.task_server_modified = False
@@ -93,6 +101,7 @@ class App():
         return self.wsgi_app(environ, start_response)
 
     def wsgi_app(self, environ, start_response):
+        jam.context.environ = environ
         request = Request(environ)
         adapter = self.url_map.bind_to_environ(request.environ)
         try:
@@ -173,8 +182,8 @@ class App():
         if request.method == 'POST':
             r = {'result': None, 'error': None}
             try:
-                method, user_id, task_id, item_id, params, date = json.loads(request.get_data())
-                r['result'] = self.process_request(request.environ, method, user_id, task_id, item_id, params)
+                method, session_id, task_id, item_id, params, date = json.loads(request.get_data())
+                r['result'] = self.process_request(request.environ, method, session_id, task_id, item_id, params)
             except AbortException as e:
                 traceback.print_exc()
                 r['result'] = {'data': [None, e.message]}
@@ -187,8 +196,7 @@ class App():
                 r['error'] = e.message
             return self.create_post_response(request, r)
 
-    def process_request(self, env, method, user_uuid=None, task_id=None, item_id=None, params=None, ext=None):
-        user_info = {}
+    def process_request(self, env, method, session_id=None, task_id=None, item_id=None, params=None, ext=None):
         is_admin = task_id == 0
         if is_admin:
             task = self.admin
@@ -198,19 +206,18 @@ class App():
             return {'status': common.NO_PROJECT, 'data': None}
         elif self.under_maintenance:
             return {'status': common.UNDER_MAINTAINANCE, 'data': None}
+        elif method == 'connect':
+            return {'status': common.RESPONSE, 'data': self.sessions.connect(is_admin, session_id, env)}
         elif method == 'login':
-            return {'status': common.RESPONSE, 'data': self.admin.login(params[0], params[1], is_admin, env)}
+            return {'status': common.RESPONSE, 'data': self.sessions.login(params[0], params[1], is_admin, env)}
         elif method == 'logout':
-            self.admin.logout(params, is_admin, env)
+            self.sessions.logout(params, is_admin, env)
             return {'status': common.NOT_LOGGED, 'data': common.NOT_LOGGED}
         if ext:
             obj = task
         else:
-            if self.admin.safe_mode:
-                user_info = self.admin.get_user_info(user_uuid, is_admin, env)
-                if not user_info:
-                    return {'status': common.NOT_LOGGED, 'data': common.NOT_LOGGED}
-            elif not user_uuid is None and task == self.admin:
+            session = self.sessions.check_session(is_admin, session_id, env)
+            if not session:
                 return {'status': common.NOT_LOGGED, 'data': common.NOT_LOGGED}
             obj = task
             if task:
@@ -219,52 +226,36 @@ class App():
         try:
             data = None
             if task.on_request:
-                data = task.on_request(task, user_info, env, method, obj, params, ext)
+                data = task.on_request(task, session, env, method, obj, params, ext)
             if not data:
-                data = self.get_response(is_admin, env, method, user_info, task_id, obj, params, ext)
+                data = self.get_response(is_admin, method, obj, params, ext)
         finally:
             self._busy -= 1
         return {'status': common.RESPONSE, 'data': data, 'version': task.version, 'server_date': self.started}
 
-    def get_response(self, is_admin, env, method, user_info, task_id, item, params, ext):
+    def get_response(self, is_admin, method, item, params, ext):
         if ext:
             if item.on_ext_request:
-                return item.on_ext_request(item, method, params, env)
+                return item.on_ext_request(item, method, params)
         elif method == 'server_function':
-            return self.server_func(item, params[0], params[1], env)
+            return self.server_func(item, params[0], params[1])
         elif method == 'open':
-            if self.admin.has_privilege(user_info, item, 'can_view'):
-                return item.select_records(params, user_info, env)
-            else:
-                return [], item.task.lang['cant_view'] % item.item_caption
+            return item.select_records(params, safe=True)
         elif method == 'get_record_count':
-            return item.get_record_count(params, env)
+            return item.get_record_count(params, safe=True)
         elif method == 'apply_changes':
-            return item.apply_changes(params, self.admin.find_privileges(user_info, item), user_info, env)
+            return item.apply_changes(params, safe=True)
         elif method == 'print_report':
-            url = None
-            error = None
-            if self.admin.has_privilege(user_info, item, 'can_view'):
-                url = item.print_report(*params)
-            else:
-                error = item.task.lang['cant_view'] % item.item_caption
-            return url, error
+            return item.print_report(*params), ''
         elif method == 'init_client':
-            return self.init_client(user_info, is_admin)
+            return self.init_client(is_admin)
 
-    def server_func(self, obj, func_name, params, env):
+    def server_func(self, obj, func_name, params):
         result = None
         error = ''
         func = getattr(obj, func_name)
         if func:
-            if func_name[-4:] == '_env':
-                params = list(params)
-                params.append(env)
             result = func(obj, *params)
-            #~ if isinstance(func, MethodType):
-                #~ result = func(*params)
-            #~ else:
-                #~ result = func(obj, *params)
         else:
             raise Exception('item: %s no server function with name %s' % (obj.item_name, func_name))
         return result, error
@@ -279,20 +270,22 @@ class App():
             self.admin.update_events_code()
             self.task_client_modified = False
 
-    def init_client(self, user_info, is_admin):
+    def init_client(self, is_admin):
         if is_admin:
             task = self.admin
         else:
             task = self.task
-        if user_info:
-            priv = self.admin.get_privileges(user_info['role_id'])
+        if task.session:
+            priv = task.session.privileges()
+            info = task.session.user_info()
         else:
             priv = None
+            info = None
         result = {
             'task': task.get_info(),
             'settings': self.admin.get_settings(),
             'language': self.admin.lang,
-            'user_info': user_info,
+            'user_info': info,
             'privileges': priv
         }
         return result, ''
@@ -302,13 +295,13 @@ class App():
             r = {'result': None, 'error': None}
             method = get_path_info(request.environ)
             params = json.loads(request.get_data())
-            user_id = None
+            session_id = None
             task_id = None
             item_id = None
             ext = True
             try:
                 r['result'] = self.process_request(request.environ,
-                    method, user_id, task_id, item_id, params, ext)
+                    method, session_id, task_id, item_id, params, ext)
             except AbortException as e:
                 traceback.print_exc()
                 r['result'] = {'data': [None, e.message]}
@@ -332,9 +325,9 @@ class App():
             info_len = int(info_len)
             user_info = data[pos:pos+info_len]
             task_ID, p = find_param(user_info)
-            user_id = user_info[p:]
+            session_id = user_info[p:]
             pos = pos + info_len + 1
-            return user_id, int(task_ID), pos
+            return session_id, int(task_ID), pos
 
         if request.method == 'POST':
             try:
@@ -343,10 +336,10 @@ class App():
                 header_str = ''
                 length = 0
                 string = ''
-                user_id, task_ID, pos = read_user_info(data)
+                session_id, task_ID, pos = read_user_info(data)
                 if self.admin.safe_mode:
-                    user_info = self.admin.get_user_info(user_id, task_ID == 0, request.environ)
-                    if not user_info:
+                    session = self.sessions.check_session(task_ID == 0, session_id)
+                    if not session:
                         return Response()
                 for s in data[pos:]:
                     header_str += s
@@ -378,6 +371,14 @@ class App():
             except:
                 traceback.print_exc()
             return Response()
+
+    def get_client_ip(self, environ):
+        x_forwarded_for = environ.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[-1].strip()
+        else:
+            ip = environ.get('REMOTE_ADDR')
+        return ip
 
     def stop(self, sigvalue):
         self.kill()

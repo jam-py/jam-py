@@ -3,7 +3,7 @@ Server side programming
 =======================
 
 In most cases, the client sends a request to the server when  following methods 
-of an element are executed:
+of an item are executed:
 
 * :doc:`open </refs/client/item/m_open>`
 * :doc:`apply </refs/client/item/m_apply>`
@@ -21,6 +21,12 @@ The server on receiving the request, based on passed IDs, finds the task
 executes the corresponing method with passed parameters and returns the result of
 the execution to the client. The server method can trigger events that can 
 modify its default behavior.
+
+Every item of the task tree have the 
+:doc:`environ </refs/server/abstr_item/at_environ>`
+and
+:doc:`session </refs/server/abstr_item/at_session>`
+attributes that store context of the current request.
 
 The most common server events are:
 

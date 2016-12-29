@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import sys
 import os
 import datetime, time
@@ -65,7 +63,7 @@ RESPONSE, NOT_LOGGED, UNDER_MAINTAINANCE, NO_PROJECT = range(1, 5)
 ROOT_TYPE, USERS_TYPE, ROLES_TYPE, TASKS_TYPE, TASK_TYPE, \
     ITEMS_TYPE, JOURNALS_TYPE, TABLES_TYPE, REPORTS_TYPE, \
     ITEM_TYPE, JOURNAL_TYPE, TABLE_TYPE, REPORT_TYPE, DETAIL_TYPE = range(1, 15)
-ITEM_TYPES = ["root", "users", "roles", "tasks", 'task',
+ITEM_TYPES = ["root", "users", "roles", "tasks", "task",
         "items", "items", "tables", "reports",
         "item", "item", "table", "report", "detail"]
 

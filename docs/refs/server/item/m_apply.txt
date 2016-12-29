@@ -2,7 +2,7 @@
 apply
 =====
 
-.. py:method:: apply(self, params) 
+.. py:method:: apply(self, params=None, safe=False) 
 
 **domain**: server
 
@@ -42,6 +42,22 @@ The ``apply`` method
 * triggers the 
   :doc:`on_after_apply <on_after_apply>`
   event handler if one is defined for the item 
+  
+Parameters
+----------
+
+* ``params`` - use the parameter to pass some user defined options to be used in
+  the 
+  :doc:`on_apply <on_apply>`
+  event handler. This parameter must be an object of key-value pairs
+  
+* ``safe`` - if set to ``True``, the method checks if the user that called the
+  method has a right to create, edit or delete records in the item's database 
+  table (if such operation is going to be performed) and, if not, raises 
+  an exception. The default value is ``False``.
+  See 
+  :doc:`Roles </admin/roles>`
+  
 
 See also
 ========

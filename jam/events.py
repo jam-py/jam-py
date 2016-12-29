@@ -1,6 +1,4 @@
-# -*- coding:utf-8 -*-
-
-import common
+import jam.common as common
 
 # Client events
 
@@ -115,14 +113,12 @@ report_client_events = \
 task_server_events = \
     {
         'on_created': 'task',
-        'on_open': 'item, params, user_info, enviroment',
-        'on_count': 'item, params, user_info, enviroment',
-        'on_apply': 'item, delta, params, privileges, user_info, enviroment'
+        'on_open': 'item, params',
+        'on_count': 'item, params',
+        'on_apply': 'item, delta, params'
 
         #~ 'on_login': 'task, login, password_hash, env',
-        #~ 'on_get_user_info': 'task, user_uuid, env',
-        #~ 'on_logout': 'task, user_uuid, env',
-        #~ 'on_ext_request': 'task, request, params, env',
+        #~ 'on_ext_request': 'task, request, params',
         #~ 'on_request': 'task, user_info, env, request, item, params, ext'
     }
 
@@ -137,13 +133,13 @@ reports_server_events = \
 
 detail_server_events = \
     {
-        'on_open': 'item, params, user_info, enviroment',
-        'on_count': 'item, params, user_info, enviroment',
+        'on_open': 'item, params',
+        'on_count': 'item, params',
 #        'on_field_get_text': 'field'
     }
 
 item_server_events = detail_server_events
-item_server_events['on_apply'] = 'item, delta, params, privileges, user_info, enviroment'
+item_server_events['on_apply'] = 'item, delta, params'
 
 report_server_events = \
     {

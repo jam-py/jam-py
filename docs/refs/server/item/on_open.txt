@@ -2,7 +2,7 @@
 on_open
 =======
 
-on_open(item, params, user_info, enviroment)
+on_open(item, params)
 
 **domain**: server
 
@@ -24,15 +24,6 @@ The ``on_open`` event handler has the following parameters:
 
 * ``item`` - a reference to the item,
 * ``params`` - the parameters passed to the server by open method
-* ``user_info`` - a dictionary containing information about the user (his id,
-    name, role id, role name and the right to work in the Administrator.
-
-  * ``user_id``
-  * ``user_name`` 
-  * ``role_id`` 
-  * ``role_name`` 
-  * ``admin``
-* ``enviroment`` - a dictionary containing standard WSGI environment variables.
 
 The following code is execute by default, when the ``on_open`` event handler is
 not defined:

@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
-
 import datetime
 import traceback
-import common
+
+import jam.common as common
 
 FIELD_DEF = FIELD_ID, FIELD_NAME, NAME, FIELD_DATA_TYPE, REQUIRED, LOOKUP_ITEM, MASTER_FIELD, LOOKUP_FIELD, LOOKUP_FIELD1, \
     LOOKUP_FIELD2, FIELD_VISIBLE, FIELD_VIEW_INDEX, FIELD_EDIT_VISIBLE, FIELD_EDIT_INDEX, FIELD_READ_ONLY, FIELD_EXPAND, \
@@ -1923,10 +1922,10 @@ class MasterDataSet(AbstractDataSet):
 
         return result
 
-    def do_apply(self, params):
+    def do_apply(self, params, safe):
         pass
 
-    def apply(self, params=None):
+    def apply(self, params=None, safe=False):
         result = None
         if self.is_changing():
             self.post()
@@ -1934,7 +1933,7 @@ class MasterDataSet(AbstractDataSet):
             result = self.on_before_apply(self)
             if result:
                 params = result
-        self.do_apply(params)
+        self.do_apply(params, safe)
         if self.on_after_apply:
             self.on_after_apply(self)
 
@@ -2002,7 +2001,11 @@ class MasterDetailDataset(MasterDataSet):
 
     def open(self, expanded=None, fields=None, where=None, order_by=None,
         open_empty=False, params=None, offset=None, limit=None, funcs=None,
-        group_by=None):
+        group_by=None, safe=False):
+        if safe and self.session and not self.master:
+            priv = self.session.find_privileges(self)
+            if priv and not priv['can_view']:
+                raise Exception(self.task.lang['cant_view'] % self.item_caption)
         if expanded is None:
             expanded = self.expanded
         else:

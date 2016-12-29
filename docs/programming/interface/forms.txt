@@ -2,10 +2,6 @@
 Forms
 =====
 
-
-.. image:: /programming/_images/customer_edit.png
-	:align: center
-:doc:`Report parameters </programming/reports/report_parameters>`
 One of the key concepts of the framework is the concept of form.
 Forms are based on HTML templates that generally determine their layout.
 

@@ -4,7 +4,7 @@ open
 
 .. py:method:: open(self, expanded=None, fields=None, where=None, order_by=None,
         open_empty=False, params=None, offset=None, limit=None, funcs=None,
-        group_by=None)
+        group_by=None, safe=False)
 
 **domain**: server
 
@@ -100,6 +100,12 @@ Parameters
   the 
   :doc:`on_open </refs/server/item/on_open>`
   event handler. This parameter must be an object of key-value pairs
+  
+* ``safe`` - if set to ``True`` the method checks if the user that called the
+  method has a right to view the item's data and, if not, raises an exception. 
+  The default value is ``False``.
+  See 
+  :doc:`Roles </admin/roles>`
 
 Examples
 ========

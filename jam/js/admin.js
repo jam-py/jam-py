@@ -182,6 +182,7 @@ function Events0() { // admin
 	
 			window.onbeforeunload = function(event) {
 				task.editing_finished();
+				window.onbeforeunload = undefined;
 			};
 	
 			resize(task);
@@ -1783,7 +1784,8 @@ function Events3() { // admin.catalogs.sys_items
 			field.field_name === 'f_master_id' ||
 			field.field_name === 'f_master_rec_id') {
 			lookup_item.set_order_by(['f_field_name']);
-			lookup_item.set_where({owner_rec_id__in: [item.parent.value], f_data_type: item.task.consts.INTEGER});
+			lookup_item.set_where({owner_rec_id__in: [item.parent.value],
+				f_data_type__in: [item.task.consts.INTEGER, item.task.consts.TEXT]});
 		}
 		lookup_item.on_after_open = function(it) {
 			var clone = item.sys_fields.clone()
@@ -1800,7 +1802,8 @@ function Events3() { // admin.catalogs.sys_items
 				}
 			}
 			clone.each(function(c) {
-				if (c.f_data_type.value === item.task.consts.INTEGER &&
+				if ((c.f_data_type.value === item.task.consts.INTEGER ||
+					c.f_data_type.value === item.task.consts.TEXT) &&
 					c.id.value !== item.f_primary_key.value &&
 					c.id.value !== item.f_deleted_flag.value &&
 					c.id.value !== item.f_master_id.value &&
@@ -3449,6 +3452,7 @@ function Events7() { // admin.tables.sys_privileges
 	
 	function on_view_form_closed(item) {
 		item.task.editing_finished();
+		item.task.sys_roles.server('roles_changed');
 	}
 	this.on_view_form_created = on_view_form_created;
 	this.select_all_clicked = select_all_clicked;

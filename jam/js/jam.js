@@ -67,7 +67,8 @@
             "UPDATE_SCROLLED": 5,
             "UPDATE_CONTROLS": 6,
             "UPDATE_REFRESH": 7,
-            "UPDATE_CLOSE": 8
+            "UPDATE_CLOSE": 8,
+            "UPDATE_STATE": 9
         },
         alignValue = ['', 'left', 'center', 'right'],
         filterValue = ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in',
@@ -1163,7 +1164,7 @@
                 contentType: contentType,
                 async: async,
                 cache: false,
-                data: JSON.stringify([request, this.user_id, this.ID, item.ID, params, date]),
+                data: JSON.stringify([request, this.session, this.ID, item.ID, params, date]),
                 statusCode: statusCode,
                 success: function(data) {
                     var mess;
@@ -1189,9 +1190,9 @@
                             return;
                         } else if (data.result.status === consts.NOT_LOGGED) {
                             if (!self.logged_in) {
-                                if (self.user_id) {
-                                    self.user_id = null;
-                                    self.erase_cookie(location.port + ':user_id');
+                                if (self.session) {
+                                    self.session = null;
+                                    self.write_session();
                                 }
                                 self.login();
                             } else {
@@ -1261,7 +1262,7 @@
                 body = [],
                 div_chr = ';',
                 xhr = new XMLHttpRequest(),
-                user_info = this.ID + ';' + this.user_id;
+                user_info = this.ID + ';' + this.session;
             header += user_info.length + ';' + user_info + div_chr;
             header += file_info.length + div_chr;
             header += this._byteLength(path) + div_chr;
@@ -1357,15 +1358,112 @@
             button.click();
         },
 
+        read_session: function() {
+            var name = this.ID === 0 ? 'admin' : 'task' + location.port;
+            return this.read_cookie(name);
+        },
+
+        write_session: function() {
+            var name = this.ID === 0 ? 'admin' : 'task' + location.port;
+            if (this.session) {
+                this.create_cookie(name, this.session, 0.5);
+            }
+            else {
+                this.erase_cookie(name);
+            }
+        },
+
         load: function() {
             var self = this,
                 info;
-            if (!this.user_id) {
-                this.user_id = this.read_cookie(location.port + ':user_id');
-                if (this.user_id === "null") {
-                    this.user_id = null;
+            if (!this.session) {
+                this.session = this.read_session();
+                if (this.session === "null") {
+                    this.session = null;
                 }
             }
+            this.send_request('connect', null, function(data) {
+                self.session = data;
+                if (self.session) {
+                    self.write_session();
+                    this.load_task();
+                }
+                else {
+                    self.login();
+                }
+            });
+        },
+
+        login: function() {
+            var self = this,
+                info,
+                $form;
+            if (this.templates) {
+                $form = this.templates.find("#login-form").clone();
+            } else {
+                $form = $("#login-form").clone();
+            }
+
+            $form = this.makeFormModal($form, {
+                title: $form.data('caption'),
+                transition: false
+            });
+
+            $form.find("#login-btn").click(function(e) {
+                var login = $form.find("#inputLoging").val(),
+                    passWord = $form.find("#inputPassword").val(),
+                    pswHash = hex_md5(passWord);
+                e.preventDefault();
+                $form.find("#inputLoging").val('');
+                $form.find("#inputPassword").val('');
+                self.send_request('login', [login, pswHash], function(data) {
+                    self.session = data;
+                    self.write_session();
+                    if (self.session) {
+                        if ($form) {
+                            $form.modal('hide');
+                        }
+                        self.load_task();
+                    }
+                });
+            });
+
+            $form.find("#close-btn").click(function(e) {
+                $form.modal('hide');
+            });
+
+            $form.on("shown", function(e) {
+                $form.find("#inputLoging").focus();
+                e.stopPropagation();
+            });
+
+            $form.find('input').keydown(function(e) {
+                var $this = $(this),
+                    code = (e.keyCode ? e.keyCode : e.which);
+                if (code === 40) {
+                    if ($this.attr('id') === 'inputLoging') {
+                        $form.find('#inputPassword').focus();
+                    } else {
+                        $form.find('#login-btn').focus();
+                    }
+                }
+            });
+
+            $form.modal({
+                width: 500
+            });
+        },
+
+        logout: function() {
+            this.send_request('logout', this.session);
+            this.session = null;
+            this.write_session();
+            location.reload();
+        },
+
+        load_task: function() {
+            var self = this,
+                info;
             this.send_request('init_client', null, function(data) {
                 var info = data[0],
                     error = data[1],
@@ -1493,72 +1591,6 @@
                 this.all(calc_modules);
                 this.all(load_script);
             }
-        },
-
-        login: function() {
-            var self = this,
-                info,
-                $form;
-            if (this.templates) {
-                $form = this.templates.find("#login-form").clone();
-            } else {
-                $form = $("#login-form").clone();
-            }
-
-            $form = this.makeFormModal($form, {
-                title: $form.data('caption'),
-                transition: false
-            });
-
-            $form.find("#login-btn").click(function(e) {
-                var login = $form.find("#inputLoging").val(),
-                    passWord = $form.find("#inputPassword").val(),
-                    pswHash = hex_md5(passWord);
-                $form.find("#inputLoging").val('');
-                $form.find("#inputPassword").val('');
-                self.send_request('login', [login, pswHash], function(data) {
-                    self.user_id = data[0];
-                    self.create_cookie(location.port + ':user_id', self.user_id, 0.5);
-                    if (self.user_id) {
-                        if ($form) {
-                            $form.modal('hide');
-                        }
-                        self.load();
-                    }
-                });
-            });
-
-            $form.find("#close-btn").click(function(e) {
-                $form.modal('hide');
-            });
-
-            $form.on("shown", function(e) {
-                $form.find("#inputLoging").focus();
-                e.stopPropagation();
-            });
-
-            $form.find('input').keydown(function(e) {
-                var $this = $(this),
-                    code = (e.keyCode ? e.keyCode : e.which);
-                if (code === 40) {
-                    if ($this.attr('id') === 'inputLoging') {
-                        $form.find('#inputPassword').focus();
-                    } else {
-                        $form.find('#login-btn').focus();
-                    }
-                }
-            });
-
-            $form.modal({
-                width: 500
-            });
-        },
-
-        logout: function() {
-            this.send_request('logout', this.user_id);
-            this.user_id = null;
-            this.erase_cookie(location.port + ':user_id');
-            location.reload();
         },
 
         has_privilege: function(item, priv_name) {
@@ -3907,6 +3939,7 @@
                 if (this.on_state_changed) {
                     this.on_state_changed.call(this, this);
                 }
+                this.update_controls(consts.UPDATE_STATE);
             }
         },
 
@@ -4912,7 +4945,7 @@
                     lookup_field.owner.edit();
                 }
                 if (lookup_field.multi_select) {
-                    lookup_field.set_value(new Set([this._primary_key_field.value]), lookup_value);
+                    lookup_field.set_value([this._primary_key_field.value], lookup_value);
                 } else {
                     if (item) {
                         item.each_field(function(item_field) {
@@ -5656,8 +5689,7 @@
                 result = result.replace('T', ' ');
             }
             else if (this.multi_select) {
-                if (result instanceof Set) {
-                    result = Array.from(result);
+                if (result instanceof Array) {
                     if (!result.length) {
                         result = null;
                     }
@@ -5948,10 +5980,7 @@
                 result = '';
             if (this.multi_select) {
                 value = this.raw_value;
-                if (value instanceof Set) {
-                    len = value.size;
-                }
-                else if (value instanceof Array) {
+                if (value instanceof Array) {
                     len = value.length;
                 }
                 if (len) {
@@ -7225,45 +7254,42 @@
 
         init_selections: function() {
             var value;
-            if (this.options.selections && this.options.selections instanceof Set) {
+            if (this.options.selections && this.options.selections instanceof Array) {
                 this.selections = this.options.selections;
             }
             else if (this.item.lookup_field && this.item.lookup_field.multi_select) {
                 value = this.item.lookup_field.raw_value;
                 this.options.select_all = this.item.lookup_field.multi_select_all;
-                if (value instanceof Set) {
+                if (value instanceof Array) {
                     this.selections = value;
                 }
-                else if (value instanceof Array) {
-                    this.selections = new Set(value);
-                }
                 else {
-                    this.selections = new Set();
+                    this.selections = [];
                 }
             }
         },
 
         selections_update_lookup_field: function() {
             if (this.item.lookup_field && this.item.lookup_field.multi_select) {
-                if (this.selections.size === 1 && this.selections.has(this.item._primary_key_field.value)) {
+                if (this.selections.length === 1 && this.selections.indexOf(this.item._primary_key_field.value) !== -1) {
                     this.item.lookup_field.set_value(this.selections, this.item.field_by_name(this.item.lookup_field.lookup_field).display_text);
                 }
                 else {
                     this.item.lookup_field.set_value(this.selections, '');
                 }
             }
-            this.$element.find('th .multi-select .sel-count').text(this.selections.size);
+            this.$element.find('th .multi-select .sel-count').text(this.selections.length);
         },
 
         selections_get_selected: function() {
-            return this.selections.has(this.item._primary_key_field.value);
+            return this.selections.indexOf(this.item._primary_key_field.value) !== -1;
         },
 
         selections_can_change: function(value) {
             var valid = true;
             if (value && this.options.selection_limit) {
                 valid = (this.options.selection_limit &&
-                    this.options.selection_limit >= this.selections.size + 1);
+                    this.options.selection_limit >= this.selections.length + 1);
                 if (!valid) {
                     this.item.warning(language.selection_limit_exceeded.replace('%s', this.options.selection_limit))
                 }
@@ -7273,14 +7299,18 @@
 
         selections_set_selected: function(value) {
             var result = value,
+                index,
                 all_selected = false;
             if (this.selections_can_change(value)) {
                 if (value) {
-                    this.selections.add(this.item._primary_key_field.value);
+                    this.selections.push(this.item._primary_key_field.value);
                     all_selected = true;
                 } else {
-                    this.selections.delete(this.item._primary_key_field.value);
-                    all_selected = this.selections_get_all_selected();
+                    index = this.selections.indexOf(this.item._primary_key_field.value);
+                    if (index !== -1) {
+                        this.selections.splice(index, 1);
+                        all_selected = this.selections_get_all_selected();
+                    }
                 }
                 this.selections_update_lookup_field();
                 this.$outer_table.find('th input.multi-select').prop('checked', all_selected);
@@ -7296,11 +7326,11 @@
                 clone = this.item.clone(),
                 result = false;
             if (this.options.select_all) {
-                result = this.selections.size > 0;
+                result = this.selections.length > 0;
             }
             else {
                 clone.each(function(c) {
-                    if (self.selections.has(c._primary_key_field.value)) {
+                    if (self.selections.indexOf(c._primary_key_field.value) !== -1) {
                         result = true;
                         return false;
                     }
@@ -7338,16 +7368,16 @@
                         if (self.options.selection_limit && copy.record_count() >= self.options.selection_limit) {
                             self.item.warning(language.selected_first.replace('%s', self.options.selection_limit));
                         }
-                        self.selections.clear();
+                        self.selections.length = 0;
                         copy.each(function(c) {
-                            self.selections.add(c._primary_key_field.value);
+                            self.selections.push(c._primary_key_field.value);
                         });
                         self.$table.find('td input.multi-select').prop('checked', value);
                         self.selections_update_lookup_field();
                     })
                 }
                 else {
-                    this.selections.clear();
+                    this.selections.length = 0;
                     this.$table.find('td input.multi-select').prop('checked', value);
                     this.selections_update_lookup_field();
                 }
@@ -7355,11 +7385,15 @@
             else {
                 clone = this.item.clone();
                 clone.each(function(c) {
+                    var index;
                     if (self.selections_can_change(value)) {
                         if (value) {
-                            self.selections.add(c._primary_key_field.value);
+                            self.selections.push(c._primary_key_field.value);
                         } else {
-                            self.selections.delete(c._primary_key_field.value)
+                            index = self.selections.indexOf(c._primary_key_field.value);
+                            if (index !== -1) {
+                                self.selections.splice(index, 1);
+                            }
                         }
                     }
                     else {
@@ -8107,7 +8141,7 @@
                     checked = 'checked';
                 }
                 div = $('<div class="text-center multi-select" style="overflow: hidden">' + title + '</div>')
-                sel_count = $('<p class="sel-count text-center">' + this.selections.size + '</p>')
+                sel_count = $('<p class="sel-count text-center">' + this.selections.length + '</p>')
                 if (this.options.select_all) {
                     sel_count.addClass('select-all');
                 }
@@ -9060,6 +9094,7 @@
         var self = this;
         this.field = field;
         this.read_only = false;
+        this.is_changing = true;
     }
 
     DBAbstractInput.prototype = {
@@ -9320,47 +9355,40 @@
             return false;
         },
 
+        set_read_only: function(value) {
+            if (this.$firstBtn) {
+                this.$firstBtn.prop('disabled', value);
+            }
+            if (this.$lastBtn) {
+                this.$lastBtn.prop('disabled', value);
+            }
+            if (this.$input) {
+                this.$input.prop('disabled', value);
+            }
+        },
+
         update: function() {
             var placeholder = this.field.field_placeholder,
-                focused = this.$input.get(0) === document.activeElement;
+                focused = this.$input.get(0) === document.activeElement,
+                is_changing = this.is_changing;
+
             if (this.field.field_kind === consts.ITEM_FIELD) {
+                is_changing = this.field.owner.is_changing();
                 if (this.field.owner.record_count() === 0) {
                     this.read_only = true;
-                    if (this.$firstBtn) {
-                        this.$firstBtn.prop('disabled', this.read_only);
-                    }
-                    if (this.$lastBtn) {
-                        this.$lastBtn.prop('disabled', this.read_only);
-                    }
-                    if (this.$input) {
-                        this.$input.prop('disabled', this.read_only);
-                    }
+                    this.is_changing = false;
+                    this.set_read_only(true);
                     return
                 }
             }
             if (!this.removed && !this.form_closing()) {
-                if (this.read_only !== this.field._get_read_only()) {
+                if (this.read_only !== this.field._get_read_only() || is_changing !== this.is_changing) {
                     this.read_only = this.field._get_read_only();
-                    if (this.$firstBtn) {
-                        this.$firstBtn.prop('disabled', this.read_only);
-                    }
-                    if (this.$lastBtn) {
-                        this.$lastBtn.prop('disabled', this.read_only);
-                    }
-                    if (this.$input) {
-                        this.$input.prop('disabled', this.read_only);
-                    }
+                    this.is_changing = is_changing;
+                    this.set_read_only(this.read_only || !this.is_changing);
                 }
                 if (this.field.master_field) {
-                    if (this.$firstBtn) {
-                        this.$firstBtn.prop('disabled', true);
-                    }
-                    if (this.$lastBtn) {
-                        this.$lastBtn.prop('disabled', true);
-                    }
-                    if (this.$input) {
-                        this.$input.prop('disabled', true);
-                    }
+                    this.set_read_only(true);
                 }
                 if (this.field.get_lookup_data_type() === consts.BOOLEAN) {
                     if (this.field.get_lookup_value()) {
@@ -9383,7 +9411,7 @@
                         }
                     }
                 }
-                if (this.read_only || this.field.master_field) {
+                if (this.read_only || !this.is_changing || this.field.master_field) {
                     placeholder = '';
                 }
                 this.$input.attr('placeholder', placeholder);

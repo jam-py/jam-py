@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import with_statement
 import sys, os
 
 import Queue
@@ -9,17 +6,16 @@ import threading
 import zipfile
 from xml.dom.minidom import parseString
 from xml.sax.saxutils import escape
-import uuid
 import datetime, time
 import traceback
 import inspect
 import json
 
-import common, db.db_modules as db_modules
-from items import *
-from dataset import *
-from sql import *
-import adm_server
+import jam.common as common
+import jam.db.db_modules as db_modules
+from jam.items import *
+from jam.dataset import *
+from jam.sql import *
 
 class ServerDataset(Dataset, SQL):
     def __init__(self, table_name='', soft_delete=True):
@@ -32,7 +28,6 @@ class ServerDataset(Dataset, SQL):
         self.on_apply = None
         self.on_count = None
         self.on_field_get_text = None
-        self.deleted_field_name = None
         self.soft_delete = soft_delete
         self.virtual_table = False
 
@@ -82,13 +77,12 @@ class ServerDataset(Dataset, SQL):
     def do_internal_open(self, params):
         return self.select_records(params)
 
-    def do_apply(self, params=None):
+    def do_apply(self, params=None, safe=False):
         if not self.master and self.log_changes:
             changes = {}
             self.change_log.get_changes(changes)
             if changes['data']:
-                data, error = self.apply_changes((changes, params),
-                    {'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': True})
+                data, error = self.apply_changes((changes, params), safe)
                 if error:
                     raise Exception(error)
                 else:
@@ -121,12 +115,16 @@ class ServerDataset(Dataset, SQL):
             self._order_by.append([fld.ID, desc])
         return self
 
-    def get_record_count(self, params, user_info=None, enviroment=None):
+    def get_record_count(self, params, safe=False):
+        if safe and self.session and not self.master:
+            priv = self.session.find_privileges(self)
+            if priv and not priv['can_view']:
+                raise Exception(self.task.lang['cant_view'] % self.item_caption)
         result = None
         if self.task.on_count:
-            result = self.task.on_count(self, params, user_info, enviroment)
+            result = self.task.on_count(self, params)
         if result is None and self.on_count:
-            result = self.on_count(self, params, user_info, enviroment)
+            result = self.on_count(self, params)
         elif result is None:
             error_mess = ''
             sql = self.get_record_count_query(params)
@@ -135,12 +133,16 @@ class ServerDataset(Dataset, SQL):
             result = count, error_mess
         return result
 
-    def select_records(self, params, user_info=None, enviroment=None):
+    def select_records(self, params, safe=False):
+        if safe and self.session and not self.master:
+            priv = self.session.find_privileges(self)
+            if priv and not priv['can_view']:
+                raise Exception(self.task.lang['cant_view'] % self.item_caption)
         result = None
         if self.task.on_open:
-            result = self.task.on_open(self, params, user_info, enviroment)
+            result = self.task.on_open(self, params)
         if result is None and self.on_open:
-            result = self.on_open(self, params, user_info, enviroment)
+            result = self.on_open(self, params)
         elif result is None:
             error_mes = ''
             sql = self.get_select_statement(params)
@@ -148,24 +150,22 @@ class ServerDataset(Dataset, SQL):
             result = rows, error_mes
         return result
 
-    def apply_delta(self, delta, privileges=None, user_info=None):
-        sql = delta.apply_sql(user_info, privileges)
+    def apply_delta(self, delta, safe=False):
+        sql = delta.apply_sql(safe)
         return self.task.execute(sql)
 
-    def apply_changes(self, data, privileges, user_info=None, enviroment=None):
+    def apply_changes(self, data, safe):
         result = None
         changes, params = data
         if not params:
             params = {}
-        if not user_info:
-            user_info = params.get('user_info')
         delta = self.delta(changes)
         if self.task.on_apply:
-            result = self.task.on_apply(self, delta, params, privileges, user_info, enviroment)
+            result = self.task.on_apply(self, delta, params)
         if result is None and self.on_apply:
-            result = self.on_apply(self, delta, params, privileges, user_info, enviroment)
+            result = self.on_apply(self, delta, params)
         elif result is None:
-            result = self.apply_delta(delta, privileges, user_info)
+            result = self.apply_delta(delta, safe)
         return result
 
     def update_deleted(self):
@@ -381,7 +381,11 @@ class Report(AbstrReport):
         result.prepare_params()
         return  result
 
-    def print_report(self, param_values, url, ext=None):
+    def print_report(self, param_values, url, ext=None, safe=False):
+        if safe and self.session:
+            priv = self.session.find_privileges(self)
+            if priv and not priv['can_view']:
+                raise Exception(self.task.lang['cant_view'] % self.item_caption)
         if not self.template_content:
             self.parse_template()
         copy_report = self.copy()
@@ -391,10 +395,6 @@ class Report(AbstrReport):
         if not ext:
             ext = 'ods'
         file_name = self.item_name + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
-        #~ if os.name == "nt":
-            #~ file_name = self.item_name + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
-        #~ else:
-            #~ file_name = self.item_caption + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f') + '.' + ext
         file_name = escape(file_name, {':': '-', '/': '_', '\\': '_'})
         return os.path.abspath(os.path.join(self.task.work_dir, 'static', 'reports', file_name))
 
@@ -1189,12 +1189,13 @@ class Task(AbstractServerTask):
             host, port, encoding, con_pool_size, mp_pool, persist_con)
         self.on_created = None
         self.on_login = None
-        self.on_get_user_info = None
         self.on_logout = None
         self.on_ext_request = None
         self.init_dict = {}
+        self.roles = None
         for key, value in self.__dict__.iteritems():
             self.init_dict[key] = value
+
 
 class AdminTask(AbstractServerTask):
     def __init__(self, app, name, caption, js_filename,
@@ -1204,80 +1205,20 @@ class AdminTask(AbstractServerTask):
             db_type, db_database, db_user, db_password, host, port, encoding, 2)
         filepath, filename = os.path.split(__file__)
         self.cur_path = filepath
-        self.users = {}
-        self.roles = None
         self.edited_docs = []
 
     def create_task(self):
-        return adm_server.create_task(self.app)
+        from jam.adm_server import create_task
+        return create_task(self.app)
 
     def reload_task(self):
-        adm_server.reload_task(self)
+        from jam.adm_server import reload_task
+        reload_task(self)
 
     def update_events_code(self):
-        adm_server.update_events_code(self)
+        from jam.adm_server import update_events_code
+        update_events_code(self)
 
-    def login(self, log, psw_hash, is_admin, env):
-        privileges = None
-        if not is_admin and self.app.task and self.app.task.on_login:
-            user_uuid = self.app.task.on_login(self.app.task, log, psw_hash, env)
-        else:
-            user_info = adm_server.login(self, log, psw_hash, is_admin)
-            user_uuid = None
-            if user_info:
-                for key in list(self.users.iterkeys()):
-                    if self.users[key]["user_id"] == user_info["user_id"] and \
-                        self.users[key]["admin"] == user_info["admin"]:
-                        if user_info["admin"]:
-                            adm_server.clear_docs_on_logout(self, user_info)
-                        del self.users[key]
-                        break
-                user_uuid = str(uuid.uuid4())
-                self.users[user_uuid] = user_info
-        return user_uuid, ''
-
-    def logout(self, user_uuid, admin, env):
-        if not admin and self.app.task and self.app.task.on_logout:
-            self.app.task.on_logout(self.app.task, user_uuid, env)
-        else:
-            try:
-                user_info = self.users.get(user_uuid)
-                adm_server.clear_docs_on_logout(self, user_info)
-                if user_info:
-                    del self.users[user_uuid]
-            except:
-                pass
-        return None, ''
-
-    def get_user_info(self, user_uuid, admin, env):
-        if not admin and self.app.task and self.app.task.on_get_user_info:
-            return self.app.task.on_get_user_info(self.app.task, user_uuid, env)
-        else:
-            user_info = self.users.get(user_uuid)
-            if user_info:
-                if not admin or (admin and user_info['admin']):
-                    return user_info
-
-    def get_privileges(self, role_id):
-        if self.roles is None:
-            self.roles = adm_server.get_roles(self)
-        return self.roles[role_id]
-
-    def find_privileges(self, user_info, item):
-        if not self.safe_mode or item.master or (item.task == self) or (item == item.task):
-            return {'can_view': True, 'can_create': True, 'can_edit': True, 'can_delete': True}
-        else:
-            try:
-                priv_dic = self.get_privileges(user_info['role_id'])[item.ID]
-            except:
-                priv_dic = None
-            if priv_dic:
-                return priv_dic
-            else:
-                return {'can_view': False, 'can_create': False, 'can_edit': False, 'can_delete': False}
-
-    def has_privilege(self, user_info, item, priv_name):
-        return self.find_privileges(user_info, item)[priv_name]
 
 class Group(AbstrGroup):
     def __init__(self, owner, name, caption, view_template=None, js_filename=None, visible=True, item_type_id=0):

@@ -2,7 +2,7 @@
 on_apply
 ========
 
-on_apply(self, delta, params, privileges, user_info, enviroment)
+on_apply(self, delta, params)
 
 **domain**: server
 
@@ -24,24 +24,6 @@ The ``on_apply`` event handler has the following parameters:
 * ``item`` - a reference to the item,
 * ``delta`` - a delta containing item change log (discussed in more detail below),
 * ``params`` - the parameters passed to the server by apply method,
-* ``privileges`` - a dictionary containing information about the user's 
-  permissions, the right to add, modify, delete and view records in the database table, 
-
-  * ``can_create`` 
-  * ``can_edit`` 
-  * ``can_delete`` 
-  * ``can_view``
-  
-* ``user_info`` - a dictionary containing information about the user ( his id,
-    name, role id, role name and right to work in the Administrator.
-
-  * ``user_id``
-  * ``user_name`` 
-  * ``role_id`` 
-  * ``role_name`` 
-  * ``admin``
-  
-* ``enviroment`` - a dictionary containing standard WSGI environment variables.
 
 The delta parameter contains changes that must be saved in the databae. 
 By itself, this option is an item's copy, and its dataset is the item's change 
@@ -66,8 +48,8 @@ storing detail changes.
     You do not need to open delta detail after the cursor has been moved to 
     another record.
     
-The following code is execute by default, when the ``on_apply`` event handler is
-not defined:
+The following code is execute by default when the ``on_apply`` event 
+handler is not defined:
 
 .. code-block:: py
 
@@ -82,7 +64,12 @@ returns to the client information about the result of processing, that stores th
 id's of the new records as well. The client based on this information updates the 
 item's change log and values of ``id`` fields of new records.
 
-You can make some additional processing of the delta
+When ``on_apply`` event handler returns ``None`` this standard code is 
+executed after it, otherwise it is ommited.
+
+You can make some additional processing of the delta. In the following code, the
+a value of the date field is set to the current date before changes are applied 
+to the database table.
 
 .. code-block:: py
 
@@ -93,8 +80,6 @@ You can make some additional processing of the delta
             d.edit()
             d.date.value = datetime.datetime.now()
             d.post()
-        sql = delta.apply_sql()
-        return item.task.execute(sql)
 
 .. note::
     Please note that changes made this way are not reflected in the item dataset

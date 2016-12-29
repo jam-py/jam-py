@@ -3,7 +3,7 @@
 
 function Events1() { // demo 
 
-	function on_page_loaded(task) {  
+	function on_page_loaded(task) {   
 		$("title").text(task.item_caption);
 		$("#title").text(task.item_caption);
 		
@@ -630,9 +630,9 @@ task.events.events15 = new Events15();
 function Events12() { // demo.catalogs.albums 
 
 	function init_table(item, options) {
-		item.selections = new Set();	
+		item.selections = [];	
 		options.selections = item.selections;	
-	//	options.select_all = true;
+		options.select_all = true;
 	}
 	this.init_table = init_table;
 }

@@ -1,0 +1,44 @@
+=======
+session
+=======
+
+.. py:attribute:: session
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`AbstractItem class </refs/server/abstractitem_api>`
+
+Description
+===========
+
+Specifies the session object of the current request from the client.
+
+The session object has the following attributes:
+
+* ``user_id`` - the id identifying the user of the request
+
+* ``user_name`` - the name of the user of the request
+
+* ``role_id`` - the user role
+
+* ``role_name`` - the user role name
+
+and the method:
+
+* ``find_privileges`` that returns the privileges dictionary of the item passed 
+  as a parameter. This dictionary has information about the user's 
+  permissions - the right to add, modify, delete and view records in the item's 
+  database table and have the following keys: 
+
+  * ``can_create`` 
+  * ``can_edit`` 
+  * ``can_delete`` 
+  * ``can_view``  
+
+See also
+========
+
+:doc:`Server side programming </programming/server/index>`
+
