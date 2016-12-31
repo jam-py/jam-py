@@ -76,28 +76,22 @@ class SQL(object):
     def apply_sql(self, safe=False, db_module=None):
 
         def get_sql(item, safe, db_module):
-            priv = None
-            if safe and item.session:
-                priv = item.session.find_privileges(self)
             if item.master:
                 item._master_id_field.set_data(item.master.ID)
                 item._master_rec_id_field.set_data(item.master._primary_key_field.value)
             if item.record_status == common.RECORD_INSERTED:
-                if not item.master:
-                    if priv and not priv['can_create']:
-                        raise Exception(self.task.lang['cant_create'] % self.item_caption)
+                if safe and not self.can_create():
+                    raise Exception(self.task.lang['cant_create'] % self.item_caption)
                 sql, param = item.insert_sql(db_module)
             elif item.record_status == common.RECORD_MODIFIED:
-                if not item.master:
-                    if priv and not priv['can_edit']:
-                        raise Exception(self.task.lang['cant_edit'] % self.item_caption)
+                if safe and not self.can_edit():
+                    raise Exception(self.task.lang['cant_edit'] % self.item_caption)
                 sql, param = item.update_sql(db_module)
             elif item.record_status == common.RECORD_DETAILS_MODIFIED:
                 sql, param = '', None
             elif item.record_status == common.RECORD_DELETED:
-                if not item.master:
-                    if priv and not priv['can_delete']:
-                        raise Exception(self.task.lang['cant_delete'] % self.item_caption)
+                if safe and not self.can_delete():
+                    raise Exception(self.task.lang['cant_delete'] % self.item_caption)
                 sql = item.delete_sql(db_module)
                 param = None
             else:
@@ -136,7 +130,7 @@ class SQL(object):
             h_params = None
             h_table_name = None
             if item.session:
-                user_info = item.session.user_info()
+                user_info = item.session.get('user_info')
             if item.task.history_item and item.keep_history:
                 h_table_name = item.task.history_item.table_name
                 changes = None

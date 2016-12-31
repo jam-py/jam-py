@@ -119,7 +119,7 @@ task_server_events = \
 
         #~ 'on_login': 'task, login, password_hash, env',
         #~ 'on_ext_request': 'task, request, params',
-        #~ 'on_request': 'task, user_info, env, request, item, params, ext'
+        #~ 'on_request': 'task, request, params'
     }
 
 group_server_events = \

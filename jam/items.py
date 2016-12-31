@@ -247,7 +247,34 @@ class AbstrItem(AbstractItem):
     def bind_item(self):
         self.prepare_fields()
         self.prepare_filters()
-#        self.fields = list(self._fields)
+
+    def check_operation(self, operation):
+        try:
+            app = self.task.app
+            if not app.admin.safe_mode or self.master or self.task == app.admin:
+                return True
+            else:
+                session = self.session
+                if session:
+                    role_id = session['user_info']['role_id']
+                    privileges = self.task.app.get_privileges(role_id)
+                    priv_dic = privileges.get(self.ID)
+                    if priv_dic:
+                        return priv_dic[operation]
+        except:
+            return False
+
+    def can_view(self):
+        return self.check_operation('can_view')
+
+    def can_create(self):
+        return self.check_operation('can_create')
+
+    def can_edit(self):
+        return self.check_operation('can_edit')
+
+    def can_delete(self):
+        return self.check_operation('can_delete')
 
 
 class AbstrDetail(AbstrItem):

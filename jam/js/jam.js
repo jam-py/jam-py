@@ -1164,7 +1164,7 @@
                 contentType: contentType,
                 async: async,
                 cache: false,
-                data: JSON.stringify([request, this.session, this.ID, item.ID, params, date]),
+                data: JSON.stringify([request, this.ID, item.ID, params, date]),
                 statusCode: statusCode,
                 success: function(data) {
                     var mess;
@@ -1190,10 +1190,6 @@
                             return;
                         } else if (data.result.status === consts.NOT_LOGGED) {
                             if (!self.logged_in) {
-                                if (self.session) {
-                                    self.session = null;
-                                    self.write_session();
-                                }
                                 self.login();
                             } else {
                                 location.reload();
@@ -1262,7 +1258,7 @@
                 body = [],
                 div_chr = ';',
                 xhr = new XMLHttpRequest(),
-                user_info = this.ID + ';' + this.session;
+                user_info = this.ID + ';' + this.item_name;
             header += user_info.length + ';' + user_info + div_chr;
             header += file_info.length + div_chr;
             header += this._byteLength(path) + div_chr;
@@ -1358,34 +1354,11 @@
             button.click();
         },
 
-        read_session: function() {
-            var name = this.ID === 0 ? 'admin' : 'task' + location.port;
-            return this.read_cookie(name);
-        },
-
-        write_session: function() {
-            var name = this.ID === 0 ? 'admin' : 'task' + location.port;
-            if (this.session) {
-                this.create_cookie(name, this.session, 0.5);
-            }
-            else {
-                this.erase_cookie(name);
-            }
-        },
-
         load: function() {
             var self = this,
                 info;
-            if (!this.session) {
-                this.session = this.read_session();
-                if (this.session === "null") {
-                    this.session = null;
-                }
-            }
-            this.send_request('connect', null, function(data) {
-                self.session = data;
-                if (self.session) {
-                    self.write_session();
+            this.send_request('connect', null, function(success) {
+                if (success) {
                     this.load_task();
                 }
                 else {
@@ -1416,10 +1389,8 @@
                 e.preventDefault();
                 $form.find("#inputLoging").val('');
                 $form.find("#inputPassword").val('');
-                self.send_request('login', [login, pswHash], function(data) {
-                    self.session = data;
-                    self.write_session();
-                    if (self.session) {
+                self.send_request('login', [login, pswHash], function(success) {
+                    if (success) {
                         if ($form) {
                             $form.modal('hide');
                         }
@@ -1455,9 +1426,7 @@
         },
 
         logout: function() {
-            this.send_request('logout', this.session);
-            this.session = null;
-            this.write_session();
+            this.send_request('logout');
             location.reload();
         },
 

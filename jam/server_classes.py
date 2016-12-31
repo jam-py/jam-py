@@ -116,10 +116,8 @@ class ServerDataset(Dataset, SQL):
         return self
 
     def get_record_count(self, params, safe=False):
-        if safe and self.session and not self.master:
-            priv = self.session.find_privileges(self)
-            if priv and not priv['can_view']:
-                raise Exception(self.task.lang['cant_view'] % self.item_caption)
+        if safe and not self.can_view():
+            raise Exception(self.task.lang['cant_view'] % self.item_caption)
         result = None
         if self.task.on_count:
             result = self.task.on_count(self, params)
@@ -134,10 +132,8 @@ class ServerDataset(Dataset, SQL):
         return result
 
     def select_records(self, params, safe=False):
-        if safe and self.session and not self.master:
-            priv = self.session.find_privileges(self)
-            if priv and not priv['can_view']:
-                raise Exception(self.task.lang['cant_view'] % self.item_caption)
+        if safe and not self.can_view():
+            raise Exception(self.task.lang['cant_view'] % self.item_caption)
         result = None
         if self.task.on_open:
             result = self.task.on_open(self, params)

@@ -2349,9 +2349,6 @@ function Events14() { // admin.catalogs.sys_code_editor
 	
 	function save_edit(item) {
 		var error = false;
-		if (task.user_info.user_id) {
-	
-		}
 		if (item.field_name) {
 			error = save_to_field(item);
 		}

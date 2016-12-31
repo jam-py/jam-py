@@ -17,10 +17,33 @@ from werkzeug.exceptions import HTTPException, NotFound
 from werkzeug.wsgi import SharedDataMiddleware, peek_path_info, get_path_info
 from werkzeug.local import Local, LocalManager
 from werkzeug.http import parse_date, http_date
+from werkzeug.contrib.securecookie import SecureCookie
+from werkzeug.utils import cached_property
 
 import jam.common as common
-import jam.sessions as sessions
+import jam.adm_server as adm_server
 from jam.items import AbortException
+
+SECRET_KEY = os.urandom(20)
+
+class JamSecureCookie(SecureCookie):
+    serialization_method = json
+
+class JamRequest(Request):
+
+    def session_key(self, task):
+        return '%s_session_%s' % (task.item_name, self.environ['SERVER_PORT'])
+
+    def get_session(self, task):
+        if not hasattr(self, '_cookie'):
+            key = self.session_key(task)
+            self._cookie = JamSecureCookie.load_cookie(self, key=key, secret_key=SECRET_KEY)
+        return self._cookie
+
+    def save_session(self, response, task):
+        key = self.session_key(task)
+        session = self.get_session(task)
+        session.save_cookie(response, key=key)
 
 def create_application(from_file):
     if from_file:
@@ -47,7 +70,6 @@ class App():
         self.work_dir = work_dir
         self._loading = False
         self._load_lock = Lock()
-        self.sessions = sessions.Sessions(self)
         self.admin = None
         self.task = None
         self.privileges = None
@@ -102,7 +124,7 @@ class App():
 
     def wsgi_app(self, environ, start_response):
         jam.context.environ = environ
-        request = Request(environ)
+        request = JamRequest(environ)
         adapter = self.url_map.bind_to_environ(request.environ)
         try:
             endpoint, values = adapter.match()
@@ -178,12 +200,88 @@ class App():
         response.set_data(buff)
         return response
 
+    def create_session(self, cookie, task, user_info={}):
+        session = {}
+        session['uuid'] = str(uuid.uuid4())
+        session['user_info'] = user_info
+        cookie['info'] = session
+        cookie.modified = True
+        return cookie
+
+    def connect(self, request, task):
+        if self.check_session(request, task):
+            return True
+
+    def check_session(self, request, task):
+        c = request.get_session(task)
+        if not c.get('info') and not self.admin.safe_mode:
+            c = self.create_session(c, task)
+        session = c.get('info')
+        if session:
+            user_info = session['user_info']
+            if bool(user_info) != self.admin.safe_mode:
+                self.logout(request, task)
+                return False
+            jam.context.session = session
+            return True
+
+    def login(self, request, task, login, psw_hash):
+        if self.task == task and self.task and self.task.on_login:
+            user_info = self.task.on_login(self.task, login, psw_hash)
+        else:
+            user_info = adm_server.login(self.admin, login, psw_hash, self.admin == task)
+        if user_info:
+            cookie = request.get_session(task)
+            self.create_session(cookie, task, user_info)
+            return True
+
+    def logout(self, request, task):
+        cookie = cookie = request.get_session(task)
+        cookie['info'] = None
+        jam.context.session = None
+
     def on_api(self, request):
         if request.method == 'POST':
             r = {'result': None, 'error': None}
             try:
-                method, session_id, task_id, item_id, params, date = json.loads(request.get_data())
-                r['result'] = self.process_request(request.environ, method, session_id, task_id, item_id, params)
+                method, task_id, item_id, params, date = json.loads(request.get_data())
+                if task_id == 0:
+                    task = self.admin
+                else:
+                    task = self.get_task()
+                result = {'status': common.RESPONSE, 'data': None, 'version': task.version}
+                if not task:
+                    result['status'] = common.NO_PROJECT
+                elif self.under_maintenance:
+                    result['status'] = common.UNDER_MAINTAINANCE
+                elif method == 'connect':
+                    self.connect(request, task)
+                    result['data'] = self.connect(request, task)
+                elif method == 'login':
+                    result['data'] = self.login(request, task, params[0], params[1])
+                elif method == 'logout':
+                    self.logout(request, task);
+                    result['status'] = common.NOT_LOGGED
+                    result['data'] = common.NOT_LOGGED
+                else:
+                    if not self.check_session(request, task):
+                        result['status'] = common.NOT_LOGGED
+                        result['data'] = common.NOT_LOGGED
+                    else:
+                        item = task
+                        if task and item_id:
+                            item = task.item_by_ID(item_id)
+                        self._busy += 1
+                        try:
+                            data = None
+                            if task.on_request:
+                                data = task.on_request(task, method, params)
+                            if not data:
+                                data = self.get_response(item, method, params)
+                        finally:
+                            self._busy -= 1
+                        result['data'] = data
+                r ['result'] = result
             except AbortException as e:
                 traceback.print_exc()
                 r['result'] = {'data': [None, e.message]}
@@ -194,52 +292,12 @@ class App():
                     raise
                 r['result'] = {'data': [None, e.message]}
                 r['error'] = e.message
-            return self.create_post_response(request, r)
+            response = self.create_post_response(request, r)
+            request.save_session(response, task)
+            return response
 
-    def process_request(self, env, method, session_id=None, task_id=None, item_id=None, params=None, ext=None):
-        is_admin = task_id == 0
-        if is_admin:
-            task = self.admin
-        else:
-            task = self.get_task()
-        if not task:
-            return {'status': common.NO_PROJECT, 'data': None}
-        elif self.under_maintenance:
-            return {'status': common.UNDER_MAINTAINANCE, 'data': None}
-        elif method == 'connect':
-            return {'status': common.RESPONSE, 'data': self.sessions.connect(is_admin, session_id, env)}
-        elif method == 'login':
-            return {'status': common.RESPONSE, 'data': self.sessions.login(params[0], params[1], is_admin, env)}
-        elif method == 'logout':
-            self.sessions.logout(params, is_admin, env)
-            return {'status': common.NOT_LOGGED, 'data': common.NOT_LOGGED}
-        if ext:
-            obj = task
-        else:
-            session = self.sessions.check_session(is_admin, session_id, env)
-            if not session:
-                return {'status': common.NOT_LOGGED, 'data': common.NOT_LOGGED}
-            obj = task
-            if task:
-                obj = task.item_by_ID(item_id)
-        self._busy += 1
-        try:
-            data = None
-            if task.on_request:
-                data = task.on_request(task, session, env, method, obj, params, ext)
-            if not data:
-                data = self.get_response(is_admin, method, obj, params, ext)
-        finally:
-            self._busy -= 1
-        return {'status': common.RESPONSE, 'data': data, 'version': task.version, 'server_date': self.started}
-
-    def get_response(self, is_admin, method, item, params, ext):
-        if ext:
-            if item.on_ext_request:
-                return item.on_ext_request(item, method, params)
-        elif method == 'server_function':
-            return self.server_func(item, params[0], params[1])
-        elif method == 'open':
+    def get_response(self, item, method, params):
+        if method == 'open':
             return item.select_records(params, safe=True)
         elif method == 'get_record_count':
             return item.get_record_count(params, safe=True)
@@ -247,8 +305,10 @@ class App():
             return item.apply_changes(params, safe=True)
         elif method == 'print_report':
             return item.print_report(*params), ''
+        elif method == 'server_function':
+            return self.server_func(item, params[0], params[1])
         elif method == 'init_client':
-            return self.init_client(is_admin)
+            return self.init_client(item)
 
     def server_func(self, obj, func_name, params):
         result = None
@@ -270,22 +330,27 @@ class App():
             self.admin.update_events_code()
             self.task_client_modified = False
 
-    def init_client(self, is_admin):
-        if is_admin:
-            task = self.admin
-        else:
-            task = self.task
-        if task.session:
-            priv = task.session.privileges()
-            info = task.session.user_info()
-        else:
-            priv = None
-            info = None
+    def get_privileges(self, role_id):
+        if self.privileges is None:
+            roles, privileges = adm_server.get_roles(self.admin)
+            if self.task:
+                self.task.roles = roles
+            self.privileges = privileges
+        return self.privileges[role_id]
+
+    def init_client(self, task):
+        session = jam.context.session
+        priv = None
+        user_info = {}
+        if session:
+            user_info = session['user_info']
+            if user_info:
+                priv = self.get_privileges(user_info['role_id'])
         result = {
             'task': task.get_info(),
             'settings': self.admin.get_settings(),
             'language': self.admin.lang,
-            'user_info': info,
+            'user_info': user_info,
             'privileges': priv
         }
         return result, ''
@@ -295,13 +360,12 @@ class App():
             r = {'result': None, 'error': None}
             method = get_path_info(request.environ)
             params = json.loads(request.get_data())
-            session_id = None
-            task_id = None
-            item_id = None
-            ext = True
+            task = self.get_task()
             try:
-                r['result'] = self.process_request(request.environ,
-                    method, session_id, task_id, item_id, params, ext)
+                data = None
+                if task.on_ext_request:
+                    data = task.on_ext_request(task, method, params)
+                r['result'] = {'status': common.RESPONSE, 'data': data, 'version': task.version}
             except AbortException as e:
                 traceback.print_exc()
                 r['result'] = {'data': [None, e.message]}
@@ -325,9 +389,9 @@ class App():
             info_len = int(info_len)
             user_info = data[pos:pos+info_len]
             task_ID, p = find_param(user_info)
-            session_id = user_info[p:]
+            task_name = user_info[p:]
             pos = pos + info_len + 1
-            return session_id, int(task_ID), pos
+            return task_name, int(task_ID), pos
 
         if request.method == 'POST':
             try:
@@ -336,10 +400,13 @@ class App():
                 header_str = ''
                 length = 0
                 string = ''
-                session_id, task_ID, pos = read_user_info(data)
+                task_name, task_id, pos = read_user_info(data)
+                if task_id == 0:
+                    task = self.admin
+                else:
+                    task = self.get_task()
                 if self.admin.safe_mode:
-                    session = self.sessions.check_session(task_ID == 0, session_id)
-                    if not session:
+                    if not request.get_session(task).get('info'):
                         return Response()
                 for s in data[pos:]:
                     header_str += s

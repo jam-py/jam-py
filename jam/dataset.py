@@ -2002,10 +2002,8 @@ class MasterDetailDataset(MasterDataSet):
     def open(self, expanded=None, fields=None, where=None, order_by=None,
         open_empty=False, params=None, offset=None, limit=None, funcs=None,
         group_by=None, safe=False):
-        if safe and self.session and not self.master:
-            priv = self.session.find_privileges(self)
-            if priv and not priv['can_view']:
-                raise Exception(self.task.lang['cant_view'] % self.item_caption)
+        if safe and not self.can_view():
+            raise Exception(self.task.lang['cant_view'] % self.item_caption)
         if expanded is None:
             expanded = self.expanded
         else:
