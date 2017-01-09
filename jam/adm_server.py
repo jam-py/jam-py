@@ -318,6 +318,7 @@ def create_items(task):
     task.sys_users.add_field(6, 'f_role', task.lang['role'], common.INTEGER, True, task.sys_roles, 'f_name')
     task.sys_users.add_field(7, 'f_info', task.lang['info'], common.TEXT, edit_visible=False, size=100)
     task.sys_users.add_field(8, 'f_admin', task.lang['admin'], common.BOOLEAN)
+    task.sys_users.add_field(9, 'f_psw_hash', 'psw_hash', common.TEXT, edit_visible=False, size=10000)
 
     task.sys_roles.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_roles.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
@@ -478,6 +479,15 @@ def update_admin_fields(task):
                 cursor.execute("UPDATE SYS_ITEMS SET F_MASTER_REC_ID=%d WHERE ID=%d" % (field_id, id_value))
 
     def do_updates(con, field, item_name):
+        if field.field_name.lower() == 'f_psw_hash':
+            cursor = con.cursor()
+            cursor.execute("SELECT ID, F_PASSWORD FROM SYS_USERS")
+            rows = cursor.fetchall()
+            for (id_value, password) in rows:
+                if password:
+                    psw_hash = hashlib.md5(password).hexdigest()
+                    cursor.execute("UPDATE SYS_USERS SET F_PSW_HASH=? WHERE ID=%d" % id_value, (psw_hash,))
+            con.commit()
         if field.field_name.lower() == 'f_edit_lock':
             cursor = con.cursor()
             cursor.execute("SELECT ID, F_SERVER_MODULE FROM SYS_ITEMS")
@@ -651,13 +661,12 @@ def get_roles(task):
 def login(task, log, psw_hash, admin):
     user_id = None
     user_info = {}
-    users = task.sys_users.copy()
-    users.open()
     if task.safe_mode:
-        privileges = {}
+        users = task.sys_users.copy()
+        users.set_where(f_psw_hash=psw_hash)
+        users.open()
         for u in users:
-            if u.f_login.value.strip() == log.strip():
-                if hashlib.md5(u.f_password.value).hexdigest() == psw_hash:
+            if u.f_login.value.strip() == log.strip() and u.f_psw_hash.value == psw_hash:
                     if not admin or u.f_admin.value == admin:
                         user_id = u.id.value
                         user_info = {
@@ -2625,6 +2634,12 @@ def server_load_index_fields(item, value):
 #                                  sys_roles                                  #
 ###############################################################################
 
+def users_on_apply(item, delta, params):
+    for d in delta:
+        d.edit()
+        d.f_psw_hash.value = hashlib.md5(d.f_password.value).hexdigest()
+        d.post()
+
 def privileges_table_get_select(item, query):
     owner_id = query['__master_id']
     owner_rec_id = query['__master_rec_id']
@@ -2708,6 +2723,7 @@ def register_defs(task):
     task.register(set_edited)
     task.register(check_doc_edited)
     task.sys_params.on_apply = do_on_apply_sys_changes
+    task.sys_users.on_apply = users_on_apply
     task.sys_tasks.on_apply = do_on_apply_sys_changes
     task.sys_items.register(server_can_delete)
     task.sys_items.register(server_group_is_empty)

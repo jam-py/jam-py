@@ -136,6 +136,10 @@ class AbstractItem(object):
     def load_code(self):
         return self.item_name
 
+    def can_view(self):
+        return self.check_operation('can_view')
+
+
 class AbstrGroup(AbstractItem):
     pass
 
@@ -251,8 +255,15 @@ class AbstrItem(AbstractItem):
     def check_operation(self, operation):
         try:
             app = self.task.app
-            if not app.admin.safe_mode or self.master or self.task == app.admin:
+            if not app.admin.safe_mode or self.master:
                 return True
+            elif self.task == app.admin:
+                if app.admin.safe_mode:
+                    session = self.session
+                    if session and session['user_info']['admin']:
+                        return True
+                else:
+                    return True
             else:
                 session = self.session
                 if session:
@@ -263,9 +274,6 @@ class AbstrItem(AbstractItem):
                         return priv_dic[operation]
         except:
             return False
-
-    def can_view(self):
-        return self.check_operation('can_view')
 
     def can_create(self):
         return self.check_operation('can_create')

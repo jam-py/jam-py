@@ -24,8 +24,6 @@ import jam.common as common
 import jam.adm_server as adm_server
 from jam.items import AbortException
 
-SECRET_KEY = os.urandom(20)
-
 class JamSecureCookie(SecureCookie):
     serialization_method = json
 
@@ -37,7 +35,7 @@ class JamRequest(Request):
     def get_session(self, task):
         if not hasattr(self, '_cookie'):
             key = self.session_key(task)
-            self._cookie = JamSecureCookie.load_cookie(self, key=key, secret_key=SECRET_KEY)
+            self._cookie = JamSecureCookie.load_cookie(self, key=key, secret_key='')
         return self._cookie
 
     def save_session(self, response, task):

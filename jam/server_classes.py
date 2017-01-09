@@ -160,7 +160,7 @@ class ServerDataset(Dataset, SQL):
             result = self.task.on_apply(self, delta, params)
         if result is None and self.on_apply:
             result = self.on_apply(self, delta, params)
-        elif result is None:
+        if result is None:
             result = self.apply_delta(delta, safe)
         return result
 
@@ -378,10 +378,8 @@ class Report(AbstrReport):
         return  result
 
     def print_report(self, param_values, url, ext=None, safe=False):
-        if safe and self.session:
-            priv = self.session.find_privileges(self)
-            if priv and not priv['can_view']:
-                raise Exception(self.task.lang['cant_view'] % self.item_caption)
+        if safe and not self.can_view():
+            raise Exception(self.task.lang['cant_view'] % self.item_caption)
         if not self.template_content:
             self.parse_template()
         copy_report = self.copy()
