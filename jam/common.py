@@ -35,7 +35,8 @@ DEFAULT_SETTINGS = {
     'PERSIST_CON': False,
     'SINGLE_FILE_JS': False,
     'DYNAMIC_JS': False,
-    'COMPRESSED_JS': False
+    'COMPRESSED_JS': False,
+    'TIMEOUT': 0
 }
 
 LOCALE_SETTINGS = (
@@ -454,3 +455,15 @@ def compressBuf(buf):
     zfile.write(buf)
     zfile.close()
     return zbuf.getvalue()
+
+def profileit(func):
+    import cProfile
+
+    def wrapper(*args, **kwargs):
+        datafn = func.__name__ + ".profile" # Name the data file sensibly
+        prof = cProfile.Profile()
+        retval = prof.runcall(func, *args, **kwargs)
+        prof.dump_stats(datafn)
+        return retval
+
+    return wrapper

@@ -437,7 +437,7 @@ h4.title {
     color: #3a87ad;
 }
 
-.dbtable th .multi-select .sel-count.select-all {
+.dbtable th .multi-select .sel-count.selected-shown {
     color: #b94a48;
 }
 
@@ -479,6 +479,10 @@ h4.title {
 .dbtree ul:first-child {
     margin-left: 0px;
 }
+
+.mselect-btn {
+    padding: 3px 4px;
+]
 
 .bullet {
     margin-left: 12px;

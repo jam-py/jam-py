@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
+import sqlite3
+from english import dictionary
 
-dictionary = \
-{
+keys = \
+'''
     'lang':                             'en',
-#interface buttons and labels
     'yes':                              'Yes',
     'no':                               'No',
     'ok':                               'OK',
@@ -26,7 +26,6 @@ dictionary = \
     'login':                            'Login',
     'password':                         'Password',
     'log_out':                          'Log out',
-#runtime messages
     'invalid_int':                      '%s invalid value - must be an integer',
     'invalid_float':                    '%s invalid value - must be a float',
     'invalid_cur':                      '%s invalid value - must be a currency',
@@ -67,7 +66,6 @@ dictionary = \
     'delete_master_not_changing':       "Item %s - can't delete record: master item is not in edit or insert state",
     'delete_no_records':                "Item %s - can't delete record: dataset is empty",
     'cancel_invalid_state':             "Item %s - can't cancel: item is not in edit or insert state",
-#locale
     'decimal_point':                  'Decimal point',
     'mon_decimal_point':              'Monetory decimal point',
     'mon_thousands_sep':              'Monetory thousands separator',
@@ -83,27 +81,22 @@ dictionary = \
     'n_sign_posn':                    'The position of the sign (negative values)',
     'd_fmt':                          'Date format string',
     'd_t_fmt':                        'Date and time format string',
-#calendar
     'months_short':                   '[Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]',
     'months':                         '[January, February, March, April, May, June, July, August, September, October, November, December]',
     'week_start':                     '0',
     'days_min':                       '[Su, Mo, Tu, We, Th, Fr, Sa, Su]',
-#grid
     'page':                           'Page',
     'of':                             'of',
-#history
     'created':                        'Created',
     'modified':                       'Modified',
     'deleted':                        'Deleted',
     'by_user':                        'by',
     'old_value':                      'old value',
     'new_value':                      'new value',
-#rights messages
     'cant_view':                        '%s: you are not allowed to view',
     'cant_create':                      '%s: you are not allowed to create',
     'cant_edit':                        '%s: you are not allowed to edit',
     'cant_delete':                      '%s: you are not allowed to delete',
-#admin fields
     'admin':                            'Administrator',
     'catalogs':                         'Catalogs',
     'journals':                         'Journals',
@@ -166,7 +159,6 @@ dictionary = \
     'persist_con':                      'Persistent connection',
     'single_file_js':                   'All JS modules in a single file',
     'dynamic_js':                       'Dynamic JS modules loading',
-    'session_timeout':                  'Session timeout (seconds)',
     'compressed_js':                    'Compressed JS, CSS files',
     'soft_delete':                      'Soft delete',
     'client_module':                    'Client_module',
@@ -196,7 +188,6 @@ dictionary = \
     'foreign_field':                    'Foreign Field',
     'find_in_task':                     'Find in task',
     'new_group_type':                   'Select new group type',
-#admin interface
     'db':                               'Database',
     'export':                           'Export',
     'import':                           'Import',
@@ -208,14 +199,11 @@ dictionary = \
     'foreign_keys':                     'Foreign keys',
     'select_all':                       'Select all',
     'unselect_all':                     'Unselect all',
-    'show_selected':                    'Show selected',
-    'show_all':                         'Show all',
     'project_params':                   'Parameters',
     'project_locale':                   'Locale',
     'reserved_word':                    'The name is a reserved word',
     'is_edited':                        '%s is already open for editing. Nevertheless open it?',
     'is_edited_by':                     '%s is already open for editing by %s. Nevertheless open it?',
-#editor
     'case_sensitive':                   'Case sensitive',
     'whole_words':                      'Find whole words only',
     'in_task':                          'In task',
@@ -224,10 +212,8 @@ dictionary = \
     'go_to_line':                       'Go to line',
     'go_to':                            'Go to',
     'line':                             'Line',
-#admin editors
     'caption_name':                     'Name',
     'caption_descening':                'Desc.',
-#inport messages
     'import_sqlite_not_supported':      'Import is not supported for SQlite database.',
     'import_reading_data':              'Import: reading data',
     'import_checking_integrity':        'Import: checking data integrity',
@@ -237,7 +223,6 @@ dictionary = \
     'import_changing_admin':            'Import: applying changes to admin.sqlite',
     'import_copying':                   'Import: copying files',
     'import_deleteing_files':           'Import: deleteing tmp files',
-#admin messages
     'can_not_connect':                  "Can't connect to the database. %s",
     'field_used_in_filters':            "Can't delete the field %s.\n It's used in filter definitions:\n%s",
     'field_used_in_fields':             "Can't delete the field %s.\n It's used in field definitions:\n%s",
@@ -264,4 +249,36 @@ dictionary = \
     'field_no_id':                      'Field %s - id value is not set',
     'error_creating_index':             'Error while creating index %s: %s',
     'error_deleting_index':             'Error while deleting index %s'
-}
+'''
+
+lines = keys.split(',\n')
+lines = [l.strip() for l in lines if len(l.strip())]
+keys = []
+for l in lines:
+    p = l.find("':")
+    keys.append(l[1:p])
+
+con = sqlite3.connect('langs.sqlite')
+
+
+cursor = con.cursor()
+cursor.execute('DELETE FROM SYS_LANG_KEYS')
+for i, key in enumerate(keys):
+    if i > 0:
+        cursor.execute('INSERT INTO SYS_LANG_KEYS (ID, F_KEYWORD) VALUES (?, ?)', (i, key))
+
+cursor = con.cursor()
+cursor.execute('DELETE FROM SYS_LANG')
+
+cursor.execute('INSERT INTO SYS_LANG (ID, F_ABR, F_NAME) VALUES (?, ?, ?)', (1, 'en', 'English'))
+
+cursor = con.cursor()
+cursor.execute('DELETE FROM SYS_LANG_VALUES')
+
+for key in keys:
+    value = dictionary.get(key)
+    if value and key != 'lang':
+        cursor.execute('INSERT INTO SYS_LANG_VALUES (F_LANG, F_KEY, F_VALUE) VALUES (?, ?, ?)', (1, key, value))
+
+con.commit()
+con.close()

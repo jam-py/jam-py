@@ -23,18 +23,18 @@ class SQL(object):
             self._deleted_flag_field.set_data(0)
         sql = 'INSERT INTO "%s" (' % self.table_name
         row = []
-        fields = ''
-        values = ''
+        fields = []
+        values = []
         index = 0
         for field in self.fields:
             if not (field.calculated or field.master_field):
                 index += 1
-                fields += '"%s", ' % field.field_name
-                values +=  '%s, ' % db_module.value_literal(index)
+                fields.append('"%s"' % field.field_name)
+                values.append('%s' % db_module.value_literal(index))
                 value = (field.raw_value, field.data_type)
                 row.append(value)
-        fields = fields[:-2]
-        values = values[:-2]
+        fields = ', '.join(fields)
+        values = ', '.join(values)
         sql = db_module.set_case('INSERT INTO "%s" (%s) VALUES ' % \
             (self.table_name, fields)) + '(' + values + ')'
         return sql, row
@@ -42,22 +42,21 @@ class SQL(object):
     def update_sql(self, db_module):
         row = []
         command = db_module.set_case('UPDATE "%s" SET ' % self.table_name)
-        fields = ''
+        fields = []
         index = 0
         for field in self.fields:
             if not (field.calculated or field.master_field):
                 index += 1
-                fields += '"%s"=%s, ' % \
-                    (db_module.set_case(field.field_name),
-                    db_module.value_literal(index))
+                fields.append('"%s"=%s' % \
+                    (db_module.set_case(field.field_name), db_module.value_literal(index)))
                 value = (field.raw_value, field.data_type)
                 if field.field_name == self._deleted_flag:
                     value = (0, field.data_type)
                 row.append(value)
-        fields = fields[:-2]
+        fields = ', '.join(fields)
         where = db_module.set_case(' WHERE %s = %s' % \
             (self._primary_key, self._primary_key_field.value))
-        return command + fields + where, row
+        return ''.join([command, fields, where]), row
 
     def delete_sql(self, db_module):
         soft_delete = self.soft_delete
@@ -106,6 +105,7 @@ class SQL(object):
                 'table_name': item.table_name,
                 'status': item.record_status,
                 'primary_key': item._primary_key_field.value,
+                'primary_key_type': item._primary_key_field.data_type,
                 'primary_key_index': primary_key_index,
                 'log_id': item.get_rec_info()[common.REC_CHANGE_ID],
                 'master_rec_id_index': master_rec_id_index
@@ -218,19 +218,19 @@ class SQL(object):
             functions = {}
             for key, value in funcs.iteritems():
                 functions[key.upper()] = value
-        sql = ''
+        sql = []
         for field in fields:
             if field.master_field:
                 pass
             elif field.calculated:
-                sql += 'NULL AS "%s", ' % field.field_name
+                sql.append('NULL AS "%s"' % field.field_name)
             else:
                 field_sql = '%s."%s"' % (self.table_alias(), field.field_name)
                 if funcs:
                     func = functions.get(field.field_name.upper())
                     if func:
                         field_sql = '%s(%s) AS "%s"' % (func, field_sql, field.field_name)
-                sql += field_sql + ', '
+                sql.append(field_sql)
         if query['__expanded']:
             for field in fields:
                 if field.lookup_item:
@@ -258,14 +258,15 @@ class SQL(object):
                             if func:
                                 field_sql = '%s(%s."%s") %s %s_LOOKUP' % \
                                 (func, self.lookup_table_alias(field), field.lookup_field, db_module.FIELD_AS, field.field_name)
-                    sql += field_sql + ', '
-        sql = sql[:-2]
+                    sql.append(field_sql)
+        sql = ', '.join(sql)
         return db_module.set_case(sql)
 
     def from_clause(self, query, fields, db_module=None):
         if db_module is None:
             db_module = self.task.db_module
-        result = db_module.FROM % (self.table_name, self.table_alias())
+        result = []
+        result.append(db_module.FROM % (self.table_name, self.table_alias()))
         if query['__expanded']:
             joins = {}
             for field in fields:
@@ -276,27 +277,39 @@ class SQL(object):
                         cur_field = field.master_field
                     if not joins.get(alias):
                         primary_key_field_name = field.lookup_item._primary_key
-                        result += ' ' + db_module.LEFT_OUTER_JOIN % (field.lookup_item.table_name, self.lookup_table_alias(field))
-                        result += ' ON %s."%s"' % (self.table_alias(), cur_field.field_name)
-                        result += ' = %s."%s"'  % (self.lookup_table_alias(field), primary_key_field_name)
+                        result.append('%s ON %s."%s" = %s."%s"' % (
+                            db_module.LEFT_OUTER_JOIN % (field.lookup_item.table_name, self.lookup_table_alias(field)),
+                            self.table_alias(),
+                            cur_field.field_name,
+                            self.lookup_table_alias(field),
+                            primary_key_field_name
+                        ))
                         joins[alias] = True
                 if field.lookup_item1:
                     alias = self.lookup_table_alias1(field)
                     if not joins.get(alias):
                         primary_key_field_name = field.lookup_item1._primary_key
-                        result += ' ' + db_module.LEFT_OUTER_JOIN % (field.lookup_item1.table_name, self.lookup_table_alias1(field))
-                        result += ' ON %s."%s"' % (self.lookup_table_alias(field), field.lookup_field)
-                        result += ' = %s."%s"'  % (self.lookup_table_alias1(field), primary_key_field_name)
+                        result.append('%s ON %s."%s" = %s."%s"' % (
+                            db_module.LEFT_OUTER_JOIN % (field.lookup_item1.table_name, self.lookup_table_alias1(field)),
+                            self.lookup_table_alias(field),
+                            field.lookup_field,
+                            self.lookup_table_alias1(field),
+                            primary_key_field_name
+                        ))
                         joins[alias] = True
                 if field.lookup_item2:
                     alias = self.lookup_table_alias2(field)
                     if not joins.get(alias):
                         primary_key_field_name = field.lookup_item2._primary_key
-                        result += ' ' + db_module.LEFT_OUTER_JOIN % (field.lookup_item2.table_name, self.lookup_table_alias2(field))
-                        result += ' ON %s."%s"' % (self.lookup_table_alias1(field), field.lookup_field1)
-                        result += ' = %s."%s"'  % (self.lookup_table_alias2(field), primary_key_field_name)
+                        result.append('%s ON %s."%s" = %s."%s"' % (
+                            db_module.LEFT_OUTER_JOIN % (field.lookup_item2.table_name, self.lookup_table_alias2(field)),
+                            self.lookup_table_alias1(field),
+                            field.lookup_field1,
+                            self.lookup_table_alias2(field),
+                            primary_key_field_name
+                        ))
                         joins[alias] = True
-        return db_module.set_case(result)
+        return db_module.set_case(' '.join(result))
 
     def where_clause(self, query, db_module=None):
 
@@ -318,13 +331,13 @@ class SQL(object):
                     result = value
                 else:
                     result = value.strftime('%Y-%m-%d')
-                return db_module.cast_date(result)# "cast('" + result + "' AS DATE)"
+                return db_module.cast_date(result)
             elif data_type == common.DATETIME:
                 if type(value) in (str, unicode):
                     result = value
                 else:
                     result = value.strftime('%Y-%m-%d %H:%M')
-                result = db_module.cast_datetime(result)#"cast('" + result + "' AS TIMESTAMP)"
+                result = db_module.cast_datetime(result)
                 return result
             elif data_type == common.INTEGER:
                 if type(value) == int or type(value) in [str, unicode] and value.isdigit():
@@ -418,7 +431,6 @@ class SQL(object):
 
         if db_module is None:
             db_module = self.task.db_module
-        result = ''
         conditions = []
         filters = query['__filters']
         deleted_in_filters = False
@@ -439,9 +451,7 @@ class SQL(object):
         if not deleted_in_filters and self._deleted_flag:
             conditions.append(db_module.set_case('%s."%s"=0' % \
             (self.table_alias(), self._deleted_flag)))
-        for sql in conditions:
-            result += sql + db_module.set_case(' AND ')
-        result = result[:-5]
+        result = db_module.set_case(' AND ').join(conditions)
         if result:
             result = db_module.set_case(' WHERE ') + result
         return result
@@ -465,25 +475,26 @@ class SQL(object):
             return ''
 
     def order_clause(self, query, db_module=None):
-        result = ''
         if query.get('__funcs') and not query.get('__group_by'):
-            return result
+            return ''
         if db_module is None:
             db_module = self.task.db_module
         order_list = query.get('__order', [])
+        orders = []
         for order in order_list:
             field = self._field_by_ID(order[0])
             if field:
                 if query['__expanded'] and field.lookup_item:
-                    result += '%s_LOOKUP' % field.field_name
+                    ord_str = '%s_LOOKUP' % field.field_name
                 else:
-                    result += '%s."%s"' % (self.table_alias(), field.field_name)
+                    ord_str = '%s."%s"' % (self.table_alias(), field.field_name)
                 if order[1]:
-                    result += ' DESC'
-                result += ', '
-        if result:
-            result = result[:-2]
-            result = ' ORDER BY ' + result
+                    ord_str += ' DESC'
+                orders.append(ord_str)
+        if orders:
+             result = ' ORDER BY %s' % ', '.join(orders)
+        else:
+            result = ''
         return db_module.set_case(result)
 
     def get_select_statement(self, query, db_module=None):
@@ -495,13 +506,14 @@ class SQL(object):
                 fields = [self._field_by_name(field_name) for field_name in field_list]
             else:
                 fields = self._fields
-            sql = db_module.get_select(query, \
-                self.fields_clause(query, fields, db_module),
-                self.from_clause(query, fields, db_module) + \
-                self.where_clause(query, db_module) + \
-                self.group_clause(query, fields, db_module) + \
-                self.order_clause(query, db_module),
-                fields)
+            start = self.fields_clause(query, fields, db_module)
+            end = ''.join([
+                self.from_clause(query, fields, db_module),
+                self.where_clause(query, db_module),
+                self.group_clause(query, fields, db_module),
+                self.order_clause(query, db_module)
+            ])
+            sql = db_module.get_select(query, start, end, fields)
             return sql
         except Exception as e:
             traceback.print_exc()

@@ -466,7 +466,8 @@ function Events16() { // demo.journals.invoices
 				height: 200 - 4, 
 				dblclick_edit: false, 
 				column_width: {'track': '25%', 'album': '25%', 'artists': '10%'}
-			});
+			}
+		);
 	}
 	
 	function on_filters_applied(item) {
@@ -631,8 +632,8 @@ function Events12() { // demo.catalogs.albums
 
 	function init_table(item, options) {
 		item.selections = [];	
-		options.selections = item.selections;	
-		options.select_all = true;
+	//	options.selections = item.selections;	
+	//	options.select_all = true;
 	}
 	this.init_table = init_table;
 }

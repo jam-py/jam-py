@@ -128,6 +128,7 @@ def create_items(task):
     task.sys_params.add_field(27, 'f_dynamic_js', task.lang['dynamic_js'], common.BOOLEAN)
     task.sys_params.add_field(28, 'f_compressed_js', task.lang['compressed_js'], common.BOOLEAN)
     task.sys_params.add_field(29, 'f_field_id_gen', 'f_field_id_gen', common.INTEGER)
+    task.sys_params.add_field(30, 'f_timeout', task.lang['session_timeout'], common.INTEGER)
 
     task.sys_items = task.sys_catalogs.add_catalog('sys_items', 'Items', 'SYS_ITEMS')
     task.sys_fields = task.sys_tables.add_table('sys_fields', task.lang['fields'], 'SYS_FIELDS')
@@ -602,6 +603,7 @@ def create_admin(app):
         task.task_mp_pool = 4
         task.task_persist_con = True
     task.safe_mode = common.SETTINGS['SAFE_MODE']
+    task.timeout = common.SETTINGS['TIMEOUT']
     task.language = common.SETTINGS['LANGUAGE']
     task.item_caption = task.lang['admin']
     register_defs(task)
@@ -982,15 +984,13 @@ def load_task(target, app, first_build=True, after_import=False):
 def server_check_connection(task, db_type, database, user, password, host, port, encoding):
     error = ''
     if db_type:
-        db_module = db_modules.get_db_module(db_type)
         try:
+            db_module = db_modules.get_db_module(db_type)
             connection = db_module.connect(database, user, password, host, port, encoding)
             if connection:
                 connection.close()
         except Exception as e:
-            error = e.message
-            if not error:
-                error = str(e)
+            error = str(e)
     return error
 
 def server_set_task_name(task, f_name, f_item_name):
@@ -1415,7 +1415,7 @@ def server_import_task(task, task_id, file_name, from_client=False):
                             try:
                                 reload(module)
                             except Exception as e:
-                                print(module_name, e)
+                                print('%s %s' % (module_name, e))
 
     error = ''
     task._import_message = ''
@@ -1496,13 +1496,16 @@ def server_import_task(task, task_id, file_name, from_client=False):
                     task.app.task.mod_count += 1
                     update_events_code(task)
     except Exception as e:
-        error = str(e)
-        if os.name != 'nt':
-            print('Import error traceback:', traceback.format_exc())
-        print('Import error:', error)
-    finally:
-        show_progress(task.lang['import_deleteing_files'])
         try:
+            error = str(e)
+            if os.name != 'nt':
+                print('Import error traceback: %s' % traceback.format_exc())
+            print('Import error: %s' % error)
+        except:
+            pass
+    finally:
+        try:
+            show_progress(task.lang['import_deleteing_files'])
             delete_tmp_files(dir)
         except:
             pass
@@ -2011,18 +2014,22 @@ def server_save_file(task, file_name, code):
     return result
 
 def server_get_db_options(task, db_type):
-    result = {}
-    db_module = db_modules.get_db_module(db_type)
-    result['NEED_DATABASE_NAME'] = db_module.NEED_DATABASE_NAME
-    result['NEED_LOGIN'] = db_module.NEED_LOGIN
-    result['NEED_PASSWORD'] = db_module.NEED_PASSWORD
-    result['NEED_ENCODING'] = db_module.NEED_ENCODING
-    result['NEED_HOST'] = db_module.NEED_HOST
-    result['NEED_PORT'] = db_module.NEED_PORT
-    result['CAN_CHANGE_TYPE'] = db_module.CAN_CHANGE_TYPE
-    result['CAN_CHANGE_SIZE'] = db_module.CAN_CHANGE_SIZE
-    result['UPPER_CASE'] = db_module.UPPER_CASE
-    return result
+    error = ''
+    try:
+        result = {}
+        db_module = db_modules.get_db_module(db_type)
+        result['NEED_DATABASE_NAME'] = db_module.NEED_DATABASE_NAME
+        result['NEED_LOGIN'] = db_module.NEED_LOGIN
+        result['NEED_PASSWORD'] = db_module.NEED_PASSWORD
+        result['NEED_ENCODING'] = db_module.NEED_ENCODING
+        result['NEED_HOST'] = db_module.NEED_HOST
+        result['NEED_PORT'] = db_module.NEED_PORT
+        result['CAN_CHANGE_TYPE'] = db_module.CAN_CHANGE_TYPE
+        result['CAN_CHANGE_SIZE'] = db_module.CAN_CHANGE_SIZE
+        result['UPPER_CASE'] = db_module.UPPER_CASE
+        return result, error
+    except Exception as e:
+        return None, str(e)
 
 def server_get_task_info(task):
     items = task.sys_items.copy()
@@ -2073,6 +2080,7 @@ def do_on_apply_sys_changes(item, delta, params):
     if safe_mode != common.SETTINGS['SAFE_MODE']:
         task.safe_mode = common.SETTINGS['SAFE_MODE']
         task.app.users = {}
+    task.timeout = common.SETTINGS['TIMEOUT']
     return result
 
 def get_fields_next_id(task):
@@ -2250,6 +2258,21 @@ def update_interface(delta, type_id, item_id):
                         item._edit_list = delete_id_from_list(item._edit_list, fields.id.value)
                         item._order_list = delete_id_from_list(item._order_list, fields.id.value)
         common.store_interface(item)
+
+def server_get_primary_key_type(item, lookup_item_id):
+    items = item.task.sys_items.copy()
+    items.set_where(id=lookup_item_id)
+    items.open()
+    if items.record_count():
+        primary_field_id = items.f_primary_key.value
+        fields = item.task.sys_fields.copy()
+        fields.set_where(id=primary_field_id)
+        fields.set_fields('id', 'f_data_type', 'f_size')
+        fields.open()
+        if fields.record_count():
+            return fields.f_data_type.value, fields.f_size.value
+    return None, None
+
 
 def change_item_sql(item, old_fields, new_fields):
     db_type = get_db_type(item.task)
@@ -2730,6 +2753,7 @@ def register_defs(task):
     task.sys_items.register(server_load_interface)
     task.sys_items.register(server_store_interface)
     task.sys_items.register(server_update_details)
+    task.sys_items.register(server_get_primary_key_type)
     task.sys_items.on_apply = items_apply_changes
     task.sys_fields.register(server_can_delete_field)
     task.sys_filters.on_apply = do_on_apply_changes

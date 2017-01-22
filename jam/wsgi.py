@@ -3,7 +3,7 @@ import os
 import json
 import uuid
 import traceback
-import datetime
+import datetime, time
 from threading import Lock
 from types import MethodType
 import mimetypes
@@ -36,12 +36,19 @@ class JamRequest(Request):
         if not hasattr(self, '_cookie'):
             key = self.session_key(task)
             self._cookie = JamSecureCookie.load_cookie(self, key=key, secret_key='')
+            expires = self._cookie.get('session_expires')
+            if expires and time.time() > expires:
+                self._cookie = {}
         return self._cookie
 
-    def save_session(self, response, task):
+    def save_session(self, response, app, task):
+        session_expires = None
+        if app.admin.safe_mode and app.admin.timeout:
+            session_expires = time.time() + app.admin.timeout
         key = self.session_key(task)
         session = self.get_session(task)
-        session.save_cookie(response, key=key)
+        session['session_expires'] = session_expires
+        session.save_cookie(response, key=key, session_expires=session_expires)
 
 def create_application(from_file):
     if from_file:
@@ -291,7 +298,7 @@ class App():
                 r['result'] = {'data': [None, e.message]}
                 r['error'] = e.message
             response = self.create_post_response(request, r)
-            request.save_session(response, task)
+            request.save_session(response, self, task)
             return response
 
     def get_response(self, item, method, params):

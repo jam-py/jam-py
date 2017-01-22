@@ -168,10 +168,10 @@ dictionary = \
     'cant_edit':                        u'%s: você não tem permissões para editar',
     'cant_delete':                      u'%s: você não tem permissões para excluir',
 #calendar
-    'week_start':                        0,
-    'days_min':                         [u'Dom', u'Seg', u'Ter', u'Qua', u'Qui', u'Sex', u'Sáb', u'Dom'],
-    'months':                           [u'Janeiro', u'Fevereiro', u'Março', u'Abril', u'Maio', u'Junho', u'Julho', u'Agosto', u'Setembro', u'Outubro', u'Novembro', u'Dezembro'],
-    'months_short':                     [u'Jan', u'Fev', u'Mar', u'Abr', u'Mai', u'Jun', u'Jul', u'Ago', u'Set', u'Out', u'Nov', u'Dez'],
+    'week_start':                       '0',
+    'days_min':                         '[Dom, Seg, Ter, Qua, Qui, Sex, Sáb, Dom]',
+    'months':                           '[Janeiro, Fevereiro, Março, Abril, Maio, Junho, Julho, Agosto, Setembro, Outubro, Novembro, Dezembro]',
+    'months_short':                     '[Jan, Fev, Mar, Abr, Mai, Jun, Jul, Ago, Set, Out, Nov, Dez]',
 #grid
     'page':                             u'Página',
     'of':                               u'de',

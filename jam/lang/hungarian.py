@@ -168,10 +168,10 @@ dictionary = \
     'cant_edit':                        u'%s: nincs jogosultjága szerkeszteni.',
     'cant_delete':                      u'%s: nincs jogosultjága törölni.',
 #calendar
-    'week_start':                        0,
-    'days_min':                         [u'V', u'H', u'Ke', u'Sze', u'Cs', u'P', u'Szo', u'V'],
-    'months':                           [u'Január', u'Február', u'Március', u'Április', u'Május', u'Junius', u'Julius', u'Augusztus', u'Szeptember', u'Oktober', u'November', u'December'],
-    'months_short':                     [u'Jan', u'Feb', u'Már', u'Ápr', u'Máj', u'Jun', u'Jul', u'Aug', u'Sep', u'Okt', u'Nov', u'Dec'],
+    'week_start':                       '0',
+    'days_min':                         '[V, H, Ke, Sze, Cs, P, Szo, V]',
+    'months':                           '[Január, Február, Március, Április, Május, Junius, Julius, Augusztus, Szeptember, Oktober, November, December]',
+    'months_short':                     '[Jan, Feb, Már, Ápr, Máj, Jun, Jul, Aug, Sep, Okt, Nov, Dec]',
 #grid
     'page':                             u'Lap',
     'of':                               u'a',

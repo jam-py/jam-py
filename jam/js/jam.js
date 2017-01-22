@@ -602,6 +602,9 @@
             if (this[formName] && options.container) {
                 this._close_modeless_form(formName);
             }
+            if (options.container) {
+                options.container.empty();
+            }
             this[formName] = $("<div></div>").append(this.find_template(suffix, item_options));
             if (!options.container) {
                 this[formName] = this.makeFormModal(this[formName], item_options);
@@ -610,7 +613,6 @@
                 this[formName]._options = options;
                 this[formName].tabindex = 1;
                 if (options.container) {
-                    options.container.empty();
                     $(window).on("keyup." + keySuffix, function(e) {
                         self._process_key_event(self[formName], options.onKeyUp, e);
                     });
@@ -2210,8 +2212,11 @@
         this._record_lookup_index = -1
         this._record_info_index = -1
         this._is_delta = false;
-        this._pg_limit = 20;
-        this._pg_offset = 0;
+        this._limit = 20;
+        this._offset = 0;
+        this._selections = undefined;
+        this.filter_selected = false;
+        this.selection_limit = 1500;
         this.is_loaded = false;
         this.view_options = $.extend({}, this.modal_options);
         this.view_options.width = 960;
@@ -2286,6 +2291,14 @@
             },
             set: function(new_value) {
                 this.set_dataset(new_value);
+            }
+        });
+        Object.defineProperty(this, "selections", {
+            get: function() {
+                return this.get_selections();
+            },
+            set: function(new_value) {
+                this.set_selections(new_value);
             }
         });
     }
@@ -2600,6 +2613,15 @@
 
         set_dataset: function(value) {
             this._dataset = value;
+        },
+
+        get_selections: function() {
+            return this._selections;
+        },
+
+        set_selections: function(value) {
+            this._selections = value;
+            this.update_controls();
         },
 
         copy: function(options) {
@@ -3012,6 +3034,9 @@
                         text = params.__search[1];
                     filters.push([field_name, consts.FILTER_CONTAINS_ALL, text]);
                 }
+                if (this.filter_selected) {
+                    filters.push([this._primary_key, consts.FILTER_IN, this.selections]);
+                }
                 params.__filters = filters;
                 if (order_by) {
                     params.__order = this.get_order_by_list(order_by);
@@ -3187,7 +3212,7 @@
                 this._bind_fields(expanded);
             }
             if (this.paginate) {
-                params.__limit = this._pg_limit;
+                params.__limit = this._limit;
             }
             this.change_log.prepare();
             this._dataset = [];
@@ -3241,11 +3266,11 @@
 
                         len = rows.length;
                         this._dataset = rows;
-                        if (this._pg_limit && this.paginate && rows) {
-                            this._pg_offset = offset;
+                        if (this._limit && this.paginate && rows) {
+                            this._offset = offset;
                             this.is_loaded = false;
                         }
-                        if (len < this._pg_limit) {
+                        if (len < this._limit) {
                             this.is_loaded = true;
                         }
                         callback.call(this, this);
@@ -4385,7 +4410,7 @@
         apply_record: function() {
             var args = this._check_args(arguments),
                 callback = args['function'],
-                params = args['object']
+                params = args['object'],
                 self = this;
             if (this.is_changing()) {
                 this._disable_form(this.edit_form);
@@ -7153,7 +7178,7 @@
                     expand_selected_row: 0,
                     auto_fit_width: true,
                     selections: undefined,
-                    select_all: false,
+                    select_all: true,
                     selection_limit: 1500,
                     tabindex: 0,
                     striped: true,
@@ -7186,6 +7211,9 @@
             this.options = $.extend({}, default_options, options);
             if (this.options.row_line_count < 1) {
                 this.options.row_line_count = 1;
+            }
+            if (this.item.master) {
+                this.options.select_all = false;
             }
             this.editMode = false;
             this._sorted_fields = [];
@@ -7224,41 +7252,51 @@
         init_selections: function() {
             var value;
             if (this.options.selections && this.options.selections instanceof Array) {
-                this.selections = this.options.selections;
+                this.item.selections = this.options.selections;
             }
             else if (this.item.lookup_field && this.item.lookup_field.multi_select) {
                 value = this.item.lookup_field.raw_value;
                 this.options.select_all = this.item.lookup_field.multi_select_all;
                 if (value instanceof Array) {
-                    this.selections = value;
+                    this.item.selections = value;
                 }
                 else {
-                    this.selections = [];
+                    this.item.selections = [];
                 }
             }
+            this.item.select_all = this.options.select_all;
         },
 
-        selections_update_lookup_field: function() {
-            if (this.item.lookup_field && this.item.lookup_field.multi_select) {
-                if (this.selections.length === 1 && this.selections.indexOf(this.item._primary_key_field.value) !== -1) {
-                    this.item.lookup_field.set_value(this.selections, this.item.field_by_name(this.item.lookup_field.lookup_field).display_text);
+        selections_update_selected: function() {
+            var sel_count = this.$element.find('th .multi-select .sel-count');
+            if (this.item.selections) {
+                sel_count.text(this.item.selections.length);
+                if (this.item.filter_selected) {
+                    sel_count.addClass('selected-shown')
                 }
                 else {
-                    this.item.lookup_field.set_value(this.selections, '');
+                    sel_count.removeClass('selected-shown')
+                }
+                if (this.item.lookup_field && this.item.lookup_field.multi_select) {
+                    if (this.item.selections.length === 1 && this.item.selections.indexOf(this.item._primary_key_field.value) !== -1) {
+                        this.item.lookup_field.set_value(this.item.selections, this.item.field_by_name(this.item.lookup_field.lookup_field).display_text);
+                    }
+                    else {
+                        this.item.lookup_field.set_value(this.item.selections, '');
+                    }
                 }
             }
-            this.$element.find('th .multi-select .sel-count').text(this.selections.length);
         },
 
         selections_get_selected: function() {
-            return this.selections.indexOf(this.item._primary_key_field.value) !== -1;
+            return this.item.selections.indexOf(this.item._primary_key_field.value) !== -1;
         },
 
         selections_can_change: function(value) {
             var valid = true;
             if (value && this.options.selection_limit) {
                 valid = (this.options.selection_limit &&
-                    this.options.selection_limit >= this.selections.length + 1);
+                    this.options.selection_limit >= this.item.selections.length + 1);
                 if (!valid) {
                     this.item.warning(language.selection_limit_exceeded.replace('%s', this.options.selection_limit))
                 }
@@ -7272,17 +7310,17 @@
                 all_selected = false;
             if (this.selections_can_change(value)) {
                 if (value) {
-                    this.selections.push(this.item._primary_key_field.value);
+                    this.item.selections.push(this.item._primary_key_field.value);
                     all_selected = true;
                 } else {
-                    index = this.selections.indexOf(this.item._primary_key_field.value);
+                    index = this.item.selections.indexOf(this.item._primary_key_field.value);
                     if (index !== -1) {
-                        this.selections.splice(index, 1);
+                        this.item.selections.splice(index, 1);
                         all_selected = this.selections_get_all_selected();
                     }
                 }
-                this.selections_update_lookup_field();
-                this.$outer_table.find('th input.multi-select').prop('checked', all_selected);
+                this.selections_update_selected();
+                this.$element.find('input.multi-select-header').prop('checked', all_selected);
             }
             else {
                 result = false;
@@ -7294,18 +7332,68 @@
             var self = this,
                 clone = this.item.clone(),
                 result = false;
+            clone.each(function(c) {
+                if (self.item.selections.indexOf(c._primary_key_field.value) !== -1) {
+                    result = true;
+                    return false;
+                }
+            })
+            return result;
+        },
+
+        selections_set_all_selected_ex: function(value) {
+            var self = this,
+                i,
+                field,
+                fields = [],
+                limit,
+                exceeded,
+                mess,
+                copy,
+                clone;
             if (this.options.select_all) {
-                result = this.selections.length > 0;
-            }
-            else {
-                clone.each(function(c) {
-                    if (self.selections.indexOf(c._primary_key_field.value) !== -1) {
-                        result = true;
-                        return false;
+                copy = this.item.copy({handlers: false})
+                copy._where_list = this.item._open_params.__filters;
+                copy._order_by_list = this.item._open_params.__order;
+                if (this.options.selection_limit) {
+                    limit = this.options.selection_limit - this.options.length;
+                }
+                fields.push(copy._primary_key);
+                for (i = 0; i < copy._where_list.length; i++) {
+                    field = this.item.field_by_name(copy._where_list[i][0]);
+                    if (field.lookup_item) {
+                        fields.push(field.field_name);
                     }
+                }
+                for (i = 0; i < copy._order_by_list.length; i++) {
+                    field = this.item.field_by_ID(copy._order_by_list[i][0]);
+                    if (fields.indexOf(field.field_name) === -1) {
+                        fields.push(field.field_name);
+                    }
+                }
+                copy.open({fields: fields, limit: limit}, function() {
+                    var dict = {};
+                    for (i = 0; i < self.item.selections.length; i++) {
+                        dict[self.item.selections[i]] = true;
+                    }
+                    self.item.selections.length = 0;
+                    copy.each(function(c) {
+                        if (value) {
+                            dict[c._primary_key_field.value] = true;
+                        }
+                        else {
+                            delete dict[c._primary_key_field.value];
+                        }
+                    });
+                    for (var id in dict) {
+                        self.item.selections.push(parseInt(id, 10));
+                    }
+                    self.$table.find('td input.multi-select').prop('checked', value);
+                    self.$element.find('input.multi-select-header').prop('checked',
+                        self.selections_get_all_selected());
+                    self.selections_update_selected();
                 })
             }
-            return result;
         },
 
         selections_set_all_selected: function(value) {
@@ -7318,66 +7406,31 @@
                 mess,
                 copy,
                 clone;
-            if (this.options.select_all) {
-                if (value) {
-                    copy = this.item.copy({handlers: false})
-                    copy._where_list = this.item._open_params.__filters;
-                    copy._order_by_list = this.item._open_params.__order;
-                    if (this.options.selection_limit) {
-                        limit = this.options.selection_limit;
-                    }
-                    fields.push(copy._primary_key);
-                    for (i = 0; i < copy._order_by_list.length; i++) {
-                        field = this.item.field_by_ID(copy._order_by_list[i][0]);
-                        if (fields.indexOf(field.field_name) === -1) {
-                            fields.push(field.field_name);
+            clone = this.item.clone();
+            clone.each(function(c) {
+                var index;
+                if (self.selections_can_change(value)) {
+                    if (value) {
+                        self.item.selections.push(c._primary_key_field.value);
+                    } else {
+                        index = self.item.selections.indexOf(c._primary_key_field.value);
+                        if (index !== -1) {
+                            self.item.selections.splice(index, 1);
                         }
                     }
-                    copy.open({fields: fields, limit: limit}, function() {
-                        if (self.options.selection_limit && copy.record_count() >= self.options.selection_limit) {
-                            self.item.warning(language.selected_first.replace('%s', self.options.selection_limit));
-                        }
-                        self.selections.length = 0;
-                        copy.each(function(c) {
-                            self.selections.push(c._primary_key_field.value);
-                        });
-                        self.$table.find('td input.multi-select').prop('checked', value);
-                        self.selections_update_lookup_field();
-                    })
                 }
                 else {
-                    this.selections.length = 0;
-                    this.$table.find('td input.multi-select').prop('checked', value);
-                    this.selections_update_lookup_field();
+                    exceeded = true;
+                    return false;
                 }
+            })
+            if (exceeded) {
+                this.build();
             }
             else {
-                clone = this.item.clone();
-                clone.each(function(c) {
-                    var index;
-                    if (self.selections_can_change(value)) {
-                        if (value) {
-                            self.selections.push(c._primary_key_field.value);
-                        } else {
-                            index = self.selections.indexOf(c._primary_key_field.value);
-                            if (index !== -1) {
-                                self.selections.splice(index, 1);
-                            }
-                        }
-                    }
-                    else {
-                        exceeded = true;
-                        return false;
-                    }
-                })
-                if (exceeded) {
-                    this.build();
-                }
-                else {
-                    self.$table.find('td input.multi-select').prop('checked', value);
-                }
-                this.selections_update_lookup_field();
+                self.$table.find('td input.multi-select').prop('checked', value);
             }
+            this.selections_update_selected();
         },
 
         initFields: function() {
@@ -7423,7 +7476,7 @@
             }
             this.initSelectedField();
             this.colspan = this.fields.length;
-            if (this.selections) {
+            if (this.item.selections) {
                 this.colspan += 1;
             }
         },
@@ -7459,7 +7512,7 @@
                 delta = 0,
                 mouseX;
             this.colspan = this.fields.length;
-            if (this.selections) {
+            if (this.item.selections) {
                 this.colspan += 1;
             }
             this.$element.append($(
@@ -7557,29 +7610,27 @@
                 }
             });
 
-            if (this.selections) {
-                this.$table.on('mousedown', 'td input.multi-select', function(e) {
-                    var $this = $(this),
-                        checked = $this.is(':checked');
-                    self.clicked(e, $this.closest('td'));
-                    self.selections_set_selected(!checked);
-                    $this.prop('checked', self.selections_get_selected());
-                });
+            this.$table.on('mousedown', 'td input.multi-select', function(e) {
+                var $this = $(this),
+                    checked = $this.is(':checked');
+                self.clicked(e, $this.closest('td'));
+                self.selections_set_selected(!checked);
+                $this.prop('checked', self.selections_get_selected());
+            });
 
-                this.$table.on('click', 'td input.multi-select', function(e) {
-                    var $this = $(this);
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setTimeout(function() {
-                            $this.prop('checked', self.selections_get_selected());
-                        }, 0
-                    );
-                });
+            this.$table.on('click', 'td input.multi-select', function(e) {
+                var $this = $(this);
+                e.stopPropagation();
+                e.preventDefault();
+                setTimeout(function() {
+                        $this.prop('checked', self.selections_get_selected());
+                    }, 0
+                );
+            });
 
-                this.$outer_table.on('click', 'th input.multi-select', function(e) {
-                    self.selections_set_all_selected($(this).is(':checked'));
-                });
-            }
+            this.$element.on('click', 'input.multi-select-header', function(e) {
+                self.selections_set_all_selected($(this).is(':checked'));
+            });
 
             this.$table.attr("tabindex", this.options.tabindex);
 
@@ -7791,7 +7842,7 @@
             this.fillTitle($element);
             this.createFooter($element);
             $table = $element.find("table.inner-table");
-            if (this.selections) {
+            if (this.item.selections) {
                 row = '<tr><td><div><input type="checkbox"></div></td><td><div>W</div></td></tr>';
             } else {
                 row = '<tr><td><div>W</div></td></tr>';
@@ -7830,7 +7881,7 @@
                 if (this.row_count <= 0) {
                     this.row_count = 1;
                 }
-                this.item._pg_limit = this.row_count;
+                this.item._limit = this.row_count;
             }
         },
 
@@ -8074,17 +8125,20 @@
         fillTitle: function($element) {
             var i,
                 len,
+                self = this,
                 field,
                 heading,
                 div,
                 cell,
                 input,
+                bl,
                 checked = '',
                 field_name,
                 sel_count,
                 desc,
                 order_fields = {},
-                title = '',
+                shown_title,
+                select_menu = '',
                 cellWidth;
             if ($element === undefined) {
                 $element = this.$element
@@ -8105,18 +8159,55 @@
 
             heading = $element.find("table.outer-table thead tr:first");
             heading.empty();
-            if (this.selections) {
+            if (this.item.selections) {
                 if (this.selections_get_all_selected()) {
                     checked = 'checked';
                 }
-                div = $('<div class="text-center multi-select" style="overflow: hidden">' + title + '</div>')
-                sel_count = $('<p class="sel-count text-center">' + this.selections.length + '</p>')
-                if (this.options.select_all) {
-                    sel_count.addClass('select-all');
-                }
+                div = $('<div class="text-center multi-select" style="overflow: hidden"></div>');
+                sel_count = $('<p class="sel-count text-center">' + this.item.selections.length + '</p>')
                 div.append(sel_count);
-                input = $('<input class="multi-select" type="checkbox" ' + checked + '>');
-                div.append(input);
+                if (this.options.select_all) {
+                    select_menu +=
+                        '<li id="mselect-all"><a tabindex="-1" href="#">' + task.language.select_all + '</a></li>' +
+                        '<li id="munselect-all"><a tabindex="-1" href="#">' + task.language.unselect_all + '</a></li>'
+                }
+                shown_title = task.language.show_selected
+                if (self.item.filter_selected) {
+                    shown_title = task.language.show_all
+                }
+                select_menu +=
+                    '<li id="mshow-selected"><a tabindex="-1" href="#">' + shown_title + '</a></li>';
+                this.$element.find('#mselect-block').empty();
+                sel_count.css('margin-bottom', 24);
+                bl = $(
+                    '<div style="height: 0; position: relative;">' +
+                        '<div id="mselect-block" class="btn-group" style="position: absolute">' +
+                            '<button type="button" class="btn mselect-btn">' +
+                                '<input class="multi-select-header" type="checkbox" style="margin: 0" ' + checked + '>' +
+                            '</button>' +
+                            '<a class="btn dropdown-toggle" data-toggle="dropdown" href="#" style="padding: 3px">' +
+                                '<span class="caret"></span>' +
+                            '</a>' +
+                            '<ul class="dropdown-menu">' +
+                                select_menu +
+                            '</ul>' +
+                        '</div>' +
+                    '</div>'
+                );
+                input = bl.find('#mselect-block')
+                bl.find("#mselect-all").click(function(e) {
+                    self.selections_set_all_selected_ex(true);
+                });
+                bl.find("#munselect-all").click(function(e) {
+                    self.selections_set_all_selected_ex(false);
+                });
+                bl.find("#mshow-selected").click(function(e) {
+                    self.item.filter_selected = !self.item.filter_selected;
+                    self.item.open(function() {
+                        self.selections_update_selected();
+                    });
+                });
+                this.$element.prepend(bl)
                 cell = $('<th class="bottom-border multi-select"></th>').append(div);
                 cellWidth = this.getCellWidth('multi-select');
                 if (cellWidth && this.fields.length) {
@@ -8124,6 +8215,9 @@
                     div.width(cellWidth);
                 }
                 heading.append(cell);
+                sel_count.css('margin-bottom', input.outerHeight());
+                input.css('top', sel_count.outerHeight() + sel_count.position().top + 4);
+                input.css('left', (cell.outerWidth() - input.width()) / 2 + 1);
             }
             len = this.fields.length;
             for (i = 0; i < len; i++) {
@@ -8149,6 +8243,7 @@
             if (this.options.title_callback) {
                 this.options.title_callback(heading, this.item)
             }
+            this.selections_update_selected();
         },
 
         createFooter: function($element) {
@@ -8164,7 +8259,7 @@
             }
             footer = $element.find("table.outer-table tfoot tr:first");
             footer.empty();
-            if (this.selections) {
+            if (this.item.selections) {
                 div = $('<div class="text-center multi-select" style="overflow: hidden"></div>')
                 cell = $('<th class="multi-select"></th>').append(div);
                 footer.append(cell);
@@ -8199,7 +8294,7 @@
         },
 
         init_table: function() {
-            if (this.item._pg_offset === 0) {
+            if (this.item._offset === 0) {
                 this.initFields();
                 this._sorted_fields = this.item._open_params.__order;
                 if (this.item.paginate) {
@@ -8335,7 +8430,7 @@
                 len = this.fields.length;
             if (this.item.record_count()) {
                 $row = this.$table.find("tr:first-child");
-                if (this.selections) {
+                if (this.item.selections) {
                     $th = this.$head.find('th.' + 'multi-select');
                     $td = $row.find('td.' + 'multi-select');
                     width = $th.find('div').width()
@@ -8620,7 +8715,7 @@
                         break;
                     case 32:
                         e.preventDefault();
-                        if (this.selections) {
+                        if (this.item.selections) {
                             multi_sel = this.itemRow().find('input.multi-select');
                             this.selections_set_selected(!multi_sel[0].checked);
                             multi_sel.prop('checked', this.selections_get_selected());
@@ -8651,7 +8746,7 @@
                 this.page = value;
                 this.loading = true;
                 this.item.open({
-                    offset: this.page * this.item._pg_limit
+                    offset: this.page * this.item._limit
                 }, function() {
                     if (callback) {
                         callback.call(self);
@@ -8842,7 +8937,7 @@
                 (this.autoFieldWidth && this.fieldWidthUpdated);
             len = this.fields.length;
             rowStr = '';
-            if (this.selections) {
+            if (this.item.selections) {
                 if (this.selections_get_selected()) {
                     checked = 'checked';
                 }
@@ -8948,7 +9043,7 @@
                 this.$table.css('table-layout', 'auto');
                 this.$outer_table.css('table-layout', 'auto');
                 tmpRow = '<tr>'
-                if (this.selections) {
+                if (this.item.selections) {
                     tmpRow = tmpRow + '<th class="multi-select">' +
                         '<div class="text-center multi-select" style="overflow: hidden"></div>' +
                         '</th>';
@@ -8965,9 +9060,9 @@
                         tmpRow.find("." + field_name).css("width", this.options.column_width[field_name]);
                     }
                 }
-                if (this.selections) {
+                if (this.item.selections) {
                     cell = row.find("td." + 'multi-select');
-                    this.setCellWidth('multi-select', cell.width())
+                    this.setCellWidth('multi-select', 38);
                 }
                 for (i = 0; i < len; i++) {
                     field = this.fields[i];
@@ -8977,7 +9072,7 @@
                 this.$table.css('table-layout', 'fixed');
                 this.$outer_table.css('table-layout', 'fixed');
                 this.fillTitle(container);
-                if (this.selections) {
+                if (this.item.selections) {
                     cell = row.find("td." + 'multi-select');
                     headCell = this.$head.find("th." + 'multi-select');
                     footCell = this.$foot.find("th." + 'multi-select');
@@ -9268,7 +9363,7 @@
                     var deleted = false,
                         $title = $('<div><b>' + self.field.field_caption + '</b>' +
                         '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;"> ×</button></div>');
-                    $title.find("#close-btn").click(function() {
+                        $title.find("#close-btn").click(function() {
                         $input.popover('destroy');
                         deleted = true;
                     });

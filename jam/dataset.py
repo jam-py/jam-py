@@ -202,9 +202,11 @@ class DBField(object):
                     elif self.data_type == common.TEXT:
                         value = ''
             else:
-                if self.data_type in (common.TEXT, ):
+                if self.data_type == common.TEXT:
                     if not isinstance(value, unicode):
                         value = value.decode('utf-8')
+                if self.data_type in (common.FLOAT, common.CURRENCY):
+                    value = float(value)
                 elif self.data_type == common.BOOLEAN:
                     if value:
                         value = True
@@ -419,7 +421,6 @@ class DBField(object):
         self.get_value()
         if (self.data_type == common.TEXT) and (self.field_size != 0) and \
             (len(self.text) > self.field_size):
-            print(self.text, len(self.text), type(self.text))
             self.do_on_error(self.owner.task.lang['invalid_length'] % self.field_size)
         return True
 
