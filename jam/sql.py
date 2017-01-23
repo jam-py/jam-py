@@ -54,8 +54,12 @@ class SQL(object):
                     value = (0, field.data_type)
                 row.append(value)
         fields = ', '.join(fields)
-        where = db_module.set_case(' WHERE %s = %s' % \
-            (self._primary_key, self._primary_key_field.value))
+        if self._primary_key_field.data_type == common.TEXT:
+            where = db_module.set_case(" WHERE %s = '%s'" % \
+                (self._primary_key, self._primary_key_field.value))
+        else:
+            where = db_module.set_case(' WHERE %s = %s' % \
+                (self._primary_key, self._primary_key_field.value))
         return ''.join([command, fields, where]), row
 
     def delete_sql(self, db_module):
