@@ -3746,7 +3746,7 @@
                     if (callback) {
                         callback.call(this, err);
                     }
-                    throw err;
+//                    throw err;
                 } else {
                     this.change_log.update(res)
                     if (this.on_after_apply) {
@@ -4333,31 +4333,31 @@
         delete_record: function(callback) {
             var self = this,
                 rec_no = self._get_rec_no(),
-                record = self._dataset[rec_no],
-                error;
+                record = self._dataset[rec_no];
             if (this.can_delete()) {
                 if (this.record_count() > 0) {
                     this.question(language.delete_record, function() {
                         self["delete"]();
-                        try {
-                            self.apply();
-                        } catch (e) {
-                            error = (e + '').toUpperCase();
-                            if (error && (error.indexOf('FOREIGN KEY') !== -1 || error.indexOf('INTEGRITY CONSTRAINT') !== -1) &&
-                                (error.indexOf('VIOLAT') !== -1 || error.indexOf('FAIL') !== -1)) {
-                                self.warning(language.cant_delete_used_record);
-                            } else {
-                                self.warning(e);
+                        this.apply(function(e) {
+                            var error;
+                            if (e) {
+                                error = (e + '').toUpperCase();
+                                if (error && (error.indexOf('FOREIGN KEY') !== -1 || error.indexOf('INTEGRITY CONSTRAINT') !== -1) &&
+                                    (error.indexOf('VIOLAT') !== -1 || error.indexOf('FAIL') !== -1)) {
+                                    self.warning(language.cant_delete_used_record);
+                                } else {
+                                    self.warning(e);
+                                }
+                                self._dataset.splice(rec_no, 0, record);
+                                self._cur_row = rec_no;
+                                self.change_log.remove_record_log();
+                                self.update_controls();
+                                self._do_after_scroll();
+                                if (callback) {
+                                    callback.call(this, this);
+                                }
                             }
-                            self._dataset.splice(rec_no, 0, record);
-                            self._cur_row = rec_no;
-                            self.change_log.remove_record_log();
-                            self.update_controls();
-                            self._do_after_scroll();
-                            if (callback) {
-                                callback.call(this, this);
-                            }
-                        }
+                        });
                     });
                 } else {
                     this.warning(language.no_record);
@@ -6550,7 +6550,7 @@
 
         select_value: function() {
             var copy = this.lookup_item.copy();
-            copy.is_lookup_item = true; //detricated
+            copy.is_lookup_item = true; //depricated
             copy.lookup_field = this;
             if (this.owner && this.owner.on_param_select_value) {
                 this.owner.on_param_select_value.call(this.owner, this, copy);
@@ -7842,7 +7842,7 @@
             this.fillTitle($element);
             this.createFooter($element);
             $table = $element.find("table.inner-table");
-            if (this.item.selections) {
+            if (this.item.selections && !this.item.master) {
                 row = '<tr><td><div><input type="checkbox"></div></td><td><div>W</div></td></tr>';
             } else {
                 row = '<tr><td><div>W</div></td></tr>';
@@ -8160,64 +8160,83 @@
             heading = $element.find("table.outer-table thead tr:first");
             heading.empty();
             if (this.item.selections) {
-                if (this.selections_get_all_selected()) {
-                    checked = 'checked';
+                if (this.item.master) {
+                    if (this.selections_get_all_selected()) {
+                        checked = 'checked';
+                    }
+                    div = $('<div class="text-center multi-select" style="overflow: hidden"></div>');
+                    sel_count = $('<p class="sel-count text-center">' + this.item.selections.length + '</p>')
+                    div.append(sel_count);
+                    input = $('<input class="multi-select-header" type="checkbox" ' + checked + '>');
+                    div.append(input);
+                    cell = $('<th class="bottom-border multi-select-header"></th>').append(div);
+                    cellWidth = this.getCellWidth('multi-select');
+                    if (cellWidth && this.fields.length) {
+                        cell.width(cellWidth);
+                        div.width(cellWidth);
+                    }
+                    heading.append(cell);
                 }
-                div = $('<div class="text-center multi-select" style="overflow: hidden"></div>');
-                sel_count = $('<p class="sel-count text-center">' + this.item.selections.length + '</p>')
-                div.append(sel_count);
-                if (this.options.select_all) {
+                else {
+                    if (this.selections_get_all_selected()) {
+                        checked = 'checked';
+                    }
+                    div = $('<div class="text-center multi-select" style="overflow: hidden"></div>');
+                    sel_count = $('<p class="sel-count text-center">' + this.item.selections.length + '</p>')
+                    div.append(sel_count);
+                    if (this.options.select_all) {
+                        select_menu +=
+                            '<li id="mselect-all"><a tabindex="-1" href="#">' + task.language.select_all + '</a></li>' +
+                            '<li id="munselect-all"><a tabindex="-1" href="#">' + task.language.unselect_all + '</a></li>'
+                    }
+                    shown_title = task.language.show_selected
+                    if (self.item.filter_selected) {
+                        shown_title = task.language.show_all
+                    }
                     select_menu +=
-                        '<li id="mselect-all"><a tabindex="-1" href="#">' + task.language.select_all + '</a></li>' +
-                        '<li id="munselect-all"><a tabindex="-1" href="#">' + task.language.unselect_all + '</a></li>'
-                }
-                shown_title = task.language.show_selected
-                if (self.item.filter_selected) {
-                    shown_title = task.language.show_all
-                }
-                select_menu +=
-                    '<li id="mshow-selected"><a tabindex="-1" href="#">' + shown_title + '</a></li>';
-                this.$element.find('#mselect-block').empty();
-                sel_count.css('margin-bottom', 24);
-                bl = $(
-                    '<div style="height: 0; position: relative;">' +
-                        '<div id="mselect-block" class="btn-group" style="position: absolute">' +
-                            '<button type="button" class="btn mselect-btn">' +
-                                '<input class="multi-select-header" type="checkbox" style="margin: 0" ' + checked + '>' +
-                            '</button>' +
-                            '<a class="btn dropdown-toggle" data-toggle="dropdown" href="#" style="padding: 3px">' +
-                                '<span class="caret"></span>' +
-                            '</a>' +
-                            '<ul class="dropdown-menu">' +
-                                select_menu +
-                            '</ul>' +
-                        '</div>' +
-                    '</div>'
-                );
-                input = bl.find('#mselect-block')
-                bl.find("#mselect-all").click(function(e) {
-                    self.selections_set_all_selected_ex(true);
-                });
-                bl.find("#munselect-all").click(function(e) {
-                    self.selections_set_all_selected_ex(false);
-                });
-                bl.find("#mshow-selected").click(function(e) {
-                    self.item.filter_selected = !self.item.filter_selected;
-                    self.item.open(function() {
-                        self.selections_update_selected();
+                        '<li id="mshow-selected"><a tabindex="-1" href="#">' + shown_title + '</a></li>';
+                    this.$element.find('#mselect-block').empty();
+                    sel_count.css('margin-bottom', 24);
+                    bl = $(
+                        '<div style="height: 0; position: relative;">' +
+                            '<div id="mselect-block" class="btn-group" style="position: absolute">' +
+                                '<button type="button" class="btn mselect-btn">' +
+                                    '<input class="multi-select-header" type="checkbox" style="margin: 0" ' + checked + '>' +
+                                '</button>' +
+                                '<a class="btn dropdown-toggle" data-toggle="dropdown" href="#" style="padding: 3px">' +
+                                    '<span class="caret"></span>' +
+                                '</a>' +
+                                '<ul class="dropdown-menu">' +
+                                    select_menu +
+                                '</ul>' +
+                            '</div>' +
+                        '</div>'
+                    );
+                    input = bl.find('#mselect-block')
+                    bl.find("#mselect-all").click(function(e) {
+                        self.selections_set_all_selected_ex(true);
                     });
-                });
-                this.$element.prepend(bl)
-                cell = $('<th class="bottom-border multi-select"></th>').append(div);
-                cellWidth = this.getCellWidth('multi-select');
-                if (cellWidth && this.fields.length) {
-                    cell.width(cellWidth);
-                    div.width(cellWidth);
+                    bl.find("#munselect-all").click(function(e) {
+                        self.selections_set_all_selected_ex(false);
+                    });
+                    bl.find("#mshow-selected").click(function(e) {
+                        self.item.filter_selected = !self.item.filter_selected;
+                        self.item.open(function() {
+                            self.selections_update_selected();
+                        });
+                    });
+                    this.$element.prepend(bl)
+                    cell = $('<th class="bottom-border multi-select"></th>').append(div);
+                    cellWidth = this.getCellWidth('multi-select');
+                    if (cellWidth && this.fields.length) {
+                        cell.width(cellWidth);
+                        div.width(cellWidth);
+                    }
+                    heading.append(cell);
+                    sel_count.css('margin-bottom', input.outerHeight());
+                    input.css('top', sel_count.outerHeight() + sel_count.position().top + 4);
+                    input.css('left', (cell.outerWidth() - input.width()) / 2 + 1);
                 }
-                heading.append(cell);
-                sel_count.css('margin-bottom', input.outerHeight());
-                input.css('top', sel_count.outerHeight() + sel_count.position().top + 4);
-                input.css('left', (cell.outerWidth() - input.width()) / 2 + 1);
             }
             len = this.fields.length;
             for (i = 0; i < len; i++) {

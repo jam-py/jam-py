@@ -4,6 +4,7 @@ import psycopg2
 
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 
+DATABASE = 'POSTGRESQL'
 NEED_DATABASE_NAME = True
 NEED_LOGIN = True
 NEED_PASSWORD = True

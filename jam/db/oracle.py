@@ -5,6 +5,7 @@ import sys
 import cPickle
 import cx_Oracle
 
+DATABASE = 'ORACLE'
 NEED_DATABASE_NAME = True
 NEED_LOGIN = True
 NEED_PASSWORD = True

@@ -2,6 +2,7 @@
 
 import MySQLdb
 
+DATABASE = 'MYSQL'
 NEED_DATABASE_NAME = True
 NEED_LOGIN = True
 NEED_PASSWORD = True

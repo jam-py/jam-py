@@ -1112,6 +1112,13 @@ function Events3() { // admin.catalogs.sys_items
 			item.view_form.find('#up-btn').hide();
 			item.view_form.find('#down-btn').hide();
 		}
+		item.view_form.find('#import-btn').hide();
+		if (parent_type_id === types.ITEMS_TYPE && item.task._manual_update && item.task.db_options.IMPORT_SUPPORT) {
+			item.view_form.find('#import-btn').show();
+			item.view_form.find('#import-btn').on('click', function() {
+				import_tables(item);
+			});
+		}
 		item.view_form.find('#edit-btn').off('click.task').on('click', function() {
 			edit_item(item);
 		});
@@ -1159,6 +1166,7 @@ function Events3() { // admin.catalogs.sys_items
 			width = 560,
 			item_tree = item.task.item_tree;
 	
+		item._import_info = undefined; //defined for imported items
 		if (item.type_id.value === types.ITEM_TYPE || item.type_id.value === types.TABLE_TYPE) {
 			item.fields_editor = true;
 			fields = ['f_name', 'f_item_name', 'f_table_name', 'f_primary_key', 'f_deleted_flag']
@@ -1218,7 +1226,8 @@ function Events3() { // admin.catalogs.sys_items
 					{
 						height: height,
 						tabindex: 90,
-						sortable: true
+						sortable: true,
+						row_callback: field_colors
 					});
 				item.edit_form.find("#new-btn").attr("tabindex", 92).on('click.task', function() {item.sys_fields.append_record()});
 				item.edit_form.find("#edit-btn").attr("tabindex", 91).on('click.task', function() {item.sys_fields.edit_record()});
@@ -1238,6 +1247,19 @@ function Events3() { // admin.catalogs.sys_items
 			}
 			else {
 				item.edit_form.find('#edit-detail-footer').hide();
+			}
+		}
+	}
+	
+	function field_colors(row, item) {
+		if (item._import_info) {
+			if (!item.f_data_type.value) {
+				row.find('td.f_data_type').css("background-color", "#ff0000");
+				row.find('td.f_data_type div').css("background-color", "#ffffff");
+			}
+			if (item.f_data_type.value === item.task.consts.TEXT && !item.f_size.value) {
+				row.find('td.f_size').css("background-color", "#ff0000");
+				row.find('td.f_size div').css("background-color", "#ffffff");
 			}
 		}
 	}
@@ -1839,6 +1861,111 @@ function Events3() { // admin.catalogs.sys_items
 	function on_before_apply(item) {
 		return {'manual_update': item.task._manual_update};
 	}
+	
+	function import_table(item, imp) {
+		var table_name = imp.f_table_name.value,
+			res = item.task.server('server_import_table', table_name),
+			fields,
+			types,
+			field_name,
+			cur_id,
+			handlers,
+			get_data_type = function(type_str, types) {
+				for (var ind in types) {
+					if (types[ind] === type_str) {
+						return ind;
+					}
+				}
+				return 0;
+			};
+		if (res) {
+			fields = res['fields'];
+			types = res['field_types'];
+			imp.close_view_form();
+			item.append_record()
+			handlers = item.sys_fields.store_handlers();
+			item.sys_fields.disable_controls();
+			try {
+				item._import_info = res;
+				item.sys_fields.clear_handlers();
+				item.f_name.value = table_name.charAt(0).toUpperCase() + table_name.slice(1).toLowerCase();
+				item.f_item_name.value = table_name.toLowerCase();
+				item.f_table_name.value = table_name;
+				item.f_soft_delete.value = false;
+				cur_id = item.task.server('get_fields_next_id', fields.length);
+				for (var i = 0; i < fields.length; i++) {
+					field_name = fields[i].field_name;
+					item.sys_fields.append();
+					item.sys_fields.id.value = cur_id;
+					cur_id += 1;
+					item.sys_fields.f_name.value = field_name.charAt(0).toUpperCase() + field_name.slice(1).toLowerCase();
+					item.sys_fields.f_field_name.value = field_name.toLowerCase();
+					item.sys_fields.f_data_type.value = get_data_type(fields[i].data_type, types);
+					item.sys_fields.f_size.value = fields[i].size;
+					if (fields[i].default_value) {
+						item.sys_fields.f_default_value.value = fields[i].default_value;
+					}
+					item.sys_fields.post();
+				}
+				item.sys_fields.first();
+			}
+			finally {
+				item.sys_fields.load_handlers(handlers);
+				item.sys_fields.enable_controls();
+				item.sys_fields.update_controls();
+			}
+		}
+	}
+	
+	function import_tables(item) {
+		var imp = item.copy({handlers: false});
+		imp.each_field(function(f) {
+		f.required = false
+		});
+		imp.log_changes = false;
+		imp.set_where({id__in: []})
+		imp.init_view_table = function(imp, options) {
+			options.on_dblclick = function() {
+				import_table(item, imp);
+			}
+		}
+		imp.on_view_form_created = function(imp) {
+			imp.view_form.find('.modal-footer').show();
+			imp.view_form.find('#import-btn').click(function() {
+				import_table(item, imp);
+			});
+			imp.task.server('server_get_table_names', function(table_names) {
+				for (var i = 0; i < table_names.length; i++) {
+					imp.append()
+					imp.f_table_name.value = table_names[i]
+					imp.post()
+				}
+				imp.first();
+			});
+		}
+		imp.view_options.template_class = 'import-tables-view';
+		imp.view_options.title = 'Import';
+		imp.view_options.fields = ['f_table_name'];
+		imp.view()
+	}
+	
+	function on_before_post(item) {
+		var clone = item.sys_fields.clone(),
+			error = false;
+		if (item._import_info) {
+			clone.each(function(c) {
+				if (!c.f_data_type.value ||
+					(c.f_data_type.value === c.task.consts.TEXT && !c.f_size.value)) {
+					error = true;
+					return false;
+				}
+			});
+			if (error) {
+				item.warning(item.task.language.fields_not_defined);
+				throw item.task.language.fields_not_defined;
+			}
+		}
+	}
 	this.init_fields = init_fields;
 	this.init_buttons = init_buttons;
 	this.tree_changed = tree_changed;
@@ -1850,6 +1977,7 @@ function Events3() { // admin.catalogs.sys_items
 	this.init_view_table = init_view_table;
 	this.on_view_form_created = on_view_form_created;
 	this.on_edit_form_created = on_edit_form_created;
+	this.field_colors = field_colors;
 	this.on_edit_form_shown = on_edit_form_shown;
 	this.on_edit_form_closed = on_edit_form_closed;
 	this.update_sys_fields_read_only = update_sys_fields_read_only;
@@ -1885,6 +2013,9 @@ function Events3() { // admin.catalogs.sys_items
 	this.on_before_append = on_before_append;
 	this.on_before_delete = on_before_delete;
 	this.on_before_apply = on_before_apply;
+	this.import_table = import_table;
+	this.import_tables = import_tables;
+	this.on_before_post = on_before_post;
 }
 
 task.events.events3 = new Events3();
@@ -2693,7 +2824,7 @@ function Events15() { // admin.catalogs.sys_fields_editor
 			var $td = $(this),
 				field_name = $td.data('field_name'),
 				field = item.dest.field_by_name(field_name);
-			if (field.field_type === "boolean") {
+			if (field.field_type === "boolean" && !item.read_only) {
 				if (!item.dest.is_changing()) {
 					item.dest.edit();
 				}
@@ -3183,7 +3314,12 @@ function Events10() { // admin.tables.sys_indices
 		}
 		else {
 			item.f_index_name.field_caption = 'Index';
-			item.view_options.fields = ['f_index_name', 'f_unique_index', 'descending'];
+			if (item.task.db_options.DATABASE === 'FIREBIRD') {
+				item.view_options.fields = ['f_index_name', 'f_unique_index', 'descending'];
+			}
+			else {
+				item.view_options.fields = ['f_index_name', 'f_unique_index'];
+			}
 			item.edit_options.fields = item.view_options.fields;
 			item.f_foreign_field.required = false;
 			item.view_form.find("#new-btn")
@@ -3238,7 +3374,7 @@ function Events10() { // admin.tables.sys_indices
 					item.warning(mess);
 					throw mess;
 				}
-				item.f_fields.value = item.server('server_dump_index_fields', [dest_list]);
+				item.f_fields_list.value = item.server('server_dump_index_fields', [dest_list]);
 				item.post()
 				try {
 					item.apply();
@@ -3283,7 +3419,7 @@ function Events10() { // admin.tables.sys_indices
 			if (item.record_count() > 0) {
 				item.edit();
 				item.read_only = true;
-				index_list = item.server('server_load_index_fields', [item.f_fields.value]);
+				index_list = item.server('server_load_index_fields', [item.f_fields_list.value]);
 			}
 			else {
 				return
@@ -3294,10 +3430,19 @@ function Events10() { // admin.tables.sys_indices
 			['id', '', false],
 			['name', item.task.language.caption_name, true]
 		];
-		dest_def = [
-			['id', '', false],
-			['name', item.task.language.caption_name, true]
-		];
+		if (item.task.db_options.DATABASE === 'FIREBIRD') {
+			dest_def = [
+				['id', '', false],
+				['name', item.task.language.caption_name, true]
+			];
+		}
+		else {
+			dest_def = [
+				['id', '', false],
+				['name', item.task.language.caption_name, true],
+				['param1', item.task.language.caption_descening, true]
+			];
+		}
 	
 		editor = item.task.sys_fields_editor.fields_editor(item, title, source_def, get_fields_list(item.task), dest_def, index_list,
 			save_edit, cancel_edit, undefined, !is_new);
@@ -3781,6 +3926,9 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 		}
 		else if (field.field_name === 'f_data_type' && item.f_data_type.value === 0) {
 			return item.task.language.type_is_required;
+		}
+		else if (field.field_name === 'f_size' && item.f_data_type.value === item.task.consts.TEXT && !field.value) {
+			return item.task.language.size_is_required;
 		}
 	}
 	

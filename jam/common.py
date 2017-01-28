@@ -264,11 +264,10 @@ def store_interface(item):
         handlers = item.load_handlers(handlers)
 
 def store_index_fields(f_list):
-    return cPickle.dumps(f_list)
+    return json.dumps(f_list)
 
 def load_index_fields(value):
-    return cPickle.loads(str(value))
-
+    return json.loads(str(value))
 
 def valid_identifier(name):
     if name[0].isdigit():
@@ -427,18 +426,26 @@ def json_defaul_handler(obj):
         result = float(obj)
     return result
 
-def zip_dir(dir, zip_file, exclude_dirs=[], exclude_ext=[]):
+def zip_dir(dir, zip_file, exclude_dirs=[], exclude_ext=[], recursive=True):
     folder = os.path.join(os.getcwd().decode('utf-8'), dir)
     if os.path.exists(folder):
-        for dirpath, dirnames, filenames in os.walk(folder):
-            head, tail = os.path.split(dirpath)
-            if not tail in exclude_dirs:
-                for file_name in filenames:
-                    name, ext = os.path.splitext(file_name)
-                    if not ext in exclude_ext:
-                        file_path = os.path.join(dirpath, file_name)
-                        arcname = os.path.relpath(os.path.join(dir, file_path))
-                        zip_file.write(file_path, arcname)
+        if recursive:
+            for dirpath, dirnames, filenames in os.walk(folder):
+                head, tail = os.path.split(dirpath)
+                if not tail in exclude_dirs:
+                    for file_name in filenames:
+                        name, ext = os.path.splitext(file_name)
+                        if not ext in exclude_ext:
+                            file_path = os.path.join(dirpath, file_name)
+                            arcname = os.path.relpath(os.path.join(dir, file_path))
+                            zip_file.write(file_path, arcname)
+        else:
+            for file_name in os.listdir(folder):
+                name, ext = os.path.splitext(file_name)
+                if not ext in exclude_ext:
+                    file_path = os.path.join(folder, file_name)
+                    arcname = os.path.relpath(os.path.join(dir, file_path))
+                    zip_file.write(file_path, arcname)
 
 def now():
     return datetime.datetime.now()

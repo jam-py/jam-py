@@ -721,7 +721,7 @@ class SQL(object):
                 primary_key = fields.f_field_name.value
             sql = db_module.create_foreign_index_sql(table_name, index_name, key, ref, primary_key)
         else:
-            index_fields = self.f_fields.value
+            index_fields = self.f_fields_list.value
             desc = ''
             if self.descending.value:
                 desc = 'DESC'
@@ -729,15 +729,24 @@ class SQL(object):
             if self.f_unique_index.value:
                 unique = 'UNIQUE'
             fields = common.load_index_fields(index_fields)
-            if new_fields:
-                fields = [new_field_name_by_id(field[0]) for field in fields]
+            if db_type == db_modules.FIREBIRD:
+                if new_fields:
+                    field_defs = [new_field_name_by_id(field[0]) for field in fields]
+                else:
+                    field_defs = [self.task.sys_fields.field_by_id(field[0], 'f_field_name') for field in fields]
+                field_str = '"' + '", "'.join(field_defs) + '"'
             else:
-                fields = [self.task.sys_fields.field_by_id(field[0], 'f_field_name') for field in fields]
-            if desc and db_type in (db_modules.SQLITE, db_modules.POSTGRESQL):
-                fields = ['"%s" %s' % (field, desc) for field in fields]
-                field_str = ', '.join(fields)
-            else:
-                field_str = '"' + '", "'.join(fields) + '"'
+                field_defs = []
+                for field in fields:
+                    if new_fields:
+                        field_name = new_field_name_by_id(field[0])
+                    else:
+                        field_name = self.task.sys_fields.field_by_id(field[0], 'f_field_name')
+                    d = ''
+                    if field[1]:
+                        d = 'DESC'
+                    field_defs.append('"%s" %s' % (field_name, d))
+                field_str = ', '.join(field_defs)
             sql = db_module.create_index_sql(index_name, table_name, unique, field_str, desc)
         print(sql)
         return sql

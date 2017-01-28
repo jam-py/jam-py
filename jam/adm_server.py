@@ -278,8 +278,8 @@ def create_items(task):
     task.sys_indices.add_field(7, 'descending', task.lang['descending'], common.BOOLEAN)
     task.sys_indices.add_field(8, 'f_unique_index', task.lang['unique_index'], common.BOOLEAN)
     task.sys_indices.add_field(9, 'f_foreign_index', task.lang['foreign_index'], common.BOOLEAN, visible=False, edit_visible=False)
-    task.sys_indices.add_field(10, 'f_foreign_field', task.lang['foreign_field'], common.INTEGER, False, task.item_fields, 'f_field_name', visible=False, edit_visible=False)
-    task.sys_indices.add_field(11, 'f_fields', task.lang['fields'], common.BLOB, visible=False, edit_visible=False)
+    task.sys_indices.add_field(10, 'f_foreign_field', task.lang['foreign_field'], common.INTEGER, False, task.sys_fields, 'f_field_name', visible=False, edit_visible=False)
+    task.sys_indices.add_field(11, 'f_fields_list', task.lang['fields'], common.TEXT, size = 100, visible=False, edit_visible=False)
 
     task.sys_indices.add_filter('id', 'ID', 'id', common.FILTER_EQ, visible=False)
     task.sys_indices.add_filter('owner_rec_id', 'Owner record ID', 'owner_rec_id', common.FILTER_EQ, visible=False)
@@ -480,6 +480,20 @@ def update_admin_fields(task):
                 cursor.execute("UPDATE SYS_ITEMS SET F_MASTER_REC_ID=%d WHERE ID=%d" % (field_id, id_value))
 
     def do_updates(con, field, item_name):
+        if field.field_name.lower() == 'f_fields_list':
+            import cPickle, json
+            cursor = con.cursor()
+            cursor.execute("SELECT ID, F_FIELDS, F_FIELDS_LIST, DESCENDING FROM SYS_INDICES")
+            rows = cursor.fetchall()
+            for (id_val, f_fields, f_fields_list, descending) in rows:
+                if f_fields:
+                    fields = cPickle.loads(str(f_fields))
+                    f_fields_list = []
+                    for f in fields:
+                        f_fields_list.append([f[0], bool(descending)])
+                    f_fields_list = json.dumps(f_fields_list)
+                cursor.execute("UPDATE SYS_INDICES SET F_FIELDS=?, F_FIELDS_LIST=? WHERE ID=%d" % id_val, (f_fields, f_fields_list))
+            con.commit()
         if field.field_name.lower() == 'f_psw_hash':
             cursor = con.cursor()
             cursor.execute("SELECT ID, F_PASSWORD FROM SYS_USERS")
@@ -1103,7 +1117,7 @@ def server_export_task(task, task_id, url=None):
             common.zip_dir(os.path.join('static', 'js'), zip_file)
             common.zip_dir(os.path.join('static', 'css'), zip_file)
             common.zip_dir('utils', zip_file, exclude_ext=['.pyc'])
-            common.zip_dir('reports', zip_file, exclude_ext=['.xml', '.ods#'])
+            common.zip_dir('reports', zip_file, exclude_ext=['.xml', '.ods#'], recursive=False)
         if url:
             items = task.sys_items.copy()
             items.set_where(id=task_id)
@@ -2018,6 +2032,7 @@ def server_get_db_options(task, db_type):
     try:
         result = {}
         db_module = db_modules.get_db_module(db_type)
+        result['DATABASE'] = db_module.DATABASE
         result['NEED_DATABASE_NAME'] = db_module.NEED_DATABASE_NAME
         result['NEED_LOGIN'] = db_module.NEED_LOGIN
         result['NEED_PASSWORD'] = db_module.NEED_PASSWORD
@@ -2027,6 +2042,7 @@ def server_get_db_options(task, db_type):
         result['CAN_CHANGE_TYPE'] = db_module.CAN_CHANGE_TYPE
         result['CAN_CHANGE_SIZE'] = db_module.CAN_CHANGE_SIZE
         result['UPPER_CASE'] = db_module.UPPER_CASE
+        result['IMPORT_SUPPORT'] = False#db_module.IMPORT_SUPPORT
         return result, error
     except Exception as e:
         return None, str(e)
@@ -2083,16 +2099,43 @@ def do_on_apply_sys_changes(item, delta, params):
     task.timeout = common.SETTINGS['TIMEOUT']
     return result
 
-def get_fields_next_id(task):
+def get_fields_next_id(task, length=1):
     with task.fields_id_lock:
         params = task.sys_params.copy()
         params.open()
-        cur_id = params.f_field_id_gen.value + 1
+        cur_id = params.f_field_id_gen.value
         params.edit()
-        params.f_field_id_gen.value = cur_id
+        params.f_field_id_gen.value = cur_id + length
         params.post()
         params.apply()
-        return cur_id
+        return cur_id + 1
+
+def server_get_table_names(task):
+    db_type, db_database, db_user, db_password, db_host, db_port, db_encoding = db_info(task)
+    db_module = db_modules.get_db_module(db_type)
+    connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
+    try:
+        tables = db_module.get_table_names(connection)
+        ex_tables = task.execute_select('SELECT F_TABLE_NAME FROM SYS_ITEMS')
+        ex_tables = []
+        ex_tables = [t[0].upper() for t in ex_tables if t[0]]
+        result = [t for t in tables if not t.upper() in ex_tables]
+    except:
+        result = []
+    finally:
+        connection.close()
+    return result
+
+def server_import_table(task, table_name):
+    db_type, db_database, db_user, db_password, db_host, db_port, db_encoding = db_info(task)
+    db_module = db_modules.get_db_module(db_type)
+    connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
+    try:
+        result = db_module.get_table_info(connection, table_name)
+        result['field_types'] = db_module.FIELD_TYPES
+    finally:
+        connection.close()
+    return result
 
 def clear_docs_on_logout(task, user):
     try:
@@ -2553,7 +2596,7 @@ def server_can_delete_field(item, id_value):
             if ind.f_foreign_field.value == field_id:
                 ind_list.append(ind.f_index_name.value)
         else:
-            field_list = common.load_index_fields(ind.f_fields.value)
+            field_list = common.load_index_fields(ind.f_fields_list.value)
             for fld in field_list:
                 if fld[0] == field_id:
                     ind_list.append(ind.f_index_name.value)
@@ -2740,6 +2783,8 @@ def register_defs(task):
     task.register(get_fields_next_id)
     task.register(server_get_db_options)
     task.register(server_create_task)
+    task.register(server_get_table_names)
+    task.register(server_import_table)
     task.register(server_get_task_info)
     task.register(server_can_delete_lookup_list)
     task.register(clear_edited)

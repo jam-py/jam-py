@@ -2,6 +2,7 @@
 
 import sqlite3
 
+DATABASE = 'SQLITE'
 NEED_DATABASE_NAME = True
 NEED_LOGIN = False
 NEED_PASSWORD = False
@@ -12,6 +13,7 @@ CAN_CHANGE_TYPE = False
 CAN_CHANGE_SIZE = True
 UPPER_CASE = True
 DDL_ROLLBACK = False
+IMPORT_SUPPORT = True
 FROM = '"%s" AS %s'
 LEFT_OUTER_JOIN = 'OUTER LEFT JOIN "%s" AS %s'
 FIELD_AS = 'AS'
@@ -155,6 +157,63 @@ def next_sequence_value_sql(table_name):
 
 def restart_sequence_sql(table_name, value):
     pass
+
+def get_table_names(connection):
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM sqlite_master WHERE type='table'")
+    result = cursor.fetchall()
+    return [r[1] for r in result]
+
+def get_table_info(connection, table_name):
+    cursor = connection.cursor()
+    cursor.execute('PRAGMA table_info(%s)' % table_name)
+    result = cursor.fetchall()
+    fields = []
+    for r in result:
+        if r[1] == set_case(r[1]):
+            size = 0
+            if r[2] == 'TEXT':
+                size = 256
+            fields.append({
+                'field_name': r[1],
+                'data_type': r[2],
+                'size': size,
+                'default_value': r[4],
+                'pk': r[5]==1
+            })
+    cursor.execute('PRAGMA index_list(%s)' % table_name)
+    result = cursor.fetchall()
+    indexes = []
+    for r in result:
+        try:
+            index_name = r[1]
+            unique = r[2]
+            cursor.execute('PRAGMA index_info(%s)' % index_name)
+            info = cursor.fetchall()
+            cursor.execute("SELECT sql FROM sqlite_master WHERE type='index' AND name='%s'" % index_name)
+            sql = cursor.fetchall()
+            print sql
+            flds = sql[0][0].split('(')[1].split(')')[0].split(',')
+            defs = []
+            for i in info:
+                for field in flds:
+                    f = i[2].upper()
+                    field = field.upper()
+                    if field.find(f) != -1:
+                        a = field.split()
+                        desc = False
+                        if len(a) == 2 and a[1].strip() == 'DESC':
+                            desc = True
+                        print 1212, a[0], desc
+                        defs.append([a[0], desc])
+            indexes.append({
+                'index_name': index_name,
+                'unique': unique,
+                'fields': defs
+            })
+        except:
+            pass
+    return {'fields': fields, 'indexes': indexes}
 
 
 

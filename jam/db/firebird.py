@@ -5,6 +5,7 @@ import sys
 import cPickle
 import fdb
 
+DATABASE = 'FIREBIRD'
 NEED_DATABASE_NAME = True
 NEED_LOGIN = True
 NEED_PASSWORD = True

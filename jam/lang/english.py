@@ -252,6 +252,8 @@ dictionary = \
     'invalid_name':                     'the Name is invalid.',
     'invalid_field_name':               'The field name is invalid.',
     'type_is_required':                 'The field type is required.',
+    'size_is_required':                 'The field size is required for text fields.',
+    'fields_not_defined':               'Not all field information is specified.',
     'index_name_required':              'The index name is required.',
     'index_fields_required':            'There are no index fields is required.',
     'cant_delete_group':                "Can't delete the group.",
