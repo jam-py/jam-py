@@ -1967,7 +1967,7 @@ function Events3() { // admin.catalogs.sys_items
 				item.f_name.value = table_name.charAt(0).toUpperCase() + table_name.slice(1).toLowerCase();
 				item.f_item_name.value = table_name.toLowerCase();
 				item.f_table_name.value = table_name;
-				item.gen_name.value = ''
+				item.f_gen_name.value = ''
 				item.f_soft_delete.value = false;
 				cur_id = item.task.server('get_fields_next_id', fields.length);
 				for (var i = 0; i < fields.length; i++) {

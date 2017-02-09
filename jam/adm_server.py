@@ -2176,6 +2176,7 @@ def server_get_table_names(task):
     connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
     try:
         tables = db_module.get_table_names(connection)
+        tables = [t.strip() for t in tables]
         ex_tables = task.execute_select('SELECT F_TABLE_NAME FROM SYS_ITEMS')
         ex_tables = [t[0].upper() for t in ex_tables if t[0]]
         result = [t for t in tables if not t.upper() in ex_tables]

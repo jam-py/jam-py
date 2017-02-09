@@ -178,4 +178,52 @@ def next_sequence_value_sql(gen_name):
 def restart_sequence_sql(gen_name, value):
     return 'ALTER SEQUENCE %s RESTART WITH %d' % (gen_name, value)
 
+def get_table_names(connection):
+    cursor = connection.cursor()
+    cursor.execute('''
+        SELECT RDB$RELATION_NAME FROM RDB$RELATIONS
+        WHERE (RDB$SYSTEM_FLAG <> 1 OR RDB$SYSTEM_FLAG IS NULL)
+        AND RDB$VIEW_BLR IS NULL
+    ''')
+    result = cursor.fetchall()
+    return [r[0] for r in result]
 
+def get_table_info(connection, table_name):
+    cursor = connection.cursor()
+    sql = '''
+       SELECT RF.RDB$FIELD_NAME AS COLUMN_NAME,
+            CASE F.RDB$FIELD_TYPE
+                WHEN 7 THEN 'SMALLINT'
+                WHEN 8 THEN 'INTEGER'
+                WHEN 10 THEN 'FLOAT'
+                WHEN 12 THEN 'DATE'
+                WHEN 13 THEN 'TIME'
+                WHEN 14 THEN 'CHAR'
+                WHEN 16 THEN 'BIGINT'
+                WHEN 27 THEN 'DOUBLE PRECISION'
+                WHEN 35 THEN 'TIMESTAMP'
+                WHEN 37 THEN 'VARCHAR'
+                WHEN 261 THEN 'BLOB'
+            END AS DATA_TYPE,
+            F.RDB$FIELD_LENGTH,
+            F.RDB$DEFAULT_VALUE
+        FROM RDB$FIELDS F
+            JOIN RDB$RELATION_FIELDS RF ON RF.RDB$FIELD_SOURCE = F.RDB$FIELD_NAME
+        WHERE RF.RDB$RELATION_NAME = '%s'
+    '''
+    cursor.execute(sql % table_name)
+    result = cursor.fetchall()
+    fields = []
+    for (field_name, data_type, size, default_value) in result:
+        print 11111, field_name, data_type, size, default_value
+        data_type = data_type.strip()
+        if not data_type in ['VARCHAR', 'CHAR']:
+            size = 0
+        fields.append({
+            'field_name': field_name.strip(),
+            'data_type': data_type,
+            'size': size,
+            'default_value': default_value,
+            'pk': False
+        })
+    return {'fields': fields, 'indexes': []}
