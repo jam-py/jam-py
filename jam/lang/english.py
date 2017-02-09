@@ -114,8 +114,10 @@ dictionary = \
     'deleted_flag':                     'Deleted flag',
     'caption':                          'Caption',
     'name':                             'Name',
+    'db_field_name':                    'DB field name',
     'table_field_name':                 'Field name',
     'table_name':                       'Table name',
+    'gen_name':                         'Generator name',
     'report_template':                  'Report template',
     'visible':                          'Visible',
     'project':                          'Project',
@@ -167,6 +169,7 @@ dictionary = \
     'single_file_js':                   'All JS modules in a single file',
     'dynamic_js':                       'Dynamic JS modules loading',
     'session_timeout':                  'Session timeout (seconds)',
+    'ignore_change_ip':                 'Session ignore change ip',
     'compressed_js':                    'Compressed JS, CSS files',
     'soft_delete':                      'Soft delete',
     'client_module':                    'Client_module',
@@ -249,6 +252,7 @@ dictionary = \
     'item_used_in_fields':              "Can't delete the item %s.\n It's used in field definitions:\n%s",
     'param_mess':                       '%s - parameter %s',
     'item_used_in_params':              "Can't delete the item %s.\n It's used in param definitions:\n%s",
+    'import_prohibited':                'Import prohibited. The group "%s" has common fields.',
     'invalid_name':                     'the Name is invalid.',
     'invalid_field_name':               'The field name is invalid.',
     'type_is_required':                 'The field type is required.',
@@ -265,5 +269,6 @@ dictionary = \
     'error_deleting_table':             'Error while deleting table %s: %s',
     'field_no_id':                      'Field %s - id value is not set',
     'error_creating_index':             'Error while creating index %s: %s',
-    'error_deleting_index':             'Error while deleting index %s'
+    'error_deleting_index':             'Error while deleting index %s',
+
 }

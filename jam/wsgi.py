@@ -33,7 +33,7 @@ class JamRequest(Request):
         return '%s_session_%s' % (task.item_name, self.environ['SERVER_PORT'])
 
     def get_session(self, task):
-        if not hasattr(self, '_cookie'):
+        if not hasattr(self, '_cookie') and task:
             key = self.session_key(task)
             self._cookie = JamSecureCookie.load_cookie(self, key=key, secret_key='')
             expires = self._cookie.get('session_expires')
@@ -42,13 +42,14 @@ class JamRequest(Request):
         return self._cookie
 
     def save_session(self, response, app, task):
-        session_expires = None
-        if app.admin.safe_mode and app.admin.timeout:
-            session_expires = time.time() + app.admin.timeout
-        key = self.session_key(task)
-        session = self.get_session(task)
-        session['session_expires'] = session_expires
-        session.save_cookie(response, key=key, session_expires=session_expires)
+        if task:
+            session_expires = None
+            if app.admin.safe_mode and app.admin.timeout:
+                session_expires = time.time() + app.admin.timeout
+            key = self.session_key(task)
+            session = self.get_session(task)
+            session['session_expires'] = session_expires
+            session.save_cookie(response, key=key, session_expires=session_expires)
 
 def create_application(from_file):
     if from_file:
@@ -205,8 +206,16 @@ class App():
         response.set_data(buff)
         return response
 
-    def create_session(self, cookie, task, user_info={}):
+    def get_client_address(self, request):
+        try:
+            return request.environ['HTTP_X_FORWARDED_FOR'].split(',')[-1].strip()
+        except KeyError:
+            return request.environ['REMOTE_ADDR']
+
+    def create_session(self, request, task, user_info={}):
+        cookie = request.get_session(task)
         session = {}
+        session['ip'] = self.get_client_address(request);
         session['uuid'] = str(uuid.uuid4())
         session['user_info'] = user_info
         cookie['info'] = session
@@ -217,27 +226,37 @@ class App():
         if self.check_session(request, task):
             return True
 
+    def valid_session(self, task, session, request):
+        if self.admin.safe_mode:
+            user_info = session['user_info']
+            if not user_info:
+                return False
+            if not self.admin.ignore_change_ip:
+                ip = self.get_client_address(request);
+                if not adm_server.user_valid_ip(self.admin, user_info['user_id'], ip):
+                    return False
+        return True
+
+
     def check_session(self, request, task):
         c = request.get_session(task)
         if not c.get('info') and not self.admin.safe_mode:
-            c = self.create_session(c, task)
+            c = self.create_session(request, task)
         session = c.get('info')
         if session:
-            user_info = session['user_info']
-            if bool(user_info) != self.admin.safe_mode:
+            if not self.valid_session(task, session, request):
                 self.logout(request, task)
                 return False
             jam.context.session = session
             return True
 
     def login(self, request, task, login, psw_hash):
-        if self.task == task and self.task and self.task.on_login:
-            user_info = self.task.on_login(self.task, login, psw_hash)
-        else:
-            user_info = adm_server.login(self.admin, login, psw_hash, self.admin == task)
+        ip = None
+        if not self.admin.ignore_change_ip:
+            ip = self.get_client_address(request);
+        user_info = adm_server.login(self.admin, login, psw_hash, self.admin == task, ip)
         if user_info:
-            cookie = request.get_session(task)
-            self.create_session(cookie, task, user_info)
+            self.create_session(request, task, user_info)
             return True
 
     def logout(self, request, task):
@@ -338,8 +357,6 @@ class App():
     def get_privileges(self, role_id):
         if self.privileges is None:
             roles, privileges = adm_server.get_roles(self.admin)
-            if self.task:
-                self.task.roles = roles
             self.privileges = privileges
         return self.privileges[role_id]
 

@@ -13,8 +13,9 @@ NEED_HOST = True
 NEED_PORT = True
 CAN_CHANGE_TYPE = False
 CAN_CHANGE_SIZE = False
-UPPER_CASE = False
 DDL_ROLLBACK = True
+NEED_GENERATOR = True
+
 FROM = '"%s" as %s'
 LEFT_OUTER_JOIN = 'left outer join "%s" as %s'
 FIELD_AS = 'as'
@@ -83,10 +84,10 @@ def value_literal(index):
 def upper_function():
     pass
 
-def create_table_sql(table_name, fields, foreign_fields=None):
+def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
     result = []
     primary_key = ''
-    seq_name = '%s_id_seq' % table_name
+    seq_name = gen_name
     result.append(set_case('create sequence "%s"' % seq_name))
     sql = 'create table "%s"\n(\n' % set_case(table_name)
     for field in fields:
@@ -110,7 +111,7 @@ def create_table_sql(table_name, fields, foreign_fields=None):
     result.append(set_case('alter sequence "%s" owned by "%s"."%s"' % (seq_name, table_name, primary_key)))
     return result
 
-def delete_table_sql(table_name):
+def delete_table_sql(table_name, gen_name):
     result = []
     result.append(set_case('drop table "%s"' % table_name))
     return result
@@ -171,12 +172,15 @@ def change_field_sql(table_name, old_field, new_field):
 def set_case(string):
     return string.lower()
 
+def literal_case(string):
+    return string.lower()
+
 def get_sequence_name(table_name):
     return set_case('%s_id_seq' % table_name)
 
-def next_sequence_value_sql(table_name):
-    return set_case("select nextval('%s')" % get_sequence_name(table_name))
+def next_sequence_value_sql(gen_name):
+    return "select nextval('%s')" % gen_name
 
-def restart_sequence_sql(table_name, value):
-    return set_case('alter sequence %s restart with %d' % (get_sequence_name(table_name), value))
+def restart_sequence_sql(gen_name, value):
+    return 'alter sequence %s restart with %d' % (gen_name, value)
 

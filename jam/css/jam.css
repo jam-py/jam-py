@@ -494,18 +494,18 @@ h4.title {
     margin-left: 26px;
 }
 
-.history-toggle {
+юaccordion-toggle.history-toggle {
     font-size: 13px;
     background-color: #eaf5fb;
     outline: 0;
 }
 
-.history-heading a:focus,
-.history-heading a:hover {
+.accordion-heading.history-heading a:focus,
+.accordion-heading.history-heading a:hover {
     text-decoration: none;
     outline: 0;
 }
 
-.history-group {
+.accordion-group.history-group {
     border-color: #cceeff;
 }

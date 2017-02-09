@@ -11,8 +11,9 @@ NEED_HOST = True
 NEED_PORT = True
 CAN_CHANGE_TYPE = False
 CAN_CHANGE_SIZE = False
-UPPER_CASE = True
 DDL_ROLLBACK = False
+NEED_GENERATOR = False
+
 FROM = '"%s" AS %s'
 LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" AS %s'
 FIELD_AS = 'AS'
@@ -86,7 +87,7 @@ def value_literal(index):
 def upper_function():
     pass
 
-def create_table_sql(table_name, fields, foreign_fields=None):
+def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
     result = []
     primary_key = ''
     sql = set_case('CREATE TABLE "%s"\n(\n' % table_name)
@@ -108,7 +109,7 @@ def create_table_sql(table_name, fields, foreign_fields=None):
     result.append(sql)
     return result
 
-def delete_table_sql(table_name):
+def delete_table_sql(table_name, gen_name):
     result = []
     result.append(set_case('DROP TABLE "%s"' % table_name))
     return result
@@ -173,6 +174,9 @@ def change_field_sql(table_name, old_field, new_field):
 
 def set_case(string):
     return string.upper()
+
+def literal_case(string):
+    return string.lower()
 
 def param_literal():
     return '%s'

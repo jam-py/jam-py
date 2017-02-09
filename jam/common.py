@@ -36,7 +36,8 @@ DEFAULT_SETTINGS = {
     'SINGLE_FILE_JS': False,
     'DYNAMIC_JS': False,
     'COMPRESSED_JS': False,
-    'TIMEOUT': 0
+    'TIMEOUT': 0,
+    'IGNORE_CHANGE_IP': True
 }
 
 LOCALE_SETTINGS = (

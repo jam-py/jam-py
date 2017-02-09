@@ -22,6 +22,7 @@ class ServerDataset(Dataset, SQL):
         Dataset.__init__(self)
         self.ID = None
         self.table_name = table_name
+        self.gen_name = None
         self._order_by = []
         self.values = None
         self.on_open = None
@@ -39,12 +40,17 @@ class ServerDataset(Dataset, SQL):
     def _copy(self, filters=True, details=True, handlers=True):
         result = super(ServerDataset, self)._copy(filters, details, handlers)
         result.table_name = self.table_name
+        result.gen_name = self.gen_name
         result._order_by = self._order_by
         result.soft_delete = self.soft_delete
         result._primary_key = self._primary_key
         result._deleted_flag = self._deleted_flag
         result._master_id = self._master_id
         result._master_rec_id = self._master_rec_id
+        result._primary_key_db_field_name = self._primary_key_db_field_name
+        result._deleted_flag_db_field_name = self._deleted_flag_db_field_name
+        result._master_id_db_field_name = self._master_id_db_field_name
+        result._master_rec_id_db_field_name = self._master_rec_id_db_field_name
         return result
 
     def get_event(self, caption):
@@ -54,12 +60,15 @@ class ServerDataset(Dataset, SQL):
         item = None, object_field = None, visible = True, index=0, edit_visible = True, edit_index = 0, read_only = False,
         expand = False, word_wrap = False, size = 0, default_value=None, default = False, calculated = False, editable = False,
         master_field = None, alignment=None, lookup_values=None, enable_typeahead=False, field_help=None,
-        field_placeholder=None, lookup_field1=None, lookup_field2=None):
+        field_placeholder=None, lookup_field1=None, lookup_field2=None, db_field_name=None):
+
+        if db_field_name == None:
+            db_field_name = field_name.upper()
 
         field_def = self.add_field_def(field_id, field_name, field_caption, data_type, required, item, object_field,
             lookup_field1, lookup_field2, visible, index, edit_visible, edit_index, read_only, expand, word_wrap, size,
             default_value, default, calculated, editable, master_field, alignment, lookup_values, enable_typeahead,
-            field_help, field_placeholder)
+            field_help, field_placeholder, db_field_name)
         field = DBField(self, field_def)
         self._fields.append(field)
         return field
@@ -705,6 +714,10 @@ def _get_next_id(cursor, sql, data_type):
 
 def _execute_command(cursor, db_module, command, params=None, commit=True,
     select=False, ddl=False, messages=None):
+
+    #~ print ''
+    #~ print command
+
     try:
         if ddl:
             print('')
@@ -746,7 +759,7 @@ def _execute_delta(cursor, db_module, command, delta_result, params,
         changes = []
         result['changes'] = changes
         for sql in sqls:
-            (command, params, info, h_sql, h_params, h_table_name), details = sql
+            (command, params, info, h_sql, h_params, h_gen_name), details = sql
             if info:
                 rec_id = info['primary_key']
                 if info['status'] == common.RECORD_INSERTED:
@@ -754,7 +767,7 @@ def _execute_delta(cursor, db_module, command, delta_result, params,
                         pass
                     else:
                         primary_key_type = info['primary_key_type']
-                        next_sequence_value_sql = db_module.next_sequence_value_sql(info['table_name'])
+                        next_sequence_value_sql = db_module.next_sequence_value_sql(info['gen_name'])
                         if next_sequence_value_sql:
                             rec_id = _get_next_id(cursor, next_sequence_value_sql, primary_key_type)
                             params[info['primary_key_index']] = rec_id
@@ -779,9 +792,9 @@ def _execute_delta(cursor, db_module, command, delta_result, params,
                 if command:
                     _execute_command(cursor, db_module, command, params, commit, select, ddl, messages)
             if h_sql:
-                next_sequence_value_sql = db_module.next_sequence_value_sql(h_table_name)
+                next_sequence_value_sql = db_module.next_sequence_value_sql(h_gen_name)
                 if next_sequence_value_sql:
-                    h_id = _get_next_id(cursor, next_sequence_value_sql)
+                    h_id = _get_next_id(cursor, next_sequence_value_sql, common.INTEGER)
                     h_params[0] = h_id
                 if not h_params[2]:
                     h_params[2] = rec_id
@@ -1137,7 +1150,7 @@ class AbstractServerTask(AbstrTask):
                 if it.item_type != 'report':
                     item = it.copy(handlers=False, filters=False, details=False)
                     if item.table_name and not item.virtual_table:
-                        self.execute(self.db_module.set_case('DELETE FROM %s' % item.table_name))
+                        self.execute('DELETE FROM %s' % item.table_name)
                         item.open(expanded=False, open_empty=True)
                         params = {'__fields': [], '__filters': [], '__expanded': False, '__offset': 0, '__limit': 0}
                         sql = item.get_record_count_query(params, db_module)
@@ -1193,11 +1206,8 @@ class Task(AbstractServerTask):
             db_type, db_database, db_user, db_password,
             host, port, encoding, con_pool_size, mp_pool, persist_con)
         self.on_created = None
-        self.on_login = None
-        self.on_logout = None
         self.on_ext_request = None
         self.init_dict = {}
-        self.roles = None
         for key, value in self.__dict__.iteritems():
             self.init_dict[key] = value
 
@@ -1269,23 +1279,26 @@ class Detail(AbstrDetail, ServerDataset):
         self._master_id = self.prototype._master_id
         self._master_rec_id = self.prototype._master_rec_id
 
-
     def do_internal_post(self):
         return {'success': True, 'id': None, 'message': '', 'detail_ids': None}
 
     def where_clause(self, query, db_module):
         master_id = query['__master_id']
         master_rec_id = query['__master_rec_id']
-        if type(master_id) == int and type(master_rec_id) == int:
+        if master_id and master_rec_id:
             result = super(Detail, self).where_clause(query, db_module)
-            clause = '%s."%s"=%s AND %s."%s"=%s' % \
-                (self.table_alias(), self._master_id, str(master_id),
-                self.table_alias(), self._master_rec_id, str(master_rec_id))
+            if self._master_id:
+                clause = '%s."%s"=%s AND %s."%s"=%s' % \
+                    (self.table_alias(), self._master_id_db_field_name, str(master_id),
+                    self.table_alias(), self._master_rec_id_db_field_name, str(master_rec_id))
+            else:
+                clause = '%s."%s"=%s' % \
+                    (self.table_alias(), self._master_rec_id_db_field_name, str(master_rec_id))
             if result:
                 result += ' AND ' + clause
             else:
                 result = ' WHERE ' + clause
-            return db_module.set_case(result)
+            return result
         else:
             raise Exception('Invalid request parameter')
 

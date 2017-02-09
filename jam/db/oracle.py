@@ -14,8 +14,9 @@ NEED_HOST = False
 NEED_PORT = False
 CAN_CHANGE_TYPE = False
 CAN_CHANGE_SIZE = False
-UPPER_CASE = True
 DDL_ROLLBACK = False
+NEED_GENERATOR = True
+
 FROM = '"%s" %s '
 LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" %s'
 FIELD_AS = 'AS'
@@ -112,7 +113,7 @@ def value_literal(index):
 def upper_function():
     return 'UPPER'
 
-def create_table_sql(table_name, fields, foreign_fields=None):
+def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
     result = []
     primary_key = ''
     sql = set_case('CREATE TABLE "%s"\n(\n' % table_name)
@@ -132,13 +133,13 @@ def create_table_sql(table_name, fields, foreign_fields=None):
         (table_name, primary_key))
     sql += ')\n'
     result.append(sql)
-    result.append(set_case('CREATE SEQUENCE "%s_GEN"' % table_name))
+    result.append(set_case('CREATE SEQUENCE "%s"' % gen_name))
     return result
 
-def delete_table_sql(table_name):
+def delete_table_sql(table_name, gen_name):
     result = []
     result.append(set_case('DROP TABLE "%s"' % table_name))
-    result.append(set_case('DROP SEQUENCE "%s_GEN"' % table_name))
+    result.append(set_case('DROP SEQUENCE "%s"' % gen_name))
     return result
 
 def create_index_sql(index_name, table_name, unique, fields, desc):
@@ -197,20 +198,42 @@ def change_field_sql(table_name, old_field, new_field):
 def set_case(string):
     return string.upper()
 
+def literal_case(string):
+    return string.upper()
+
 def param_literal():
     return '?'
 
 def get_sequence_name(table_name):
     return set_case('%s_GEN' % table_name)
 
-def next_sequence_value_sql(table_name):
-    return set_case('SELECT %s.NEXTVAL FROM DUAL' % \
-        get_sequence_name(table_name))
+def next_sequence_value_sql(gen_name):
+    return set_case('SELECT %s.NEXTVAL FROM DUAL' % gen_name)
 
-def restart_sequence_sql(table_name, value):
+def restart_sequence_sql(gen_name, value):
     result = []
-    result.append(set_case('DROP SEQUENCE "%s_GEN"' % table_name))
-    result.append(set_case('CREATE SEQUENCE "%s_GEN" START WITH %s' % (table_name, value)))
+    result.append(set_case('DROP SEQUENCE "%s"' % gen_name))
+    result.append(set_case('CREATE SEQUENCE "%s" START WITH %s' % (gen_name, value)))
     return result
 
+def get_table_names(connection):
+    cursor = connection.cursor()
+    cursor.execute('SELECT table_name FROM user_tables')
+    result = cursor.fetchall()
+    return [r[0] for r in result]
 
+def get_table_info(connection, table_name):
+    cursor = connection.cursor()
+    sql = "SELECT COLUMN_NAME, DATA_TYPE, CHAR_LENGTH, DATA_DEFAULT FROM USER_TAB_COLUMNS WHERE TABLE_NAME='%s'" % table_name
+    cursor.execute(sql)
+    result = cursor.fetchall()
+    fields = []
+    for (field_name, data_type, size, default_value) in result:
+        fields.append({
+            'field_name': field_name,
+            'data_type': data_type,
+            'size': size,
+            'default_value': default_value,
+            'pk': False
+        })
+    return {'fields': fields, 'indexes': []}

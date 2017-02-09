@@ -6,7 +6,8 @@ import jam.common as common
 FIELD_DEF = FIELD_ID, FIELD_NAME, NAME, FIELD_DATA_TYPE, REQUIRED, LOOKUP_ITEM, MASTER_FIELD, LOOKUP_FIELD, LOOKUP_FIELD1, \
     LOOKUP_FIELD2, FIELD_VISIBLE, FIELD_VIEW_INDEX, FIELD_EDIT_VISIBLE, FIELD_EDIT_INDEX, FIELD_READ_ONLY, FIELD_EXPAND, \
     FIELD_WORD_WRAP, FIELD_SIZE, FIELD_DEFAULT_VALUE, FIELD_DEFAULT, FIELD_CALCULATED, FIELD_EDITABLE, FIELD_ALIGNMENT, \
-    FIELD_LOOKUP_VALUES, FIELD_MULTI_SELECT, FIELD_MULTI_SELECT_ALL, FIELD_ENABLE_TYPEAHEAD, FIELD_HELP, FIELD_PLACEHOLDER = range(29)
+    FIELD_LOOKUP_VALUES, FIELD_MULTI_SELECT, FIELD_MULTI_SELECT_ALL, FIELD_ENABLE_TYPEAHEAD, FIELD_HELP, FIELD_PLACEHOLDER, \
+    DB_FIELD_NAME = range(30)
 
 FILTER_DEF = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, FILTER_TYPE, FILTER_MULTI_SELECT, FILTER_DATA_TYPE, \
     FILTER_VISIBLE, FILTER_HELP, FILTER_PLACEHOLDER = range(9)
@@ -27,10 +28,13 @@ class DBField(object):
         self.lookup_item = field_def[LOOKUP_ITEM]
         self.master_field = field_def[MASTER_FIELD]
         self.lookup_field = field_def[LOOKUP_FIELD]
+        self.lookup_db_field = None
         self.lookup_item1 = None
         self.lookup_field1 = field_def[LOOKUP_FIELD1]
+        self.lookup_db_field1 = None
         self.lookup_item2 = None
         self.lookup_field2 = field_def[LOOKUP_FIELD2]
+        self.lookup_db_field2 = None
         self.read_only = field_def[FIELD_READ_ONLY]
         self.view_visible = field_def[FIELD_VISIBLE]
         self.view_index = field_def[FIELD_VIEW_INDEX]
@@ -50,6 +54,7 @@ class DBField(object):
         self.enable_typeahead = field_def[FIELD_ENABLE_TYPEAHEAD]
         self.field_help = field_def[FIELD_HELP]
         self.field_placeholder = field_def[FIELD_PLACEHOLDER]
+        self.db_field_name = field_def[DB_FIELD_NAME]
 
         self.field_type = common.FIELD_TYPE_NAMES[self.data_type]
         self.filter = None
@@ -914,6 +919,10 @@ class AbstractDataSet(object):
         self._deleted_flag = None
         self._master_id = None
         self._master_rec_id = None
+        self._primary_key_db_field_name = None
+        self._deleted_flag_db_field_name = None
+        self._master_id_db_field_name = None
+        self._master_rec_id_db_field_name = None
         self._eof = False
         self._bof = False
         self._cur_row = None
@@ -974,7 +983,7 @@ class AbstractDataSet(object):
     def add_field_def(self, field_ID, field_name, field_caption, data_type, required, lookup_item, lookup_field,
             lookup_field1, lookup_field2, view_visible, view_index, edit_visible, edit_index, read_only, expand,
             word_wrap, field_size, default_value, is_default, calculated, editable, master_field, alignment,
-            lookup_values, enable_typeahead, field_help, field_placeholder):
+            lookup_values, enable_typeahead, field_help, field_placeholder, db_field_name):
         field_def = [None for i in range(len(FIELD_DEF))]
         field_def[FIELD_ID] = field_ID
         field_def[FIELD_NAME] = field_name
@@ -1003,6 +1012,7 @@ class AbstractDataSet(object):
         field_def[FIELD_ENABLE_TYPEAHEAD] = enable_typeahead
         field_def[FIELD_HELP] = field_help
         field_def[FIELD_PLACEHOLDER] = field_placeholder
+        field_def[DB_FIELD_NAME] = db_field_name
         self.field_defs.append(field_def)
         return field_def
 
@@ -1090,7 +1100,6 @@ class AbstractDataSet(object):
         return result
 
     def prepare_fields(self):
-
         for field in self._fields:
             if field.lookup_item and type(field.lookup_item) == int:
                 field.lookup_item = self.task.item_by_ID(field.lookup_item)
@@ -1099,6 +1108,7 @@ class AbstractDataSet(object):
             if field.lookup_field and type(field.lookup_field) == int:
                 lookup_field = field.lookup_item._field_by_ID(field.lookup_field)
                 field.lookup_field = lookup_field.field_name
+                field.lookup_db_field = lookup_field.db_field_name
                 if lookup_field.lookup_item and field.lookup_field1:
                     field.lookup_item1 = lookup_field.lookup_item
                     if type(field.lookup_item1) == int:
@@ -1106,12 +1116,15 @@ class AbstractDataSet(object):
                     if type(field.lookup_field1) == int:
                         lookup_field1 = field.lookup_item1._field_by_ID(field.lookup_field1)
                         field.lookup_field1 = lookup_field1.field_name
+                        field.lookup_db_field1 = lookup_field1.db_field_name
                     if lookup_field1.lookup_item and field.lookup_field2:
                         field.lookup_item2 = lookup_field1.lookup_item
                         if type(field.lookup_item2) == int:
                             field.lookup_item2 = self.task.item_by_ID(field.lookup_item2)
                         if type(field.lookup_field2) == int:
-                            field.lookup_field2 = field.lookup_item2._field_by_ID(field.lookup_field2).field_name
+                            lookup_field2 = field.lookup_item2._field_by_ID(field.lookup_field2)
+                            field.lookup_field2 = lookup_field2.field_name
+                            field.lookup_db_field2 = lookup_field2.db_field_name
             if field.lookup_values and type(field.lookup_values) == int:
                 try:
                     field.lookup_values = self.task.lookup_lists[field.lookup_values]
@@ -1127,6 +1140,7 @@ class AbstractDataSet(object):
                 field = self.field_by_ID(sys_field)
                 if field:
                     setattr(self, sys_field_name, field.field_name)
+                    setattr(self, '%s_%s' % (sys_field_name, 'db_field_name'), field.db_field_name)
 
     def prepare_filters(self):
         for fltr in self.filters:
@@ -1791,7 +1805,7 @@ class AbstractDataSet(object):
             raise DatasetException(self.task.lang['not_edit_insert_state'] % self.item_name)
         self.check_record_valid()
         self._do_before_post()
-        if self.master:
+        if self.master and self._master_id:
             self.field_by_name(self._master_id).value = self.master.ID
         for detail in self.details:
             if detail.is_changing():

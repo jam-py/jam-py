@@ -268,7 +268,8 @@
                     var tabs,
                         curIndex;
                     key = e.which;
-                    if (key === 9 || ((e.target.tagName !== 'TABLE') && !$(e.target).hasClass('dbtableinput'))
+                    if (key === 9 ||
+                        ((e.target.tagName !== 'TABLE') && !$(e.target).hasClass('dbtableinput') && (e.target.tagName !== 'TEXTAREA'))
                         && (key === 38 || key === 40)){
                         if (e.target === that.$element.get(0)) {
                             tabs = that.tabList();

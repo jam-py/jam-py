@@ -433,7 +433,7 @@
                 args = this._check_args(arguments);
                 callback = args['function'];
             }
-            if (!params || params === callback) {
+            if (params === undefined || params === callback) {
                 params = [];
             } else if (!$.isArray(params)) {
                 params = [params];
@@ -920,7 +920,7 @@
         display_history: function(hist) {
             var self = this,
                 html = '',
-                acc_div = $('<div class="accordion history-accordion" id="accordion1">'),
+                acc_div = $('<div class="accordion history-accordion" id="history_accordion">'),
                 item,
                 master,
                 lookups = {},
@@ -946,10 +946,10 @@
                 var acc = $(
                     '<div class="accordion-group history-group">' +
                         '<div class="accordion-heading history-heading">' +
-                            '<a class="history-toggle accordion-toggle" data-toggle="collapse" data-parent="#accordion1" href="#collapse' + h.rec_no + '">' +
+                            '<a class="accordion-toggle history-toggle" data-toggle="collapse" data-parent="#history_accordion" href="#history_collapse' + h.rec_no + '">' +
                             '</a>' +
                         '</div>' +
-                        '<div id="collapse' + h.rec_no + '" class="accordion-body collapse">' +
+                        '<div id="history_collapse' + h.rec_no + '" class="accordion-body collapse">' +
                             '<div class="accordion-inner history-inner">' +
                             '</div>' +
                         '</div>' +
@@ -1038,7 +1038,7 @@
             }
             mess = self.task.message(html, {width: 700, height: 600,
                 title: hist.item_caption + ': ' + self.item_caption, footer: false, print: true});
-            acc_div = mess.find('#accordion1.accordion');
+            acc_div = mess.find('#history_accordion.accordion');
             for (var ID in lookups) {
                 if (lookups.hasOwnProperty(ID)) {
                     lookup_item = self.task.item_by_ID(parseInt(ID, 10));
@@ -1389,16 +1389,16 @@
                     passWord = $form.find("#inputPassword").val(),
                     pswHash = hex_md5(passWord);
                 e.preventDefault();
-                $form.find("#inputLoging").val('');
-                $form.find("#inputPassword").val('');
-                self.send_request('login', [login, pswHash], function(success) {
-                    if (success) {
-                        if ($form) {
-                            $form.modal('hide');
+                if (login && passWord) {
+                    self.send_request('login', [login, pswHash], function(success) {
+                        if (success) {
+                            if ($form) {
+                                $form.modal('hide');
+                            }
+                            self.load_task();
                         }
-                        self.load_task();
-                    }
-                });
+                    });
+                }
             });
 
             $form.find("#close-btn").click(function(e) {
@@ -2662,6 +2662,7 @@
             result._view_options = this._view_options;
             result.edit_options = $.extend({}, this._edit_options);
             result.view_options = $.extend({}, this._view_options);
+            result.keep_history = this.keep_history;
 
             len = result.field_defs.length;
             for (i = 0; i < len; i++) {
@@ -3670,7 +3671,7 @@
             if (this.on_before_post) {
                 this.on_before_post.call(this, this);
             }
-            if (this.master) {
+            if (this.master && this._master_id) {
                 this.field_by_name(this._master_id).set_data(this.master.ID);
             }
             this.check_record_valid();
@@ -3719,7 +3720,7 @@
                 if (this.on_before_apply) {
                     result = this.on_before_apply.call(this, this);
                     if (result) {
-                        params = result;
+                        params = $.extend({}, params, result);
                     }
                 }
                 if (callback) {
@@ -7254,7 +7255,7 @@
             if (this.options.selections && this.options.selections instanceof Array) {
                 this.item.selections = this.options.selections;
             }
-            else if (this.item.lookup_field && this.item.lookup_field.multi_select) {
+            if (this.item.lookup_field && this.item.lookup_field.multi_select) {
                 value = this.item.lookup_field.raw_value;
                 this.options.select_all = this.item.lookup_field.multi_select_all;
                 if (value instanceof Array) {
@@ -7278,7 +7279,7 @@
                     sel_count.removeClass('selected-shown')
                 }
                 if (this.item.lookup_field && this.item.lookup_field.multi_select) {
-                    if (this.item.selections.length === 1 && this.item.selections.indexOf(this.item._primary_key_field.value) !== -1) {
+                    if (this.item.selections.length === 1 && this.item._primary_key_field && this.item.selections.indexOf(this.item._primary_key_field.value) !== -1) {
                         this.item.lookup_field.set_value(this.item.selections, this.item.field_by_name(this.item.lookup_field.lookup_field).display_text);
                     }
                     else {
@@ -8196,7 +8197,6 @@
                     select_menu +=
                         '<li id="mshow-selected"><a tabindex="-1" href="#">' + shown_title + '</a></li>';
                     this.$element.find('#mselect-block').empty();
-                    sel_count.css('margin-bottom', 24);
                     bl = $(
                         '<div style="height: 0; position: relative;">' +
                             '<div id="mselect-block" class="btn-group" style="position: absolute">' +
@@ -8225,6 +8225,7 @@
                             self.selections_update_selected();
                         });
                     });
+                    this.selection_block = bl;
                     this.$element.prepend(bl)
                     cell = $('<th class="bottom-border multi-select"></th>').append(div);
                     cellWidth = this.getCellWidth('multi-select');
@@ -8233,7 +8234,8 @@
                         div.width(cellWidth);
                     }
                     heading.append(cell);
-                    sel_count.css('margin-bottom', input.outerHeight());
+                    div.css('min-height', 46);
+                    cell.css('padding-top', 0);
                     input.css('top', sel_count.outerHeight() + sel_count.position().top + 4);
                     input.css('left', (cell.outerWidth() - input.width()) / 2 + 1);
                 }
@@ -9026,6 +9028,9 @@
 
             this.$table.empty();
             this.$head.empty();
+            if (this.selection_block) {
+                this.selection_block.remove();
+            }
             this.$foot.hide();
             this.$outer_table.find('#top-td').attr('colspan', this.colspan);
 

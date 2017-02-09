@@ -2,6 +2,10 @@
 First project
 ==============
 
+There is a video_, that demonstrates process of creation of simple CRM application. 
+
+.. _video: https://www.youtube.com/watch?v=4Sd3YKSUoy4
+
 Now, we’ll walk you through the creation of a basic to-do list application.
 
 Please follow the steps below:

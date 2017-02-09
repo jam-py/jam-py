@@ -117,7 +117,6 @@ task_server_events = \
         'on_count': 'item, params',
         'on_apply': 'item, delta, params'
 
-        #~ 'on_login': 'task, login, password_hash, env',
         #~ 'on_ext_request': 'task, request, params',
         #~ 'on_request': 'task, request, params'
     }
