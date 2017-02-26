@@ -2,7 +2,7 @@
 Creating a project
 ==================
 
-Create a new directory. 
+Create a new directory.
 
 Go into the directory and run from command line:
 
@@ -34,25 +34,25 @@ To start Jam.py web server run **server.py** script.
 
 
 .. note::
-    You can specify a port as parameter, for example 
-    
+    You can specify a port as parameter, for example
+
     .. code-block:: console
-    
-        $ ./server.py 8081. 
-        
-    By default, the port is 8080. If you will specify another port, you need to 
+
+        $ ./server.py 8081.
+
+    By default, the port is 8080. If you will specify another port, you need to
     use it in a browser in the next steps.
 
 
-Open a Web browser and go to “/admin.html” on your local domain – e.g., 
-http://127.0.0.1:8080/admin.html. You should see the select language dialog. 
+Open a Web browser and go to “/admin.html” on your local domain – e.g.,
+http://127.0.0.1:8080/admin.html. You should see the select language dialog.
 
 
 .. code-block:: console
 
     127.0.0.1:8080/admin.html
-    
-    
+
+
 In the dialog that will appear, select the language and press OK button.
 
 .. image:: _images/lang.png
@@ -61,30 +61,30 @@ In the dialog that will appear, select the language and press OK button.
 In the New project dialog box fill in:
 
 * **Caption** - the project name that appears to users
-* **Name** - name of project (task) that will be used in programming code to 
-  get access to the task object. Should be a short valid python identifier. 
-* **DB type** — select database type. If database is not Sqlite, it must be 
-  created in advance and its attributes should be entered in the 
-  corresponding form fields. 
+* **Name** - name of project (task) that will be used in programming code to
+  get access to the task object. Should be a short valid python identifier.
+* **DB type** — select database type. If database is not Sqlite, it must be
+  created in advance and its attributes should be entered in the
+  corresponding form fields.
 
 .. image:: _images/new_project_setup.png
 	:align: center
 	:alt: New project setup
 
-When you press OK, the connection to the database will be checked, and in case 
+When you press OK, the connection to the database will be checked, and in case
 of failure 	an error message will be displayed.
 
 .. note::
 
     Please note the following requirements:
-    
-    * to use FireBird database, the python fdb library must be installed 
-    * PostgreSQL requires psycopg2 library 
+
+    * to use FireBird database, the python fdb library must be installed
+    * PostgreSQL requires psycopg2 library
     * MySQL requires MySQLdb library
-    * Oracle requires cx_Oracle library     
+    * Oracle requires cx_Oracle library
     * to generate reports LibreOffice must be installed
-    
-If all goes well a new project will be created and a project tree will appear in 
+
+If all goes well a new project will be created and a project tree will appear in
 Administrator.
 
 
@@ -93,8 +93,8 @@ Administrator.
 	:alt: Jam.py Administrator
 
 Now to see the project itself create new page in the browser and type in
-the addres bar:
-   
+the address bar:
+
 .. code-block:: console
 
     127.0.0.1:8080
