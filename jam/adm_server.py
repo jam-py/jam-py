@@ -496,33 +496,32 @@ def update_admin_fields(task):
         cursor.execute('SELECT F_DB_TYPE FROM SYS_TASKS')
         rows = cursor.fetchall()
         db_type = rows[0][0]
-        return db_modules.get_db_module(db_type)
+        if db_type:
+            return db_modules.get_db_module(db_type)
 
     def do_updates(con, field, item_name):
         if field.field_name.lower() == 'f_gen_name':
             db_module = get_db_module(con)
-            if hasattr(db_module, 'get_sequence_name'):
+            if db_module and hasattr(db_module, 'get_sequence_name'):
                 cursor = con.cursor()
                 cursor.execute("SELECT ID, F_TABLE_NAME FROM SYS_ITEMS")
                 rows = cursor.fetchall()
                 for (id_val, table_name) in rows:
                     if table_name:
-                        if db_module.DATABASE == 'POSTGRESQL':
-                            table_name = table_name.lower()
-                        else:
-                            table_name = table_name.upper()
+                        table_name = db_module.set_literal_case(table_name)
                         cursor.execute("UPDATE SYS_ITEMS SET F_TABLE_NAME=?, F_GEN_NAME=?WHERE ID=%d" % id_val, \
                         (table_name, db_module.get_sequence_name(table_name)))
                 con.commit()
         if field.field_name.lower() == 'f_db_field_name':
             db_module = get_db_module(con)
-            cursor = con.cursor()
-            cursor.execute("SELECT ID, F_FIELD_NAME, F_DB_FIELD_NAME FROM SYS_FIELDS")
-            rows = cursor.fetchall()
-            for (id_val, f_field_name, f_db_field_name) in rows:
-                f_db_field_name = db_module.literal_case(f_field_name)
-                cursor.execute("UPDATE SYS_FIELDS SET F_DB_FIELD_NAME=? WHERE ID=%d" % id_val, (f_db_field_name,))
-            con.commit()
+            if db_module:
+                cursor = con.cursor()
+                cursor.execute("SELECT ID, F_FIELD_NAME, F_DB_FIELD_NAME FROM SYS_FIELDS")
+                rows = cursor.fetchall()
+                for (id_val, f_field_name, f_db_field_name) in rows:
+                    f_db_field_name = db_module.set_literal_case(f_field_name)
+                    cursor.execute("UPDATE SYS_FIELDS SET F_DB_FIELD_NAME=? WHERE ID=%d" % id_val, (f_db_field_name,))
+                con.commit()
         if field.field_name.lower() == 'f_fields_list':
             import cPickle, json
             cursor = con.cursor()
@@ -742,9 +741,7 @@ def login(task, log, psw_hash, admin, ip=None):
     return user_info
 
 def user_valid_ip(task, user_id, ip):
-    now = datetime.datetime.now()
     res = task.execute_select("SELECT F_IP FROM SYS_USERS WHERE ID=%s" % user_id)
-    print datetime.datetime.now() - now
     if res and res[0][0] == ip:
         return True
     return False
@@ -1405,6 +1402,15 @@ def server_import_task(task, task_id, file_name, from_client=False):
             dic['primary_key'] = fields.f_db_field_name.value
         return dic
 
+    def check_generator(item, delta):
+        db_type = get_db_type(item.task)
+        db_module = db_modules.get_db_module(db_type)
+        for d in delta:
+            if d.rec_inserted() and db_module.NEED_GENERATOR and not d.f_gen_name.value:
+                d.edit()
+                d.f_gen_name.value = '%s_SEQ' % d.f_table_name.value
+                d.post()
+
     def analize(dir, db_type):
         try:
             error = ''
@@ -1421,6 +1427,7 @@ def server_import_task(task, task_id, file_name, from_client=False):
             adm_sql.append(delta.apply_sql())
 
             delta = get_delta('sys_items', 'sys_fields')
+            check_generator(task.sys_items, delta)
             for d in delta:
                 if d.rec_inserted():
                     db_sql.append(items_insert_sql(task.sys_items, d))
@@ -1431,6 +1438,7 @@ def server_import_task(task, task_id, file_name, from_client=False):
 
             refresh_old_item(old_dict['sys_items'])
             delta = get_delta('sys_items')
+            check_generator(task.sys_items, delta)
             adm_sql.append(delta.apply_sql())
 
             refresh_old_item(old_dict['sys_fields'])
@@ -2133,6 +2141,18 @@ def server_can_delete_lookup_list(task, list_id):
         return mess
 
 def server_create_task(task):
+    db_type, db_database, db_user, db_password, db_host, db_port, db_encoding = db_info(task)
+    db_module = db_modules.get_db_module(db_type)
+    fields = task.sys_fields.copy(handlers=False)
+    fields.open()
+    for f in fields:
+        if f.f_db_field_name.value:
+            f.edit()
+            f.f_db_field_name.value = db_module.set_literal_case(f.f_db_field_name.value)
+            f.post()
+    fields.apply()
+
+
     task.create_task()
 
 def do_on_apply_sys_changes(item, delta, params):
@@ -2192,7 +2212,7 @@ def server_import_table(task, table_name):
     db_module = db_modules.get_db_module(db_type)
     connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
     try:
-        result = db_module.get_table_info(connection, table_name)
+        result = db_module.get_table_info(connection, table_name, db_database)
         result['field_types'] = db_module.FIELD_TYPES
     finally:
         connection.close()
@@ -2215,7 +2235,8 @@ def server_get_primary_key_type(task, lookup_item_id):
 def server_set_literal_case(task, name):
     db_type, db_database, db_user, db_password, db_host, db_port, db_encoding = db_info(task)
     db_module = db_modules.get_db_module(db_type)
-    return db_module.literal_case(name)
+    return db_module.set_literal_case(name)
+#    return name.upper()
 
 def get_new_table_name(task, var_name):
     db_type, db_database, db_user, db_password, db_host, db_port, db_encoding = db_info(task)
@@ -2227,8 +2248,8 @@ def get_new_table_name(task, var_name):
         name = copy.f_item_name.value + '_' + var_name;
         gen_name = ''
         if db_module.NEED_GENERATOR:
-            gen_name = name + '_seq'
-    return [db_module.literal_case(name), db_module.literal_case(gen_name)]
+            gen_name = name + '_SEQ'
+    return [db_module.set_literal_case(name), db_module.set_literal_case(gen_name)]
 
 def clear_docs_on_logout(task, user):
     try:

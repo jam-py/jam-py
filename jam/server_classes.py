@@ -716,7 +716,7 @@ def _execute_command(cursor, db_module, command, params=None, commit=True,
     select=False, ddl=False, messages=None):
 
     #~ print ''
-    #~ print command
+    #~ print 11111, command, type(command)
 
     try:
         if ddl:
@@ -982,7 +982,8 @@ class AbstractServerTask(AbstrTask):
         self.db_port = port
         self.db_encoding = encoding
         self.db_module = db_modules.get_db_module(self.db_type)
-        self.on_request = None
+        self.on_before_request = None
+        self.on_after_request = None
         self.on_open = None
         self.on_apply = None
         self.on_count = None
@@ -1141,16 +1142,15 @@ class AbstractServerTask(AbstrTask):
         return converted
 
     def copy_database(self, dbtype, database=None, user=None, password=None,
-        host=None, port=None, encoding=None):
+        host=None, port=None, encoding=None, limit = 4048):
         connection = None
-        limit = 1024
         db_module = db_modules.get_db_module(dbtype)
         for group in self.items:
             for it in group.items:
                 if it.item_type != 'report':
                     item = it.copy(handlers=False, filters=False, details=False)
                     if item.table_name and not item.virtual_table:
-                        self.execute('DELETE FROM %s' % item.table_name)
+                        self.execute('DELETE FROM "%s"' % item.table_name)
                         item.open(expanded=False, open_empty=True)
                         params = {'__fields': [], '__filters': [], '__expanded': False, '__offset': 0, '__limit': 0}
                         sql = item.get_record_count_query(params, db_module)
@@ -1189,8 +1189,8 @@ class AbstractServerTask(AbstrTask):
                                 print('coping table %s: %d%%' % (item.item_name, int(loaded * 100 / record_count)))
                                 if records == 0 or records < limit:
                                     break
-                            if self.db_module.restart_sequence_sql:
-                                sql = self.db_module.restart_sequence_sql(item.table_name, max_id + 1)
+                            if item.gen_name:
+                                sql = self.db_module.restart_sequence_sql(item.gen_name, max_id + 1)
                                 self.execute(sql)
 
 class DebugException(Exception):

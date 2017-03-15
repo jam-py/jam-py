@@ -710,6 +710,7 @@
                         canClose = form._options.onHide.call(self);
                     }
                     if (canClose !== false) {
+                        form._options.onHidden.call(self);
                         $(window).off("keydown." + keySuffix);
                         $(window).off("keyup." + keySuffix);
                         this[formName] = undefined;
@@ -1025,7 +1026,7 @@
                 if (h.user.value) {
                     user = self.task.language.by_user + ' ' + h.user.value;
                 }
-                acc.find('.accordion-toggle').html(h.date.display_text + ': ' +
+                acc.find('.accordion-toggle').html(h.date.format_date_to_string(h.date.value, '%d.%m.%Y %H:%M:%S') + ': ' +
                     h.operation.display_text + ' ' + user);
                 acc.find('.accordion-inner').html(content);
                 if (h.rec_no === 0) {
@@ -7357,7 +7358,7 @@
                 copy._where_list = this.item._open_params.__filters;
                 copy._order_by_list = this.item._open_params.__order;
                 if (this.options.selection_limit) {
-                    limit = this.options.selection_limit - this.options.length;
+                    limit = this.options.selection_limit;// - this.item.selections.length;
                 }
                 fields.push(copy._primary_key);
                 for (i = 0; i < copy._where_list.length; i++) {

@@ -90,9 +90,9 @@ def upper_function():
 def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
     result = []
     primary_key = ''
-    sql = set_case('CREATE TABLE "%s"\n(\n' % table_name)
+    sql = 'CREATE TABLE "%s"\n(\n' % table_name
     for field in fields:
-        sql += set_case('"%s" %s' % (field['field_name'], FIELD_TYPES[field['data_type']]))
+        sql += '"%s" %s' % (field['field_name'], FIELD_TYPES[field['data_type']])
         if field['size'] != 0 and field['data_type'] == TEXT:
             sql += '(%d)' % field['size']
         if field['default_value'] and not field['primary_key']:
@@ -102,7 +102,7 @@ def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
                 sql += ' DEFAULT %s' % field['default_value']
         if field['primary_key']:
             sql += ' NOT NULL AUTO_INCREMENT'
-            primary_key = set_case(field['field_name'])
+            primary_key = field['field_name']
         sql +=  ',\n'
     sql += 'PRIMARY KEY("%s")' % primary_key
     sql += ')\n'
@@ -111,27 +111,25 @@ def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
 
 def delete_table_sql(table_name, gen_name):
     result = []
-    result.append(set_case('DROP TABLE "%s"' % table_name))
+    result.append('DROP TABLE "%s"' % table_name)
     return result
 
 def create_index_sql(index_name, table_name, unique, fields, desc):
-    return set_case('CREATE %s INDEX "%s" ON "%s" (%s)' % \
-        (unique, index_name, table_name, fields))
+    return 'CREATE %s INDEX "%s" ON "%s" (%s)' % (unique, index_name, table_name, fields)
 
 def create_foreign_index_sql(table_name, index_name, key, ref, primary_key):
-    return set_case('ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s)' % \
-        (table_name, index_name, key, ref, primary_key))
+    return 'ALTER TABLE "%s" ADD CONSTRAINT "%s" FOREIGN KEY ("%s") REFERENCES "%s"("%s")' % \
+        (table_name, index_name, key, ref, primary_key)
 
 def delete_index(table_name, index_name):
-    return 'DROP INDEX %s ON %s' % (index_name, table_name)
+    return 'DROP INDEX "%s" ON "%s"' % (index_name, table_name)
 
 def delete_foreign_index(table_name, index_name):
-    return set_case('ALTER TABLE %s DROP FOREIGN KEY %s' % \
-        (table_name, index_name))
+    return 'ALTER TABLE "%s" DROP FOREIGN KEY "%s"' % (table_name, index_name)
 
 def add_field_sql(table_name, field):
-    result = set_case('ALTER TABLE "%s" ADD "%s" %s' % \
-        (table_name, field['field_name'], FIELD_TYPES[field['data_type']]))
+    result = 'ALTER TABLE "%s" ADD "%s" %s' % \
+        (table_name, field['field_name'], FIELD_TYPES[field['data_type']])
     if field['size']:
         result += '(%d)' % field['size']
     if field['default_value']:
@@ -142,41 +140,35 @@ def add_field_sql(table_name, field):
     return result
 
 def del_field_sql(table_name, field):
-    return set_case('ALTER TABLE "%s" DROP "%s"' % (table_name, field['field_name']))
+    return 'ALTER TABLE "%s" DROP "%s"' % (table_name, field['field_name'])
 
 def change_field_sql(table_name, old_field, new_field):
     result = []
     if old_field['field_name'] != new_field['field_name']:
-        sql = set_case('ALTER TABLE "%s" CHANGE  "%s" "%s" %s' % (table_name, old_field['field_name'],
-            new_field['field_name'], FIELD_TYPES[new_field['data_type']]))
+        sql = 'ALTER TABLE "%s" CHANGE  "%s" "%s" %s' % (table_name, old_field['field_name'],
+            new_field['field_name'], FIELD_TYPES[new_field['data_type']])
         if old_field['size']:
             sql += '(%d)' % old_field['size']
         #~ if old_field['data_type'] != new_field['data_type'] or \
             #~ old_field['size'] != new_field['size']:
-            #~ sql += set_case(' %s' % FIELD_TYPES[field['data_type']])
+            #~ sql += ' %s' % FIELD_TYPES[field['data_type']]
             #~ if new_field['size'] and old_field['size'] != new_field['size']:
                 #~ sql += '(%d)' % new_field['size']
         result.append(sql)
     if old_field['default_value'] != new_field['default_value']:
         if new_field['default_value']:
             if new_field['data_type'] == TEXT:
-                sql = set_case('ALTER TABLE "%s" ALTER "%s" SET DEFAULT' % \
-                    (table_name, new_field['field_name']))
+                sql = 'ALTER TABLE "%s" ALTER "%s" SET DEFAULT' % \
+                    (table_name, new_field['field_name'])
                 sql +=  " '%s'" % new_field['default_value']
             else:
-                sql = set_case('ALTER TABLE "%s" ALTER "%s" SET DEFAULT %s' % \
-                    (table_name, new_field['field_name'], new_field['default_value']))
+                sql = 'ALTER TABLE "%s" ALTER "%s" SET DEFAULT %s' % \
+                    (table_name, new_field['field_name'], new_field['default_value'])
         else:
-            sql = set_case('ALTER TABLE "%s" ALTER "%s" DROP DEFAULT' % \
-                (table_name, new_field['field_name']))
+            sql = 'ALTER TABLE "%s" ALTER "%s" DROP DEFAULT' % \
+                (table_name, new_field['field_name'])
         result.append(sql)
     return result
-
-def set_case(string):
-    return string.upper()
-
-def literal_case(string):
-    return string.lower()
 
 def param_literal():
     return '%s'
@@ -192,3 +184,63 @@ def next_sequence_value_sql(table_name):
 
 def restart_sequence_sql(table_name, value):
     pass
+
+def set_literal_case(name):
+    return name.lower()
+
+def get_table_names(connection):
+    cursor = connection.cursor()
+    cursor.execute('show tables')
+    result = cursor.fetchall()
+    return [r[0] for r in result]
+
+def get_table_info(connection, table_name, db_name):
+    cursor = connection.cursor()
+    sql = 'SHOW COLUMNS FROM "%s" FROM %s' % (table_name, db_name)
+    cursor.execute(sql)
+    result = cursor.fetchall()
+    fields = []
+    for (field_name, type_size, null, key, default_value, autoinc) in result:
+        try:
+            pk = False
+            if autoinc and key == 'PRI':
+                pk = True
+            data_type = type_size.split('(')[0].upper()
+            size = type_size.split('(')[1].split(')')[0]
+            if not data_type in ['VARCHAR', 'CHAR']:
+                size = 0
+        except:
+            data_type = type_size
+            size = 0
+        fields.append({
+            'field_name': field_name,
+            'data_type': data_type,
+            'size': size,
+            'default_value': default_value,
+            'pk': pk
+        })
+    sql = 'SHOW INDEXES FROM %s FROM %s' % (table_name, db_name)
+    cursor.execute(sql)
+    result = cursor.fetchall()
+    indexes = {}
+    for r in result:
+        index_name = r[2]
+        unique = False
+        if r[1] == 0:
+            unique = True
+        if index_name != 'PRIMARY':
+            index = indexes.get(index_name)
+            if not index:
+                index = {
+                    'index_name': index_name,
+                    'unique': unique,
+                    'fields': []
+                }
+                indexes[index_name] = index
+            index['fields'].append([r[4], False])
+    ind = []
+    indexes.values()
+    for key, value in indexes.iteritems():
+        ind.append(value)
+    return {'fields': fields, 'indexes': ind}
+

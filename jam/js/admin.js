@@ -893,10 +893,18 @@ function Events3() { // admin.catalogs.sys_items
 			item.fields_editor = true;
 			item.view_options.fields = ['id', 'f_name', 'f_item_name', 'f_visible'];
 			item.edit_options.fields = ['f_name', 'f_item_name', 'f_visible'];
-			item.sys_fields.view_options.fields = ['f_name', 'f_field_name', 'f_db_field_name',
-				'f_data_type', 'f_size', 'f_required', 'f_read_only', 'f_object',
-				'f_object_field', 'f_master_field', 'f_enable_typehead',
-				'f_lookup_values', 'f_alignment', 'f_default'];
+			if (item.task._manual_update) {
+				item.sys_fields.view_options.fields = ['f_name', 'f_field_name', 'f_db_field_name',
+					'f_data_type', 'f_size', 'f_required', 'f_read_only', 'f_object',
+					'f_object_field', 'f_master_field', 'f_enable_typehead',
+					'f_lookup_values', 'f_alignment', 'f_default'];
+			}
+			else {
+				item.sys_fields.view_options.fields = ['f_name', 'f_field_name',
+					'f_data_type', 'f_size', 'f_required', 'f_read_only', 'f_object',
+					'f_object_field', 'f_master_field', 'f_enable_typehead',
+					'f_lookup_values', 'f_alignment', 'f_default'];
+			}
 		}
 		else if (task.item_tree.type_id.value === task.item_types.ITEMS_TYPE ||
 			task.item_tree.type_id.value === task.item_types.TABLES_TYPE) {
@@ -904,10 +912,18 @@ function Events3() { // admin.catalogs.sys_items
 			item.view_options.fields = ['id', 'f_name', 'f_item_name', 'f_table_name',
 				'f_visible', 'f_soft_delete']
 			item.edit_options.fields = ['f_name', 'f_item_name', 'f_table_name']
-			item.sys_fields.view_options.fields = ['f_name', 'f_field_name',  'f_db_field_name',
-				'f_data_type', 'f_size', 'f_required', 'f_read_only', 'f_object',
-				'f_object_field', 'f_master_field', 'f_enable_typehead',
-				'f_lookup_values', 'f_alignment', 'f_default'];
+			if (item.task._manual_update) {
+				item.sys_fields.view_options.fields = ['f_name', 'f_field_name',  'f_db_field_name',
+					'f_data_type', 'f_size', 'f_required', 'f_read_only', 'f_object',
+					'f_object_field', 'f_master_field', 'f_enable_typehead',
+					'f_lookup_values', 'f_alignment', 'f_default'];
+			}
+			else {
+				item.sys_fields.view_options.fields = ['f_name', 'f_field_name',
+					'f_data_type', 'f_size', 'f_required', 'f_read_only', 'f_object',
+					'f_object_field', 'f_master_field', 'f_enable_typehead',
+					'f_lookup_values', 'f_alignment', 'f_default'];
+			}
 		}
 		else if (task.item_tree.type_id.value === task.item_types.REPORTS_TYPE) {
 			item.view_options.fields = ['id', 'f_name', 'f_item_name',
@@ -1916,7 +1932,7 @@ function Events3() { // admin.catalogs.sys_items
 				inds.f_index_name.value = indexes[i].index_name;
 				inds.f_unique_index.value = indexes[i].unique;
 				dest_list = []
-				for (var j = 0; j < indexes[j].fields.length; j++) {
+				for (var j = 0; j < indexes[i].fields.length; j++) {
 					field_name = indexes[i].fields[j][0];
 					desc = indexes[i].fields[j][1];
 					field_id = 0;
@@ -1934,7 +1950,7 @@ function Events3() { // admin.catalogs.sys_items
 				inds.post();
 			}
 			inds.apply();
-			item.warning(indexes.length + ' indexes have been created');
+			item.warning('Information about ' + indexes.length + ' index(es) have been added');
 		}
 	}
 	

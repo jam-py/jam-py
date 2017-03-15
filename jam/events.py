@@ -50,6 +50,7 @@ reports_client_events = \
         'on_param_form_created': 'item',
         'on_param_form_shown': 'item',
         'on_param_form_close_query': 'report',
+        'on_param_form_closed': 'item',
         'on_open_report': 'report, url',
         'on_before_print_report': 'report'
     }
@@ -64,6 +65,10 @@ detail_client_events = \
         'on_filter_form_shown': 'item',
         'on_view_form_close_query': 'item',
         'on_edit_form_close_query': 'item',
+        'on_filter_form_close_query': 'item',
+        'on_view_form_closed': 'item',
+        'on_edit_form_closed': 'item',
+        'on_filter_form_closed': 'item',
         'on_view_form_keyup': 'item, event',
         'on_view_form_keydown': 'item, event',
         'on_edit_form_keyup': 'item, event',
@@ -118,7 +123,8 @@ task_server_events = \
         'on_apply': 'item, delta, params'
 
         #~ 'on_ext_request': 'task, request, params',
-        #~ 'on_request': 'task, request, params'
+        #~ 'on_before_request': 'item, request, params'
+        #~ 'on_after_request': 'item, request, params, duration'
     }
 
 group_server_events = \

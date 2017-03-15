@@ -744,7 +744,7 @@ class SQL(object):
                 if new_fields:
                     field_defs = [new_field_name_by_id(field[0]) for field in fields]
                 else:
-                    field_defs = [self.task.sys_fields.field_by_id(field[0], 'f_field_name') for field in fields]
+                    field_defs = [self.task.sys_fields.field_by_id(field[0], 'f_db_field_name') for field in fields]
                 field_str = '"' + '", "'.join(field_defs) + '"'
             else:
                 field_defs = []
@@ -752,7 +752,7 @@ class SQL(object):
                     if new_fields:
                         field_name = new_field_name_by_id(field[0])
                     else:
-                        field_name = self.task.sys_fields.field_by_id(field[0], 'f_field_name')
+                        field_name = self.task.sys_fields.field_by_id(field[0], 'f_db_field_name')
                     d = ''
                     if field[1]:
                         d = 'DESC'

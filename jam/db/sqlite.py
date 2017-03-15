@@ -146,9 +146,6 @@ def del_field_sql(table_name, field):
 def change_field_sql(table_name, old_field, new_field):
     return ''
 
-def literal_case(string):
-    return string.upper()
-
 def get_sequence_name(table_name):
     return None
 
@@ -158,13 +155,16 @@ def next_sequence_value_sql(table_name):
 def restart_sequence_sql(table_name, value):
     pass
 
+def set_literal_case(name):
+    return name.upper()
+
 def get_table_names(connection):
     cursor = connection.cursor()
     cursor.execute("SELECT * FROM sqlite_master WHERE type='table'")
     result = cursor.fetchall()
     return [r[1] for r in result]
 
-def get_table_info(connection, table_name):
+def get_table_info(connection, table_name, db_name):
     cursor = connection.cursor()
     cursor.execute('PRAGMA table_info(%s)' % table_name)
     result = cursor.fetchall()

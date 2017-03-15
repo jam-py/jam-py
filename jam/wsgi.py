@@ -231,12 +231,11 @@ class App():
             user_info = session['user_info']
             if not user_info:
                 return False
-            if not self.admin.ignore_change_ip:
+            if not self.admin.ignore_change_ip and task != self.admin:
                 ip = self.get_client_address(request);
                 if not adm_server.user_valid_ip(self.admin, user_info['user_id'], ip):
                     return False
         return True
-
 
     def check_session(self, request, task):
         c = request.get_session(task)
@@ -263,6 +262,39 @@ class App():
         cookie = cookie = request.get_session(task)
         cookie['info'] = None
         jam.context.session = None
+
+    def check_task_server_modified(self):
+        if self.task_server_modified:
+            self.admin.reload_task()
+            self.task_server_modified = False
+
+    def check_task_client_modified(self):
+        if self.task_client_modified:
+            self.admin.update_events_code()
+            self.task_client_modified = False
+
+    def get_privileges(self, role_id):
+        if self.privileges is None:
+            roles, privileges = adm_server.get_roles(self.admin)
+            self.privileges = privileges
+        return self.privileges[role_id]
+
+    def init_client(self, task):
+        session = jam.context.session
+        priv = None
+        user_info = {}
+        if session:
+            user_info = session['user_info']
+            if user_info:
+                priv = self.get_privileges(user_info['role_id'])
+        result = {
+            'task': task.get_info(),
+            'settings': self.admin.get_settings(),
+            'language': self.admin.lang,
+            'user_info': user_info,
+            'privileges': priv
+        }
+        return result, ''
 
     def on_api(self, request):
         if request.method == 'POST':
@@ -298,10 +330,13 @@ class App():
                         self._busy += 1
                         try:
                             data = None
-                            if task.on_request:
-                                data = task.on_request(task, method, params)
+                            started = datetime.datetime.now()
+                            if task.on_before_request:
+                                data = task.on_request(item, method, params)
                             if not data:
                                 data = self.get_response(item, method, params)
+                            if task.on_after_request:
+                                task.on_request(item, method, params, datetime.datetime.now() - started)
                         finally:
                             self._busy -= 1
                         result['data'] = data
@@ -344,39 +379,6 @@ class App():
             raise Exception('item: %s no server function with name %s' % (obj.item_name, func_name))
         return result, error
 
-    def check_task_server_modified(self):
-        if self.task_server_modified:
-            self.admin.reload_task()
-            self.task_server_modified = False
-
-    def check_task_client_modified(self):
-        if self.task_client_modified:
-            self.admin.update_events_code()
-            self.task_client_modified = False
-
-    def get_privileges(self, role_id):
-        if self.privileges is None:
-            roles, privileges = adm_server.get_roles(self.admin)
-            self.privileges = privileges
-        return self.privileges[role_id]
-
-    def init_client(self, task):
-        session = jam.context.session
-        priv = None
-        user_info = {}
-        if session:
-            user_info = session['user_info']
-            if user_info:
-                priv = self.get_privileges(user_info['role_id'])
-        result = {
-            'task': task.get_info(),
-            'settings': self.admin.get_settings(),
-            'language': self.admin.lang,
-            'user_info': user_info,
-            'privileges': priv
-        }
-        return result, ''
-
     def on_ext(self, request):
         if request.method == 'POST':
             r = {'result': None, 'error': None}
@@ -385,9 +387,18 @@ class App():
             task = self.get_task()
             try:
                 data = None
-                if task.on_ext_request:
-                    data = task.on_ext_request(task, method, params)
-                r['result'] = {'status': common.RESPONSE, 'data': data, 'version': task.version}
+                if self.under_maintenance:
+                    status = common.UNDER_MAINTAINANCE
+                elif task.on_ext_request:
+                    status = common.RESPONSE
+                    self._busy += 1
+                    try:
+                        data = task.on_ext_request(task, method, params)
+                    finally:
+                        self._busy -= 1
+                else:
+                    status = None
+                r['result'] = {'status': status, 'data': data, 'version': task.version}
             except AbortException as e:
                 traceback.print_exc()
                 r['result'] = {'data': [None, e.message]}

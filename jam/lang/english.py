@@ -130,7 +130,7 @@ dictionary = \
     'author':                           'Author',
     'interface':                        'Interface',
     'db_type':                          'DB type',
-    'db_name':                          'File name',
+    'db_name':                          'Database',
     'alias':                            'Database',
     'data_type':                        'Type',
     'filter_type':                      'Filter type',
