@@ -159,6 +159,12 @@ function Events0() { // admin
 			task.tree_panel = $("#tree-panel");
 	
 			task.item_tree = task.sys_items.copy({handlers: false, details: false});
+			task.item_tree.on_after_open = function(t) {
+				t.locate('type_id', item_types.TASK_TYPE);
+				t.edit();
+				t.f_name.value = task.language.groups;
+				t.post();
+			};
 			task.tree = task.item_tree.create_tree(task.tree_panel,
 				{
 					id_field: 'id',

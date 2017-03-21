@@ -240,6 +240,7 @@ class AbstrItem(AbstractItem):
         info['master_id'] = self._master_id
         info['master_rec_id'] = self._master_rec_id
         info['keep_history'] = self.keep_history
+        info['lock_on_edit'] = self.lock_on_edit
 
     def read_info(self, info):
         super(AbstrItem, self).read_info(info)

@@ -946,6 +946,7 @@ class AbstractDataSet(object):
         self._disabled_count = 0
         self._is_delta = False
         self.keep_history = False
+        self.lock_on_edit = False
         self.parent_read_only = True
         self.on_before_append = None
         self.on_after_append = None

@@ -218,6 +218,7 @@
                 child._master_id = item_info.master_id;
                 child._master_rec_id = item_info.master_rec_id;
                 child.keep_history = item_info.keep_history;
+                child.lock_on_edit = item_info.lock_on_edit;
                 child.prototype_ID = item_info.prototype_ID
                 if (child.initAttr) {
                     child.initAttr(item_info);
@@ -1284,9 +1285,9 @@
             if (options.callback) {
                 xhr.onload = function(e) {
                     if (options.multiple) {
-                        options.callback.call(self, self, files);
+                        options.callback.call(self, files);
                     } else {
-                        options.callback.call(self, self, files[0]);
+                        options.callback.call(self, files[0]);
                     }
                 };
             }
@@ -3748,7 +3749,7 @@
                     if (callback) {
                         callback.call(this, err);
                     }
-//                    throw err;
+                    throw err;
                 } else {
                     this.change_log.update(res)
                     if (this.on_after_apply) {
@@ -7138,6 +7139,9 @@
                     this.$element.scrollTop(elemBottom - this.$element.height());
                 }
             }
+        },
+
+        update_field: function() {
         },
 
         syncronize: function() {

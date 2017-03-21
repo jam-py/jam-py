@@ -5,6 +5,7 @@ dictionary = \
     'lang':                             u'ru',
 #admin fields
     'admin':                            u'Администратор',
+    'groups':                           u'Группы',
     'catalogs':                         u'Справочники',
     'journals':                         u'Журналы',
     'tables':                           u'Таблицы',

@@ -105,6 +105,7 @@ dictionary = \
     'cant_delete':                      '%s: you are not allowed to delete',
 #admin fields
     'admin':                            'Administrator',
+    'groups':                           'Groups',
     'catalogs':                         'Catalogs',
     'journals':                         'Journals',
     'tables':                           'Tables',
