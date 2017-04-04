@@ -651,7 +651,7 @@ function Events0() { // admin
 		}
 	}
 	
-	function do_import(task, file_name) {
+	function do_import(file_name) {
 		var mess;
 	
 		mess = task.show_message(
@@ -1928,8 +1928,10 @@ function Events3() { // admin.catalogs.sys_items
 	function add_import_indexes(item, indexes) {
 		var inds = item.task.sys_indices,
 			desc,
+			field_found,
 			field_id,
 			field_name,
+			found = 0,
 			dest_list;
 		inds.open({open_empty: true});
 		if (indexes.length) {
@@ -1938,6 +1940,7 @@ function Events3() { // admin.catalogs.sys_items
 				inds.f_index_name.value = indexes[i].index_name;
 				inds.f_unique_index.value = indexes[i].unique;
 				dest_list = []
+				field_found = true;
 				for (var j = 0; j < indexes[i].fields.length; j++) {
 					field_name = indexes[i].fields[j][0];
 					desc = indexes[i].fields[j][1];
@@ -1951,12 +1954,23 @@ function Events3() { // admin.catalogs.sys_items
 					if (field_id) {
 						dest_list.push([field_id, desc]);
 					}
+					else {
+						field_found = false;
+						break;
+					}
 				}
 				inds.f_fields_list.value = inds.server('server_dump_index_fields', [dest_list]);
-				inds.post();
+				if (field_found) {
+					found += 1;
+					inds.post();
+				}
+				else {
+					inds.cancel();
+				}
 			}
 			inds.apply();
-			item.warning('Information about ' + indexes.length + ' index(es) have been added');
+			item.warning('Information about ' + found + ' index(es) have been added. Information about ' +
+				(indexes.length - found) + ' index(es) could not be added.');
 		}
 	}
 	

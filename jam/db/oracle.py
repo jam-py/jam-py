@@ -49,13 +49,13 @@ def get_fields(query, fields, alias):
         if field.master_field:
             pass
         elif field.calculated:
-            sql += 'NULL AS "%s", ' % field.field_name
+            sql += 'NULL AS "%s", ' % field.db_field_name
         else:
-            sql += '%s."%s", ' % (alias, field.field_name)
+            sql += '%s."%s", ' % (alias, field.db_field_name)
     if query['__expanded']:
         for field in fields:
             if field.lookup_item:
-                sql += '%s_LOOKUP, ' % field.field_name
+                sql += '%s_LOOKUP, ' % field.db_field_name
     sql = sql[:-2]
     return sql
 
@@ -233,4 +233,34 @@ def get_table_info(connection, table_name, db_name):
             'default_value': default_value,
             'pk': False
         })
-    return {'fields': fields, 'indexes': []}
+
+    #~ return {'fields': fields, 'indexes': {}}
+
+    pr_index_name = ''
+    sql = "SELECT INDEX_NAME FROM USER_CONSTRAINTS WHERE CONSTRAINT_TYPE IN ('P') and TABLE_NAME = UPPER('%s')" % table_name
+    cursor.execute(sql)
+    result = cursor.fetchone()
+    if result:
+        pr_index_name = result[0]
+    sql = "SELECT INDEX_NAME, UNIQUENESS FROM USER_INDEXES WHERE TABLE_NAME = UPPER('%s')" % table_name
+    cursor.execute(sql)
+    result = cursor.fetchall()
+    indexes = []
+    for index_name, uniqueness in result:
+        if index_name != pr_index_name:
+            print 1111, index_name, uniqueness
+            unique = uniqueness.upper() == 'UNIQUE'
+            sql = "SELECT COLUMN_NAME, DESCEND FROM USER_IND_COLUMNS WHERE TABLE_NAME = UPPER('%s') AND INDEX_NAME = '%s' ORDER BY COLUMN_POSITION" % (table_name, index_name)
+            cursor.execute(sql)
+            cols = cursor.fetchall()
+            field_defs = []
+            for column_name, descend in cols:
+                desc = descend.upper() == 'DESC'
+                field_defs.append([column_name, desc])
+            indexes.append({
+                'index_name': index_name,
+                'unique': unique,
+                'fields': field_defs
+            })
+    print 777, indexes
+    return {'fields': fields, 'indexes': indexes}

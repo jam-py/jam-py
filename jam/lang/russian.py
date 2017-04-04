@@ -8,7 +8,7 @@ dictionary = \
     'groups':                           u'Группы',
     'catalogs':                         u'Справочники',
     'journals':                         u'Журналы',
-    'tables':                           u'Таблицы',
+    'details':                          u'Таблицы',
     'reports':                          u'Отчеты',
     'details':                          u'Подч.таблицы',
     'id':                               u'ID записи',

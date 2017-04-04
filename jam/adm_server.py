@@ -17,6 +17,7 @@ import jam.db.db_modules as db_modules
 from jam.server_classes import *
 import jam.lang.langs as langs
 from jam.events import get_events
+from jam.execute import execute_sql
 
 def read_language(task):
     result = None
@@ -94,7 +95,7 @@ def write_setting(task):
 def create_items(task):
     task.items = []
     task.sys_catalogs = Group(task, 'catalogs', task.lang['catalogs'])
-    task.sys_tables = Group(task, 'tables', task.lang['tables'], visible=False)
+    task.sys_tables = Group(task, 'tables', task.lang['details'], visible=False)
 
     task.sys_params = task.sys_catalogs.add_catalog('sys_params', '', 'SYS_PARAMS')
 
@@ -1554,8 +1555,6 @@ def server_import_task(task, task_id, file_name, from_client=False):
                 if db_module.DDL_ROLLBACK:
                     if error:
                         success = False
-                    #~ else:
-                        #~ connection.commit()
                 if connection:
                     connection.close()
             if success:

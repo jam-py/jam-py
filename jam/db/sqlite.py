@@ -73,10 +73,7 @@ def process_sql_params(params, cursor):
     return result
 
 def process_sql_result(rows):
-    result = []
-    for row in rows:
-        result.append(list(row))
-    return result
+    return [list(row) for row in rows]
 
 def cast_date(date_str):
     return "CAST('" + date_str + "' AS DATE)"
@@ -204,7 +201,6 @@ def get_table_info(connection, table_name, db_name):
                             desc = True
                         f_name = a[0]
                         f_name = f_name.strip('"').strip("'")
-#                        f_name = f_name.strip("'")
                         defs.append([f_name, desc])
             indexes.append({
                 'index_name': index_name,

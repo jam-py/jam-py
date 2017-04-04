@@ -16,6 +16,7 @@ import jam.db.db_modules as db_modules
 from jam.items import *
 from jam.dataset import *
 from jam.sql import *
+from jam.execute import process_request, execute_sql
 
 class ServerDataset(Dataset, SQL):
     def __init__(self, table_name='', soft_delete=True):
@@ -702,216 +703,6 @@ class Report(AbstrReport):
     def _set_modified(self, value):
         pass
 
-########################################################################
-
-def _get_next_id(cursor, sql, data_type):
-    cursor.execute(sql)
-    rec = cursor.fetchone()
-    if data_type == common.INTEGER:
-        return int(rec[0])
-    elif data_type == common.TEXT:
-        return str(rec[0])
-
-def _execute_command(cursor, db_module, command, params=None, commit=True,
-    select=False, ddl=False, messages=None):
-
-    #~ print ''
-    #~ print 11111, command, type(command)
-
-    try:
-        if ddl:
-            print('')
-            print(command)
-            if params:
-                print(params)
-                messages.append('<p>' + command + '<br>' + \
-                    json.dumps(params, default=common.json_defaul_handler) + '</p>')
-            else:
-                messages.append('<p>' + command + '</p>')
-
-        result = None
-        if params and not select:
-            cursor.execute(command, db_module.process_sql_params(params, cursor))
-        else:
-            cursor.execute(command)
-        if select:
-            result = cursor.fetchall()
-            result = db_module.process_sql_result(result)
-        return result
-    except Exception, x:
-        error = '\nError: %s\n command: %s\n params: %s' % (str(x), command, params)
-        print(error)
-        if ddl:
-            arr = str(x).split('\\n')
-            error = '<br>'.join(arr)
-            messages.append('<div class="text-error">%s</div>' % error)
-            if db_module.DDL_ROLLBACK:
-                raise
-        else:
-            raise
-
-def _execute_delta(cursor, db_module, command, delta_result, params,
-    commit, select, ddl, messages):
-
-    def process_delta(delta, master_rec_id, result):
-        ID, sqls = delta
-        result['ID'] = ID
-        changes = []
-        result['changes'] = changes
-        for sql in sqls:
-            (command, params, info, h_sql, h_params, h_gen_name), details = sql
-            if info:
-                rec_id = info['primary_key']
-                if info['status'] == common.RECORD_INSERTED:
-                    if rec_id:
-                        pass
-                    else:
-                        primary_key_type = info['primary_key_type']
-                        next_sequence_value_sql = db_module.next_sequence_value_sql(info['gen_name'])
-                        if next_sequence_value_sql:
-                            rec_id = _get_next_id(cursor, next_sequence_value_sql, primary_key_type)
-                            params[info['primary_key_index']] = rec_id
-                        elif primary_key_type == common.TEXT:
-                            raise Exception('Primary key value not specified - command: %s' % command)
-                if info['status'] == common.RECORD_INSERTED and info['master_rec_id_index']:
-                    params[info['master_rec_id_index']] = master_rec_id
-                if command:
-                    _execute_command(cursor, db_module, command, params, commit, select, ddl, messages)
-                if not rec_id and info['status'] == common.RECORD_INSERTED:
-                    new_id = db_module.get_lastrowid(cursor)
-                    if new_id:
-                        rec_id = new_id
-                result_details = []
-                if rec_id:
-                    changes.append({'log_id': info['log_id'], 'rec_id': rec_id, 'details': result_details})
-                for detail in details:
-                    result_detail = {}
-                    result_details.append(result_detail)
-                    process_delta(detail, rec_id, result_detail)
-            else:
-                if command:
-                    _execute_command(cursor, db_module, command, params, commit, select, ddl, messages)
-            if h_sql:
-                next_sequence_value_sql = db_module.next_sequence_value_sql(h_gen_name)
-                if next_sequence_value_sql:
-                    h_id = _get_next_id(cursor, next_sequence_value_sql, common.INTEGER)
-                    h_params[0] = h_id
-                if not h_params[2]:
-                    h_params[2] = rec_id
-                _execute_command(cursor, db_module, h_sql, h_params)
-
-    delta = command['delta']
-    process_delta(delta, None, delta_result)
-
-def _execute_list(cursor, db_module, command, delta_result, params, commit, select, ddl, messages):
-    res = None
-    for com in command:
-        command_type = type(com)
-        if command_type == unicode:
-            res = _execute_command(cursor, db_module, com, None, commit, select, ddl, messages)
-        elif command_type == str:
-            res = _execute_command(cursor, db_module, com, None, commit, select, ddl, messages)
-        elif command_type == dict:
-            res = _execute_delta(cursor, db_module, com, delta_result, params, commit, select, ddl, messages)
-        elif command_type == list:
-            res = _execute_list(cursor, db_module, com, delta_result, params, commit, select, ddl, messages)
-        elif command_type == tuple:
-            res = _execute_command(cursor, db_module, com[0], com[1], commit, select, ddl, messages)
-        elif not com:
-            pass
-        else:
-            raise Exception('server_classes execute_list: invalid argument - command: %s' % command)
-    return res
-
-def execute_sql(db_module, db_database, db_user, db_password,
-    db_host, db_port, db_encoding, connection, command,
-    params=None, call_proc=False, commit=True, select=False, ddl=False):
-
-    if connection is None:
-        try:
-            connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
-        except Exception, x:
-             print(str(x))
-             return  None, (None, str(x))
-    delta_result = {}
-    messages = []
-    result = None
-    error = None
-    try:
-        cursor = connection.cursor()
-        if call_proc:
-            try:
-                cursor.callproc(command, params)
-                result = cursor.fetchone()
-            except Exception, x:
-                print('\nError: %s in command: %s' % (str(x), command))
-                raise
-        else:
-            command_type = type(command)
-            if command_type == unicode:
-                result = _execute_command(cursor, db_module, command, params, commit, select, ddl, messages)
-            elif command_type == str:
-                result = _execute_command(cursor, db_module, command, params, commit, select, ddl, messages)
-            elif command_type == dict:
-                res = _execute_delta(cursor, db_module, command, delta_result, params, commit, select, ddl, messages)
-            elif command_type == list:
-                result = _execute_list(cursor, db_module, command, delta_result, params, commit, select, ddl, messages)
-            else:
-                result = _execute_command(cursor, db_module, command, params, commit, select, ddl, messages)
-        if commit:
-            connection.commit()
-        else:
-            connection.rollback()
-        if delta_result:
-            result = delta_result
-    except Exception, x:
-        try:
-            if connection:
-                connection.rollback()
-                connection.close()
-            error = str(x)
-            if not error:
-                error = 'SQL execution error'
-            traceback.print_exc()
-        finally:
-            connection = None
-    finally:
-        if ddl:
-            if messages:
-                info = "".join(messages)
-            else:
-                info = ''
-            return connection, (result, error, info)
-        else:
-            return connection, (result, error)
-
-def process_request(parentPID, name, queue, db_type, db_database, db_user, db_password, db_host, db_port, db_encoding, mod_count):
-    con = None
-    counter = 0
-    db_module = db_modules.get_db_module(db_type)
-    while True:
-        if parentPID and hasattr(os, 'getppid') and os.getppid() != parentPID:
-            break
-        request = queue.get()
-        if request:
-            result_queue = request['queue']
-            command = request['command']
-            params = request['params']
-            call_proc = request['call_proc']
-            commit = request['commit']
-            select = request['select']
-            cur_mod_count = request['mod_count']
-            if cur_mod_count != mod_count or counter > 1000:
-                if con:
-                    con.rollback()
-                    con.close()
-                con = None
-                mod_count = cur_mod_count
-                counter = 0
-            con, result = execute_sql(db_module, db_database, db_user, db_password,
-                db_host, db_port, db_encoding, con, command, params, call_proc, commit, select)
-            counter += 1
-            result_queue.put(result)
 
 class Consts(object):
     def __init__(self):
@@ -1034,40 +825,39 @@ class AbstractServerTask(AbstrTask):
     def create_connection(self):
         return self.db_module.connect(self.db_database, self.db_user, self.db_password, self.db_host, self.db_port, self.db_encoding)
 
-    def send_to_pool(self, queue, result_queue, command, params=None, call_proc=False, commit=True, select=False):
+    def send_to_pool(self, queue, result_queue, command, params=None, call_proc=False, select=False):
         request = {}
         request['queue'] = result_queue
         request['command'] = command
         request['params'] = params
         request['call_proc'] = call_proc
-        request['commit'] = commit
         request['select'] = select
         request['mod_count'] = self.mod_count
         queue.put(request)
         return  result_queue.get()
 
-    def execute_in_pool(self, command, params=None, call_proc=False, commit=True, select=False):
+    def execute_in_pool(self, command, params=None, call_proc=False, select=False):
         result_queue = Queue.Queue()
-        result = self.send_to_pool(self.queue, result_queue, command, params, call_proc, commit, select)
+        result = self.send_to_pool(self.queue, result_queue, command, params, call_proc, select)
         return result
 
-    def execute_in_mp_poll(self, command, params=None, call_proc=False, commit=True, select=False):
+    def execute_in_mp_poll(self, command, params=None, call_proc=False, select=False):
         result_queue = self.mp_manager.Queue()
-        result = self.send_to_pool(self.mp_queue, result_queue, command, params, call_proc, commit, select)
+        result = self.send_to_pool(self.mp_queue, result_queue, command, params, call_proc, select)
         return result
 
-    def execute(self, command, params=None, call_proc=False, commit=True, select=False):
+    def execute(self, command, params=None, call_proc=False, select=False):
         if self.mp_pool:
             if self.persist_con and not self.persist_con_busy:
                 self.persist_con_busy += 1
                 try:
-                    result = self.execute_in_pool(command, params, call_proc, commit, select)
+                    result = self.execute_in_pool(command, params, call_proc, select)
                 finally:
                     self.persist_con_busy -= 1
             else:
-                result = self.execute_in_mp_poll(command, params, call_proc, commit, select)
+                result = self.execute_in_mp_poll(command, params, call_proc, select)
         else:
-            result = self.execute_in_pool(command, params, call_proc, commit, select)
+            result = self.execute_in_pool(command, params, call_proc, select)
         return result
 
     def callproc(self, command, params=None):
@@ -1076,7 +866,7 @@ class AbstractServerTask(AbstrTask):
             return result_set
 
     def execute_select(self, command, params=None):
-        result, error = self.execute(command, params, commit=False, select=True)
+        result, error = self.execute(command, params, select=True)
         if error:
             raise Exception(error)
         else:
@@ -1157,7 +947,7 @@ class AbstractServerTask(AbstrTask):
                         connection, (result, error) = \
                         execute_sql(db_module, database, user, password,
                             host, port, encoding, connection, sql,
-                            params=None, commit=False, select=True)
+                            params=None, select=True)
                         record_count = result[0][0]
                         loaded = 0
                         max_id = 0
@@ -1169,7 +959,7 @@ class AbstractServerTask(AbstrTask):
                                 connection, (result, error) = \
                                 execute_sql(db_module, database, user, password,
                                     host, port, encoding, connection, sql,
-                                    params=None, commit=False, select=True)
+                                    params=None, select=True)
                                 if not error:
                                     for i, r in enumerate(result):
                                         item.append()

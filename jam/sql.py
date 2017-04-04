@@ -104,7 +104,7 @@ class SQL(object):
             info = {
                 'ID': item.ID,
                 'gen_name': item.gen_name,
-                'status': item.record_status,
+                'inserted': item.record_status == common.RECORD_INSERTED,
                 'primary_key': item._primary_key_field.value,
                 'primary_key_type': item._primary_key_field.data_type,
                 'primary_key_index': primary_key_index,

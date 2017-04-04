@@ -2135,8 +2135,6 @@ class MasterDetailDataset(MasterDataSet):
     def is_modified(self):
         return super(MasterDetailDataset, self).is_modified()
 
-#    modified = property (is_modified, _set_modified)
-
     def _get_read_only(self):
         if self.master and self.parent_read_only:
             return self.master.read_only

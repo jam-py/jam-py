@@ -69,7 +69,7 @@ ITEM_TYPES = ["root", "users", "roles", "tasks", "task",
         "items", "items", "tables", "reports",
         "item", "item", "table", "report", "detail"]
 
-GROUP_TYPES = ["Item group", "Table group", "Report group"]
+GROUP_TYPES = ["Item group", "Detail group", "Report group"]
 
 TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB = range(1, 9)
 FIELD_TYPES = ('TEXT', 'INTEGER', 'FLOAT', 'CURRENCY', 'DATE', 'DATETIME', 'BOOLEAN', 'BLOB')
@@ -475,3 +475,16 @@ def profileit(func):
         return retval
 
     return wrapper
+
+def timeit(method):
+
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+
+        print '%s  %s' %  (method.__name__, te-ts)
+        return result
+
+    return timed
+

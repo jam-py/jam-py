@@ -3885,7 +3885,6 @@
             this.each_detail(function(detail, i) {
                 detail._set_read_only(value);
             });
-
         },
 
         _get_read_only: function() {

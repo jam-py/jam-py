@@ -108,7 +108,7 @@ dictionary = \
     'groups':                           'Groups',
     'catalogs':                         'Catalogs',
     'journals':                         'Journals',
-    'tables':                           'Tables',
+    'tables':                           'Details',
     'reports':                          'Reports',
     'details':                          'Details',
     'id':                               'Record ID',

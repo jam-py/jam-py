@@ -494,7 +494,7 @@ h4.title {
     margin-left: 26px;
 }
 
-юaccordion-toggle.history-toggle {
+.accordion-toggle.history-toggle {
     font-size: 13px;
     background-color: #eaf5fb;
     outline: 0;
