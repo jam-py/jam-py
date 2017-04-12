@@ -1001,7 +1001,6 @@ class Task(AbstractServerTask):
         for key, value in self.__dict__.iteritems():
             self.init_dict[key] = value
 
-
 class AdminTask(AbstractServerTask):
     def __init__(self, app, name, caption, js_filename,
         db_type, db_database = '', db_user = '', db_password = '',

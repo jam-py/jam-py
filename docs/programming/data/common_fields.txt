@@ -22,7 +22,7 @@ the delete method does not erase a record physically from the table, but uses
 this field to mark the record as deleted. The open method takes this into 
 account when an SQL query is generated to get records from the database table. 
 
-For table groups two more fields could be defined — **master_id** and 
+For detail groups two more fields could be defined — **master_id** and 
 **master_rec_id**. They are used to link detail records to the a record in 
 master table, see :doc:`Details <details>`.
 

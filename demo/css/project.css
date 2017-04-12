@@ -1,3 +1,33 @@
+.modal-header {
+    background-color: #b4e3fa;
+}
+
+.modal-footer {
+     background-color: #ffffff;
+}
+.dbtable {
+    border: solid 2px #b4e3fa;
+    border-radius: 6px;
+}
+
+.dbtable th, .dbtable tfoot th, .filter-text {
+    color: #004466;
+}
+
+input[disabled], 
+select[disabled], 
+textarea[disabled], 
+input[readonly], 
+select[readonly], 
+textarea[readonly] {
+    background-color: #ebf2f5;
+}
+
+.edit-border {
+    border: solid 2px #b4e3fa; 
+    border-radius: 6px;
+    padding: 8px 0 4px;     
+}
 
 #cancel-btn {
     margin-left: 5px;

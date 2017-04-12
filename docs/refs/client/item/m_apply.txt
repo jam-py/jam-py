@@ -54,19 +54,26 @@ The ``apply`` method
   rights to make these changes, if not raises an exception
   
 * writes changes to the database  
-  
+
 * after writing changes to the database, server sends to to the client results
   of the execution
-  
+
+* if exception was raised during the operation on the server and the callback 
+  parameter is not present (synchronous execution), the client throws an exception
+
 * the client, based on the results, updates the change log   
 
 * triggers the 
   :doc:`on_after_apply <on_after_apply>`
   event handler if one is defined for the item 
+ 
+* if the callback parameter is passed, it is called. If exception was raised 
+  during the operation on the server the the error is passed as callback 
+  parameter
 
 .. note::
     The server, before writing new records to the database table, generates 
-    values for the ``id`` fields. The client updates these fields, based on 
+    values for the primary fields. The client updates these fields, based on 
     information received from the server. If you change values of some other 
     fields in the 
     :doc:`on_apply </refs/server/item/on_apply>`

@@ -66,8 +66,8 @@ ROOT_TYPE, USERS_TYPE, ROLES_TYPE, TASKS_TYPE, TASK_TYPE, \
     ITEMS_TYPE, JOURNALS_TYPE, TABLES_TYPE, REPORTS_TYPE, \
     ITEM_TYPE, JOURNAL_TYPE, TABLE_TYPE, REPORT_TYPE, DETAIL_TYPE = range(1, 15)
 ITEM_TYPES = ["root", "users", "roles", "tasks", "task",
-        "items", "items", "tables", "reports",
-        "item", "item", "table", "report", "detail"]
+        "items", "items", "details", "reports",
+        "item", "item", "detail_item", "report", "detail"]
 
 GROUP_TYPES = ["Item group", "Detail group", "Report group"]
 

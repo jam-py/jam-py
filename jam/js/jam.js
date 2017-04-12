@@ -128,8 +128,8 @@
         constructor: AbsrtactItem,
 
         types: ["root", "users", "roles", "tasks", 'task',
-            "items", "items", "tables", "reports",
-            "item", "item", "table", "report", "detail"
+            "items", "items", "details", "reports",
+            "item", "item", "detail_item", "report", "detail"
         ],
 
         get_master_field: function(fields, master_field) {
@@ -3639,9 +3639,11 @@
                 }
                 this._dataset.splice(rec, 1);
                 this._set_rec_no(rec);
-                this._do_after_scroll();
                 this._set_item_state(consts.STATE_BROWSE);
+                this._do_after_scroll();
                 this._do_after_delete();
+            } catch (e) {
+                throw e;
             } finally {
                 this._set_item_state(consts.STATE_BROWSE);
             }
@@ -4782,7 +4784,6 @@
                 fields: [],
                 col_count: 1,
                 label_on_top: false,
-                controls_margin_left: undefined,
                 label_width: undefined,
                 row_count: undefined,
                 autocomplete: false,
@@ -4833,7 +4834,7 @@
             }
             for (i = 0; i < len; i++) {
                 new DBInput(fields[i], i + tabindex, cols[Math.floor(i / options.row_count)],
-                    options.label_on_top, options.controls_margin_left, options.label_width);
+                    options.label_on_top, options.label_width);
             }
         },
 
@@ -4850,7 +4851,6 @@
                     filters: [],
                     col_count: 1,
                     label_on_top: false,
-                    controls_margin_left: undefined,
                     label_width: undefined,
                     autocomplete: false,
                     tabindex: undefined
@@ -4891,15 +4891,15 @@
                 filter = filters[i];
                 if (filter.filter_type === consts.FILTER_RANGE) {
                     new DBInput(filter.field, i + 1, cols[Math.floor(i % options.col_count)],
-                        options.label_on_top, options.controls_margin_left, options.label_width,
+                        options.label_on_top, options.label_width,
                         filter.filter_caption + ' ' + language.range_from);
                     new DBInput(filter.field1, i + 1, cols[Math.floor(i % options.col_count)],
-                        options.label_on_top, options.controls_margin_left, options.label_width,
+                        options.label_on_top, options.label_width,
                         filter.filter_caption + ' ' + language.range_to);
                 }
                 else {
                     new DBInput(filter.field, i + 1, cols[Math.floor(i % options.col_count)],
-                        options.label_on_top, options.controls_margin_left, options.label_width,
+                        options.label_on_top, options.label_width,
                         filter.filter_caption);
                 }
             }
@@ -5303,7 +5303,6 @@
                 params: [],
                 col_count: 1,
                 label_on_top: false,
-                controls_margin_left: undefined,
                 label_width: undefined,
                 autocomplete: false,
                 tabindex: undefined
@@ -5352,7 +5351,7 @@
             }
             for (i = 0; i < len; i++) {
                 new DBInput(params[i], i + tabindex, cols[Math.floor(i % options.col_count)],
-                    options.label_on_top, options.controls_margin_left, options.label_width);
+                    options.label_on_top, options.label_width);
             }
         }
     });
@@ -6142,7 +6141,7 @@
                         var data = [],
                             field = item.field_by_name(self.lookup_field);
                         item.each(function(i) {
-                            data.push([i.id.value, field.value]);
+                            data.push([i._primary_key_field.value, field.value]);
                         });
                         return process(data);
                     });
@@ -6179,9 +6178,7 @@
                         var data = [],
                             field = item.field_by_name(self.lookup_field);
                         item.each(function(i) {
-                            console.log(i.id.value, field.value);
-//                            data.push(i.rec_no);
-                            data.push([i.id.value, field.value]);
+                            data.push([i._primary_key_field.value, field.value]);
                         });
                         return process(data);
                     });
@@ -9240,8 +9237,8 @@
                     .attr("tabindex", tabIndex + "");
             }
             $controls = $('<div class="controls"></div>');
-            if (this.controls_margin_left) {
-                $controls.css('margin-left', this.controls_margin_left);
+            if (this.label_width) {
+                $controls.css('margin-left', this.label_width + 20 + 'px');
             }
             this.$input = $input;
             this.$input.addClass(field.field_name)
@@ -9770,14 +9767,13 @@
     DBInput.prototype.constructor = DBInput;
 
     function DBInput(field, index, container, label_on_top,
-        controls_margin_left, label_width, label) {
+        label_width, label) {
         DBAbstractInput.call(this, field);
         if (this.field.owner && this.field.owner.edit_form &&
             this.field.owner.edit_form.hasClass("modal")) {
             this.$edit_form = this.field.owner.edit_form;
         }
         this.label = label;
-        this.controls_margin_left = controls_margin_left;
         this.label_width = label_width;
         this.label_on_top = label_on_top
         if (!this.label) {
@@ -10143,7 +10139,7 @@
         select: function() {
             var $li = this.$menu.find('.active'),
                 id_value = $li.data('id-value');
-            this.lookup_item.locate('id', id_value);
+            this.lookup_item.locate(this.lookup_item._primary_key, id_value);
             this.lookup_item.set_lookup_field_value();
             return this.hide();
         },

@@ -1,0 +1,44 @@
+======
+upload
+======
+
+.. js:function:: upload(path, options)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Task </refs/client/task_api>`
+
+Description
+===========
+
+Use the ``upload`` method to select in the Open Dialog files or list of files and 
+upload them to the ``path`` directory in the server folder. 
+
+The ``options`` parameter is an object that may have the following attributes:
+
+* ``multiple`` - if it is ``true`` you can upload multiple files, default value is ``false``
+
+* ``callback`` - is a callback function that is executed when file(s) is(are) 
+   uploaded. It is passed a filename of uploded file if multiple is false, otherwise
+   a list of uploaded files.
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_edit_form_created(item) {
+        item.edit_form.find('#upload-btn').click(function() {
+            item.task.upload('static/docs', {callback: function(file_name) {
+                item.document.value = file_name;        
+            }});
+        });
+        item.edit_form.find('#download-btn').click(function() {
+            if (item.document.value) {
+                window.open('static/docs/' + item.document.value, "_blank");
+            }
+        });
+        item.document.read_only = true;
+    }

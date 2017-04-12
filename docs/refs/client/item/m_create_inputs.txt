@@ -40,6 +40,8 @@ The ``options`` parameter is an object that may have following attributes:
 * ``label_on_top``: the default value is false. If this value is false, the 
   labels are placed to the left of controls, otherwise the are created above the
   controls
+
+* ``label_width``: the width of the label (integer). the default value is 180.
   
 * ``tabindex`` - if tabindex is specified, it will the tabindex of the first 
   visual control, tabindex of all subsequent controls will be increased by 1.

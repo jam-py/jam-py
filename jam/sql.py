@@ -53,23 +53,27 @@ class SQL(object):
                 row.append(value)
         fields = ', '.join(fields)
         if self._primary_key_field.data_type == common.TEXT:
-            where = " WHERE %s = '%s'" % (self._primary_key_db_field_name, self._primary_key_field.value)
+            id_literal = "'%s'" % self._primary_key_field.value
         else:
-            where = ' WHERE %s = %s' % (self._primary_key_db_field_name, self._primary_key_field.value)
+            id_literal = "%s" % self._primary_key_field.value
+        where = " WHERE %s = %s" % (self._primary_key_db_field_name, id_literal)
         return ''.join([command, fields, where]), row
 
     def delete_sql(self, db_module):
         soft_delete = self.soft_delete
         if self.master:
             soft_delete = self.master.soft_delete
+        if self._primary_key_field.data_type == common.TEXT:
+            id_literal = "'%s'" % self._primary_key_field.value
+        else:
+            id_literal = "%s" % self._primary_key_field.value
         if soft_delete:
             sql = 'UPDATE %s SET %s = 1 WHERE %s = %s' % \
                 (self.table_name, self._deleted_flag_db_field_name,
-                self._primary_key_db_field_name, self._primary_key_field.value)
+                self._primary_key_db_field_name, id_literal)
         else:
             sql = 'DELETE FROM %s WHERE %s = %s' % \
-                (self.table_name, self._primary_key_db_field_name,
-                self._primary_key_field.value)
+                (self.table_name, self._primary_key_db_field_name, id_literal)
         return sql
 
     def apply_sql(self, safe=False, db_module=None):
@@ -115,24 +119,27 @@ class SQL(object):
             return sql, param, info, h_sql, h_params, h_gen_name
 
         def delete_detail_sql(item, detail, db_module):
+            if self._primary_key_field.data_type == common.TEXT:
+                id_literal = "'%s'" % self._primary_key_field.value
+            else:
+                id_literal = "%s" % self._primary_key_field.value
             if detail._master_id:
                 if item.soft_delete:
                     sql = 'UPDATE %s SET %s = 1 WHERE %s = %s AND %s = %s' % \
                         (detail.table_name, detail._deleted_flag_db_field_name, detail._master_id_db_field_name, \
-                        item.ID, detail._master_rec_id_db_field_name, self._primary_key_field.value)
+                        item.ID, detail._master_rec_id_db_field_name, id_literal)
                 else:
                     sql = 'DELETE FROM %s WHERE %s = %s AND %s = %s' % \
                         (detail.table_name, detail._master_id_db_field_name, item.ID, \
-                        detail._master_rec_id_db_field_name, self._primary_key_field.value)
+                        detail._master_rec_id_db_field_name, id_literal)
             else:
                 if item.soft_delete:
                     sql = 'UPDATE %s SET %s = 1 WHERE %s = %s' % \
                         (detail.table_name, detail._deleted_flag_db_field_name, \
-                        detail._master_rec_id_db_field_name, self._primary_key_field.value)
+                        detail._master_rec_id_db_field_name, id_literal)
                 else:
                     sql = 'DELETE FROM %s WHERE %s = %s' % \
-                        (detail.table_name, detail._master_rec_id_db_field_name, \
-                        self._primary_key_field.value)
+                        (detail.table_name, detail._master_rec_id_db_field_name, id_literal)
             h_sql, h_params, h_gen_name = get_history_sql(item, db_module)
             return sql, None, None, h_sql, h_params, h_gen_name
 
@@ -140,11 +147,39 @@ class SQL(object):
             h_sql = None
             h_params = None
             h_gen_name = None
-            user_info = None
-            if item.session:
-                user_info = item.session.get('user_info')
-            if item.task.history_item and item.keep_history:
+            h_gen_name = None
+            if item.keep_history and item.task.history_item:
+                deleted_flag = None
                 h_gen_name = item.task.history_item.gen_name
+                deleted_flag = item.task.history_item._deleted_flag
+                user_info = None
+                if item.session:
+                    user_info = item.session.get('user_info')
+                try:
+                    h_sql = item.task.__history_sql
+                except:
+                    h_fields = ['id', 'item_id', 'item_rec_id', 'operation', 'changes', 'user', 'date']
+                    if deleted_flag:
+                        h_fields.append('deleted')
+                    table_name = item.task.history_item.table_name
+                    fields = []
+                    for f in h_fields:
+                        fields.append(item.task.history_item._field_by_name(f).db_field_name)
+                    h_fields = fields
+                    index = 0
+                    fields = []
+                    values = []
+                    index = 0
+                    for f in h_fields:
+                        index += 1
+                        fields.append('"%s"' % f)
+                        values.append('%s' % db_module.value_literal(index))
+                    fields = ', '.join(fields)
+                    values = ', '.join(values)
+                    h_sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
+                        (table_name, fields, values)
+                    item.task.__history_sql = h_sql
+
                 changes = None
                 user = None
                 if user_info:
@@ -169,27 +204,9 @@ class SQL(object):
                             for d in detail:
                                 d_list.append([d.ID, d._primary_key_field.value, d.record_status])
                     changes = (json.dumps([f_list, d_list], default=common.json_defaul_handler), common.BLOB)
-                if not hasattr(item.task, '__history_fields'):
-                    h_fields = ['id', 'item_id', 'item_rec_id', 'operation', 'changes', 'user', 'date']
-                    if item.task.history_item._deleted_flag:
-                        h_fields.append('deleted')
-                    item.task.__history_fields = []
-                    for f in h_fields:
-                        item.task.__history_fields.append(item.task.history_item._field_by_name(f))
                 h_params = [None, item.ID, item._primary_key_field.value, item.record_status, changes, user, datetime.datetime.now()]
-                if item.task.history_item._deleted_flag:
+                if deleted_flag:
                     h_params.append(0)
-                index = 0
-                fields = ''
-                values = ''
-                for f in item.task.__history_fields:
-                    index += 1
-                    fields += '"%s", ' % f.db_field_name
-                    values +=  '%s, ' % db_module.value_literal(index)
-                fields = fields[:-2]
-                values = values[:-2]
-                h_sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
-                    (item.task.history_item.table_name, fields, values)
             return h_sql, h_params, h_gen_name
 
         def generate_sql(item, safe, db_module, result):

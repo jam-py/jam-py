@@ -1,0 +1,12 @@
+==========
+Jam.py FAQ
+==========
+
+.. toctree::
+   :maxdepth: 1
+
+   faq_forms
+   faq_catalogs_vs_journals
+   faq_default_page
+   faq_print_ods_pdf
+   upload

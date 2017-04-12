@@ -1,12 +1,12 @@
-==================
-Table Group Editor
-==================
+===================
+Detail Group Editor
+===================
 
-**Table Group Editor** opens when a developer wants to create a new table group 
+**Detail Group Editor** opens when a developer wants to create a new detail group 
 or modify an existing one. See 
 :doc:`Task tree </programming/task_tree>`
 
-The upper part of the **Table Group Editor** have the following fields:
+The upper part of the **Detail Group Editor** have the following fields:
 
 * **Caption** - the group name that appears to users.
 
@@ -29,17 +29,17 @@ The upper part of the **Table Group Editor** have the following fields:
 
 * **Master ID field** - by clicking on the button to the right of this 
   attribute you can specify the common field that will store ID of a master item
-  for all tables that the group will own, see
+  for all detail items that the group will own, see
   :doc:`Details </programming/data/details>`. You have to create this field first, 
   see below 
 
 * **Master record id field** - by clicking on the button to the right of this 
   attribute you can specify the common field that will store primary key value 
-  of a master item record for all tables that the group will own, see
+  of a master item record for all detail items that the group will own, see
   :doc:`Details </programming/data/details>`. You have to 
   create this field first, see below 
   
-In the center part of the **Table Group Editor** dialog there is a table 
+In the center part of the **Detail Group Editor** dialog there is a table 
 containing a list of fields, defined for the item. Thsese fields are common to 
 all items the group will own. 
 
@@ -66,9 +66,9 @@ In the bottom-right corner of the Dialog form there are two buttons:
     **Deleted flag field** and **Master ID field**, **Master record id field** 
     attributes only when creating a new group or editing an ampty one.
     
-    For existing table groups, that already own items you can only change 
+    For existing detail groups, that already own items you can only change 
     **Caption**, **Name** and  **Visible** attributes.
 
 .. image:: /admin/_images/item_group.png
 	:align: center
-	:alt: Table Group Editor
+	:alt: Detail Group Editor

@@ -1,0 +1,59 @@
+====================================================
+What is the difference between catalogs and journals
+====================================================
+
+Items of the
+:doc:`Task tree </programming/task_tree>`
+are wrappers over database tables and they can belong to different groups. 
+
+This hierarchical structure of the project is one of the bases of the DRY 
+(don't repeat yourself) principle of the framework. 
+
+For example, some methods of the items, when executed, successively generate 
+events for the task, group and the item.
+
+This way we can define a basic behavior for all items in the event handler of 
+the task, that can be expanded in the event handler of the group, and finally, 
+if nessesary, can be specified in the event handler of the item itself. For more 
+details see
+:doc:`Form events </programming/interface/form_events>`
+
+By default there are catalogs, journals and details groups. The developer can 
+create his own groups as well.
+
+Catalogs are data items that contain information of catalog type such as 
+customers, organizations, tracks, etc. The 
+:doc:`default code </intro/default_code>` 
+supports search functionality for the catalogs.
+
+Journals are the items that store information about events recorded in some 
+documents, such as invoices, purchase orders, etc. The 
+:doc:`default code </intro/default_code>`
+supports filters functionality for the catalogs. 
+Below is the code declared in the client module of the journals group of Demo 
+application:
+
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});    
+        if (!item.on_filters_applied) {
+            item.on_filters_applied = function() {
+                item.view_form.find("#filter-text").text(item.get_filter_text());        
+            };
+        }
+    }
+    
+It finds the Filter button in the journal view 
+:doc:`form </programming/interface/forms>` 
+(if it was declared in the item's view 
+:doc:`form template </programming/interface/form_templates>`
+) and makes so that a form to specify filter parameters will be create when user 
+clicks on it. It also assigns the on_filters_applied event handler (if it wasn't 
+declared) to the function that will change the filter-text element to the 
+current value of filters after the filters have been applied.
+
+Details are essentially similar to journals. But besides that they could be 
+embedded into data items (see :doc:`Details </programming/data/details>`). 
+Such as a list of tracks in an invoice.

@@ -140,14 +140,17 @@ function Events1() { // demo
 	}
 	
 	function on_edit_form_created(item) {
-		var input_options = {
-				col_count: 1
+		var options = {
+				col_count: 1,
+				create_inputs: true
 			};
 		item.edit_options.width = 560;
 		if (item.init_inputs) {
-			item.init_inputs(item, input_options);
+			item.init_inputs(item, options);
 		}
-		item.create_inputs(item.edit_form.find(".edit-body"), input_options);
+		if (options.create_inputs) {
+			item.create_inputs(item.edit_form.find(".edit-body"), options);
+		}
 		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
 		item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
 	}
@@ -332,9 +335,9 @@ function Events3() { // demo.journals
 
 	function on_view_form_created(item) {
 		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});	
-		if (!item.on_filters_applied && item.view_form) {
+		if (!item.on_filters_applied) {
 			item.on_filters_applied = function() {
-				item.view_form.find("#filter-text").text(item.get_filter_text());		
+				item.view_form.find(".filter-text").text(item.get_filter_text());		
 			};
 		}
 		setTimeout(
@@ -471,7 +474,7 @@ function Events16() { // demo.journals.invoices
 	
 	function on_filters_applied(item) {
 		if (item.view_form) {
-			item.view_form.find("#filter-text").text(item.get_filter_text());
+			item.view_form.find(".filter-text").text(item.get_filter_text());
 			calc_footer(item);
 		}
 	}
@@ -487,7 +490,6 @@ function Events16() { // demo.journals.invoices
 				copy.each_field(function(f) {
 					footer.find('div.' + f.field_name)
 						.css('text-align', 'right')
-						.css('color', 'black')
 						.text(f.display_text);
 				});
 			}
@@ -622,7 +624,21 @@ function Events15() { // demo.catalogs.tracks
 		options.expand_selected_row = 3;
 		options.column_width = {'artist': '7%'};
 	}
+	
+	function on_edit_form_created(item) {
+		item.edit_options.width = 800;
+		item.create_inputs(item.edit_form.find("#edit-top"), {fields: ['name']});
+		item.create_inputs(item.edit_form.find("#edit-left"), {
+			fields: ['album', 'artist', 'composer', 'media_type'],
+			label_width: 90
+		});
+		item.create_inputs(item.edit_form.find("#edit-right"), {
+			fields: ['genre', 'milliseconds', 'bytes', 'unitprice'],
+			label_width: 90
+		}); 
+	}
 	this.init_table = init_table;
+	this.on_edit_form_created = on_edit_form_created;
 }
 
 task.events.events15 = new Events15();

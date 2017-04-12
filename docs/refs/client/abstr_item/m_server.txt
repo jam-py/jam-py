@@ -23,6 +23,10 @@ after which the **callback** is executed with parameter that is the result of
 the server function execution, otherwise the function is executed synchronously 
 and returns the result of the server function. 
 
+If exception was raised during the operation on the server and the callback 
+parameter is not passed (synchronous execution), the client throws an exception.
+If the callback parameter is present, it is passed to the callback as parameter.
+
 When exception is raised during the server function execution, the application 
 on the client throws exception with the server exception text. The first 
 parameter of the function on the server must be **item**, it must be followed by 
@@ -57,8 +61,13 @@ server function:
 .. code-block:: js
 
     try {
-        task.invoices.server('get_total', [17], function(total) {
-            console.log(total);
+        task.invoices.server('get_total', [17], function(total, err) {
+            if (err) {
+                throw err;
+            }
+            else {
+                console.log(total);
+            }
         });
     }
     catch (e) {

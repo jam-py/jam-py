@@ -1,0 +1,163 @@
+===================================================
+Can I create my own, more complex view / edit forms
+===================================================
+
+Jam.py
+:doc:`forms </programming/interface/forms>`
+are based on 
+:doc:`html templates </programming/interface/form_templates>`, 
+defined in templates div of the
+:doc:`index.html </programming/interface/index_html>` file of the project.
+
+This 
+:doc:`templates </programming/interface/form_templates>`, 
+are used by the following methods to create forms:
+
+:doc:`view </refs/client/item/m_view>`
+
+:doc:`create_view_form </refs/client/item/m_create_view_form>`
+
+:doc:`create_edit_form </refs/client/item/m_create_edit_form>`
+
+:doc:`append_record </refs/client/item/m_append_record>`
+
+:doc:`insert_record </refs/client/item/m_insert_record>`
+
+:doc:`edit_record </refs/client/item/m_edit_record>`
+
+All this methods accept a container parameter that is JQuery object. If it is 
+specified, the html template is embedded in the container, otherwise the 
+application create a modal form and inserts the template in it. After that 
+corresponding 
+:doc:`events </programming/interface/form_events>`
+are triggered that could be used to initiate the form. 
+
+You can have more that one form of any type for an item. You can create a form 
+template with a some class and the specify it in the form's options 
+template_class attribute. 
+
+For example the following code makes a copy of the
+invoices item, sets its template class to the class of the template declared
+in the index.html and then creates a modal form, based on this template:
+
+.. code-block:: js
+
+    function on_page_loaded(task) {   
+        var invoices_copy = task.invoices.copy();
+        invoices_copy.view_options.template_class = 'invoices-view1';
+        invoices_copy.view($("#content"));
+
+There is no limitation on the forms you can create, but you have to consider 
+that controls (tables, inputs, text areas, check boxes) created by the following 
+methods
+
+:doc:`create_table </refs/client/item/m_create_table>`
+
+:doc:`create_inputs </refs/client/item/m_create_inputs>`
+
+are data aware. This means that any changes made in this controls are 
+immediately reflected in the item's 
+:doc:`dataset </programming/data/dataset>`, and vice versa, any changes of the 
+dataset (
+:doc:`navigating </programming/data/navigating_datasets>`
+to another record, 
+:doc:`modification </programming/data/modifying_datasets>`
+of field values) are reflected
+in the controls.
+
+So, for example, the following code not only will change the value of the date 
+field of an item dataset but will change the text displayed by all controls of 
+the application associated this field (the item must be in edit state).
+
+.. code-block:: js
+
+    item.date.value = new Date();
+    
+Besides this, such controls support typeahead, validation functionality and so on.
+
+The 
+:doc:`default code </intro/default_code>` 
+creates these controls in the ``div`` with "edit-body" class of edit from 
+templates in the 
+:doc:`on_edit_form_created </refs/client/task/on_edit_form_created>`
+event handler of the client module of the task. It is executed for all edit forms
+of the project.
+
+.. code-block:: js
+
+    function on_edit_form_created(item) {
+        var options = {
+                col_count: 1,
+                create_inputs: true
+            };
+        item.edit_options.width = 560;
+        if (item.init_inputs) {
+            item.init_inputs(item, options);
+        }
+        if (options.create_inputs) {
+            item.create_inputs(item.edit_form.find(".edit-body"), options);
+        }
+        item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
+        item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
+    }
+
+When fields attribute of the options parameter of create_inputs method is not 
+specified, the method create inputs for fields selected in the 
+:doc:`Edit Fields Dialog </admin/items/edit_fields_dialog>`.
+
+This can be overridden in the 
+:doc:`on_edit_form_created </refs/client/item/on_edit_form_created>`
+event handler of the item.
+
+For example, let's create the following html template for Tracks catalog (style 
+attributes could be defined in the project.css file). Here
+we use fluid grid system of of the Twitter Bootstrap. The framework uses 
+bootstrap 2 at present. 
+
+.. code-block:: html
+
+    <div class="tracks-edit">
+        <div class="modal-body">
+            <div class="row-fluid" style="padding: 6px 0">
+                <div id="edit-top" class="span12 edit-border"></div>
+            </div>
+            <div class="row-fluid" style="padding: 6px 0">
+                <div id="edit-left" class="span6 edit-border"></div>
+                <div id="edit-right" class="span6 edit-border"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button 
+                type="button" id="cancel-btn" class="btn expanded-btn pull-right">
+                <i class="icon-remove"></i> Cancel</button>
+            <button type="button" id="ok-btn" class="btn expanded-btn pull-right">
+                <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small></button>
+        </div>
+    </div>
+
+
+And for this html template we'll write the following on_edit_form_created event 
+handler in the client module of Tracks catalog. Hear we pass to create_inputs
+methods lists of fields to create in corresponding divs.
+
+.. code-block:: js
+
+    function on_edit_form_created(item) {
+        item.edit_options.width = 800;
+        item.create_inputs(item.edit_form.find("#edit-top"), {fields: ['name']});
+        item.create_inputs(item.edit_form.find("#edit-left"), {
+            fields: ['album', 'artist', 'composer', 'media_type'],
+            label_width: 90
+        });
+        item.create_inputs(item.edit_form.find("#edit-right"), {
+            fields: ['genre', 'milliseconds', 'bytes', 'unitprice'],
+            label_width: 90
+        }); 
+    }
+    
+The resulting edit form will look like this:
+
+.. image:: _images/faq_forms.png
+	:align: center
+	:alt: Tracks edit form
+

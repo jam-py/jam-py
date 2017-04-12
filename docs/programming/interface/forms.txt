@@ -3,7 +3,7 @@ Forms
 =====
 
 One of the key concepts of the framework is the concept of form.
-Forms are based on HTML templates that generally determine their layout.
+Forms are based on HTML templates that determine their layout.
 
 You can define form templates for viewing and editing data, as well as
 for specifying filters. For reports, form templates for editing 

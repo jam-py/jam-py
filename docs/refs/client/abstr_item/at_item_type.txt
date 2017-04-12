@@ -20,9 +20,9 @@ following values:
 
 * “task”, 
 * “items”, 
-* “tables”, 
+* “details”, 
 * “reports”, 
 * “item”, 
-* “table”, 
+* “detail_item”, 
 * “report”, 
 * “detail”
