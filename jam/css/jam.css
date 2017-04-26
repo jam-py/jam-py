@@ -67,7 +67,8 @@ select {
   line-height: 16px;
 }
 
-.form-horizontal select {
+.form-horizontal select,
+.form-inline select {
   margin-bottom: 4px;
 }
 
@@ -345,9 +346,11 @@ h4.title {
     background-color: #d9edf7;
 }
 
+/*
 .table tbody tr td.selected {
     background-color: #e5e5e5;
 }
+*/
 
 .table tbody td.field-selected {
     background-color: #cacaca;

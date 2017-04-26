@@ -76,10 +76,10 @@ def process_sql_result(rows):
     return [list(row) for row in rows]
 
 def cast_date(date_str):
-    return "CAST('" + date_str + "' AS DATE)"
+    return "'%s'" % date_str
 
 def cast_datetime(datetime_str):
-    return "CAST('" + datetime_str + "' AS TIMESTAMP)"
+    return "'%s'" % datetime_str
 
 def value_literal(index):
     return '?'

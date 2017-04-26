@@ -460,7 +460,7 @@
             }
         },
 
-        makeFormModal: function(form, options, suffix) {
+        make_form_modal: function(form, options, suffix) {
             var $doc,
                 $form,
                 $title,
@@ -471,7 +471,8 @@
                     close_caption: true,
                     close_button: true,
                     print: false
-                };
+                },
+                item_class = '';
 
             function captureMouseMove(e) {
                 if (mouseX) {
@@ -491,12 +492,20 @@
                 $doc.off("mouseup.modalform");
             }
 
+            if (suffix) {
+                if (this.master) {
+                    item_class = ' ' + this.master.item_name + '-' + this.item_name + ' ' + suffix + '-form';
+                }
+                else {
+                    item_class = ' ' + this.item_name + ' ' + suffix + '-form';
+                }
+            }
             options = $.extend({}, defaultOptions, options);
             if (!options.title) {
                 options.title = '&nbsp';
             }
             $form = $(
-                '<div class="modal hide normal-modal-border" tabindex="-1" data-backdrop="static">' +
+                '<div class="modal hide normal-modal-border' + item_class + '" tabindex="-1" data-backdrop="static">' +
                 '<div class="modal-header">' +
                 '</div>' +
                 '</div>'
@@ -540,7 +549,7 @@
                     print_button = '<button type="button" id="print-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' +
                     printCaption + '</button>';
             }
-            if (options.show_history && this.keep_history) {
+            if (options.show_history && this.keep_history && task.history_item) {
                 history_button = '<i id="history-btn" class="icon-film" style="float: right; margin: 5px;"></i>';
             }
             if (!title.length) {
@@ -608,7 +617,7 @@
             }
             this[formName] = $("<div></div>").append(this.find_template(suffix, item_options));
             if (!options.container) {
-                this[formName] = this.makeFormModal(this[formName], item_options);
+                this[formName] = this.make_form_modal(this[formName], item_options, suffix);
             }
             if (this[formName]) {
                 this[formName]._options = options;
@@ -762,6 +771,7 @@
                     text_center: false,
                     button_min_width: 100,
                     center_buttons: false,
+                    close_on_click: true,
                     close_button: true,
                     close_on_escape: true
                 },
@@ -784,7 +794,7 @@
                 el += '<div class="modal-footer"></div>';
             }
 
-            $element = this.makeFormModal($(el), options);
+            $element = this.make_form_modal($(el), options);
 
             $modal_body = $element.find('.modal-body');
 
@@ -820,17 +830,20 @@
                         .click(function(e) {
                             var key = $(this).data('key');
                             setTimeout(function() {
+                                if (buttons[key]) {
                                     try {
-                                        if (buttons[key]) {
-                                            buttons[key].call(self);
-                                        }
+                                        buttons[key].call(self);
                                     }
                                     catch (e) {}
+                                    if (options.close_on_click) {
+                                        $element.modal('hide');
+                                    }
+                                }
+                                else {
                                     $element.modal('hide');
-                                },
-                                0
-                            );
-
+                                }
+                            },
+                            0);
                         })
                     );
                     tab++;
@@ -1381,7 +1394,7 @@
                 $form = $("#login-form").clone();
             }
 
-            $form = this.makeFormModal($form, {
+            $form = this.make_form_modal($form, {
                 title: $form.data('caption'),
                 transition: false
             });
@@ -3035,6 +3048,7 @@
                 if (params.__search !== undefined) {
                     var field_name = params.__search[0],
                         text = params.__search[1];
+
                     filters.push([field_name, consts.FILTER_CONTAINS_ALL, text]);
                 }
                 if (this.filter_selected) {
@@ -3131,6 +3145,7 @@
                 open_empty,
                 funcs,
                 group_by,
+                update_controls,
                 params,
                 callback,
                 log,
@@ -3152,9 +3167,13 @@
                 limit = options.limit;
                 funcs = options.funcs;
                 group_by = options.group_by;
+                update_controls = options.update_controls;
             }
             if (!params) {
                 params = {};
+            }
+            if (update_controls === undefined) {
+                update_controls = true;
             }
             if (expanded === undefined) {
                 expanded = this.expanded;
@@ -3228,7 +3247,9 @@
                 if ((!self.paginate || self.paginate && offset === 0) && self.on_filters_applied) {
                     self.on_filters_applied.call(self, self);
                 }
-                self.update_controls(consts.UPDATE_OPEN);
+                if (update_controls) {
+                    self.update_controls(consts.UPDATE_OPEN);
+                }
                 if (callback) {
                     callback.call(self, self);
                 }
@@ -3285,6 +3306,31 @@
             }
 
         },
+
+        //~ reopen: function(callback) {
+            //~ if (callback) {
+                //~ if (this.paginate) {
+                    //~ this.open({
+                        //~ params: this._open_params,
+                        //~ offset: this._open_params.__offset,
+                    //~ });
+                //~ }
+                //~ else {
+                    //~ this.open();
+                //~ }
+            //~ else {
+                //~ if (this.paginate) {
+                    //~ this.open({
+                        //~ params: this._open_params,
+                        //~ offset: this._open_params.__offset,
+                        //~ update_controls: false
+                    //~ });
+                //~ }
+                //~ else {
+                    //~ this.open();
+                //~ }
+            //~ }
+        //~ },
 
         _do_close: function() {
             this._active = false;
@@ -3376,7 +3422,6 @@
                 }
                 return 0;
             }
-
             this._dataset.sort(compare_records);
             this.update_controls();
         },
@@ -3390,8 +3435,31 @@
                 this.open({params: params}, callback);
             } else {
                 this.open();
+                callback.call(this, this)
             }
         },
+
+        //~ search: function(field_name, text, filter_type, callback) {
+            //~ var args = this._check_args(arguments),
+                //~ callback = args['function'],
+                //~ field_name,
+                //~ text,
+                //~ filter_type,
+                //~ search_text,
+                //~ params = {};
+            //~ for (i = 0; i < arguments.length; i++) {
+                //~ if (arguments[i] !== callback) {
+                //~ }
+            //~ }
+            //~ search_text = text.trim(),
+            //~ if (search_text.length) {
+                //~ params.__search = [field_name, search_text];
+                //~ this.open({params: params}, callback);
+            //~ } else {
+                //~ this.open();
+                //~ callback.call(this, this)
+            //~ }
+        //~ },
 
         total_records: function(callback) {
             var self = this;
@@ -4336,11 +4404,12 @@
 
         delete_record: function(callback) {
             var self = this,
+                message,
                 rec_no = self._get_rec_no(),
                 record = self._dataset[rec_no];
             if (this.can_delete()) {
                 if (this.record_count() > 0) {
-                    this.question(language.delete_record, function() {
+                    message = this.question(language.delete_record, function() {
                         self["delete"]();
                         this.apply(function(e) {
                             var error;
@@ -4362,7 +4431,9 @@
                                 }
                             }
                         });
-                    });
+                        this.hide_message(message);
+                    },
+                    null, {close_on_click: false});
                 } else {
                     this.warning(language.no_record);
                 }
@@ -5367,8 +5438,10 @@
         Item.call(this, owner, ID, item_name, caption, visible, type, js_filename);
 
         this.master = owner;
-        owner.details.push(this);
-        owner.details[item_name] = this;
+        if (owner) {
+            owner.details.push(this);
+            owner.details[item_name] = this;
+        }
         this.item_type = "detail";
     }
 
@@ -5429,6 +5502,11 @@
             set: function(new_value) {
                 this.set_lookup_value(new_value);
             }
+        });
+        Object.defineProperty(this, "lookup_type", {
+            get: function() {
+                return this.type_names[this.get_lookup_data_type()];
+            },
         });
         Object.defineProperty(this, "alignment", {
             get: function() {
@@ -8169,7 +8247,7 @@
                     div = $('<div class="text-center multi-select" style="overflow: hidden"></div>');
                     sel_count = $('<p class="sel-count text-center">' + this.item.selections.length + '</p>')
                     div.append(sel_count);
-                    input = $('<input class="multi-select-header" type="checkbox" ' + checked + '>');
+                    input = $('<input class="multi-select-header" type="checkbox" ' + checked + ' tabindex="-1">');
                     div.append(input);
                     cell = $('<th class="bottom-border multi-select-header"></th>').append(div);
                     cellWidth = this.getCellWidth('multi-select');
@@ -8201,10 +8279,10 @@
                     bl = $(
                         '<div style="height: 0; position: relative;">' +
                             '<div id="mselect-block" class="btn-group" style="position: absolute">' +
-                                '<button type="button" class="btn mselect-btn">' +
-                                    '<input class="multi-select-header" type="checkbox" style="margin: 0" ' + checked + '>' +
+                                '<button type="button" class="btn mselect-btn" tabindex="-1">' +
+                                    '<input class="multi-select-header" type="checkbox" tabindex="-1" style="margin: 0" ' + checked + '>' +
                                 '</button>' +
-                                '<a class="btn dropdown-toggle" data-toggle="dropdown" href="#" style="padding: 3px">' +
+                                '<a class="btn dropdown-toggle" data-toggle="dropdown" href="#" tabindex="-1" style="padding: 3px">' +
                                     '<span class="caret"></span>' +
                                 '</a>' +
                                 '<ul class="dropdown-menu">' +
@@ -8252,10 +8330,10 @@
                     cell.css('height', this.textHeight);
                 }
                 cellWidth = this.getCellWidth(field.field_name);
-                if (cellWidth && (i < this.fields.length - 1)) {
+//                if (cellWidth && (i < this.fields.length - 1)) {
                     cell.width(cellWidth);
                     div.width(cellWidth);
-                }
+//                }
                 if (order_fields[field.field_name]) {
                     cell.find('p').append('<i class="' + order_fields[field.field_name] + '"></i>');
                     cell.find('i').css('margin-left', 2)
@@ -8273,13 +8351,16 @@
                 len,
                 field,
                 footer,
+                old_footer,
                 div,
+                old_div,
                 cell,
                 cellWidth;
             if ($element === undefined) {
                 $element = this.$element
             }
             footer = $element.find("table.outer-table tfoot tr:first");
+            old_footer = footer.clone();
             footer.empty();
             if (this.item.selections) {
                 div = $('<div class="text-center multi-select" style="overflow: hidden"></div>')
@@ -8291,6 +8372,10 @@
                 field = this.fields[i];
                 div = $('<div class="text-center ' + field.field_name +
                     '" style="overflow: hidden">&nbsp</div>');
+                old_div = old_footer.find('div.' + field.field_name)
+                if (old_div.length) {
+                    div.html(old_div.html());
+                }
                 cell = $('<th class="' + field.field_name + '"></th>').append(div);
                 footer.append(cell);
             }
@@ -8462,7 +8547,8 @@
                     $th.width(width);
                     $td.width(width);
                 }
-                for (i = 0; i < len - 1; i++) {
+//                for (i = 0; i < len - 1; i++) {
+                for (i = 0; i < len; i++) {
                     field = this.fields[i];
                     $th = this.$head.find('th.' + field.field_name);
                     $td = $row.find('td.' + field.field_name);
@@ -8767,6 +8853,9 @@
             if (value < this.page_count || value === 0) {
                 this.page = value;
                 this.loading = true;
+                if (this.item.record_count()) {
+                    this.item._do_before_scroll();
+                }
                 this.item.open({
                     offset: this.page * this.item._limit
                 }, function() {
@@ -8963,7 +9052,7 @@
                 if (this.selections_get_selected()) {
                     checked = 'checked';
                 }
-                rowStr += this.newColumn('multi-select', 'center', '<input class="multi-select" type="checkbox" ' + checked + '>', -1, setFieldWidth);
+                rowStr += this.newColumn('multi-select', 'center', '<input class="multi-select" type="checkbox" ' + checked + ' tabindex="-1">', -1, setFieldWidth);
             }
             for (i = 0; i < len; i++) {
                 field = this.fields[i];
@@ -9020,13 +9109,6 @@
                 this.hideEditor();
             }
 
-            container.css("position", "absolute")
-                .css("top", -1000)
-                .width(this.getElementWidth(this.$element));
-            $('body').append(container);
-            this.$element.detach();
-            container.append(this.$element);
-
             this.$table.empty();
             this.$head.empty();
             if (this.selection_block) {
@@ -9034,6 +9116,14 @@
             }
             this.$foot.hide();
             this.$outer_table.find('#top-td').attr('colspan', this.colspan);
+
+
+            container.css("position", "absolute")
+                .css("top", -1000)
+                .width(this.getElementWidth(this.$element));
+            $('body').append(container);
+            this.$element.detach();
+            container.append(this.$element);
 
             clone.on_field_get_text = this.item.on_field_get_text;
             rows = ''
@@ -9097,6 +9187,7 @@
                 this.$table.css('table-layout', 'fixed');
                 this.$outer_table.css('table-layout', 'fixed');
                 this.fillTitle(container);
+                this.createFooter(container);
                 if (this.item.selections) {
                     cell = row.find("td." + 'multi-select');
                     headCell = this.$head.find("th." + 'multi-select');
@@ -9111,7 +9202,8 @@
                 }
                 for (i = 0; i < len; i++) {
                     field = this.fields[i];
-                    if (i < this.fields.length - 1) {
+//                    if (i < this.fields.length - 1) {
+                    if (i < this.fields.length) {
                         cell = row.find("td." + field.field_name);
                         headCell = this.$head.find("th." + field.field_name);
                         footCell = this.$foot.find("th." + field.field_name);
@@ -9130,6 +9222,7 @@
                 tmpRow.remove();
             } else {
                 this.fillTitle(container);
+                this.createFooter(container);
                 this.syncColWidth();
             }
 

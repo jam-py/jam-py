@@ -1,0 +1,91 @@
+
+.nav-tabs {
+    margin-bottom: 4px;
+    border-radius: 6px;
+    background: aliceblue;
+}
+
+.dropdown-menu {
+    border-color: #dde9ee;
+}
+
+.modal-header {
+    background-color: #87cef0;
+}
+
+.modal-footer {
+    background-color: #ffffff;
+    border-top: 0;
+}
+
+.edit-form  .modal-footer .btn {
+    opacity: 1.0;
+    padding: 0 10px;
+    border-radius: 30px 14px 30px 14px;
+    z-index: 0;
+    margin-right: -8px;
+    color: #005580;
+    position: relative;
+    margin-top: -3px;
+    height: 30px;
+}
+
+.dbtable {
+    border: solid 2px #cfedfc;
+    border-radius: 4px;
+}
+
+.dbtable td,
+.dbtable th{
+    border-color: #dde9ee;
+}
+
+.dbtable th {
+    color: #124863;
+    background-color: #b7e4fa;
+}
+
+.dbtable tfoot th, #filter-text, .btn {
+    color: #124863;
+    background-color: #ffffff;
+}
+
+/*.table tbody tr.selected > td:not(.field-selected) {*/
+/*    background-color: #dde9ee;*/
+    /*#ebf2f5;*/
+/*}*/
+
+/*.table tbody tr.selected-focused > td:not(.field-selected-focused) {*/
+/*    background-color: #d9edf7;*/
+/*}*/
+
+/*.table tbody td.field-selected {*/
+/*    background-color: #ccdee5;*/
+/*}*/
+
+/*.table tbody td.field-selected-focused {*/
+/*    background-color: #b4e3fa;*/
+/*}*/
+
+input[disabled],
+select[disabled],
+textarea[disabled],
+input[readonly],
+select[readonly],
+textarea[readonly] {
+    background-color: #ebf2f5;
+}
+
+.edit-border {
+    border: solid 2px #b4e3fa;
+    border-radius: 6px;
+    padding: 8px 0 4px;
+}
+
+.modal-footer .btn i {
+    display: None;
+}
+
+.filter-text {
+    color: #006699;
+}

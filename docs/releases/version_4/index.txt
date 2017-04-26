@@ -1,0 +1,11 @@
+=========
+Version 4
+=========
+
+In Version 4 the server side was reworked. Web.py library was replaced with 
+werkzeug. Session support was added.
+
+.. toctree::
+   :maxdepth: 1
+
+   version_4_0_70

@@ -97,6 +97,9 @@ def create_items(task):
     task.sys_catalogs = Group(task, 'catalogs', task.lang['catalogs'])
     task.sys_tables = Group(task, 'tables', task.lang['details'], visible=False)
 
+    task.sys_items = task.sys_catalogs.add_catalog('sys_items', 'Items', 'SYS_ITEMS')
+    task.sys_fields = task.sys_tables.add_table('sys_fields', task.lang['fields'], 'SYS_FIELDS')
+
     task.sys_params = task.sys_catalogs.add_catalog('sys_params', '', 'SYS_PARAMS')
 
     task.sys_params.add_field(1, 'id', 'ID', common.INTEGER, visible=False, edit_visible=False)
@@ -131,9 +134,9 @@ def create_items(task):
     task.sys_params.add_field(29, 'f_field_id_gen', 'f_field_id_gen', common.INTEGER)
     task.sys_params.add_field(30, 'f_timeout', task.lang['session_timeout'], common.INTEGER)
     task.sys_params.add_field(31, 'f_ignore_change_ip', task.lang['ignore_change_ip'], common.BOOLEAN)
-
-    task.sys_items = task.sys_catalogs.add_catalog('sys_items', 'Items', 'SYS_ITEMS')
-    task.sys_fields = task.sys_tables.add_table('sys_fields', task.lang['fields'], 'SYS_FIELDS')
+    task.sys_params.add_field(32, 'f_history_item', 'History item', common.INTEGER, False, task.sys_items, 'f_name')
+    task.sys_params.add_field(33, 'f_lock_item', 'Lock item', common.INTEGER, False, task.sys_items, 'f_name')
+    task.sys_params.add_field(34, 'f_sys_group', 'System group', common.INTEGER)
 
     task.sys_items.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_items.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
@@ -162,7 +165,9 @@ def create_items(task):
     task.sys_items.add_field(25, 'f_master_id', task.lang['master_id'], common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_items.add_field(26, 'f_master_rec_id', task.lang['master_rec_id'], common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_items.add_field(27, 'f_js_funcs', 'f_js_funcs', common.BLOB, visible=False, edit_visible=False)
-    task.sys_items.add_field(28, 'f_edit_lock', task.lang['js_external'], common.BOOLEAN)
+    task.sys_items.add_field(28, 'f_keep_history', 'Keep_history', common.BOOLEAN)
+    task.sys_items.add_field(29, 'f_edit_lock', 'Edit lock', common.BOOLEAN)
+    task.sys_items.add_field(30, 'sys_id', 'sys_id', common.INTEGER)
 
     task.sys_items.add_filter('id', 'ID', 'id', common.FILTER_EQ, visible=False)
     task.sys_items.add_filter('not_id', 'ID', 'id', common.FILTER_NE, visible=False)
@@ -903,6 +908,7 @@ def load_task(target, app, first_build=True, after_import=False):
                         item.gen_name = rec.f_gen_name.value
                         item.virtual_table = rec.f_virtual_table.value
                         item.server_code = rec.f_server_module.value
+                        item.keep_history = rec.f_keep_history.value
                         item._primary_key = rec.f_primary_key.value
                         item._deleted_flag = rec.f_deleted_flag.value
                         item._master_id = rec.f_master_id.value
@@ -950,6 +956,7 @@ def load_task(target, app, first_build=True, after_import=False):
                     detail.view_template = it.f_view_template.value
                     detail.js_filename = it.f_js_filename.value
                     detail.server_code = it.f_server_module.value
+                    detail.keep_history = it.f_keep_history.value
                     detail.item_type = common.ITEM_TYPES[detail.item_type_id - 1]
                     common.load_interface(sys_items)
                     detail._order_by = sys_items._order_list
@@ -1038,6 +1045,12 @@ def load_task(target, app, first_build=True, after_import=False):
     target.after_import = after_import
     if target.on_created:
         target.on_created(target)
+
+    params = task.sys_params.copy()
+    params.open(fields=['f_history_item', 'f_lock_item'])
+
+    if params.f_history_item.value:
+        target.history_item = target.item_by_ID(params.f_history_item.value)
 
     internal_path = os.path.join(task.work_dir, 'static', '_internal')
     if os.path.exists(internal_path):
@@ -2121,7 +2134,7 @@ def server_get_task_info(task):
     task_caption = items.f_name.value;
     params = task.sys_params.copy()
     params.open()
-    task_version = params.f_version.value
+    task_version = '%s / %s' % (params.f_version.value, task.app.jam_version)
     tasks = task.sys_tasks.copy()
     tasks.open()
     task_db = tasks.f_alias.value
@@ -2249,6 +2262,125 @@ def get_new_table_name(task, var_name):
         if db_module.NEED_GENERATOR:
             gen_name = name + '_SEQ'
     return [db_module.set_literal_case(name), db_module.set_literal_case(gen_name)]
+
+def create_system_item(task, field_name):
+
+    def check_item_name(name):
+        items = task.sys_items.copy()
+        items.open(fields = ['id', 'f_item_name'])
+        i = 1
+        cur_name = name
+        while True:
+            if items.locate('f_item_name', cur_name):
+                cur_name = name + str(i)
+                i += 1
+            else:
+                break
+        return cur_name
+
+    error = ''
+    result = ''
+    try:
+        items = task.sys_items.copy()
+        items.set_where(type_id=common.TASK_TYPE)
+        items.open(fields = ['id', 'type_id', 'f_item_name'])
+        task_id = items.id.value
+        task_name = items.f_item_name.value
+
+        items = task.sys_items.copy()
+        items.open(open_empty=True, fields = ['id', 'parent', 'task_id', \
+            'type_id', 'f_name', 'f_item_name', 'f_table_name', \
+            'f_gen_name', 'f_primary_key'])
+
+        sys_group = None
+        params = task.sys_params.copy()
+        task.sys_params.open(fields=['id', 'f_sys_group', 'f_history_item', 'f_lock_item'])
+
+        sys_group = task.sys_params.f_sys_group.value
+        if sys_group:
+            items.set_where(id=sys_group)
+            items.open(fields = ['id', 'f_name', 'f_item_name'])
+            if not items.record_count():
+                sys_group = None
+        if not sys_group:
+            items.open(open_empty=True)
+            items.append()
+            items.parent.value = task_id
+            items.task_id.value = task_id
+            items.type_id.value = common.ITEMS_TYPE
+            items.f_name.value = 'System'
+            items.f_item_name.value = check_item_name('system')
+            items.f_index.value = '999999'
+            items.post()
+            items.apply()
+            task.sys_params.edit()
+            task.sys_params.f_sys_group.value = items.id.value
+            task.sys_params.post()
+            task.sys_params.apply()
+            sys_group = items.id.value
+        sys_group_name = items.f_name.value
+
+        if field_name == 'f_history_item':
+            name = 'History'
+            item_name = check_item_name('history')
+            fields = common.HISTORY_FIELDS
+            index_fields = common.HISTORY_INDEX_FIELDS
+            param_field = 'f_history_item'
+            sys_id = 1
+        table_name, gen_name = get_new_table_name(task, item_name)
+        items.open(open_empty=True)
+        items.append()
+        items.parent.value = sys_group
+        items.task_id.value = task_id
+        items.type_id.value = common.ITEM_TYPE
+        items.f_name.value = name
+        items.f_item_name.value = item_name
+        items.f_table_name.value = table_name
+        items.f_gen_name.value = gen_name
+        items.sys_id.value = sys_id
+        items.sys_fields.open()
+        for i, f in enumerate(fields):
+            field_name, data_type, size = f
+            items.sys_fields.append()
+            items.sys_fields.id.value = get_fields_next_id(task)
+            items.sys_fields.f_name.value = field_name
+            items.sys_fields.f_field_name.value = field_name
+            items.sys_fields.f_db_field_name.value = server_set_literal_case(task, field_name)
+            items.sys_fields.f_data_type.value = data_type
+            items.sys_fields.f_size.value = size
+            items.sys_fields.post()
+            if i == 0:
+                items.f_primary_key.value = items.sys_fields.id.value
+        items.post()
+        items.on_apply = items_apply_changes
+        items.apply(params={'manual_update': False})
+        sys_item_name = items.f_name.value
+
+        dest_list = []
+        for field_name in index_fields:
+            items.sys_fields.locate('f_field_name', field_name)
+            dest_list.append([items.sys_fields.id.value, False])
+        indexes = task.sys_indices.copy()
+        indexes.open(open_empty=True)
+        indexes.append()
+        indexes.f_index_name.value = task_name.upper() + '_' + items.f_item_name.value.upper() + '_' + 'IDX';
+        indexes.task_id.value = task_id
+        indexes.owner_rec_id.value = items.id.value
+        indexes.f_foreign_index.value = False
+        indexes.f_fields_list.value = server_dump_index_fields(indexes, dest_list)
+        indexes.post()
+        indexes.on_apply = indices_apply_changes
+        indexes.apply(params={'manual_update': False})
+
+        task.sys_params.edit()
+        task.sys_params.field_by_name(param_field).value = items.id.value
+        task.sys_params.post()
+        task.sys_params.apply()
+    except Exception(e):
+        error = 'While creating an item the following error was raised: %s' % e
+
+    result = 'The %s item has been created in the %s group. The Administrator will be reloaded.' % (sys_item_name, sys_group_name)
+    return result, error
 
 def clear_docs_on_logout(task, user):
     try:
@@ -2893,6 +3025,7 @@ def register_defs(task):
     task.register(server_get_primary_key_type)
     task.register(server_set_literal_case)
     task.register(get_new_table_name)
+    task.register(create_system_item)
     task.sys_params.on_apply = do_on_apply_sys_changes
     task.sys_users.on_apply = users_on_apply
     task.sys_tasks.on_apply = do_on_apply_sys_changes

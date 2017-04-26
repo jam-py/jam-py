@@ -4,6 +4,7 @@
 function Events1() { // demo 
 
 	function on_page_loaded(task) {   
+	
 		$("title").text(task.item_caption);
 		$("#title").text(task.item_caption);
 		
@@ -18,41 +19,29 @@ function Events1() { // demo
 		}
 	
 		$("#taskmenu").show();
-		for (var i = 0; i < task.items.length; i++) {
-			if (task.items[i].visible) {
-				$("#menu").append(
-					$('<li></li>').append(
-						$('<a href=""></a>').text(task.items[i].item_caption).data('group', task.items[i])
-					)
-				);
-			}
-		}
-		$('#menu').on('click', 'a', (function(e) {
-				var submenu = $("#submenu"),
-					group = $(this).data('group'),
-					item;
-				if (group) {
-					e.preventDefault();
-					submenu.empty();
-					$("#menu > li" ).removeClass('active');
-					$(this).parent().addClass('active');
-					for (var i = 0; i < group.items.length; i++) {
-						item = group.items[i];
-						if (item.visible && item.can_view()) {
-							submenu.append($('<li></li>').append(
-									$('<a href=""></a>').text(item.item_caption).data('item', item)
-								)
-							);
+		task.each_item(function(group) {
+			var li,
+				ul;
+			if (group.visible) {
+				li = $('<li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown" href="#">' + 
+					group.item_caption + '</a></li>');			
+				$("#menu").append(li);
+				if (group.items.length) {
+					ul = $('<ul class="dropdown-menu">'); 
+					li.append(ul);
+					group.each_item(function(item) {
+						if (item.visible) {
+							ul.append($('<li>')
+								.append($('<a href="#" class="item-menu">' + item.item_caption + '</a>').data('item', item)));					
 						}
-					} 
+					});
 				}
 			}
-		));
-		$('#submenu').on('click', 'a', (function(e) {
+		});
+	
+		$('.item-menu').on('click', (function(e) {
 			var item = $(this).data('item'); 
 			e.preventDefault();
-			$("#submenu > li" ).removeClass('active');
-			$(this).parent().addClass('active');
 			if (item.item_type === "report") { 
 				item.print(false);
 			} 
@@ -71,9 +60,8 @@ function Events1() { // demo
 		})));
 		$("#menu").append($('<li><a href="http://jam-py.com/" target="_blank">Jam.py</a></li>'));	 
 		
-		$('#menu').children(":first").find('a').click(); 
-		$('#submenu').children(":first").find('a').click();
-		
+		$('#menu').children(":first").find('.item-menu').click(); 
+	
 		// $(document).ajaxStart(function() { $("html").addClass("wait"); });
 		// $(document).ajaxStop(function() { $("html").removeClass("wait"); });
 	
@@ -87,10 +75,11 @@ function Events1() { // demo
 				height: 480,
 				sortable: true
 			};
-			
+	  
 		if (!item.master) {
 			item.paginate = true;
 		}
+	
 		item.clear_filters();
 	
 		if (item.view_form.hasClass('modal')) {
@@ -98,8 +87,11 @@ function Events1() { // demo
 		}
 		else {
 			item.view_form.find(".modal-body").css('padding', 0);
-			item.view_form.find(".view-title #title-left")
-				.append($('<h4>' + item.item_caption + '<h4>'));
+			item.view_form.find("#title-text")
+				.text(item.item_caption)
+				.click(function() {
+					item.view(item.view_form.parent());
+				});
 			table_options.height = $(window).height() - $('body').height() - 10;
 		}
 		if (item.can_create()) {
@@ -337,7 +329,7 @@ function Events3() { // demo.journals
 		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});	
 		if (!item.on_filters_applied) {
 			item.on_filters_applied = function() {
-				item.view_form.find(".filter-text").text(item.get_filter_text());		
+				item.view_form.find("#filter-text").text(item.get_filter_text());		
 			};
 		}
 		setTimeout(
@@ -356,27 +348,64 @@ function Events2() { // demo.catalogs
 
 	function on_view_form_created(item) {
 		var timeOut,
-			search;
+			i,
+			select,
+			search,
+			captions = [],
+			field,
+			field_ID;
 		if (item.default_field) {
+			field_ID = item.default_field.ID + '';
 			if (item.lookup_field && item.lookup_field.value && !item.lookup_field.multi_select) {
-				item.view_form.find(".view-title #title-left")
-					.append($('<p><a href="#" id="cur_value" tabindex="-1">' + item.lookup_field.lookup_text + '</a></p>'))
-					.css('padding-top', '12px');
-				item.view_form.find("#cur_value").click(function() {
-					var text = item.view_form.find("#cur_value").text();
-					item.view_form.find('#input-find').val(text);
-					item.search(item.default_field.field_name, text);
-				});
+				item.view_form.find("#selected-value")
+					.text(item.lookup_field.display_text)
+					.click(function() {
+						item.view_form.find('#input-find').val(item.lookup_field.lookup_text);
+						item.search(item.default_field.field_name, item.lookup_field.lookup_text);
+					});
+				item.view_form.find("#selected-div").show();
 			}
 			search = item.view_form.find(".view-title input");
+			select = item.view_form.find(".view-title select");
+			item.each_field(function(field) {
+				if (!field.system_field() && field.lookup_type === 'text') {
+					captions.push([field.field_caption, field.ID]);
+				}
+			});
+			if (captions.length === 0) {
+				item.view_form.find("#title-right .form-inline").hide();
+			} 
+			else if (captions.length === 1) {
+				field_ID = item.field_by_ID(captions[0][1]).ID;
+				select.hide();
+			}
+			else {
+				captions.sort(function(a, b){
+					if (a[0] < b[0]) return -1;
+					if (a[0] > b[0]) return 1;
+					return 0;
+				});
+		
+				for (i = 0; i < captions.length; i++) {
+					field = item.field_by_ID(captions[i][1]);
+					select.append('<option value="' + field.ID + '' + '">' + field.field_caption + '</option>');
+				}
+				select.val(field_ID);
+			}
 			search.on('input', function() {
+				var field;
 				search.css('font-weight', 'normal');
 				var where = {},
 					input = $(this);
+				if (select.is(':visible')) {
+					field_ID = parseInt(select.val());
+				}
+				field = item.field_by_ID(field_ID);
 				clearTimeout(timeOut);
 				timeOut = setTimeout(function() {
-						item.search(item.default_field.field_name, input.val());
-						search.css('font-weight', 'bold');
+						item.search(field.field_name, input.val(), function() {
+							search.css('font-weight', 'bold');
+						});
 					},
 					500
 				);
@@ -464,6 +493,13 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_view_form_created(item) {
+		item.selections = [];	
+		if (item.can_delete()) {
+			item.view_form.find("#delete-btn")
+				.off('click.task')
+				.on('click', function() { delete_records(item) } );
+		}
+		
 		item.invoice_table.create_table(item.view_form.find(".view-detail"),
 			{
 				height: 200 - 4, 
@@ -472,9 +508,31 @@ function Events16() { // demo.journals.invoices
 			});
 	}
 	
+	function delete_records(item) {
+		var delete_func = function() {
+				var copy = item.copy({handlers: false});
+				copy.set_where({id__in: item.selections});
+				copy.open({fields: ['id']}, function() {
+					while (!copy.eof()) {
+						copy.delete();
+					}
+					copy.apply(function() {
+						item.open();
+						item.selections = [];
+					});
+				});
+			};
+		if (item.selections.length) {
+			item.question('Delete ' + item.selections.length + ' records?', delete_func);
+		}
+		else {
+			item.delete_record();
+		}
+	}
+	
 	function on_filters_applied(item) {
 		if (item.view_form) {
-			item.view_form.find(".filter-text").text(item.get_filter_text());
+			item.view_form.find("#filter-text").text(item.get_filter_text());
 			calc_footer(item);
 		}
 	}
@@ -603,6 +661,7 @@ function Events16() { // demo.journals.invoices
 	this.init_table = init_table;
 	this.init_inputs = init_inputs;
 	this.on_view_form_created = on_view_form_created;
+	this.delete_records = delete_records;
 	this.on_filters_applied = on_filters_applied;
 	this.calc_footer = calc_footer;
 	this.on_edit_form_created = on_edit_form_created;
@@ -642,16 +701,6 @@ function Events15() { // demo.catalogs.tracks
 }
 
 task.events.events15 = new Events15();
-
-function Events12() { // demo.catalogs.albums 
-
-	function init_table(item, options) {
-		item.selections = [];	
-	}
-	this.init_table = init_table;
-}
-
-task.events.events12 = new Events12();
 
 function Events19() { // demo.reports.invoice 
 

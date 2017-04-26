@@ -13,4 +13,5 @@ Table of contents
     faq/index
     admin/index
     refs/index
+    releases/index
     

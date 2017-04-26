@@ -25,11 +25,9 @@
                 <a href="#" id="log-out" style="display: none">__$_log_out_$__</a>
             </div>
         </div>
-        <div id="taskmenu">
+        <div id="taskmenu" style="display: none">
             <div class="tabled">
-                <ul id="menu" class="nav nav-tabs" style="margin-bottom: 10px;">
-                </ul>
-                <ul id="submenu" class="nav nav-pills" style="margin-bottom: 0;">
+                <ul id="menu" class="nav nav-tabs">
                 </ul>
             </div>
         </div>
@@ -43,8 +41,10 @@
             <div class="modal-body">
                 <div class="view-title">
                     <div class="row-fluid">
-                        <div id="title-left" class="span8"></div>
-                        <div id="title-right" class="span4"></div>
+                        <div id="title-left" class="span6">
+                            <h4><a href="#" id="title-text" tabindex="-1"></a></h4>
+                        </div>
+                        <div id="title-right" class="span6"></div>
                     </div>
                 </div>
                 <div class="view-table">
@@ -71,7 +71,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" id="cancel-btn" class="btn expanded-btn pull-right"><i class="icon-remove"></i> __$_cancel_$__</button>
+                <button type="button" id="cancel-btn" class="btn expanded-btn btn_lap pull-right"><i class="icon-remove"></i> __$_cancel_$__</button>
                 <button type="button" id="ok-btn" class="btn expanded-btn pull-right"><i class="icon-ok"></i> __$_ok_$__<small class="muted">&nbsp;[Ctrl+Enter]</small></button>
             </div>
         </div>
@@ -108,12 +108,17 @@
             <div class="modal-body">
                 <div class="view-title">
                     <div class="row-fluid">
-                        <div id="title-left" class="span8">
+                        <div id="title-left" class="span6">
+                            <h4><a href="#" id="title-text" tabindex="-1"></a></h4>
+                            <h5 id="selected-div" style="display: none">
+                                <a id="selected-value" href="#" tabindex="-1"></a>
+                            </h5>
                         </div>
-                        <div id="title-right" class="span4">
+                        <div id="title-right" class="span6">
                             <form class="form-inline pull-right" style="margin: 6px 0px;">
                                 <label  class="control-label" for="input-find" style="margin: 0px 10px;">Search</label>
-                                <input id="input-find" type="text" class="input-medium search-query">
+                                <input id="input-find" type="text" class="input-medium search-query" autocomplete="off">
+                                <select id="field-select" class="input-medium"></select>
                             </form>
                         </div>
                     </div>
@@ -140,13 +145,17 @@
             <div class="modal-body">
                 <div class="view-title">
                     <div class="row-fluid">
-                        <div id="title-left" class="span4"></div>
+                        <div id="title-left" class="span4">
+                            <h4><a href="#" id="title-text" tabindex="-1"></a></h4>
+                        </div>
                         <div id="title-right" class="span8">
                             <h5 id="filter-text" class="pull-right"></h5>
                         </div>
                     </div>
                 </div>
                 <div class="view-table">
+                </div>
+                <div class="view-detail" style="margin-top: 4px; margin-bottom: 4px">
                 </div>
             </div>
             <div class="modal-footer">

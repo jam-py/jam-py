@@ -345,123 +345,134 @@ class SQL(object):
                         joins[alias] = True
         return ' '.join(result)
 
-    def where_clause(self, query, db_module=None):
+    def _get_filter_sign(self, filter_type, value, db_module):
+        result = common.FILTER_SIGN[filter_type]
+        if filter_type == common.FILTER_ISNULL:
+            if value:
+                result = 'IS NULL'
+            else:
+                result = 'IS NOT NULL'
+        if (result == 'LIKE'):
+            result = db_module.LIKE
+        return result
 
-        def get_filter_sign(filter_type, value=None):
-            result = common.FILTER_SIGN[filter_type]
-            if filter_type == common.FILTER_ISNULL:
-                if value:
-                    result = 'IS NULL'
-                else:
-                    result = 'IS NOT NULL'
-            if (result == 'LIKE'):
-                result = db_module.LIKE
+    def _convert_field_value(self, field, value, filter_type, db_module):
+        data_type = field.data_type
+        if data_type == common.DATE:
+            if type(value) in (str, unicode):
+                result = value
+            else:
+                result = value.strftime('%Y-%m-%d')
+            return db_module.cast_date(result)
+        elif data_type == common.DATETIME:
+            if type(value) in (str, unicode):
+                result = value
+            else:
+                result = value.strftime('%Y-%m-%d %H:%M')
+            result = db_module.cast_datetime(result)
             return result
-
-        def convert_field_value(field, value, filter_type=None):
-            data_type = field.data_type
-            if data_type == common.DATE:
-                if type(value) in (str, unicode):
-                    result = value
-                else:
-                    result = value.strftime('%Y-%m-%d')
-                return db_module.cast_date(result)
-            elif data_type == common.DATETIME:
-                if type(value) in (str, unicode):
-                    result = value
-                else:
-                    result = value.strftime('%Y-%m-%d %H:%M')
-                result = db_module.cast_datetime(result)
-                return result
-            elif data_type == common.INTEGER:
-                if type(value) == int or type(value) in [str, unicode] and value.isdigit():
-                    return str(value)
-                else:
-                    if filter_type and filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
-                        return value
-                    else:
-                        return "'" + value + "'"
-            elif data_type == common.BOOLEAN:
-                if value:
-                    return '1'
-                else:
-                    return '0'
-            elif data_type == common.TEXT:
+        elif data_type == common.INTEGER:
+            if type(value) == int or type(value) in [str, unicode] and value.isdigit():
+                return str(value)
+            else:
                 if filter_type and filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
                     return value
                 else:
                     return "'" + value + "'"
-            elif data_type in (common.FLOAT, common.CURRENCY):
-                value = float(value)
-                return str(value)
+        elif data_type == common.BOOLEAN:
+            if value:
+                return '1'
             else:
+                return '0'
+        elif data_type == common.TEXT:
+            if filter_type and filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
                 return value
-
-        def escape_search(value, esc_char):
-            result = ''
-            found = False
-            for ch in value:
-                if ch == "'":
-                    ch = ch + ch
-                elif ch in ['_', '%']:
-                    ch = esc_char + ch
-                    found = True
-                result += ch
-            return result, found
-
-        def get_condition(field, filter_type, value):
-            esc_char = '/'
-            cond_field_name = '%s."%s"' % (self.table_alias(), field.db_field_name)
-            if type(value) == str:
-                value = value.decode('utf-8')
-            filter_sign = get_filter_sign(filter_type, value)
-            cond_string = '%s %s %s'
-            if filter_type in (common.FILTER_IN, common.FILTER_NOT_IN):
-                lst = '('
-                if len(value):
-                    for it in value:
-                        lst += convert_field_value(field, it) + ', '
-                    value = lst[:-2] + ')'
-                else:
-                    value = '()'
-            elif filter_type == common.FILTER_RANGE:
-                value = convert_field_value(field, value[0]) + \
-                    ' AND ' + convert_field_value(field, value[1])
-            elif filter_type == common.FILTER_ISNULL:
-                value = ''
             else:
-                value = convert_field_value(field, value, filter_type)
-                if filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
-                    value, esc_found = escape_search(value, esc_char)
-                    if field.lookup_item:
-                        if field.lookup_item1:
-                            cond_field_name = '%s."%s"' % (self.lookup_table_alias1(field), field.lookup_field1)
-                        else:
-                            cond_field_name = '%s."%s"' % (self.lookup_table_alias(field), field.lookup_field)
-                    if filter_type == common.FILTER_CONTAINS:
-                        value = '%' + value + '%'
-                    elif filter_type == common.FILTER_STARTWITH:
-                        value = value + '%'
-                    elif filter_type == common.FILTER_ENDWITH:
-                        value = '%' + value
-                    upper_function =  db_module.upper_function()
-                    if upper_function:
-                        cond_string = upper_function + '(%s) %s %s'
-                        value = value.upper()
-                    if esc_found:
-                        value = "'" + value + "' ESCAPE '" + esc_char + "'"
-                    else:
-                        value = "'" + value + "'"
-            sql = cond_string % (cond_field_name, filter_sign, value)
-            if field.data_type == common.BOOLEAN and value == '0':
-                if filter_sign == '=':
-                    sql = '(' + sql + ' OR %s IS NULL)' % cond_field_name
-                elif filter_sign == '<>':
-                    sql = '(' + sql + ' AND %s IS NOT NULL)' % cond_field_name
-                else:
-                    raise Exception('sql.py where_clause method: boolen field condition may give ambiguious results.')
-            return sql
+                return "'" + value + "'"
+        elif data_type in (common.FLOAT, common.CURRENCY):
+            value = float(value)
+            return str(value)
+        else:
+            return value
 
+    def _escape_search(self, value, esc_char):
+        result = ''
+        found = False
+        for ch in value:
+            if ch == "'":
+                ch = ch + ch
+            elif ch in ['_', '%']:
+                ch = esc_char + ch
+                found = True
+            result += ch
+        return result, found
+
+    def _in_condition(self, field, filter_type, value_list, db_module):
+        MAX_IN_LIST = 1000
+        cond_field_name = '%s."%s"' % (self.table_alias(), field.db_field_name)
+        filter_sign = self._get_filter_sign(filter_type, value_list, db_module)
+        cond_string = '%s %s %s'
+        result = []
+        while True:
+            values = value_list[0:MAX_IN_LIST]
+            if values:
+                values = [self._convert_field_value(field, v, filter_type, db_module) for v in values]
+                lst = '(%s)' % ', '.join(values)
+                result.append(cond_string % (cond_field_name, filter_sign, lst))
+            value_list = value_list[MAX_IN_LIST:]
+            if not value_list:
+                break;
+        result = '(%s)' % ' OR '.join(result)
+        return result
+
+    def _get_condition(self, field, filter_type, value, db_module):
+        if filter_type in (common.FILTER_IN, common.FILTER_NOT_IN):
+            return self._in_condition(field, filter_type, value, db_module)
+        esc_char = '/'
+        cond_field_name = '%s."%s"' % (self.table_alias(), field.db_field_name)
+        if type(value) == str:
+            value = value.decode('utf-8')
+        filter_sign = self._get_filter_sign(filter_type, value, db_module)
+        cond_string = '%s %s %s'
+        if filter_type == common.FILTER_RANGE:
+            value = self._convert_field_value(field, value[0], filter_type, db_module) + \
+                ' AND ' + self._convert_field_value(field, value[1], filter_type, db_module)
+        elif filter_type == common.FILTER_ISNULL:
+            value = ''
+        else:
+            value = self._convert_field_value(field, value, filter_type, db_module)
+            if filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
+                value, esc_found = self._escape_search(value, esc_char)
+                if field.lookup_item:
+                    if field.lookup_item1:
+                        cond_field_name = '%s."%s"' % (self.lookup_table_alias1(field), field.lookup_field1)
+                    else:
+                        cond_field_name = '%s."%s"' % (self.lookup_table_alias(field), field.lookup_field)
+                if filter_type == common.FILTER_CONTAINS:
+                    value = '%' + value + '%'
+                elif filter_type == common.FILTER_STARTWITH:
+                    value = value + '%'
+                elif filter_type == common.FILTER_ENDWITH:
+                    value = '%' + value
+                upper_function =  db_module.upper_function()
+                if upper_function:
+                    cond_string = upper_function + '(%s) %s %s'
+                    value = value.upper()
+                if esc_found:
+                    value = "'" + value + "' ESCAPE '" + esc_char + "'"
+                else:
+                    value = "'" + value + "'"
+        sql = cond_string % (cond_field_name, filter_sign, value)
+        if field.data_type == common.BOOLEAN and value == '0':
+            if filter_sign == '=':
+                sql = '(' + sql + ' OR %s IS NULL)' % cond_field_name
+            elif filter_sign == '<>':
+                sql = '(' + sql + ' AND %s IS NOT NULL)' % cond_field_name
+            else:
+                raise Exception('sql.py where_clause method: boolen field condition may give ambiguious results.')
+        return sql
+
+    def where_clause(self, query, db_module=None):
         if db_module is None:
             db_module = self.task.db_module
         conditions = []
@@ -476,12 +487,12 @@ class SQL(object):
                     if filter_type == common.FILTER_CONTAINS_ALL:
                         values = value.split()
                         for val in values:
-                            conditions.append(get_condition(field, common.FILTER_CONTAINS, val))
+                            conditions.append(self._get_condition(field, common.FILTER_CONTAINS, val, db_module))
                     elif filter_type in [common.FILTER_IN, common.FILTER_NOT_IN] and \
                         type(value) in [tuple, list] and len(value) == 0:
                         conditions.append('%s."%s" IN (NULL)' % (self.table_alias(), self._primary_key_db_field_name))
                     else:
-                        conditions.append(get_condition(field, filter_type, value))
+                        conditions.append(self._get_condition(field, filter_type, value, db_module))
         if not deleted_in_filters and self._deleted_flag:
             conditions.append('%s."%s"=0' % (self.table_alias(), self._deleted_flag_db_field_name))
         result = ' AND '.join(conditions)
@@ -750,6 +761,7 @@ class SQL(object):
             sql = db_module.create_foreign_index_sql(table_name, index_name, key, ref, primary_key)
         else:
             index_fields = self.f_fields_list.value
+            print 777777, index_fields
             desc = ''
             if self.descending.value:
                 desc = 'DESC'
@@ -757,6 +769,7 @@ class SQL(object):
             if self.f_unique_index.value:
                 unique = 'UNIQUE'
             fields = common.load_index_fields(index_fields)
+            print 999999, fields
             if db_type == db_modules.FIREBIRD:
                 if new_fields:
                     field_defs = [new_field_name_by_id(field[0]) for field in fields]

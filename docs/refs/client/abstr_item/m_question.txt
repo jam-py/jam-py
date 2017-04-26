@@ -4,7 +4,7 @@ question
 
 Creates a modal form with **OK**, **Cancel** buttons
 
-.. js:function:: question(mess, yes_callback, no_callback)
+.. js:function:: question(mess, yes_callback, no_callback, options)
 
 **domain**: client 
 

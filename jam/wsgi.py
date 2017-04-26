@@ -332,11 +332,11 @@ class App():
                             data = None
                             started = datetime.datetime.now()
                             if task.on_before_request:
-                                data = task.on_request(item, method, params)
+                                data = task.on_before_request(item, method, params)
                             if not data:
                                 data = self.get_response(item, method, params)
                             if task.on_after_request:
-                                task.on_request(item, method, params, datetime.datetime.now() - started)
+                                task.on_after_request(item, method, params, datetime.datetime.now() - started)
                         finally:
                             self._busy -= 1
                         result['data'] = data

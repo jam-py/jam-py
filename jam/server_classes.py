@@ -525,7 +525,7 @@ class Report(AbstrReport):
                         columns_start = start
                     end = data.find('/>', start)
                     col_text = data[start: end + 2]
-                    columns += col_text
+                    columns = '%s%s' % (columns, col_text)
                     col[0] = data[start: end + 2]
                     start = end + 2
                 columns_end = start
@@ -634,7 +634,7 @@ class Report(AbstrReport):
                     if start != -1:
                         end = text.find(end_tag, start + len(start_tag))
                         if end != -1:
-                            text_start = start+len(start_tag)
+                            text_start = start + len(start_tag)
                             text_end = end
                             cell_text = text[text_start:text_end]
                             cell_text_start = cell_text.find('%(', 0)
@@ -645,7 +645,10 @@ class Report(AbstrReport):
                                     val = cell_text[cell_text_start:end]
                                     key = val[2:-2]
                                     value = d.get(key)
-                                    if not value is None:
+                                    if isinstance(value, DBField):
+                                        raise Exception('Report: "%s" band: "%s" key "%s" a field object is passed. Specify a value attribute.' % \
+                                            (self.item_name, band, key))
+                                    elif not value is None:
                                         val = val % d
                                         if type(value) == float:
                                             val = val.replace('.', common.DECIMAL_POINT)
@@ -657,14 +660,14 @@ class Report(AbstrReport):
                                         cell_text = cell_text.encode('utf8')
                                     if  isinstance(val, unicode):
                                         val = val.encode('utf8')
-                                    cell_text = cell_text[:cell_text_start] + val + cell_text[end:]
-                                    text = text[:text_start] + cell_text + text[text_end:]
+                                    cell_text = '%s%s%s' % (cell_text[:cell_text_start], val, cell_text[end:])
+                                    text = '%s%s%s' % (text[:text_start], cell_text, text[text_end:])
                                     if type(value) in (int, float):
                                         start_text = text[cell_start:start]
                                         office_value = str(value)
                                         start_text = start_text.replace(cell_type_tag, 'office:value-type="float" office:value="%s"' % office_value)
                                         start_text = start_text.replace(calcext_type_tag, 'calcext:value-type="float"')
-                                        text = text[:cell_start] + start_text + text[start:]
+                                        text = '%s%s%s' % (text[:cell_start], start_text, text[start:])
                     cell_start += 1
             if update_band_text:
                 text = update_band_text(text)

@@ -5,6 +5,8 @@ import jam.common as common
 import jam.db.db_modules as db_modules
 
 def execute_select(cursor, db_module, command):
+#    print('')
+#    print(command)
     try:
         cursor.execute(command)
     except Exception, x:
@@ -13,6 +15,9 @@ def execute_select(cursor, db_module, command):
     return db_module.process_sql_result(cursor.fetchall())
 
 def execute(cursor, command, params):
+#    print('')
+#    print(command)
+#    print(params)
     try:
         if params:
             cursor.execute(command, params)

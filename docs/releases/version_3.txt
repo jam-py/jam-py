@@ -1,0 +1,6 @@
+=========
+Version 3
+=========
+
+In version 3, support for development of database desktop applications based on 
+the GTK Toolkit was removed.

@@ -103,6 +103,17 @@ CLIENT_MODULE, WEB_CLIENT_MODULE, SERVER_MODULE = range(3)
 TAB_FUNCS, TAB_EVENTS, TAB_TASK, TAB_FIELDS = range(4)
 editor_tabs = ("Module", "Events", "Task", "Fields")
 
+HISTORY_FIELDS = [
+    ['id', INTEGER, None],
+    ['item_id', INTEGER, None],
+    ['item_rec_id', INTEGER, None],
+    ['operation', INTEGER, None],
+    ['changes', BLOB, None],
+    ['user', TEXT, 30],
+    ['date', DATETIME, None]
+]
+HISTORY_INDEX_FIELDS = ['item_id', 'item_rec_id']
+
 def get_alignment(data_type, item=None, lookup_values=None):
     if (data_type == INTEGER) or (data_type == FLOAT) or (data_type == CURRENCY):
         result = ALIGN_RIGHT
