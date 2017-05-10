@@ -1,4 +1,48 @@
 
+body {
+    margin: 0 20px;    
+}
+
 #cancel-btn {
     margin-left: 5px;
 }
+
+.dashboard-view {
+    border: solid 2px #b4e3fa;
+    border-radius: 6px;
+    padding: 10px;
+    /*margin: 10px;*/
+}
+
+.dashboard-view th, 
+.dashboard-view td {
+    font-size: 12px;
+}
+
+#customer-table .dbtable {
+    border: solid 2px #006bb3;
+    border-radius: 6px;
+}
+
+#customer-table .dbtable th {
+    color: #ffffff;
+    background-color: #006bb3;
+}
+
+#tracks-table .dbtable {
+    border: solid 2px #196619;
+    border-radius: 6px;
+}
+
+#tracks-table .dbtable th {
+    color: #ffffff;
+    background-color: #196619;
+}
+
+/*.modal-body {*/
+/*    padding: 6px;*/
+/* }*/
+ 
+ .modal-footer .btn i {
+     display: None;
+ }

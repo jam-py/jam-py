@@ -99,6 +99,7 @@ class App():
             Rule('/jam/js/<file_name>', endpoint='file'),
             Rule('/jam/js/ace/<file_name>', endpoint='file'),
             Rule('/jam/css/<file_name>', endpoint='file'),
+            Rule('/jam/css/themes/<file_name>', endpoint='file'),
             Rule('/jam/img/<file_name>', endpoint='file'),
             Rule('/api', endpoint='api'),
             Rule('/upload', endpoint='upload')

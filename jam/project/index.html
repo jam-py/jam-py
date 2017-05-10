@@ -6,7 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/jam/img/j.png" type="image/png">
 
-    <link href="/jam/css/bootstrap.css" rel="stylesheet">
+    <!--<link href="/jam/css/bootstrap.css" rel="stylesheet">-->
+    <link href="/jam/css/bootstrap-cerulean.css" rel="stylesheet">
+    <!--<link href="/jam/css/bootstrap-flatly.css" rel="stylesheet"> -->
+    <!--<link href="/jam/css/bootstrap-slate.css" rel="stylesheet">-->
+    <!--<link href="/jam/css/bootstrap-readable.css" rel="stylesheet">-->    
+    <!--<link href="/jam/css/bootstrap-amelia.css" rel="stylesheet">-->
+    <!--<link href="/jam/css/bootstrap-cosmo.css" rel="stylesheet">-->    
+    <!--<link href="/jam/css/bootstrap-journal.css" rel="stylesheet">-->    
+    <!--<link href="/jam/css/bootstrap-spacelab.css" rel="stylesheet">-->    
+    <!--<link href="/jam/css/bootstrap-united.css" rel="stylesheet">-->    
+
     <link href="/jam/css/bootstrap-responsive.css" rel="stylesheet">
     <link href="/jam/css/bootstrap-modal.css" rel="stylesheet">
     <link href="/jam/css/datepicker.css" rel="stylesheet">
@@ -15,21 +25,25 @@
   </head>
 
   <body>
-    <div class="container">
+    <div id="container" class="container">      
         <div class="row-fluid">
             <div class="span6">
                 <h3 id="title" class="muted"></h3>
             </div>
             <div class="span6" style="margin-top: 20px; text-align:right;">
                 <span id="user-info"></span>
-                <a href="#" id="log-out" style="display: none">__$_log_out_$__</a>
+                <a href="#" id="log-out" style="display: none">&nbsp;&nbsp;&nbsp;Log out</a>
             </div>
         </div>
-        <div id="taskmenu" style="display: none">
-            <div class="tabled">
-                <ul id="menu" class="nav nav-tabs">
-                </ul>
-            </div>
+        <div class="container" style="width: auto;">        
+            <div id="taskmenu" class="navbar" style="display: none">        
+                <div class="navbar-inner">
+                    <div class="container" style="width: auto;">
+                        <ul id="menu" class="nav">
+                        </ul>
+                    </div>                
+                </div>
+            </div>            
         </div>
         <div id="content">
         </div>
@@ -118,7 +132,6 @@
                             <form class="form-inline pull-right" style="margin: 6px 0px;">
                                 <label  class="control-label" for="input-find" style="margin: 0px 10px;">Search</label>
                                 <input id="input-find" type="text" class="input-medium search-query" autocomplete="off">
-                                <select id="field-select" class="input-medium"></select>
                             </form>
                         </div>
                     </div>
@@ -154,8 +167,6 @@
                     </div>
                 </div>
                 <div class="view-table">
-                </div>
-                <div class="view-detail" style="margin-top: 4px; margin-bottom: 4px">
                 </div>
             </div>
             <div class="modal-footer">

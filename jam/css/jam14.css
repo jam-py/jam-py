@@ -3,42 +3,6 @@ html.wait, html.wait * {
     cursor: wait !important;
 }
 
-body {
-  font-size: 12px;
-}
-
-.table th,
-.table td {
-  padding: 4px;
-  line-height: 16px;
-}
-
-
-.row-fluid [class*="span"] {
-    min-height: 24px;
-}
-
-div.dropdown.lookup-list {
-    display: inline-block;
-    height: 20px;
-    padding: 2px 6px 0px;
-    margin-bottom:4px;
-    font-size: 12px;
-    line-height: 16px;
-    color: #555555;
-    vertical-align: middle;
-    background-color: #ffffff;
-    border: 1px solid #cccccc;
-    border-radius: 0;
-    -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
-       -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
-          box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
-    -webkit-transition: border linear 0.2s, box-shadow linear 0.2s;
-      -moz-transition: border linear 0.2s, box-shadow linear 0.2s;
-        -o-transition: border linear 0.2s, box-shadow linear 0.2s;
-          transition: border linear 0.2s, box-shadow linear 0.2s;
-}
-
 div.dropdown input {
     width: 100%;
     color: #555555;
@@ -52,101 +16,27 @@ div.dropdown input:focus {
     outline: 0;
 }
 
+}
+
 input.dropdown-toggle {
     border-width: 0;
     padding: 0;
-}
-
-select {
-  height: 24px;
-  padding: 4px 6px;
-  margin-bottom: 4px;
-  font-size: 12px;
-  line-height: 16px;
-}
-
-.form-horizontal select,
-.form-inline select {
-  margin-bottom: 4px;
-}
-
-textarea,
-input[type="text"],
-input[type="password"],
-input[type="datetime"],
-input[type="datetime-local"],
-input[type="date"],
-input[type="month"],
-input[type="time"],
-input[type="week"],
-input[type="number"],
-input[type="email"],
-input[type="url"],
-input[type="search"],
-input[type="tel"],
-input[type="color"],
-.uneditable-input {
-  height: 16px;
-  padding: 4px 6px;
-  margin-bottom: 4px;
-  font-size: 12px;
-  line-height: 16px;
-}
-
-label, input, button, select, textarea {
-    font-size: 12px;
-    font-weight: normal;
-    line-height: 16px;
-}
-
-.input-prepend,
-.input-append {
-  margin-bottom: 0;
-}
-
-.input-append input,
-.input-prepend input,
-.input-append select,
-.input-prepend select,
-.input-append .uneditable-input,
-.input-prepend .uneditable-input,
-.input-append .dropdown-menu,
-.input-prepend .dropdown-menu,
-.input-append .popover,
-.input-prepend .popover {
-  font-size: 12px;
-  margin-bottom: 4px;
 }
 
 .typeahead-li {
     width: 100%;
 }
 
-.btn-group > .btn,
-.btn-group > .dropdown-menu,
-.btn-group > .popover {
-  font-size: 12px;
-}
-
-.btn-group > .btn-mini {
-  font-size: 9.5px;
-}
-
-.btn-group > .btn-small {
-  font-size: 10.9px;
-}
-
-.btn-group > .btn-large {
-  font-size: 15.5px;
-}
-
 form {
-    margin-bottom: 0;
+    margin-bottom: 6px;
 }
 
 .form-horizontal .control-group {
-    margin-bottom: 4px;
-    margin-top: 0;
+    margin-bottom: 6px;
+}
+
+.pager-input {
+    text-align: center;
 }
 
 .typeahead,
@@ -171,73 +61,19 @@ form {
     background-color: #3a87ad;
 }
 
-.pager {
-    padding: 0px;
+/*
+.input-button {
+    padding: 1px 4px;
+    line-height: 20px;
 }
-
-.pager-input {
-    height: 16px;
-    margin-top: 4px;
-    text-align: center;
-}
-
-.btn {
-    font-size: 12px;
-    line-height: 18px;
-}
+*/
 
 .expanded-btn {
     min-width: 100px;
 }
 
-h1,
-h2,
-h3 {
-  line-height: 36px;
-}
-
-h1 {
-  font-size: 36.5px;
-}
-
-h2 {
-  font-size: 29.5px;
-}
-
-h3 {
-  font-size: 22.5px;
-}
-
-h4 {
-  font-size: 15.5px;
-}
-
-h5 {
-  font-size: 12px;
-}
-
-h6 {
-  font-size: 11.9px;
-}
-
-h1 small {
-  font-size: 22.5px;
-}
-
-h2 small {
-  font-size: 15.5px;
-}
-
-h3 small {
-  font-size: 12px;
-}
-
-h4 small {
-  font-size: 12px;
-}
-
 .input-integer {
-  width: 26%;
+  width: 28%;
 }
 
 .input-float {
@@ -249,7 +85,7 @@ h4 small {
 }
 
 .input-date {
-  width: 28%;
+  width: 27%;
 }
 
 .input-datetime {
@@ -261,11 +97,11 @@ h4 small {
 }
 
 .input-lookupitem {
-  width: 73%;
+  width: 71%;
 }
 
 .input-lookupvalues {
-  width: 36%;
+  width: 32%;
 }
 
 .input-text {
@@ -275,7 +111,6 @@ h4 small {
 .input-blob {
   width: 100%;
 }
-
 @media (max-width: 767px) {
   .input-prepend input.input-lookupitem,
   .input-append input.input-lookupitem,
@@ -294,22 +129,18 @@ h4 small {
 }
 
 .close {
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .modal {
-    width: 600px;
+    width: 680px;
 }
 
 .modal .well {
     width: inherit;
-    margin: 6px 0;
-    padding-top: 12px;
-    padding-bottom: 6px;
-}
-
-.modal-body {
-    padding: 12px;
+    margin-bottom: 6px;
+    padding: 6px;
+    padding-bottom: 0;
 }
 
 .modal.fade {
@@ -334,14 +165,6 @@ h4 small {
     border-left: 0;
 }
 
-.inner-table thead:first-child tr:first-child > th:first-child,
-.inner-table tbody:first-child tr:first-child > td:first-child,
-.inner-table tbody:first-child tr:first-child > th:first-child {
-  -webkit-border-top-left-radius: 0;
-          border-top-left-radius: 0;
-  -moz-border-radius-topleft: 0;
-}
-
 .table td,
 .table th {
     cursor: default;
@@ -349,7 +172,6 @@ h4 small {
     -moz-user-select: none;
     -khtml-user-select: none;
     -ms-user-select: none;
-
 }
 
 .tooltip-inner {
@@ -434,7 +256,7 @@ h4 small {
 .dbtree li div span.tree-text {
     display: inline-block;
     cursor: default;
-    padding: 1px 10px;
+    padding: 2px 8px;
 }
 
 .dbtree ul:first-child {
@@ -457,6 +279,7 @@ h4 small {
 
 .accordion-toggle.history-toggle {
     font-size: 13px;
+    background-color: #eaf5fb;
     outline: 0;
 }
 
@@ -469,4 +292,3 @@ h4 small {
 .accordion-group.history-group {
     border-color: #cceeff;
 }
-

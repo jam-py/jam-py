@@ -1578,6 +1578,10 @@ class AbstractDataSet(object):
                 params['__order'] = list(self._order_by_list)
             elif self._order_by:
                 params['__order'] = self._order_by
+                for param in self._order_by:
+                    if not self.field_by_ID(param[0]):
+                        params['__order'] = [];
+                        break
             if funcs:
                 params['__funcs'] = funcs
             if group_by:

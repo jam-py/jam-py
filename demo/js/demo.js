@@ -3,7 +3,7 @@
 
 function Events1() { // demo 
 
-	function on_page_loaded(task) {   
+	function on_page_loaded(task) {
 	
 		$("title").text(task.item_caption);
 		$("#title").text(task.item_caption);
@@ -24,7 +24,7 @@ function Events1() { // demo
 				ul;
 			if (group.visible) {
 				li = $('<li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown" href="#">' + 
-					group.item_caption + '</a></li>');			
+					group.item_caption + ' <b class="caret"></b></a></li>');			
 				$("#menu").append(li);
 				if (group.items.length) {
 					ul = $('<ul class="dropdown-menu">'); 
@@ -32,14 +32,14 @@ function Events1() { // demo
 					group.each_item(function(item) {
 						if (item.visible) {
 							ul.append($('<li>')
-								.append($('<a href="#" class="item-menu">' + item.item_caption + '</a>').data('item', item)));					
+								.append($('<a class="item-menu" href="#">' + item.item_caption + '</a>').data('item', item)));					
 						}
 					});
 				}
 			}
 		});
 	
-		$('.item-menu').on('click', (function(e) {
+		$('#menu .item-menu').on('click', (function(e) {
 			var item = $(this).data('item'); 
 			e.preventDefault();
 			if (item.item_type === "report") { 
@@ -49,7 +49,36 @@ function Events1() { // demo
 				item.view($("#content"));
 			}
 		}));
+	
+		$("#menu").append($('<li></li>').append($('<a href="#">Dashboard</a>').click(function(e) {
+			e.preventDefault();
+			task.dashboard.view($("#content"));
+		})));
 		
+		$("#menu").append(
+			'<li id="themes" class="dropdown">' +
+				'<a class="dropdown-toggle" data-toggle="dropdown" href="#">Themes <b class="caret"></b></a>' +
+				'<ul class="dropdown-menu">' +
+					'<li><a href="#">Bootrap</a></li>' +
+					'<li><a href="#">Cerulean</a></li>' +				
+					'<li><a href="#">Amelia</a></li>' +				
+					'<li><a href="#">Flatly</a></li>' +
+					'<li><a href="#">Slate</a></li>' +
+					'<li><a href="#">Cosmo</a></li>' +
+					'<li><a href="#">Readable</a></li>' +
+					'<li><a href="#">United</a></li>' +				
+					'<li><a href="#">Journal</a></li>' +				
+					'<li><a href="#">Spacelab</a></li>' +				
+					'<li class="divider"></li>' +
+					'<li><a href="#">Container</a></li>' +
+				'</ul>' +
+			'</li>'
+		);  
+		set_theme(task, 'Bootrap');
+		$('#menu #themes ul a').on('click', (function(e) {
+			e.preventDefault();		
+			set_theme(task, $(this).text());
+		}));
 		$("#menu").append($('<li></li>').append($('<a href="#">About</a>').click(function(e) {
 			e.preventDefault();
 			task.message(
@@ -58,21 +87,106 @@ function Events1() { // demo
 					buttons: {"OK": undefined}, center_buttons: true}
 			);
 		})));
-		$("#menu").append($('<li><a href="http://jam-py.com/" target="_blank">Jam.py</a></li>'));	 
 		
-		$('#menu').children(":first").find('.item-menu').click(); 
+		$("#menu").append($('<li><a href="http://jam-py.com/" target="_blank">Jam.py</a></li>'));	 
+	  
+	//	task.customers.view($("#content"));
+		$('#menu .item-menu:first').click(); 
 	
 		// $(document).ajaxStart(function() { $("html").addClass("wait"); });
 		// $(document).ajaxStop(function() { $("html").removeClass("wait"); });
-	
-		$(window).on('resize', function() {
-			resize(task);
-		});
 	} 
+	
+	function set_theme(task, theme) {
+		var new_css,
+			old_css;
+		if (!task.theme) {
+			task.theme = theme;
+			task.small_font = true;
+			task.in_container = true;
+			$('#menu #themes ul a').each(function() {
+			   $(this).html(
+					'<span class="theme-name">' + $(this).text() + '</span>' +
+					'<span class="pull-right"><i class="icon-ok"></i></span>' 
+			   ); 
+			});		
+		}
+		if (theme === 'Container') {
+			task.in_container = !task.in_container;
+			if (task.in_container) {
+				$('body #container').addClass('container');
+			}
+			else {
+				$('body #container').removeClass('container');
+			}
+			$('#menu .item-menu:first').click();		 
+			$('window').resize();		
+		}
+		else {
+			new_css = get_theme(task, theme),
+			old_css = get_theme(task, task.theme);
+			if (theme !== task.theme) {
+				$("head").find("link").attr("href", function () {
+					if (this.href.split('/').pop() === old_css) {
+						this.href = this.href.replace(old_css, new_css);
+					}
+				});
+				task.theme = theme;
+				$('window').resize();
+			}
+		}
+		$('#menu #themes ul a .theme-name').each(function() {
+			var theme = $(this).text();
+			$(this).parent().find('i').hide();
+			if (theme === 'Container') {
+				if (task.in_container) {
+					$(this).parent().find('i').show();
+				}	
+			}		
+			if (theme === task.theme) {
+				$(this).parent().find('i').show();
+			}
+		});		
+	}
+	
+	function get_theme(task, theme) {
+		var css;
+		if (theme === 'Bootrap') {
+			css = "bootstrap.css";
+		}
+		else if (theme === 'Cosmo') {
+			css = "bootstrap-cosmo.css";
+		}
+		else if (theme === 'Cerulean') {
+			css = "bootstrap-cerulean.css";
+		}
+		else if (theme === 'Journal') {
+			css = "bootstrap-journal.css";
+		}
+		else if (theme === 'Flatly') {
+			css = "bootstrap-flatly.css";
+		}
+		else if (theme === 'Slate') {
+			css = "bootstrap-slate.css";
+		}
+		else if (theme === 'Amelia') {
+			css = "bootstrap-amelia.css";
+		}
+		else if (theme === 'United') {
+			css = "bootstrap-united.css";
+		}
+		else if (theme === 'Spacelab') {
+			css = "bootstrap-spacelab.css";
+		}
+		else if (theme === 'Readable') {
+			css = "bootstrap-readable.css";
+		}
+		return css;
+	}
 	
 	function on_view_form_created(item) {
 		var table_options = {
-				height: 480,
+				height: 580,
 				sortable: true
 			};
 	  
@@ -83,11 +197,11 @@ function Events1() { // demo
 		item.clear_filters();
 	
 		if (item.view_form.hasClass('modal')) {
-			item.view_options.width = 960;
+			item.view_options.width = 1060;
 		}
 		else {
-			item.view_form.find(".modal-body").css('padding', 0);
-			item.view_form.find("#title-text")
+			item.view$(".modal-body").css('padding', 0);
+			item.view$("#title-text")
 				.text(item.item_caption)
 				.click(function() {
 					item.view(item.view_form.parent());
@@ -95,40 +209,37 @@ function Events1() { // demo
 			table_options.height = $(window).height() - $('body').height() - 10;
 		}
 		if (item.can_create()) {
-			item.view_form.find("#new-btn")
-				.on('click.task', function() { item.insert_record(); });
+			item.view$("#new-btn").on('click.task', function() { item.insert_record(); });
 		}
 		else {
-			item.view_form.find("#new-btn").prop("disabled", true);
+			item.view$("#new-btn").prop("disabled", true);
 		}
 		if (item.can_edit()) {
-			item.view_form.find("#edit-btn")
-				.on('click.task', function() { item.edit_record(); });
+			item.view$("#edit-btn").on('click.task', function() { item.edit_record() });
 		}
 		else {
-			item.view_form.find("#edit-btn").prop("disabled", true);
+			item.view$("#edit-btn").prop("disabled", true);
 		}
 		if (item.can_delete()) {
-			item.view_form.find("#delete-btn")
-				.on('click.task', function() { item.delete_record();} );
+			item.view$("#delete-btn").on('click.task', function() { item.delete_record() } );
 		}
 		else {
-			item.view_form.find("#delete-btn").prop("disabled", true);
+			item.view$("#delete-btn").prop("disabled", true);
 		}
 		
 		create_print_btns(item);
 	
-		if (item.init_table) {
-			item.init_table(item, table_options);
+		if (item.view$(".view-table").length) {
+			if (item.init_table) {
+				item.init_table(item, table_options);
+			}
+			item.create_table(item.view$(".view-table"), table_options);
+			item.open(true);		
 		}
-		item.create_table(item.view_form.find(".view-table"), table_options);
-		
-		item.open(function() {});	
 	}
 	
-	
-	function on_view_form_close_query(item) {
-	//	item.close();
+	function on_view_form_closed(item) {
+		item.close();
 	}
 	
 	function on_edit_form_created(item) {
@@ -136,19 +247,14 @@ function Events1() { // demo
 				col_count: 1,
 				create_inputs: true
 			};
-		item.edit_options.width = 560;
 		if (item.init_inputs) {
 			item.init_inputs(item, options);
 		}
 		if (options.create_inputs) {
 			item.create_inputs(item.edit_form.find(".edit-body"), options);
 		}
-		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
-		item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
-	}
-	
-	function on_edit_form_shown(item) {
-		resize_edit_table(item);	
+		item.edit$("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
+		item.edit$("#ok-btn").on('click.task', function() { item.apply_record() });
 	}
 	
 	function on_edit_form_close_query(item) {
@@ -174,18 +280,18 @@ function Events1() { // demo
 	
 	function on_filter_form_created(item) {
 		item.filter_options.title = item.item_caption + ' - filter';
-		item.create_filter_inputs(item.filter_form.find(".edit-body"));
-		item.filter_form.find("#cancel-btn")
+		item.create_filter_inputs(item.filter$(".edit-body"));
+		item.filter$("#cancel-btn")
 			.on('click.task', function() { item.close_filter_form() });
-		item.filter_form.find("#ok-btn")
+		item.filter$("#ok-btn")
 			.on('click.task', function() { item.apply_filters() });
 	}
 	
 	function on_param_form_created(item) {
-		item.create_param_inputs(item.param_form.find(".edit-body"));
-		item.param_form.find("#cancel-btn")
+		item.create_param_inputs(item.param$(".edit-body"));
+		item.param$("#cancel-btn")
 			.on('click.task', function() { item.close_param_form() });
-		item.param_form.find("#ok-btn")
+		item.param$("#ok-btn")
 			.on('click.task', function() { item.process_report() });
 	}
 	
@@ -211,7 +317,7 @@ function Events1() { // demo
 	
 	function on_edit_form_keyup(item, event) {
 		if (event.keyCode === 13 && event.ctrlKey === true){
-			item.edit_form.find("#ok-btn").focus();
+			item.edit$("#ok-btn").focus();
 			item.apply_record();
 		}
 	}
@@ -247,68 +353,12 @@ function Events1() { // demo
 			item.view_form.find("#report-btn").hide();
 		}
 	}
-	
-	function resize_view_table(item) {
-		item.view_form.find(".dbtable").each(function() {
-			var height,
-				table = $(this).data('dbtable');
-			if (table && table.item === item) {
-				height = table.height() + $(window).height() - $('body').height() - 10;
-				if (height < 200) {
-					height = 200;
-				}
-				table.height(height);
-				table.item.update_controls();
-				table.item.each_detail(function(d) {
-					d.update_controls();
-				});
-			}
-		});
-	}
-	
-	function resize_edit_table(item, window_resized) {
-		item.edit_form.find(".dbtable").each(function() {
-			var height,
-				form_height = item.edit_form.height(),
-				window_height = $(window).height(),
-				table = $(this).data('dbtable');
-			if (table) {
-				if (window_resized || form_height > window_height - 20) {
-					height = table.height() - (form_height - window_height) - 20;
-					if (height > 450) {
-						height = 450;
-					}
-					if (height < 200) {
-						height = 200;
-					}
-					table.height(height);
-					table.item.update_controls();
-				}			
-			}
-		});
-	}
-	
-	var timeOut;
-	
-	function resize(task) {
-		clearTimeout(timeOut);
-		timeOut = setTimeout(function() {
-			task.all(function(item) {
-				  if (item.view_form) {
-					  resize_view_table(item);
-				  }
-				  if (item.edit_form) {
-					  resize_edit_table(item, true);
-				  }
-			});
-		},
-		200);
-	}
 	this.on_page_loaded = on_page_loaded;
+	this.set_theme = set_theme;
+	this.get_theme = get_theme;
 	this.on_view_form_created = on_view_form_created;
-	this.on_view_form_close_query = on_view_form_close_query;
+	this.on_view_form_closed = on_view_form_closed;
 	this.on_edit_form_created = on_edit_form_created;
-	this.on_edit_form_shown = on_edit_form_shown;
 	this.on_edit_form_close_query = on_edit_form_close_query;
 	this.on_filter_form_created = on_filter_form_created;
 	this.on_param_form_created = on_param_form_created;
@@ -316,94 +366,43 @@ function Events1() { // demo
 	this.on_view_form_keyup = on_view_form_keyup;
 	this.on_edit_form_keyup = on_edit_form_keyup;
 	this.create_print_btns = create_print_btns;
-	this.resize_view_table = resize_view_table;
-	this.resize_edit_table = resize_edit_table;
-	this.resize = resize;
 }
 
 task.events.events1 = new Events1();
-
-function Events3() { // demo.journals 
-
-	function on_view_form_created(item) {
-		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});	
-		if (!item.on_filters_applied) {
-			item.on_filters_applied = function() {
-				item.view_form.find("#filter-text").text(item.get_filter_text());		
-			};
-		}
-		setTimeout(
-			function() {
-				item.view_form.find('.dbtable.' + item.item_name + ' .inner-table').focus();
-			},
-			100
-		);	
-	}
-	this.on_view_form_created = on_view_form_created;
-}
-
-task.events.events3 = new Events3();
 
 function Events2() { // demo.catalogs 
 
 	function on_view_form_created(item) {
 		var timeOut,
 			i,
-			select,
 			search,
 			captions = [],
 			field,
-			field_ID;
+			search_field;
 		if (item.default_field) {
-			field_ID = item.default_field.ID + '';
+			search_field = item.default_field.field_name;
 			if (item.lookup_field && item.lookup_field.value && !item.lookup_field.multi_select) {
-				item.view_form.find("#selected-value")
+				item.view$("#selected-value")
 					.text(item.lookup_field.display_text)
 					.click(function() {
-						item.view_form.find('#input-find').val(item.lookup_field.lookup_text);
+						item.view$('#input-find').val(item.lookup_field.lookup_text);
 						item.search(item.default_field.field_name, item.lookup_field.lookup_text);
 					});
-				item.view_form.find("#selected-div").show();
+				item.view$("#selected-div").show();
 			}
-			search = item.view_form.find(".view-title input");
-			select = item.view_form.find(".view-title select");
-			item.each_field(function(field) {
-				if (!field.system_field() && field.lookup_type === 'text') {
-					captions.push([field.field_caption, field.ID]);
-				}
-			});
-			if (captions.length === 0) {
-				item.view_form.find("#title-right .form-inline").hide();
-			} 
-			else if (captions.length === 1) {
-				field_ID = item.field_by_ID(captions[0][1]).ID;
-				select.hide();
-			}
-			else {
-				captions.sort(function(a, b){
-					if (a[0] < b[0]) return -1;
-					if (a[0] > b[0]) return 1;
-					return 0;
-				});
-		
-				for (i = 0; i < captions.length; i++) {
-					field = item.field_by_ID(captions[i][1]);
-					select.append('<option value="' + field.ID + '' + '">' + field.field_caption + '</option>');
-				}
-				select.val(field_ID);
-			}
+			item.view$('#title-right label').html('Seach by <b>' + item.field_by_name(search_field).field_caption + '</b>');
+			search = item.view$(".view-title input");
 			search.on('input', function() {
-				var field;
+				var input = $(this);
 				search.css('font-weight', 'normal');
-				var where = {},
-					input = $(this);
-				if (select.is(':visible')) {
-					field_ID = parseInt(select.val());
-				}
-				field = item.field_by_ID(field_ID);
 				clearTimeout(timeOut);
 				timeOut = setTimeout(function() {
-						item.search(field.field_name, input.val(), function() {
+						var field = item.field_by_name(search_field),
+							search_type = 'contains_all';
+						if (field.lookup_type !== 'text') {
+							search_type = 'eq';
+						}
+						item.search(search_field, input.val(), search_type, function() {
 							search.css('font-weight', 'bold');
 						});
 					},
@@ -416,7 +415,7 @@ function Events2() { // demo.catalogs
 					e.preventDefault();
 				}
 				else if (code === 40) {
-					item.view_form.find(".inner-table").focus();
+					item.view$(".inner-table").focus();
 					e.preventDefault();
 				}
 			});
@@ -431,14 +430,27 @@ function Events2() { // demo.catalogs
 					}
 				}
 			});
+	
+			item.view_form.off('click.search', '.dbtable.' + item.item_name + ' .inner-table td');		
+			item.view_form.on('click.search', '.dbtable.' + item.item_name + ' .inner-table td', function() {
+				var field;
+				search_field = $(this).data('field_name');
+				field = item.field_by_name(search_field);
+				if (field && !field.lookup_values && field.lookup_type !== "blob" && field.lookup_type !== "boolean") {
+					item.view$('#title-right label').html('Seach by <b>' + item.field_by_name(search_field).field_caption + '</b>');
+					item.view$(".view-title input").val('');
+				}
+			});
 		}
 		else {
-			item.view_form.find("#title-right .form-inline").hide();
+			item.view$("#title-right .form-inline").hide();
 		}
 	}
 	
 	function isCharCode(code) {
-		if (code >= 65 && code <= 90 || code >= 186 && code <= 192 || code >= 219 && code <= 222) {
+		if (code >= 48 && code <= 57 || code >= 96 && code <= 105 || 
+			code >= 65 && code <= 90 || code >= 186 && code <= 192 || 
+			code >= 219 && code <= 222) {
 			return true;
 		}
 	}
@@ -447,10 +459,10 @@ function Events2() { // demo.catalogs
 		setTimeout(
 			function() {
 				if (item.default_field) {
-					item.view_form.find(".view-title input").focus();
+					item.view$(".view-title input").focus();
 				}
 				else {
-					item.view_form.find('.dbtable.' + item.item_name + ' .inner-table').focus();
+					item.view$('.dbtable.' + item.item_name + ' .inner-table').focus();
 				}
 			},
 			100
@@ -463,27 +475,60 @@ function Events2() { // demo.catalogs
 
 task.events.events2 = new Events2();
 
+function Events3() { // demo.journals 
+
+	function on_view_form_created(item) {
+		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});	
+		if (!item.on_filters_applied) {
+			item.on_filters_applied = function() {
+				if (item.view_form) {
+					item.view_form.find("#filter-text").text(item.get_filter_text());		
+				}
+			};
+		}
+		setTimeout(
+			function() {
+				item.view_form.find('.dbtable.' + item.item_name + ' .inner-table').focus();
+			},
+			100
+		);	
+	}
+	this.on_view_form_created = on_view_form_created;
+}
+
+task.events.events3 = new Events3();
+
+function Events15() { // demo.catalogs.tracks 
+
+	function init_table(item, options) {
+		options.row_line_count = 2;
+		options.expand_selected_row = 3;
+		options.column_width = {'artist': '7%'};
+	}
+	
+	function on_edit_form_created(item) {
+		item.edit_options.width = 900;
+		item.create_inputs(item.edit_form.find("#edit-top"), {fields: ['name']});
+		item.create_inputs(item.edit_form.find("#edit-left"), {
+			fields: ['album', 'artist', 'composer', 'media_type'],
+			label_width: 90
+		});
+		item.create_inputs(item.edit_form.find("#edit-right"), {
+			fields: ['genre', 'milliseconds', 'bytes', 'unitprice'],
+			label_width: 90
+		}); 
+	}
+	this.init_table = init_table;
+	this.on_edit_form_created = on_edit_form_created;
+}
+
+task.events.events15 = new Events15();
+
 function Events16() { // demo.journals.invoices 
 
 	function on_after_append(item) {
 		item.date.value = new Date();
 		item.taxrate.value = 5;
-	}
-	
-	function init_table(item, table_options) {
-		item.filters.invoicedate1.value = new Date(new Date().setYear(new Date().getFullYear() - 1));
-		table_options.height = $(window).height() - $('body').height() - 200 - 10;
-		if (table_options.height < 200) {
-			table_options.height = 200;
-		}
-		table_options.show_footer = true;	
-		table_options.row_callback = function(row, it) {
-			var font_weight = 'normal';
-			if (it.total.value > 10) {
-				font_weight = 'bold';
-			}
-			row.find('td.total').css('font-weight', font_weight);
-		};
 	}
 	
 	function init_inputs(item, input_options) {
@@ -493,19 +538,42 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_view_form_created(item) {
+		var height = $(window).height() - $('body').height() - 200 - 10;
+		
+		if (height < 200) {
+			height = 200;
+		}
+		
+		item.filters.invoicedate1.value = new Date(new Date().setYear(new Date().getFullYear() - 1));
+		
 		item.selections = [];	
+		
+		item.create_table(item.view_form.find(".view-master"), {
+			height: height,
+			sortable: true,
+			show_footer: true,	
+			row_callback: function(row, it) {
+				var font_weight = 'normal';
+				if (it.total.value > 10) {
+					font_weight = 'bold';
+				}
+				row.find('td.total').css('font-weight', font_weight);
+			}
+		});	
+	
 		if (item.can_delete()) {
 			item.view_form.find("#delete-btn")
 				.off('click.task')
 				.on('click', function() { delete_records(item) } );
 		}
 		
-		item.invoice_table.create_table(item.view_form.find(".view-detail"),
-			{
+		item.invoice_table.create_table(item.view_form.find(".view-detail"), {
 				height: 200 - 4, 
 				dblclick_edit: false, 
 				column_width: {'track': '25%', 'album': '25%', 'artists': '10%'}
-			});
+		});
+		
+		item.open(true);
 	}
 	
 	function delete_records(item) {
@@ -555,13 +623,14 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_edit_form_created(item) {
-		item.edit_options.width = 1050;
+		item.edit_options.width = 1100;
 		item.invoice_table.create_table(item.edit_form.find(".edit-detail"),
 			{
 				height: 450,
 				tabindex: 90,
 				editable: true,
 				editable_fields: ['track', 'quantity'],
+				selected_field: 'quantity',
 				sortable: true,
 				column_width: {'track': '25%', 'album': '25%', 'artists': '10%'}
 			});
@@ -658,7 +727,6 @@ function Events16() { // demo.journals.invoices
 		);
 	}
 	this.on_after_append = on_after_append;
-	this.init_table = init_table;
 	this.init_inputs = init_inputs;
 	this.on_view_form_created = on_view_form_created;
 	this.delete_records = delete_records;
@@ -675,56 +743,6 @@ function Events16() { // demo.journals.invoices
 }
 
 task.events.events16 = new Events16();
-
-function Events15() { // demo.catalogs.tracks 
-
-	function init_table(item, options) {
-		options.row_line_count = 2;
-		options.expand_selected_row = 3;
-		options.column_width = {'artist': '7%'};
-	}
-	
-	function on_edit_form_created(item) {
-		item.edit_options.width = 800;
-		item.create_inputs(item.edit_form.find("#edit-top"), {fields: ['name']});
-		item.create_inputs(item.edit_form.find("#edit-left"), {
-			fields: ['album', 'artist', 'composer', 'media_type'],
-			label_width: 90
-		});
-		item.create_inputs(item.edit_form.find("#edit-right"), {
-			fields: ['genre', 'milliseconds', 'bytes', 'unitprice'],
-			label_width: 90
-		}); 
-	}
-	this.init_table = init_table;
-	this.on_edit_form_created = on_edit_form_created;
-}
-
-task.events.events15 = new Events15();
-
-function Events19() { // demo.reports.invoice 
-
-	function on_before_print_report(report) {
-		report.id.value = report.task.invoices.id.value;
-	}
-	this.on_before_print_report = on_before_print_report;
-}
-
-task.events.events19 = new Events19();
-
-function Events20() { // demo.reports.purchases_report 
-
-	function on_param_form_created( report ) {
-		var now = new Date();
-		if (!report.invoicedate1.value) {
-			report.invoicedate1.value = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-			report.invoicedate2.value = now;
-		}
-	}
-	this.on_param_form_created = on_param_form_created;
-}
-
-task.events.events20 = new Events20();
 
 function Events18() { // demo.journals.invoices.invoice_table 
 
@@ -752,5 +770,140 @@ function Events18() { // demo.journals.invoices.invoice_table
 }
 
 task.events.events18 = new Events18();
+
+function Events19() { // demo.reports.invoice 
+
+	function on_before_print_report(report) {
+		report.id.value = report.task.invoices.id.value;
+	}
+	this.on_before_print_report = on_before_print_report;
+}
+
+task.events.events19 = new Events19();
+
+function Events20() { // demo.reports.purchases_report 
+
+	function on_param_form_created( report ) {
+		var now = new Date();
+		if (!report.invoicedate1.value) {
+			report.invoicedate1.value = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+			report.invoicedate2.value = now;
+		}
+	}
+	this.on_param_form_created = on_param_form_created;
+}
+
+task.events.events20 = new Events20();
+
+function Events24() { // demo.analytics.dashboard 
+
+	function on_view_form_created(item) {
+		show_cusomers(item, item.view$('#cutomers-canvas')[0].getContext('2d')),
+		show_tracks(item, item.view$('#tracks-canvas')[0].getContext('2d'));
+	}
+	
+	function show_cusomers(item, ctx) {
+		var inv = item.task.invoices.copy({handlers: false});
+		inv.open(
+			{
+				fields: ['customer', 'total'], 
+				funcs: {total: 'sum'},
+				group_by: ['customer'],
+				order_by: ['-total'],
+				limit: 10
+			}, 
+			function() {
+				var labels = [],
+					data = [],
+					colors = [];
+				inv.each(function(i) {
+					labels.push(i.customer.display_text);
+					data.push(i.total.value.toFixed(2));
+					colors.push(lighten('#006bb3', (i.rec_no - 1) / 10));
+				});
+				inv.first();
+				draw_chart(item, ctx, labels, data, colors, 'Ten most active customers');
+				inv.create_table(item.view$('#customer-table'), 
+					{row_count: 10, dblclick_edit: false});		
+			}
+		);
+		return inv;
+	}
+	
+	function show_tracks(item, ctx) {
+		var tracks = item.task.tracks.copy({handlers: false});
+		tracks.open(
+			{
+				fields: ['name', 'tracks_sold'], 
+				order_by: ['-tracks_sold'],
+				limit: 10
+			}, 
+			
+			function() {
+				var labels = [],
+					data = [],
+					colors = [];
+				tracks.each(function(t) {
+					labels.push(t.name.display_text);
+					data.push(t.tracks_sold.value);
+					colors.push(lighten('#196619', (t.rec_no - 1) / 10));
+				});
+				tracks.first();
+				tracks.name.field_caption = 'Track';
+				draw_chart(item, ctx, labels, data, colors, 'Ten most popular tracks');
+				tracks.create_table(item.view$('#tracks-table'), 
+					{row_count: 10, dblclick_edit: false});
+			}
+		);
+		return tracks;
+	}
+	
+	function draw_chart(item, ctx, labels, data, colors, title) {
+		new Chart(ctx,{
+			type: 'pie',
+			data: {
+				labels: labels,
+				datasets: [
+					{
+						data: data,
+						backgroundColor: colors
+					}
+				]					
+			},
+			options: {
+				 title: {
+					display: true,
+					fontsize: 14,
+					text: title
+				},
+				legend: {
+					position: 'bottom',
+				},
+			}
+		});
+	}
+	
+	function lighten(color, luminosity) {
+		color = color.replace(/[^0-9a-f]/gi, '');
+		if (color.length < 6) {
+			color = color[0]+ color[0]+ color[1]+ color[1]+ color[2]+ color[2];
+		}
+		luminosity = luminosity || 0;
+		var newColor = "#", c, i, black = 0, white = 255;
+		for (i = 0; i < 3; i++) {
+			c = parseInt(color.substr(i*2,2), 16);
+			c = Math.round(Math.min(Math.max(black, c + (luminosity * white)), white)).toString(16);
+			newColor += ("00"+c).substr(c.length);
+		}
+		return newColor; 
+	}
+	this.on_view_form_created = on_view_form_created;
+	this.show_cusomers = show_cusomers;
+	this.show_tracks = show_tracks;
+	this.draw_chart = draw_chart;
+	this.lighten = lighten;
+}
+
+task.events.events24 = new Events24();
 
 })(jQuery, task)

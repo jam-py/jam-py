@@ -237,6 +237,7 @@ class AbstrItem(AbstractItem):
         info['default_order'] = self._order_by
         info['primary_key'] = self._primary_key
         info['deleted_flag'] = self._deleted_flag
+        info['virtual_table'] = self.virtual_table
         info['master_id'] = self._master_id
         info['master_rec_id'] = self._master_rec_id
         info['keep_history'] = self.keep_history

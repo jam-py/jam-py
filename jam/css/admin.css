@@ -1,4 +1,22 @@
 
+.form-horizontal .control-group {
+    margin-bottom: 0;
+    margin-top: 0;
+}
+
+.dbtree li.selected-focused > div span.tree-text {
+     color: #ffffff;
+    text-decoration: none;
+    background-color: #0081c2;
+    background-image: -moz-linear-gradient(top, #0088cc, #0077b3);
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#0088cc), to(#0077b3));
+    background-image: -webkit-linear-gradient(top, #0088cc, #0077b3);
+    background-image: -o-linear-gradient(top, #0088cc, #0077b3);
+    background-image: linear-gradient(to bottom, #0088cc, #0077b3);
+    background-repeat: repeat-x;
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff0088cc', endColorstr='#ff0077b3', GradientType=0);
+}
+
 .title-panel {
   padding: 14px 15px 15px;
   margin-bottom: 0;
@@ -42,7 +60,7 @@
 .vert-btn {
     margin-left: 20px;
     margin-top: 1px;
-    margin-bottom: 1px;
+    margin-bottom: 4px;
     width: 160px;
 }
 
@@ -66,7 +84,7 @@
     margin-top: 16px;
 }
 
-.fields-grid .table-bordered td {
+.fields-grid .inner-table td {
     border: 0;
 }
 
@@ -124,13 +142,6 @@
 
 #editor-tabs > .nav-tabs {
     margin-bottom: 4px;
-}
-
-.dbtree {
-    font-size: 12px;
-    padding-top: 2px;
-    padding-left: 2px;
-    padding-right: 2px;
 }
 
 .code_error {

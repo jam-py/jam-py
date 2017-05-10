@@ -56,6 +56,7 @@ function Events0() { // admin
 	function refresh_tree(task, item_id) {
 		task.server('server_update_has_children', []);
 		task.item_tree.set_where({has_children: true});
+		task.item_tree.set_order_by(['type_id', 'f_index']);
 		task.item_tree.open({fields: ['id', 'parent', 'f_name', 'type_id', 'task_id']});
 		task.item_tree.locate('type_id', item_types.TASK_TYPE);
 		task.tree.expand(task.tree.selected_node);
@@ -948,7 +949,8 @@ function Events3() { // admin.catalogs.sys_items
 		else if (task.item_tree.type_id.value === task.item_types.ITEM_TYPE ||
 			task.item_tree.type_id.value === task.item_types.TABLE_TYPE) {
 			item.view_options.fields = ['id', 'f_name', 'f_item_name', 'f_table_name'];
-			item.edit_options.fields = ['f_name', 'f_item_name', 'f_keep_history'];
+	//		item.edit_options.fields = ['f_name', 'f_item_name', 'f_keep_history'];
+			item.edit_options.fields = ['f_name', 'f_item_name'];
 		}
 	}
 	
@@ -1216,7 +1218,8 @@ function Events3() { // admin.catalogs.sys_items
 					row_count = 7;
 				}
 			}
-			fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_keep_history', 'f_js_external'])
+	//		fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_keep_history', 'f_js_external'])
+			fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_js_external'])
 		}
 		if (item.type_id.value === types.ITEMS_TYPE || item.type_id.value === types.TABLES_TYPE) {
 			item.fields_editor = true;
@@ -1519,6 +1522,11 @@ function Events3() { // admin.catalogs.sys_items
 			else {
 				item.f_soft_delete.value = false;
 				item.f_soft_delete.read_only = true;
+			}
+		}
+		if (field.field_name === 'f_virtual_table') {
+			if (field.value) {
+				item.f_table_name.value = null;
 			}
 		}
 	}

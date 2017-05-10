@@ -70,8 +70,8 @@
             "UPDATE_CLOSE": 8,
             "UPDATE_STATE": 9
         },
-        alignValue = ['', 'left', 'center', 'right'],
-        filterValue = ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in',
+        align_value = ['', 'left', 'center', 'right'],
+        filter_value = ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in',
             'range', 'isnull', 'exact', 'contains', 'startwith', 'endwith',
             'contains_all'
         ];
@@ -99,7 +99,7 @@
             this.js_filename = 'js/' + js_filename;
         }
         this.modal_options = {
-            width: 560,
+            width: undefined,
             left: undefined,
             top: undefined,
             close_focusout: false,
@@ -360,6 +360,22 @@
             for (; i < len; i++) {
                 this.items[i].bind_events();
             }
+        },
+
+        view$: function(selector) {
+            return this.view_form.find(selector);
+        },
+
+        edit$: function(selector) {
+            return this.edit_form.find(selector);
+        },
+
+        filter$: function(selector) {
+            return this.filter_form.find(selector);
+        },
+
+        param$: function(selector) {
+            return this.param_form.find(selector);
         },
 
         can_view: function() {
@@ -771,7 +787,6 @@
                     text_center: false,
                     button_min_width: 100,
                     center_buttons: false,
-                    close_on_click: true,
                     close_button: true,
                     close_on_escape: true
                 },
@@ -830,20 +845,17 @@
                         .click(function(e) {
                             var key = $(this).data('key');
                             setTimeout(function() {
-                                if (buttons[key]) {
                                     try {
-                                        buttons[key].call(self);
+                                        if (buttons[key]) {
+                                            buttons[key].call(self);
+                                        }
                                     }
                                     catch (e) {}
-                                    if (options.close_on_click) {
-                                        $element.modal('hide');
-                                    }
-                                }
-                                else {
                                     $element.modal('hide');
-                                }
-                            },
-                            0);
+                                },
+                                0
+                            );
+
                         })
                     );
                     tab++;
@@ -2933,7 +2945,7 @@
                     } else {
                         filter_str = 'eq';
                     }
-                    filter_type = filterValue.indexOf(filter_str);
+                    filter_type = filter_value.indexOf(filter_str);
                     if (filter_type !== -1) {
                         filter_type += 1
                     } else {
@@ -3047,9 +3059,9 @@
                 }
                 if (params.__search !== undefined) {
                     var field_name = params.__search[0],
-                        text = params.__search[1];
-
-                    filters.push([field_name, consts.FILTER_CONTAINS_ALL, text]);
+                        text = params.__search[1],
+                        filter_type = params.__search[2];
+                    filters.push([field_name, filter_type, text]);
                 }
                 if (this.filter_selected) {
                     filters.push([this._primary_key, consts.FILTER_IN, this.selections]);
@@ -3061,6 +3073,12 @@
                     params.__order = this._order_by_list.slice(0);
                 } else if (this._default_order) {
                     params.__order = this._default_order.slice();
+                    for (var i = 0; i < params.__order.length; i++) {
+                        if (!this.field_by_ID(params.__order[i][0])) {
+                            params.__order = [];
+                            break;
+                        }
+                    }
                 }
                 this._where_list = [];
                 this._order_by_list = [];
@@ -3145,7 +3163,6 @@
                 open_empty,
                 funcs,
                 group_by,
-                update_controls,
                 params,
                 callback,
                 log,
@@ -3167,13 +3184,9 @@
                 limit = options.limit;
                 funcs = options.funcs;
                 group_by = options.group_by;
-                update_controls = options.update_controls;
             }
             if (!params) {
                 params = {};
-            }
-            if (update_controls === undefined) {
-                update_controls = true;
             }
             if (expanded === undefined) {
                 expanded = this.expanded;
@@ -3247,9 +3260,7 @@
                 if ((!self.paginate || self.paginate && offset === 0) && self.on_filters_applied) {
                     self.on_filters_applied.call(self, self);
                 }
-                if (update_controls) {
-                    self.update_controls(consts.UPDATE_OPEN);
-                }
+                self.update_controls(consts.UPDATE_OPEN);
                 if (callback) {
                     callback.call(self, self);
                 }
@@ -3306,31 +3317,6 @@
             }
 
         },
-
-        //~ reopen: function(callback) {
-            //~ if (callback) {
-                //~ if (this.paginate) {
-                    //~ this.open({
-                        //~ params: this._open_params,
-                        //~ offset: this._open_params.__offset,
-                    //~ });
-                //~ }
-                //~ else {
-                    //~ this.open();
-                //~ }
-            //~ else {
-                //~ if (this.paginate) {
-                    //~ this.open({
-                        //~ params: this._open_params,
-                        //~ offset: this._open_params.__offset,
-                        //~ update_controls: false
-                    //~ });
-                //~ }
-                //~ else {
-                    //~ this.open();
-                //~ }
-            //~ }
-        //~ },
 
         _do_close: function() {
             this._active = false;
@@ -3422,44 +3408,42 @@
                 }
                 return 0;
             }
+
             this._dataset.sort(compare_records);
             this.update_controls();
         },
 
-        search: function(field_name, text, callback) {
-            var searchText = text.trim(),
+        search: function() {
+            var args = this._check_args(arguments),
+                callback = args['function'],
+                field_name = arguments[0],
+                text = arguments[1].trim(),
+                filter,
+                filter_type,
                 params = {};
+            if (callback) {
+                if (arguments.length === 4) {
+                    filter = arguments[2];
+                }
+            }
+            else if (arguments.length === 3) {
+                filter = arguments[2];
+            }
+            if (filter) {
+                filter_type = filter_value.indexOf(filter) + 1;
+            }
+            else {
+                filter_type = consts.FILTER_CONTAINS_ALL;
+            }
 
-            if (searchText.length) {
-                params.__search = [field_name, searchText];
+            if (text.length) {
+                params.__search = [field_name, text, filter_type];
                 this.open({params: params}, callback);
             } else {
                 this.open();
                 callback.call(this, this)
             }
         },
-
-        //~ search: function(field_name, text, filter_type, callback) {
-            //~ var args = this._check_args(arguments),
-                //~ callback = args['function'],
-                //~ field_name,
-                //~ text,
-                //~ filter_type,
-                //~ search_text,
-                //~ params = {};
-            //~ for (i = 0; i < arguments.length; i++) {
-                //~ if (arguments[i] !== callback) {
-                //~ }
-            //~ }
-            //~ search_text = text.trim(),
-            //~ if (search_text.length) {
-                //~ params.__search = [field_name, search_text];
-                //~ this.open({params: params}, callback);
-            //~ } else {
-                //~ this.open();
-                //~ callback.call(this, this)
-            //~ }
-        //~ },
 
         total_records: function(callback) {
             var self = this;
@@ -4404,12 +4388,11 @@
 
         delete_record: function(callback) {
             var self = this,
-                message,
                 rec_no = self._get_rec_no(),
                 record = self._dataset[rec_no];
             if (this.can_delete()) {
                 if (this.record_count() > 0) {
-                    message = this.question(language.delete_record, function() {
+                    this.question(language.delete_record, function() {
                         self["delete"]();
                         this.apply(function(e) {
                             var error;
@@ -4431,9 +4414,7 @@
                                 }
                             }
                         });
-                        this.hide_message(message);
-                    },
-                    null, {close_on_click: false});
+                    });
                 } else {
                     this.warning(language.no_record);
                 }
@@ -4884,7 +4865,7 @@
 
             container.empty();
 
-            form = $('<form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").appendTo(container));
+            form = $('<form class="row-fluid well" autocomplete="off"></form>').appendTo($("<div></div>").appendTo(container));
             if (options.autocomplete) {
                 form.attr("autocomplete", "on")
             }
@@ -5437,8 +5418,8 @@
     function Detail(owner, ID, item_name, caption, visible, type, js_filename) {
         Item.call(this, owner, ID, item_name, caption, visible, type, js_filename);
 
-        this.master = owner;
         if (owner) {
+            this.master = owner;
             owner.details.push(this);
             owner.details[item_name] = this;
         }
@@ -6214,7 +6195,7 @@
                     if (self.filter && self.filter.owner.on_filter_select_value) {
                         self.filter.owner.on_filter_select_value.call(self.filter.owner, self.filter, lookup_item);
                     }
-                    params.__search = [self.lookup_field, query];
+                    params.__search = [self.lookup_field, query, consts.FILTER_CONTAINS_ALL];
                     lookup_item.open({limit: length, params: params}, function(item) {
                         var data = [],
                             field = item.field_by_name(self.lookup_field);
@@ -6251,7 +6232,7 @@
                     if (self.filter && self.filter.owner.on_filter_select_value) {
                         self.filter.owner.on_filter_select_value.call(self.filter.owner, self.filter, lookup_item);
                     }
-                    params.__search = [self.lookup_field, query];
+                    params.__search = [self.lookup_field, query, consts.FILTER_CONTAINS_ALL];
                     lookup_item.open({limit: items, params: params}, function(item) {
                         var data = [],
                             field = item.field_by_name(self.lookup_field);
@@ -7250,7 +7231,8 @@
             var self = this,
                 default_options = {
                     table_class: undefined,
-                    height: 480,
+                    height: undefined,
+                    row_count: undefined,
                     fields: [],
                     column_width: {},
                     title_word_wrap: false,
@@ -7289,6 +7271,9 @@
             this.id = item.task.gridId++;
             this.$container = container;
             this.options = $.extend({}, default_options, options);
+            if (!this.options.height && !this.options.row_count) {
+                this.options.height = 480;
+            }
             if (this.options.row_line_count < 1) {
                 this.options.row_line_count = 1;
             }
@@ -7314,9 +7299,22 @@
             }
             this.$element.data('dbtable', this);
             this.item.controls.push(this);
+
+            this.resize_id = 'resize.dbtable-' + this.item.item_name + this.id;
+            $(window).on(this.resize_id, function() {
+                clearTimeout(self.timeOut);
+                self.timeOut = setTimeout(
+                    function() {
+                        self.build();
+                    },
+                    100
+                );
+            });
             this.$element.bind('destroyed', function() {
+                $(window).off(self.resize_id);
                 self.item.controls.splice(self.item.controls.indexOf(self), 1);
             });
+
             this.$container.empty();
             this.$element.appendTo(this.$container);
             this.createTable();
@@ -7604,7 +7602,7 @@
                 '       <tr><th>&nbsp</th></tr>' +
                 '   </tfoot>' +
                 '   <tr>' +
-                '       <td id="top-td" style="padding: 0; border: 0" colspan=' + this.colspan + '>' +
+                '       <td id="top-td" style="padding: 0;" colspan=' + this.colspan + '>' +
                 '           <div class="overlay-div" style="height: 100px; width: 100%; overflow-y: auto; overflow-x: hidden;">' +
                 '               <table class="inner-table" style="width: 100%"></table>' +
                 '           </div>' +
@@ -7947,14 +7945,18 @@
             $element.remove();
 
             this.$scroll_div.height(this.options.height - (elementHeight - scrollDivHeight));
-
             if (this.item.paginate) {
-                scrollDivHeight = this.$scroll_div.innerHeight() + margin;
-                if (this.options.expand_selected_row) {
-                    this.selected_row_height = row_height + (this.options.expand_selected_row - 1) * this.textHeight;
-                    scrollDivHeight = this.$scroll_div.height() - this.selected_row_height + margin;
+                if (this.options.row_count) {
+                    this.row_count = this.options.row_count;
                 }
-                this.row_count = Math.floor(scrollDivHeight / this.row_height);
+                else {
+                    scrollDivHeight = this.$scroll_div.innerHeight() + margin;
+                    if (this.options.expand_selected_row) {
+                        this.selected_row_height = row_height + (this.options.expand_selected_row - 1) * this.textHeight;
+                        scrollDivHeight = this.$scroll_div.height() - this.selected_row_height + margin;
+                    }
+                    this.row_count = Math.floor(scrollDivHeight / this.row_height);
+                }
                 if (this.options.expand_selected_row) {
                     this.row_count += 1;
                 }
@@ -7962,6 +7964,9 @@
                     this.row_count = 1;
                 }
                 this.item._limit = this.row_count;
+            }
+            else if (this.options.row_count) {
+                this.$scroll_div.height(this.row_height * this.options.row_count);
             }
         },
 
@@ -8223,7 +8228,9 @@
             if ($element === undefined) {
                 $element = this.$element
             }
-
+            if (!this._sorted_fields) {
+                this._sorted_fields = [];
+            }
             len = this._sorted_fields.length;
             for (i = 0; i < len; i++) {
                 try {
@@ -8249,11 +8256,11 @@
                     div.append(sel_count);
                     input = $('<input class="multi-select-header" type="checkbox" ' + checked + ' tabindex="-1">');
                     div.append(input);
-                    cell = $('<th class="bottom-border multi-select-header"></th>').append(div);
+                    cell = $('<th class="multi-select-header"></th>').append(div);
                     cellWidth = this.getCellWidth('multi-select');
                     if (cellWidth && this.fields.length) {
                         cell.width(cellWidth);
-                        div.width(cellWidth);
+                        div.width('auto');
                     }
                     heading.append(cell);
                 }
@@ -8306,14 +8313,14 @@
                     });
                     this.selection_block = bl;
                     this.$element.prepend(bl)
-                    cell = $('<th class="bottom-border multi-select"></th>').append(div);
+                    cell = $('<th class="multi-select"></th>').append(div);
                     cellWidth = this.getCellWidth('multi-select');
                     if (cellWidth && this.fields.length) {
                         cell.width(cellWidth);
-                        div.width(cellWidth);
+                        div.width('auto');
                     }
                     heading.append(cell);
-                    div.css('min-height', 46);
+                    div.css('min-height', 50);
                     cell.css('padding-top', 0);
                     input.css('top', sel_count.outerHeight() + sel_count.position().top + 4);
                     input.css('left', (cell.outerWidth() - input.width()) / 2 + 1);
@@ -8324,22 +8331,23 @@
                 field = this.fields[i];
                 div = $('<div class="text-center ' + field.field_name +
                     '" style="overflow: hidden"><p>' + field.field_caption + '</p></div>');
-                cell = $('<th class="' + field.field_name + '" data-field_name="' + field.field_name + '" bottom-border"></th>').append(div);
+                cell = $('<th class="' + field.field_name + '" data-field_name="' + field.field_name + '"></th>').append(div);
                 if (!this.options.title_word_wrap) {
                     div.css('height', this.textHeight);
                     cell.css('height', this.textHeight);
                 }
                 cellWidth = this.getCellWidth(field.field_name);
-//                if (cellWidth && (i < this.fields.length - 1)) {
+                if (cellWidth && (i < this.fields.length - 1)) {
                     cell.width(cellWidth);
-                    div.width(cellWidth);
-//                }
+                    div.width('auto');
+                }
                 if (order_fields[field.field_name]) {
                     cell.find('p').append('<i class="' + order_fields[field.field_name] + '"></i>');
                     cell.find('i').css('margin-left', 2)
                 }
                 heading.append(cell);
             }
+            heading.append('<th class="fake-column" style="display: None;></th>');
             if (this.options.title_callback) {
                 this.options.title_callback(heading, this.item)
             }
@@ -8363,7 +8371,7 @@
             old_footer = footer.clone();
             footer.empty();
             if (this.item.selections) {
-                div = $('<div class="text-center multi-select" style="overflow: hidden"></div>')
+                div = $('<div class="text-center multi-select" style="overflow: hidden; width: 100%"></div>')
                 cell = $('<th class="multi-select"></th>').append(div);
                 footer.append(cell);
             }
@@ -8371,7 +8379,7 @@
             for (i = 0; i < len; i++) {
                 field = this.fields[i];
                 div = $('<div class="text-center ' + field.field_name +
-                    '" style="overflow: hidden">&nbsp</div>');
+                    '" style="overflow: hidden; width: 100%">&nbsp</div>');
                 old_div = old_footer.find('div.' + field.field_name)
                 if (old_div.length) {
                     div.html(old_div.html());
@@ -8476,15 +8484,13 @@
                 update,
                 build,
                 text,
-                div,
-                span;
+                div;
             if (this.item.active && this.item.controls_enabled() && this.item.record_count()) {
                 div = row.find('div.' + field.field_name);
                 if (div.length) {
-                    span = div.find('span');
                     text = this.get_field_text(field);
-                    if (text !== span.text()) {
-                        span.text(text);
+                    if (text !== div.text()) {
+                        div.text(text);
                         if (this.item.is_new() && this.item.record_count() < 10) {
                             update = true;
                         }
@@ -8523,42 +8529,6 @@
                             this.update_selected(row);
                         }
                     }
-                }
-            }
-        },
-
-        syncColWidth: function() {
-            var $row,
-                field,
-                $th,
-                $td,
-                i,
-                width,
-                len = this.fields.length;
-            if (this.item.record_count()) {
-                $row = this.$table.find("tr:first-child");
-                if (this.item.selections) {
-                    $th = this.$head.find('th.' + 'multi-select');
-                    $td = $row.find('td.' + 'multi-select');
-                    width = $th.find('div').width()
-                    $th.find('div').width(width)
-                    $td.find('div').width(width);
-                    width = $th.width();
-                    $th.width(width);
-                    $td.width(width);
-                }
-//                for (i = 0; i < len - 1; i++) {
-                for (i = 0; i < len; i++) {
-                    field = this.fields[i];
-                    $th = this.$head.find('th.' + field.field_name);
-                    $td = $row.find('td.' + field.field_name);
-
-                    width = $th.find('div').width()
-                    $th.find('div').width(width)
-                    $td.find('div').width(width);
-                    width = $th.width();
-                    $th.width(width);
-                    $td.width(width);
                 }
             }
         },
@@ -9018,19 +8988,20 @@
             var cellWidth = this.getCellWidth(columnName),
                 classStr = 'class="' + columnName + '"',
                 dataStr = 'data-field_name="' + columnName + '"',
-                tdStyleStr = 'style="text-align:' + align + ';overflow: hidden' + '"',
+                tdStyleStr = 'style="text-align:' + align + ';overflow: hidden',
                 divStyleStr = 'style="overflow: hidden';
             if (this.textHeight) {
-                divStyleStr += '; height: ' + this.options.row_line_count * this.textHeight + 'px';
+                divStyleStr += '; height: ' + this.options.row_line_count * this.textHeight + 'px; width: auto';
             }
             if (setFieldWidth && cellWidth && (index < this.fields.length - 1)) {
-                divStyleStr += '; width: ' + cellWidth + 'px';
+                tdStyleStr += '; width: ' + cellWidth + 'px';
             }
+            tdStyleStr +=  '""';
             divStyleStr += '"';
             return '<td ' + classStr + ' ' + dataStr + ' ' + tdStyleStr + '>' +
-                '<div ' + classStr + ' ' + divStyleStr + '>' +
-                '<span ' + divStyleStr + '>' + text +
-                '</span>' +
+                '<div ' + classStr + ' ' + divStyleStr + '>' + text
+                //~ '<span ' + divStyleStr + '>' + text +
+                //~ '</span>' +
                 '</div>' +
                 '</td>';
         },
@@ -9061,9 +9032,10 @@
                     f = this.item.field_by_name(field.field_name);
                 }
                 text = this.get_field_text(f);
-                align = f.data_type === consts.BOOLEAN ? 'center' : alignValue[f.alignment]
+                align = f.data_type === consts.BOOLEAN ? 'center' : align_value[f.alignment]
                 rowStr += this.newColumn(f.field_name, align, text, i, setFieldWidth);
             }
+            rowStr += '<td class="fake-column" style="display: None;"></td>'
             return '<tr class="inner">' + rowStr + '</tr>';
         },
 
@@ -9075,6 +9047,81 @@
                 return element.width()
             } else {
                 return this.getElementWidth(element.parent())
+            }
+        },
+
+        syncColWidth: function(all_cols) {
+            var $row,
+                field,
+                $th,
+                $td,
+                i,
+                count,
+                width,
+                len = this.fields.length;
+            if (this.item.record_count()) {
+                $row = this.$table.find("tr:first-child");
+                if (this.item.selections) {
+                    $th = this.$head.find('th.' + 'multi-select');
+                    $td = $row.find('td.' + 'multi-select');
+                    width = $th.width();
+                    $th.width(width);
+                    $td.width(width);
+                }
+                count = len - 1;
+                if (all_cols) {
+                    count = len;
+                }
+                for (i = 0; i < count; i++) {
+                    field = this.fields[i];
+                    $th = this.$head.find('th.' + field.field_name);
+                    $td = $row.find('td.' + field.field_name);
+
+                    width = $th.width();
+                    $th.width(width);
+                    $td.width(width);
+                }
+                if (all_cols) {
+                    return;
+                }
+                if (this.fields.length) {
+                    field = this.fields[len - 1];
+                    $th = this.$head.find('th.' + field.field_name);
+                    if ($th.width() < 0) {
+                        this.$head.find('th.' + 'fake-column').show();
+                        this.$table.find('td.' + 'fake-column').show();
+                        this.set_saved_width($row, true);
+                        this.syncColWidth(true);
+                    }
+                    else {
+                        this.$head.find('th.' + 'fake-column').hide();
+                        this.$table.find('td.' + 'fake-column').hide();
+                    }
+                }
+            }
+        },
+
+        set_saved_width: function(row, all_cols) {
+            var i,
+                len = this.fields.length,
+                count = len - 1,
+                field,
+                width;
+            if (this.item.selections) {
+                width = this.getCellWidth('multi-select');
+                row.find("td." + 'multi-select').width(width);
+                this.$head.find("th." + 'multi-select').width(width);
+            }
+            if (all_cols) {
+                count = len;
+            }
+            for (i = 0; i < count; i++) {
+                field = this.fields[i];
+//                if (i < this.fields.length - 1) {
+                    width = this.getCellWidth(field.field_name);
+                    row.find("td." + field.field_name).width(width);
+                    this.$head.find("th." + field.field_name).width(width);
+//                }
             }
         },
 
@@ -9097,7 +9144,7 @@
                 is_focused,
                 is_visible = this.$table.is(':visible'),
                 editable_val,
-                clone = this.item.clone(),
+                clone = this.item.clone(true),
                 container = $('<div>');
 
             is_focused = this.is_focused();
@@ -9109,6 +9156,13 @@
                 this.hideEditor();
             }
 
+            container.css("position", "absolute")
+                .css("top", -1000)
+                .width(this.getElementWidth(this.$element));
+            $('body').append(container);
+            this.$element.detach();
+            container.append(this.$element);
+
             this.$table.empty();
             this.$head.empty();
             if (this.selection_block) {
@@ -9116,14 +9170,6 @@
             }
             this.$foot.hide();
             this.$outer_table.find('#top-td').attr('colspan', this.colspan);
-
-
-            container.css("position", "absolute")
-                .css("top", -1000)
-                .width(this.getElementWidth(this.$element));
-            $('body').append(container);
-            this.$element.detach();
-            container.append(this.$element);
 
             clone.on_field_get_text = this.item.on_field_get_text;
             rows = ''
@@ -9188,41 +9234,14 @@
                 this.$outer_table.css('table-layout', 'fixed');
                 this.fillTitle(container);
                 this.createFooter(container);
-                if (this.item.selections) {
-                    cell = row.find("td." + 'multi-select');
-                    headCell = this.$head.find("th." + 'multi-select');
-                    footCell = this.$foot.find("th." + 'multi-select');
-                    cellWidth = this.getCellWidth('multi-select');
-                    cell.find('div').width(cellWidth);
-                    cell.width(cellWidth);
-                    headCell.find('div').width(cellWidth);
-                    headCell.width(cellWidth);
-                    footCell.find('div').width(cellWidth);
-                    footCell.width(cellWidth);
-                }
-                for (i = 0; i < len; i++) {
-                    field = this.fields[i];
-//                    if (i < this.fields.length - 1) {
-                    if (i < this.fields.length) {
-                        cell = row.find("td." + field.field_name);
-                        headCell = this.$head.find("th." + field.field_name);
-                        footCell = this.$foot.find("th." + field.field_name);
-                        cellWidth = this.getCellWidth(field.field_name);
-                        cell.find('div').width(cellWidth);
-                        cell.width(cellWidth);
-                        headCell.find('div').width(cellWidth);
-                        headCell.width(cellWidth);
-                        footCell.find('div').width(cellWidth);
-                        footCell.width(cellWidth);
-                    }
-                }
+                this.set_saved_width(row);
+                this.syncColWidth();
                 if (this.item.record_count() > 0 && is_visible) {
                     this.fieldWidthUpdated = true;
                 }
                 tmpRow.remove();
             } else {
                 this.fillTitle(container);
-                this.createFooter(container);
                 this.syncColWidth();
             }
 
@@ -9298,7 +9317,11 @@
                 $controls,
                 $btnCtrls,
                 $help,
-                field_type;
+                field_type,
+                inpit_btn_class = '';
+            if ($('body').css('font-size') === '12px') {
+                inpit_btn_class = ' small-btn'
+            }
             if (!field) {
                 return;
             }
@@ -9358,7 +9381,7 @@
             this.$input.keypress($.proxy(this.keypress, this));
             if (field.lookup_item && !field.master_field || field.lookup_values) {
                 $btnCtrls = $('<div class="input-prepend input-append"></div>').addClass("input-with-buttons");
-                $btn = $('<button class="btn input-button" type="button"><i class="icon-remove-sign"></button>');
+                $btn = $('<button class="btn' + inpit_btn_class + '"type="button"><i class="icon-remove-sign"></button>');
                 $btn.attr("tabindex", -1);
                 $btn.click(function() {
                     field.set_value(null);
@@ -9366,7 +9389,7 @@
                 this.$firstBtn = $btn;
                 $btnCtrls.append($btn);
                 $btnCtrls.append($input);
-                $btn = $('<button class="btn input-button" type="button"><i></button>');
+                $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i></button>');
                 $btn.attr("tabindex", -1);
                 $btn.click(function() {
                     if (field.lookup_values) {
@@ -9414,7 +9437,7 @@
                     case consts.DATE:
                     case consts.DATETIME:
                         $btnCtrls = $('<div class="input-prepend input-append"></div>').addClass("input-with-buttons");
-                        $btn = $('<button class="btn input-button" type="button"><i class="icon-remove-sign"></button>');
+                        $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i class="icon-remove-sign"></button>');
                         $btn.attr("tabindex", -1);
                         $btn.click(function() {
                             field.set_value(null);
@@ -9426,7 +9449,7 @@
                             $input.addClass("input-datetime");
                         }
                         $btnCtrls.append($input);
-                        $btn = $('<button class="btn input-button" type="button"><i class="icon-calendar"></button>');
+                        $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i class="icon-calendar"></button>');
                         $btn.attr("tabindex", -1);
                         $btn.click(function() {
                             self.showDatePicker();
@@ -9443,7 +9466,7 @@
                         $controls.append($input);
                         break;
                 }
-                align = field.data_type === consts.BOOLEAN ? 'center' : alignValue[field.alignment];
+                align = field.data_type === consts.BOOLEAN ? 'center' : align_value[field.alignment];
                 this.$input.css("text-align", align);
             }
             if (this.label_on_top) {
@@ -9459,6 +9482,15 @@
             if (container) {
                 container.append(this.$controlGroup);
             }
+
+            $controls.find('.add-on').css('padding-top',
+                parseInt($controls.find('.add-on').css('padding-top')) +
+                parseInt($controls.find('.add-on').css('border-top-width')) - 1 +
+                'px')
+            $controls.find('.add-on').css('padding-bottom',
+                parseInt($controls.find('.add-on').css('padding-bottom')) +
+                parseInt($controls.find('.add-on').css('border-bottom-width')) - 1 +
+                'px')
 
             this.$modalForm = this.$input.closest('.modal');
             this.field.controls.push(this);
@@ -9548,6 +9580,28 @@
                 this.$input.prop('disabled', value);
             }
         },
+
+        //~ set_read_only: function(value) {
+            //~ if (this.$firstBtn) {
+                //~ if (value) {
+                    //~ this.$firstBtn.removeClass('enabled');
+                //~ }
+                //~ else {
+                    //~ this.$firstBtn.addClass('enabled');
+                //~ }
+            //~ }
+            //~ if (this.$lastBtn) {
+                //~ if (value) {
+                    //~ this.$lastBtn.removeClass('enabled');
+                //~ }
+                //~ else {
+                    //~ this.$lastBtn.addClass('enabled');
+                //~ }
+            //~ }
+            //~ if (this.$input) {
+                //~ this.$input.prop('disabled', value);
+            //~ }
+        //~ },
 
         update: function() {
             var placeholder = this.field.field_placeholder,

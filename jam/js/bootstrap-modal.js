@@ -63,7 +63,7 @@
                 }
                 else {
                     if (that.options.item_options && that.options.item_options.close_focusout) {
-                        that.options.item.close_form(that.options.form_name);
+                        that.options.item._close_form(that.options.form_name);
                     }
                 }
             });

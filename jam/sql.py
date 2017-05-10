@@ -508,9 +508,10 @@ class SQL(object):
         if group_fields:
             for field_name in group_fields:
                 field = self._field_by_name(field_name)
-                result += '%s."%s", ' % (self.table_alias(), field_name)
-                if field.lookup_item:
+                if query['__expanded'] and field.lookup_item:
                     result += '%s_LOOKUP, ' % field.db_field_name
+                else:
+                    result += '%s."%s", ' % (self.table_alias(), field.db_field_name)
             if result:
                 result = result[:-2]
                 result = ' GROUP BY ' + result
@@ -521,6 +522,11 @@ class SQL(object):
     def order_clause(self, query, db_module=None):
         if query.get('__funcs') and not query.get('__group_by'):
             return ''
+        funcs = query.get('__funcs')
+        functions = {}
+        if funcs:
+            for key, value in funcs.iteritems():
+                functions[key.upper()] = value
         if db_module is None:
             db_module = self.task.db_module
         order_list = query.get('__order', [])
@@ -531,7 +537,11 @@ class SQL(object):
                 if query['__expanded'] and field.lookup_item:
                     ord_str = '%s_LOOKUP' % field.db_field_name
                 else:
-                    ord_str = '%s."%s"' % (self.table_alias(), field.db_field_name)
+                    func = functions.get(field.field_name.upper())
+                    if func:
+                        ord_str = '%s' % field.db_field_name
+                    else:
+                        ord_str = '%s."%s"' % (self.table_alias(), field.db_field_name)
                 if order[1]:
                     ord_str += ' DESC'
                 orders.append(ord_str)

@@ -913,6 +913,7 @@ def load_task(target, app, first_build=True, after_import=False):
                         item._deleted_flag = rec.f_deleted_flag.value
                         item._master_id = rec.f_master_id.value
                         item._master_rec_id = rec.f_master_rec_id.value
+                        item._sys_id = rec.sys_id.value
                         if group_type_id != common.REPORTS_TYPE:
                             common.load_interface(sys_items)
                             create_fields(item, group_id)
@@ -1051,6 +1052,8 @@ def load_task(target, app, first_build=True, after_import=False):
 
     if params.f_history_item.value:
         target.history_item = target.item_by_ID(params.f_history_item.value)
+        if target.history_item and target.history_item._sys_id != 1:
+            target.history_item = None
 
     internal_path = os.path.join(task.work_dir, 'static', '_internal')
     if os.path.exists(internal_path):
@@ -2559,6 +2562,7 @@ def update_table(delta):
         return True
 
 def init_priviliges(item, item_id):
+    item.task.execute('DELETE FROM SYS_PRIVILEGES WHERE ITEM_ID = %s' % item_id)
     priv = item.task.sys_privileges.copy(handlers=False)
     priv.open(open_empty=True)
     roles = item.task.sys_roles.copy(handlers=False)
