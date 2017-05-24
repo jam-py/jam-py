@@ -12,6 +12,8 @@ Jam.py documentation contents
 
     intro/index
     programming/index
-    admin/index    
+    faq/index
+    admin/index
     refs/index
+    releases/index
     

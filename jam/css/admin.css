@@ -1,20 +1,79 @@
+#task-tabs.nav {
+    margin-bottom: 10px;
+}
+
+#task-tabs li a {
+    color: #555555;
+}
+
+#task-tabs li.active a {
+    color: #0088cc;
+}
+
+#content {
+    border: solid 1px #eee;
+    padding: 6px;
+    -webkit-border-radius: 4px;
+        -moz-border-radius: 4px;
+            border-radius: 4px;
+}
+
+.modal {
+    width: 560px;
+}
+
+.modal.sys_items-sys_fields.edit-form {
+    width: 600px;
+}
+
+modal-footer {
+    padding: 12px 15px 13px;
+}
+
+.modal-header {
+    padding: 7px 15px;
+    border-bottom: 1px solid #eee;
+}
 
 .form-horizontal .control-group {
     margin-bottom: 0;
     margin-top: 0;
 }
 
+.modal-body {
+    padding: 8px 14px;
+}
+
+.modal .well {
+    width: auto;
+    margin: 4px 0;
+    padding-top: 8px;
+    padding-bottom: 4px;
+}
+
 .dbtree li.selected-focused > div span.tree-text {
-     color: #ffffff;
-    text-decoration: none;
-    background-color: #0081c2;
-    background-image: -moz-linear-gradient(top, #0088cc, #0077b3);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#0088cc), to(#0077b3));
-    background-image: -webkit-linear-gradient(top, #0088cc, #0077b3);
-    background-image: -o-linear-gradient(top, #0088cc, #0077b3);
-    background-image: linear-gradient(to bottom, #0088cc, #0077b3);
-    background-repeat: repeat-x;
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff0088cc', endColorstr='#ff0077b3', GradientType=0);
+    color: #333333;
+    background-color: #d9edf7;
+}
+
+.table tbody tr.selected > td:not(.field-selected) {
+    color: #333333;
+    background-color: #e5e5e5;
+}
+
+.table tbody tr.selected-focused > td:not(.field-selected-focused) {
+    color: #333333;
+    background-color: #d9edf7;
+}
+
+.table tbody td.field-selected {
+    color: #333333;
+    background-color: #cacaca;
+}
+
+.table tbody td.field-selected-focused {
+    color: #333333;
+    background-color: #b4e3fa;
 }
 
 .title-panel {
@@ -144,6 +203,10 @@
     margin-bottom: 4px;
 }
 
+.close-editor-btn:hover  {
+    background-color: #d9edf7;
+}
+
 .code_error {
     font-size: 14px;
     margin-left: 10px;
@@ -153,16 +216,6 @@
 .editor-title {
     color: #0088cc;
     margin-left: 2px;
-}
-
-.field-group {
-/*
-    margin-top: 4px;
-    margin-bottom: 4px;
-    padding-top: 8px;
-    padding-bottom: 0;
-    border: 1px solid #eee;
-*/
 }
 
 p.search {

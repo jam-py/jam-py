@@ -324,7 +324,7 @@ def create_items(task):
     task.sys_users.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_users.add_field(3, 'f_name', task.lang['name'], common.TEXT, required=True, size=128)
     task.sys_users.add_field(4, 'f_login', task.lang['login'], common.TEXT, required=True, size=128)
-    task.sys_users.add_field(5, 'f_password', task.lang['password'], common.TEXT, required=True, size=128)
+    task.sys_users.add_field(5, 'f_password', task.lang['password'], common.TEXT, required=False, size=128)
     task.sys_users.add_field(6, 'f_role', task.lang['role'], common.INTEGER, True, task.sys_roles, 'f_name')
     task.sys_users.add_field(7, 'f_info', task.lang['info'], common.TEXT, edit_visible=False, size=128)
     task.sys_users.add_field(8, 'f_admin', task.lang['admin'], common.BOOLEAN)
@@ -1884,7 +1884,7 @@ def get_field_dict(task, item_id, parent_id, type_id, table_id):
                 result[f.f_field_name.value] = None
     return result
 
-def get_task_dict(task, task_id):
+def server_get_task_dict(task):
 
     def get_children(items, id_value, type_id, dict, key, parent_id=None):
         childs = {}
@@ -1906,13 +1906,18 @@ def get_task_dict(task, task_id):
                 childs[f] = None
         dict[key] = childs
 
+    it = task.sys_items.copy(handlers=False)
+    it.set_where(type_id=common.TASK_TYPE)
+    it.open()
+    task_id = it.id.value
+
     result = {}
     f_dict = {}
-    items = task.sys_items.copy()
+    items = task.sys_items.copy(handlers=False)
     items.details_active = False
     items.open(['id', 'type_id', 'parent', 'f_item_name'])
 
-    fields = task.sys_fields.copy()
+    fields = task.sys_fields.copy(handlers=False)
     fields.open(['owner_rec_id', 'f_field_name'])
     for f in fields:
         if f.f_field_name.value.lower() != 'deleted':
@@ -1921,7 +1926,7 @@ def get_task_dict(task, task_id):
                 f_dict[f.owner_rec_id.value] = d
             d.append(f.f_field_name.value)
 
-    params = task.sys_report_params.copy()
+    params = task.sys_report_params.copy(handlers=False)
     params.open(['owner_rec_id', 'f_param_name'])
     for f in params:
         d = f_dict.get(f.owner_rec_id.value, [])
@@ -1932,7 +1937,7 @@ def get_task_dict(task, task_id):
     get_children(items, task_id, common.TASK_TYPE, result, 'task')
     return result['task']
 
-def server_item_info(task, item_id, is_server, doc_type):
+def server_item_info(task, item_id, is_server):
     result = {}
     items = task.sys_items.copy()
     items.set_where(id=item_id)
@@ -1947,19 +1952,30 @@ def server_item_info(task, item_id, is_server, doc_type):
         parent.set_where(id=parent_id)
         parent.open()
         item_name = parent.f_item_name.value + '.' + item_name
-    module_type = common.WEB_CLIENT_MODULE
-    code = items.f_web_client_module.value
+    tag = item_name.replace('.', '-')
     if is_server:
-        module_type = common.SERVER_MODULE
         code = items.f_server_module.value
-    item_name = item_name + ' - ' + doc_type
-
-    result[common.editor_tabs[common.TAB_FIELDS]] = get_field_dict(task, item_id, parent_id, type_id, table_id)
-    result[common.editor_tabs[common.TAB_TASK]] = get_task_dict(task, task_id)
-    result[common.editor_tabs[common.TAB_EVENTS]] = get_events(type_id, is_server)
-    result[common.editor_tabs[common.TAB_FUNCS]] = common.get_funcs_info(code, module_type)
-    result['module_name'] = item_name
-    result['code'] = code
+        ext = 'py'
+        doc_type = 'server'
+        tag = tag + '-server'
+    else:
+        code = items.f_web_client_module.value
+        ext = 'js'
+        doc_type = 'client'
+        tag = tag + '-client'
+    if not code:
+        code = ''
+    result['fields'] = get_field_dict(task, item_id, parent_id, type_id, table_id)
+    result['task'] = {} #server_get_task_dict(task)
+    result['events'] = get_events(type_id, is_server)
+    result['module'] = common.get_funcs_info(code, is_server)
+    result['name'] = '%s.%s' % (item_name, ext)
+    result['ext'] = ext
+    result['doc'] = code
+    result['doc_type'] = doc_type
+    result['rec_id'] = item_id
+    result['type'] = doc_type
+    result['tag'] = tag
     return result
 
 def parse_js(code):
@@ -2030,7 +2046,7 @@ def server_save_edit(task, item_id, text, is_server):
                     item.f_js_funcs.value = js_funcs
                 item.post()
                 item.apply()
-                module_info = common.get_funcs_info(code, module_type)
+                module_info = common.get_funcs_info(code, is_server)
             else:
                 error = task.lang['item_with_id_not found'] % item_id
         except Exception as e:
@@ -2040,7 +2056,7 @@ def server_save_edit(task, item_id, text, is_server):
             task.app.task_server_modified = True
         else:
             task.app.task_client_modified = True
-    return error, line, module_info
+    return {'error': error, 'line': line, 'module_info': module_info}
 
 def get_templates(text):
     result = {}
@@ -2078,16 +2094,22 @@ def get_templates(text):
             result[one] = None
     return result
 
-def server_get_file_info(task, item_id, file_name):
+def server_file_info(task, file_name):
     result = {}
     file_path = file_name
+    ext = 'html'
     if file_name == 'project.css':
+        ext = 'css'
         file_path = os.path.join('css', 'project.css')
     if os.path.exists(file_path):
         with open(file_path, 'r') as f:
-            result['code'] = f.read()
+            result['doc'] = f.read()
         if file_name == 'index.html':
-            result['Templates'] = get_templates(result['code'])
+            result['templates'] = get_templates(result['doc'])
+    result['name'] = file_name
+    result['ext'] = ext
+    result['type'] = ''
+    result['tag'] = file_name.replace('.', '-')
     return result
 
 def server_save_file(task, file_name, code):
@@ -2384,39 +2406,6 @@ def create_system_item(task, field_name):
 
     result = 'The %s item has been created in the %s group. The Administrator will be reloaded.' % (sys_item_name, sys_group_name)
     return result, error
-
-def clear_docs_on_logout(task, user):
-    try:
-        if user:
-            docs = []
-            for i, (c_item_ID, c_item_id, c_doc_type, c_user) in enumerate(list(task.edited_docs)):
-                if not (c_user and c_user["user_id"] and c_user["user_id"] == user["user_id"]):
-                    docs.append(task.edited_docs[i])
-        else:
-            docs = []
-        task.edited_docs = docs
-    except Exception as e:
-        print(e)
-
-def find_edited_doc(task, item_ID, item_id, doc_type, user):
-    for i, (c_item_ID, c_item_id, c_doc_type, c_user) in enumerate(list(task.edited_docs)):
-        if c_item_ID == item_ID and c_item_id == item_id and c_doc_type == doc_type:
-            return task.edited_docs[i]
-
-def check_doc_edited(task, item_ID, item_id, doc_type, user):
-    doc = find_edited_doc(task, item_ID, item_id, doc_type, user)
-    return doc
-
-def set_edited(task, item_ID, item_id, doc_type, user):
-    clear_edited(task, item_ID, item_id, doc_type, user)
-    doc = [item_ID, item_id, doc_type, user]
-    task.edited_docs.append(doc)
-    return doc
-
-def clear_edited(task, item_ID, item_id, doc_type, user):
-    doc = find_edited_doc(task, item_ID, item_id, doc_type, user)
-    if doc:
-        task.edited_docs.remove(doc)
 
 ###############################################################################
 #                                  sys_items                                  #
@@ -3013,8 +3002,9 @@ def register_defs(task):
     task.register(server_load_report_module)
     task.register(server_store_report_module)
     task.register(server_item_info)
+    task.register(server_get_task_dict)
     task.register(server_save_edit)
-    task.register(server_get_file_info)
+    task.register(server_file_info)
     task.register(server_save_file)
     task.register(get_fields_next_id)
     task.register(server_get_db_options)
@@ -3023,9 +3013,6 @@ def register_defs(task):
     task.register(server_import_table)
     task.register(server_get_task_info)
     task.register(server_can_delete_lookup_list)
-    task.register(clear_edited)
-    task.register(set_edited)
-    task.register(check_doc_edited)
     task.register(server_get_primary_key_type)
     task.register(server_set_literal_case)
     task.register(get_new_table_name)

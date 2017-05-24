@@ -217,8 +217,8 @@ dictionary = \
     'project_params':                   'Parameters',
     'project_locale':                   'Locale',
     'reserved_word':                    'The name is a reserved word',
-    'is_edited':                        '%s is already open for editing. Nevertheless open it?',
-    'is_edited_by':                     '%s is already open for editing by %s. Nevertheless open it?',
+    #~ 'is_edited':                        '%s is already open for editing. Nevertheless open it?',
+    #~ 'is_edited_by':                     '%s is already open for editing by %s. Nevertheless open it?',
 #editor
     'case_sensitive':                   'Case sensitive',
     'whole_words':                      'Find whole words only',

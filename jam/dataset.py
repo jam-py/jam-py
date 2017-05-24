@@ -1559,7 +1559,7 @@ class AbstractDataSet(object):
                 params['__limit'] = limit
                 if offset:
                     params['__offset'] = offset
-            if where:
+            if not where is None:
                 filters = self.get_where_list(where)
             elif self._where_list:
                 filters = list(self._where_list)
@@ -1572,7 +1572,7 @@ class AbstractDataSet(object):
                 field_name, text = params['__search']
                 filters.append([field_name, common.FILTER_CONTAINS_ALL, text])
             params['__filters'] = filters
-            if order_by:
+            if not order_by is None:
                 params['__order'] = self.get_order_by_list(order_by)
             elif self._order_by_list:
                 params['__order'] = list(self._order_by_list)

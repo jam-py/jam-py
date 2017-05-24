@@ -9,8 +9,9 @@ body {
 
 .table th,
 .table td {
-  padding: 4px;
-  line-height: 16px;
+    height: 18px;
+    padding: 4px;
+    line-height: 16px;
 }
 
 
@@ -302,14 +303,14 @@ h4 small {
 }
 
 .modal .well {
-    width: inherit;
+    width: auto;
     margin: 6px 0;
     padding-top: 12px;
     padding-bottom: 6px;
 }
 
 .modal-body {
-    padding: 12px;
+    padding: 8px 14px;
 }
 
 .modal.fade {

@@ -6224,19 +6224,21 @@ jam.py css
 }
 
 .table tbody tr.selected-focused > td:not(.field-selected-focused) {
-    background-color: #e5e5e5;
+    color: #ffffff;
+    background-color: #e78b24;
 }
 
 .table tbody td.field-selected {
-    background-color: #e5e5e5;#cacaca;
+    background-color: #e5e5e5;
 }
 
 .table tbody td.field-selected-focused {
-    background-color: #cacaca;#a6a6a6;
+    color: #ffffff;
+    background-color: #cf7917;
 }
 
 .table th{
-    color:#7F7F7F;
+    color: #7F7F7F;
 }
 
 .input-append .btn.small-btn,

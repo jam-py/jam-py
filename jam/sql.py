@@ -445,9 +445,9 @@ class SQL(object):
                 value, esc_found = self._escape_search(value, esc_char)
                 if field.lookup_item:
                     if field.lookup_item1:
-                        cond_field_name = '%s."%s"' % (self.lookup_table_alias1(field), field.lookup_field1)
+                        cond_field_name = '%s."%s"' % (self.lookup_table_alias1(field), field.lookup_db_field1)
                     else:
-                        cond_field_name = '%s."%s"' % (self.lookup_table_alias(field), field.lookup_field)
+                        cond_field_name = '%s."%s"' % (self.lookup_table_alias(field), field.lookup_db_field)
                 if filter_type == common.FILTER_CONTAINS:
                     value = '%' + value + '%'
                 elif filter_type == common.FILTER_STARTWITH:
@@ -534,6 +534,9 @@ class SQL(object):
         for order in order_list:
             field = self._field_by_ID(order[0])
             if field:
+                if not query['__expanded'] and field.lookup_item1:
+                   orders = []
+                   break
                 if query['__expanded'] and field.lookup_item:
                     ord_str = '%s_LOOKUP' % field.db_field_name
                 else:

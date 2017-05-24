@@ -1,6 +1,6 @@
-======================================================================================
-How to upload a file to the server save its file name in a table and later download it
-======================================================================================
+=======================================================================================
+How to upload a file to the server, save its file name in a table and later download it
+=======================================================================================
 
 Let's suppose that you have two buttons - Upload (id "upload-btn") and Download 
 (id "download-btn") - declared in the edit form html template of an item, and that 

@@ -20,7 +20,7 @@ for visuall editing of the record.
 The ``edit_record`` method 
 
 * calls the 
-  :doc:`can_create <m_can_create>`
+  :doc:`can_edit <m_can_edit>`
   method to check whether a user have a right to edit a record, and if not,
   returns
   

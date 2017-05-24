@@ -57,7 +57,7 @@ function Events0() { // admin
 		task.server('server_update_has_children', []);
 		task.item_tree.set_where({has_children: true});
 		task.item_tree.set_order_by(['type_id', 'f_index']);
-		task.item_tree.open({fields: ['id', 'parent', 'f_name', 'type_id', 'task_id']});
+		task.item_tree.open({fields: ['id', 'parent', 'f_name', 'type_id', 'task_id', 'f_index']});
 		task.item_tree.locate('type_id', item_types.TASK_TYPE);
 		task.tree.expand(task.tree.selected_node);
 		task.item_tree.on_after_scroll = tree_changed;
@@ -76,6 +76,12 @@ function Events0() { // admin
 		fields.splice(fields.indexOf('f_field_id_gen'), 1);
 		fields.push('id');
 		task.sys_params.open({fields: fields});
+	}
+	
+	function refresh_task_dict(task) {
+		task.server('server_get_task_dict', function(result) {
+			task.task_dict = result;
+		});
 	}
 	
 	function on_page_loaded(task)  {
@@ -119,30 +125,31 @@ function Events0() { // admin
 	
 			task.buttons_info = {
 				divider: {},
-				project_params:	{handler: set_project_params, short_cut: 'F2', key_code: 113, editor: true},
-				project_locale:	{handler: set_locale_params, short_cut: 'F3', key_code: 114, editor: true},
-				db:				{handler: edit_database, short_cut: 'F4', key_code: 115, editor: true},
-				'export':		  {handler: export_task, short_cut: 'Ctrl-E', key_code: 69, key_ctrl: true},
-				'import':		  {handler: import_task, short_cut: 'Ctrl-I', key_code: 73, key_ctrl: true},
-				find:			  {handler: find_in_task, short_cut: 'Alt-F', key_code: 70, key_alt: true},
-				print:			 {handler: print_code, short_cut: 'Shift-P', key_code: 80, key_shift: true},
-				client_module:	 {handler: task.sys_items.edit_client, item: task.sys_items, short_cut: 'F8', key_code: 119, editor: true},
-				server_module:	 {handler: task.sys_items.edit_server, item: task.sys_items, short_cut: 'F9', key_code: 120, editor: true},
-				'index.html':	  {handler: task.sys_items.edit_index_html, item: task.sys_items, short_cut: 'F10', key_code: 121, editor: true},
-				'project.css':	 {handler: task.sys_items.edit_project_css, item: task.sys_items, short_cut: 'F11', key_code: 122, editor: true},
-				'Lookup lists':	{handler: show_lookup_lists, editor: true},
+				project_params: {handler: set_project_params, short_cut: 'F2', key_code: 113, editor: true},
+				project_locale: {handler: set_locale_params, short_cut: 'F3', key_code: 114, editor: true},
+				db:			 {handler: edit_database, short_cut: 'F4', key_code: 115, editor: true},
+				'export':		 {handler: export_task, short_cut: 'Ctrl-E', key_code: 69, key_ctrl: true},
+				'import':		 {handler: import_task, short_cut: 'Ctrl-I', key_code: 73, key_ctrl: true},
+				find:			 {handler: find_in_task, short_cut: 'Alt-F', key_code: 70, key_alt: true},
+				print:		   {handler: print_code, short_cut: 'Shift-P', key_code: 80, key_shift: true},
+				client_module:   {handler: task.sys_items.edit_client, item: task.sys_items, short_cut: 'F8', key_code: 119, editor: true},
+				server_module:   {handler: task.sys_items.edit_server, item: task.sys_items, short_cut: 'F9', key_code: 120, editor: true},
+				'index.html':	 {handler: task.sys_items.edit_index_html, item: task.sys_items, short_cut: 'F10', key_code: 121, editor: true},
+				'project.css':   {handler: task.sys_items.edit_project_css, item: task.sys_items, short_cut: 'F11', key_code: 122, editor: true},
+				'Lookup lists': {handler: show_lookup_lists, editor: true},
 				viewing:		   {handler: task.sys_items.view_setup, item: task.sys_items, editor: true},
 				editing:		   {handler: task.sys_items.edit_setup, item: task.sys_items, editor: true},
 				filters:		   {handler: task.sys_items.filters_setup, item: task.sys_items, editor: true},
 				details:		   {handler: task.sys_items.details_setup, item: task.sys_items, editor: true},
-				order:			 {handler: task.sys_items.order_setup, item: task.sys_items, editor: true},
+				order:		   {handler: task.sys_items.order_setup, item: task.sys_items, editor: true},
 				indices:		   {handler: task.sys_items.indices_setup, item: task.sys_items, editor: true},
-				foreign_keys:	  {handler: task.sys_items.foreign_keys_setup, item: task.sys_items, editor: true},
+				foreign_keys:	 {handler: task.sys_items.foreign_keys_setup, item: task.sys_items, editor: true},
 				reports:		   {handler: task.sys_items.reports_setup, item: task.sys_items, editor: true},
-				report_params:	 {handler: task.sys_items.report_params_setup, item: task.sys_items, editor: true, short_cut: 'F7', key_code: 118, editor: true},
-				privileges:		{handler: task.sys_items.privileges_setup, item: task.sys_items, editor: true}
+				report_params:   {handler: task.sys_items.report_params_setup, item: task.sys_items, editor: true, short_cut: 'F7', key_code: 118, editor: true},
+				privileges:	 {handler: task.sys_items.privileges_setup, item: task.sys_items, editor: true}
 			};
 	
+			$("#content").show();
 			$("#title").html(task.language.admin);
 			if (task.safe_mode) {
 				$("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
@@ -158,6 +165,9 @@ function Events0() { // admin
 			task.btns_panel = $("#btns-panel");
 			task.view_panel = $("#view-panel");
 			task.tree_panel = $("#tree-panel");
+			task.code_editor = $("#code-editor");
+	
+			task.sys_code_editor.init_tabs(task);
 	
 			task.item_tree = task.sys_items.copy({handlers: false, details: false});
 			task.item_tree.on_after_open = function(t) {
@@ -176,6 +186,7 @@ function Events0() { // admin
 			);
 			task.tree.$element.height($("#left-panel").height());
 			refresh_tree(task);
+			refresh_task_dict(task);
 			update_db_manual_mode(task);
 	
 			$(window).on('focus.task', function(e) {
@@ -184,22 +195,62 @@ function Events0() { // admin
 			$(window).on('resize.task', function() {
 				resize(task);
 			});
-			$(window).on('keydown.task', function(e) {
-				if (e.which === 116) {
-					task.editing_finished();
-				}
-	//			if (e.which === 118) {
-	//				task.sys_lang.view()
-	//			}
-			});
 	
-			window.onbeforeunload = function(event) {
-				task.editing_finished();
-				window.onbeforeunload = undefined;
-			};
-	
-			resize(task);
+			resize_elements(task);
 		}
+	}
+	
+	var timeOut;
+	
+	function resize(task) {
+		clearTimeout(timeOut);
+		timeOut = setTimeout(
+			function() {
+				resize_elements(task);
+			},
+			100
+		);
+	}
+	
+	function resize_elements(task) {
+		var height = $(window).height() -
+			($('#task-tabs').offset().top + $('#task-tabs').outerHeight(true)) - 10;
+		resize_panels(task, height);
+		resize_editor(task, height);
+		if ($('ul#task-tabs li.active').attr('id') === 'admin') {
+			resize_item(task, height);
+			task.sys_items.update_controls();
+		}
+	}
+	
+	function resize_panels(task, height) {
+		var dbtree = $('#left-panel #tree-panel .dbtree');
+		if (task.tree_panel.outerHeight(true) !== height) {
+			dbtree.hide();
+			task.tree_panel.outerHeight(height, true);
+			task.right_panel.outerHeight(height, true);
+			height = task.tree_panel.height();
+			dbtree.outerHeight(task.tree_panel.height(), true);
+			dbtree.show();
+			task.btns_panel.outerHeight(task.right_panel.height(), true);
+		}
+	}
+	
+	function resize_item(task, height) {
+		var dbtable = $('#center-panel .dbtable'),
+			header_height = $('#center-panel .title').outerHeight(true),
+			footer_height = $('#center-panel .modal-footer').outerHeight(true),
+			table;
+		if (dbtable.length) {
+			table = dbtable.data('dbtable');
+			if (table.height() !== height - header_height - footer_height) {
+				table.height(height - header_height - footer_height);
+			}
+		}
+	}
+	
+	function resize_editor(task, height) {
+		task.sys_code_editor.resize(task, height);
 	}
 	
 	function add_button(task, caption, handler, item, icon, short_cut, key_code, key_ctrl, key_shift, key_alt, editor) {
@@ -220,25 +271,7 @@ function Events0() { // admin
 				it = task;
 				item_id = 0;
 			}
-			if (editor) {
-				doc = [it.ID, item_id, caption, task.user_info];
-				cur_doc = task.server('check_doc_edited', doc)
-				if (cur_doc) {
-					task.question(task.doc_editing_message(cur_doc), function() {
-						task.edited_doc = doc
-						handler.call(it, it, task.language[caption]);
-						task.server('set_edited', doc);
-					});
-				}
-				else {
-					task.edited_doc = doc
-					handler.call(it, it, task.language[caption]);
-					task.server('set_edited', doc);
-				}
-			}
-			else {
-				handler.call(it, it, task.language[caption]);
-			}
+			handler.call(it, it, task.language[caption]);
 		}
 	
 		var caption_html = '',
@@ -359,16 +392,6 @@ function Events0() { // admin
 				task_version = res[2],
 				task_db = res[3];
 			task.task_name = res[0];
-			if (task.server_started && task.server_started !== res[4]) {
-				if (task.edited_doc) {
-					if (task.server('check_doc_edited', task.edited_doc)) {
-						location.reload();
-					}
-					else {
-						task.server('set_edited', task.edited_doc);
-					}
-				}
-			}
 			task.server_started = res[4];
 			task.cur_task_info = '<h4><span class="editor-title">' +
 					task_caption + '</span> <span class="muted">' + task_db + '</span> v. ' + task_version + '</h4>';
@@ -424,7 +447,7 @@ function Events0() { // admin
 			item.view_form.find(".modal-body").css('padding', 0);
 			item.view_form.find("#title-left").html('<h4>' + '<span class="editor-title">' + task.cur_item_title + '</span>' + '</h4>');
 			item.view_form.find("#select-btn").hide()
-			table_height = task.center_panel.height() - task.view_panel.height();
+			table_height = task.center_panel.height() - 104;
 			item.view_form.find("#title-right").addClass('admin-task-info');
 			update_task_info(task);
 		}
@@ -453,20 +476,14 @@ function Events0() { // admin
 				item.init_view_table(item, options);
 			}
 			item.view_table = item.create_table(item.view_form.find(".view-table"), options);
+			if (!item.view_form.hasClass('modal') && item.item_name === 'sys_items') {
+				resize_elements(task);
+			}
 		}
 		create_print_btns(item);
 	}
 	
-	function expand_buttons(form) {
-		form.find(".modal-footer button.btn").each(function() {
-			if ($(this).outerWidth() < 100 && $(this).text()) {
-				$(this).outerWidth(100);
-			}
-		});
-	}
-	
 	function on_view_form_shown(item) {
-		expand_buttons(item.view_form);
 		if (item.item_name === 'sys_fields_editor' || item.item_name === 'sys_code_editor') {
 			return
 		}
@@ -481,6 +498,7 @@ function Events0() { // admin
 				'f_primary_key', 'f_deleted_flag', 'f_master_id', 'f_master_rec_id',
 				'f_keep_history', 'f_edit_lock', 'sys_id'
 			]});
+			resize_elements(task);
 		}
 		else {
 			item.open();
@@ -507,7 +525,6 @@ function Events0() { // admin
 	}
 	
 	function on_edit_form_shown(item) {
-		expand_buttons(item.edit_form);
 		if (item.details_active) {
 			item.each_detail(function(d) {
 				d.update_controls();
@@ -516,7 +533,6 @@ function Events0() { // admin
 		else {
 			item.open_details();
 		}
-		resize_edit_table(item);
 	}
 	
 	function on_edit_form_close_query(item) {
@@ -540,9 +556,6 @@ function Events0() { // admin
 				}
 			}
 		}
-		if (result !== false && item.edited_doc_info && item.edited_doc_info.edit_form) {
-			item.task.editing_finished(item);
-		}
 		return result;
 	}
 	
@@ -564,7 +577,7 @@ function Events0() { // admin
 		task.sys_params.params = true;
 		task.sys_params.edit_options.fields = ['f_safe_mode', 'f_debugging', 'f_con_pool_size',
 			'f_mp_pool', 'f_persist_con', 'f_compressed_js', 'f_single_file_js', 'f_dynamic_js',
-	//		'f_history_item', 'f_lock_item', 'f_timeout', 'f_ignore_change_ip', 'f_version'];
+	//	  'f_history_item', 'f_lock_item', 'f_timeout', 'f_ignore_change_ip', 'f_version'];
 			'f_timeout', 'f_ignore_change_ip', 'f_version'];
 		task.sys_params.edit_options.title = caption;
 		task.sys_params.edit_record();
@@ -586,7 +599,7 @@ function Events0() { // admin
 		var fields = ['f_manual_update', 'f_db_type', 'f_alias', 'f_login', 'f_password',
 			'f_host', 'f_port', 'f_encoding']
 		task.sys_tasks.open()
-	//	task.sys_tasks.on_field_changed(task.sys_tasks.f_db_type);
+	//  task.sys_tasks.on_field_changed(task.sys_tasks.f_db_type);
 		task.sys_tasks.edit_options.fields = fields;
 		task.sys_tasks.f_name.required = false;
 		task.sys_tasks.f_item_name.required = false;
@@ -692,9 +705,9 @@ function Events0() { // admin
 			else {
 				message = '<h3 class="text-center text-error">The metadata have not been imported.</h3>'
 			}
-	//		if (error) {
-	//			message += '<h4 class="text-error">Errors</h4><div>' + error + '</div>'
-	//		}
+	//	  if (error) {
+	//		  message += '<h4 class="text-error">Errors</h4><div>' + error + '</div>'
+	//	  }
 			if (info) {
 				message += '<h4 class="text-info">Import log</h4><div>' + info + '</div>'
 			}
@@ -740,46 +753,6 @@ function Events0() { // admin
 		}
 	}
 	
-	function resize_edit_table(item, window_resized) {
-		var edit_form_height,
-			window_height,
-			newHeight;
-		if (item.edit_form && item.edit_table) {
-			edit_form_height = item.edit_form.height();
-			window_height = $(window).height();
-			if (window_resized || edit_form_height > window_height - 20) {
-				newHeight = item.edit_table.height() - (edit_form_height - window_height) - 20;
-				if (newHeight > 450) {
-					newHeight = 450;
-				}
-				if (newHeight < 200) {
-					newHeight = 200;
-				}
-				item.edit_table.height(newHeight);
-				item.update_controls();
-			}
-		}
-	}
-	
-	var timeOut;
-	
-	function resize(task) {
-		clearTimeout(timeOut);
-		timeOut = setTimeout(function() {
-			var new_height = task.left_panel.height() + $(window).height() - $('body').height() - 40;
-			task.left_panel.height(new_height);
-			task.tree.height(new_height);
-			task.btns_panel.height(new_height);
-			if (task.cur_item) {
-				task.cur_item.view_table.height(new_height - 74);
-			}
-			if (task.code_editor_item) {
-				task.code_editor_item.resize(task.code_editor_item);
-			}
-		},
-		100);
-	}
-	
 	function update_db_manual_mode(task) {
 		if (task._manual_update) {
 			$("#project-mode").text('DB manual mode').css("color", "red");
@@ -816,46 +789,16 @@ function Events0() { // admin
 			}
 		}
 	}
-	
-	function editing_finished(item, callback) {
-		if (this.edited_doc) {
-			this.server('clear_edited', this.edited_doc, function() {
-				this.edited_doc = undefined;
-				$("title").html(task.language.admin);
-				if (item && callback) {
-					callback.call(item, item);
-				}
-			});
-		}
-	}
-	
-	function doc_editing_message(doc) {
-		var task = this,
-			doc_type = doc[2],
-			user_name = '',
-			doc_name = task.language[doc_type],
-			mess;
-		if (doc[3]) {
-			user_name = doc[3].user_name;
-		}
-		if (!doc_name) {
-			doc_name = doc_type;
-		}
-		if (user_name) {
-			mess = task.language.is_edited_by;
-			mess = mess.replace('%s', doc_name);
-			mess = mess.replace('%s', user_name);
-		}
-		else {
-			mess = task.language.is_edited;
-			mess = mess.replace('%s', doc_name);
-		}
-		return mess;
-	}
 	this.tree_changed = tree_changed;
 	this.refresh_tree = refresh_tree;
 	this.open_sys_params = open_sys_params;
+	this.refresh_task_dict = refresh_task_dict;
 	this.on_page_loaded = on_page_loaded;
+	this.resize = resize;
+	this.resize_elements = resize_elements;
+	this.resize_panels = resize_panels;
+	this.resize_item = resize_item;
+	this.resize_editor = resize_editor;
 	this.add_button = add_button;
 	this.add_divider = add_divider;
 	this.add_buttons = add_buttons;
@@ -864,7 +807,6 @@ function Events0() { // admin
 	this.update_task_info = update_task_info;
 	this.read_task_name = read_task_name;
 	this.on_view_form_created = on_view_form_created;
-	this.expand_buttons = expand_buttons;
 	this.on_view_form_shown = on_view_form_shown;
 	this.on_edit_form_created = on_edit_form_created;
 	this.on_edit_form_shown = on_edit_form_shown;
@@ -884,13 +826,9 @@ function Events0() { // admin
 	this.move_vert = move_vert;
 	this.move_record_up = move_record_up;
 	this.move_record_down = move_record_down;
-	this.resize_edit_table = resize_edit_table;
-	this.resize = resize;
 	this.update_db_manual_mode = update_db_manual_mode;
 	this.on_view_form_keydown = on_view_form_keydown;
 	this.on_edit_form_keydown = on_edit_form_keydown;
-	this.editing_finished = editing_finished;
-	this.doc_editing_message = doc_editing_message;
 }
 
 task.events.events0 = new Events0();
@@ -1110,28 +1048,6 @@ function Events3() { // admin.catalogs.sys_items
 		return error;
 	}
 	
-	function edit_item(item) {
-		var doc = [item.ID, item.id.value, 'item_editor', item.task.user_info],
-			cur_doc = task.server('check_doc_edited', doc);
-		if (cur_doc) {
-			item.task.question(item.task.doc_editing_message(cur_doc), function() {
-				item.task.edited_doc = doc
-				item.edit_record();
-				item.task.server('set_edited', doc);
-			});
-		}
-		else {
-			item.task.edited_doc = doc
-			item.edit_record();
-			item.task.server('set_edited', doc);
-		}
-	
-	}
-	
-	function init_view_table(item, options) {
-		options.on_dblclick = edit_item;
-	}
-	
 	function on_view_form_created(item) {
 		var parent_type_id = item.task.item_tree.type_id.value,
 			types = item.task.item_types;
@@ -1152,9 +1068,6 @@ function Events3() { // admin.catalogs.sys_items
 				import_tables(item);
 			});
 		}
-		item.view_form.find('#edit-btn').off('click.task').on('click', function() {
-			edit_item(item);
-		});
 		item.view_form.find('#delete-btn').off('click.task').on('click', function() {
 			if (item.record_count()) {
 				item.question(item.task.language.delete_record, function() {
@@ -1218,7 +1131,7 @@ function Events3() { // admin.catalogs.sys_items
 					row_count = 7;
 				}
 			}
-	//		fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_keep_history', 'f_js_external'])
+	//	fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_keep_history', 'f_js_external'])
 			fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_js_external'])
 		}
 		if (item.type_id.value === types.ITEMS_TYPE || item.type_id.value === types.TABLES_TYPE) {
@@ -1248,7 +1161,13 @@ function Events3() { // admin.catalogs.sys_items
 		if (item.item_name === 'sys_items') {
 			if (item.fields_editor) {
 				if (parent_type_id === types.TASK_TYPE) {
-					height = 520;
+					height = $(window).height() - 320;
+					if (height < 160) {
+						height = 160;
+					}
+					else if (height > 520) {
+						height = 520;
+					}
 					if (item.id.value &&  !item.server('server_group_is_empty', [item.id.value])) {
 						item.edit_form.find("#new-btn").prop("disabled", true);
 						item.edit_form.find("#delete-btn").prop("disabled", true);
@@ -1259,6 +1178,22 @@ function Events3() { // admin.catalogs.sys_items
 					}
 				}
 				else {
+					height = $(window).height() - 380;
+					if (height < 200) {
+						height = 200;
+					}
+					else if (height > 450) {
+						height = 450;
+					}
+					if (parent_type_id === types.TABLES_TYPE) {
+						height = $(window).height() - 480;
+						if (height < 200) {
+							height = 200;
+						}
+						else if (height > 400) {
+							height = 400;
+						}
+					}
 					if (item.id.value) {
 						update_sys_fields_read_only(item, true);
 					}
@@ -1271,7 +1206,7 @@ function Events3() { // admin.catalogs.sys_items
 						height: height,
 						tabindex: 90,
 						sortable: true,
-	//					title_word_wrap: true,
+	//				title_word_wrap: true,
 						row_callback: field_colors
 					});
 				item.edit_form.find("#new-btn").attr("tabindex", 92).on('click.task', function() {item.sys_fields.append_record()});
@@ -1310,23 +1245,23 @@ function Events3() { // admin.catalogs.sys_items
 			if (!item.f_data_type.value) {
 				field = get_field();
 				if (field) {
-					row.find('td.f_data_type span').text(field.data_type);
+					row.find('td.f_data_type div').text(field.data_type);
 				}
 				row.find('td.f_data_type').css("color", "#ff9999");
 			}
 			else {
-				row.find('td.f_data_type span').text(item.f_data_type.display_text);
+				row.find('td.f_data_type div').text(item.f_data_type.display_text);
 				row.find('td.f_data_type').css("color", "#333333");
 			}
 			if (!item.f_size.value) {
 				field = get_field();
 				if (field && field.size) {
-					row.find('td.f_size span').text(field.size);
+					row.find('td.f_size div').text(field.size);
 				}
 				row.find('td.f_size').css("color", "#ff9999");
 			}
 			else {
-				row.find('td.f_size span').text(item.f_size.display_text);
+				row.find('td.f_size div').text(item.f_size.display_text);
 				row.find('td.f_size').css("color", "#333333");
 	
 			}
@@ -1354,10 +1289,6 @@ function Events3() { // admin.catalogs.sys_items
 		else {
 			item.edit_form.find('h4.modal-title').html(caption + ' <span class="editor-title">' + item.f_item_name.value + '</span>');
 		}
-	}
-	
-	function on_edit_form_closed(item) {
-		item.task.editing_finished();
 	}
 	
 	function update_sys_fields_read_only(item, value) {
@@ -1651,20 +1582,24 @@ function Events3() { // admin.catalogs.sys_items
 		item.task.sys_fields_editor.fields_editor(item, title, source_def, get_fields_list(item.task), dest_def, info.edit_list, save_edit);
 	}
 	
-	function edit_code(item, field_name) {
-		item.task.sys_code_editor.code_editor(item, field_name)
+	function edit_code(item, is_server) {
+		item.task.server('server_item_info', [item.id.value, is_server], function(info) {
+		item.task.sys_code_editor.show_editor(item.task, info)
+		});
 	}
 	
 	function edit_file(item, file_name) {
-		item.task.sys_code_editor.file_editor(item, file_name)
+		item.task.server('server_file_info', [file_name], function(info) {
+		item.task.sys_code_editor.show_editor(item.task, info)
+		});
 	}
 	
 	function edit_client(item) {
-		edit_code(item, 'f_web_client_module');
+		edit_code(item, false);
 	}
 	
 	function edit_server(item) {
-		edit_code(item, 'f_server_module');
+		edit_code(item, true);
 	}
 	
 	function edit_index_html(item) {
@@ -1876,6 +1811,7 @@ function Events3() { // admin.catalogs.sys_items
 			add_import_indexes(item, item._import_info.indexes)
 			item._import_info = undefined;
 		}
+		item.task.refresh_task_dict(item.task);
 	}
 	
 	function on_field_select_value(field, lookup_item) {
@@ -2120,13 +2056,10 @@ function Events3() { // admin.catalogs.sys_items
 	this.save_order = save_order;
 	this.append_group = append_group;
 	this.can_delete = can_delete;
-	this.edit_item = edit_item;
-	this.init_view_table = init_view_table;
 	this.on_view_form_created = on_view_form_created;
 	this.on_edit_form_created = on_edit_form_created;
 	this.field_colors = field_colors;
 	this.on_edit_form_shown = on_edit_form_shown;
-	this.on_edit_form_closed = on_edit_form_closed;
 	this.update_sys_fields_read_only = update_sys_fields_read_only;
 	this.on_after_append = on_after_append;
 	this.on_field_validate = on_field_validate;
@@ -2413,371 +2346,351 @@ function Events9() { // admin.catalogs.sys_tasks
 			}
 		}
 	}
-	
-	function on_edit_form_closed(item) {
-		item.task.editing_finished();
-	}
 	this.on_after_edit = on_after_edit;
 	this.on_after_apply = on_after_apply;
 	this.on_field_changed = on_field_changed;
 	this.on_before_post = on_before_post;
 	this.on_after_post = on_after_post;
 	this.on_field_validate = on_field_validate;
-	this.on_edit_form_closed = on_edit_form_closed;
 }
 
 task.events.events9 = new Events9();
 
 function Events14() { // admin.catalogs.sys_code_editor 
 
-	function code_editor(item, field_name) {
-		var editor = this.copy(),
-			mess;
-		editor.item = item;
-		editor.field_name = field_name;
-		editor.is_server = field_name === 'f_server_module';
-		editor.doc_type = 'client_module';
-		if (editor.is_server) {
-			editor.doc_type = 'server_module';
-		}
-		editor.item_info = item.task.server('server_item_info', [item.task.sys_items.id.value,
-			editor.is_server, editor.doc_type]);
-		editor.view();
+	var EditSession = require('ace/edit_session').EditSession;
+	var UndoManager = require("ace/undomanager").UndoManager;
+	
+	function init_tabs(task) {
+		$("#content").show();
+		task.tabs = {};
+		$('body').on('click', 'ul#task-tabs li', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			show_tab(task, $(this).attr('id'));
+		});
+		$('body').on('click', 'ul#task-tabs .close-editor-btn', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			close_editor(task, $(this).parent().parent().attr('id'));
+		});
 	}
 	
-	function file_editor(item, file_name) {
-		var editor = this.copy(),
-			mess;
-		editor.item = item;
-		editor.file_name = file_name;
-		editor.doc_type = file_name;
-		editor.item_info = item.task.server('server_get_file_info', [item.task.sys_items.id.value, file_name]);
-		editor.view();
+	function resize(task, height) {
+		if (task.code_editor.is(':visible')) {
+			var footer = task.code_editor.find('.modal-footer'),
+				center_box = task.code_editor.find("#center-box"),
+				editor_box = task.code_editor.find("#editor-box"),
+				left_box = task.code_editor.find('#left-box'),
+				editor_tabs = task.code_editor.find('#editor-tabs'),
+				info_grids = task.code_editor.find('#info-grids'),
+				info_trees = task.code_editor.find('#editor-tabs div.info-tree'),
+				dbtrees = task.code_editor.find('#editor-tabs div.info-tree .dbtree'),
+				tabs_height = task.code_editor.find('ul.nav-tabs').outerHeight();
+			if (footer.length) {
+				height -= footer.outerHeight(true);
+			}
+			left_box.children().hide();
+			left_box.hide();
+			editor_box.hide();
+			center_box.outerHeight(height, true);
+			editor_box.outerHeight(center_box.height(), true);
+			editor_box.show()
+			left_box.outerHeight(height, true);
+			left_box.show();
+			editor_tabs.outerHeight(left_box.height(), true);
+			editor_tabs.show();
+			info_grids.outerHeight(left_box.height() - tabs_height, true);
+			info_grids.show();
+			info_trees.outerHeight(info_grids.height(), true);
+			dbtrees.outerHeight(info_grids.height(), true);
+			if (task.editor) {
+				task.editor.resize();
+			}
+		}
 	}
 	
-	function on_view_form_created(item) {
-		task.code_editor_item = item;
-		if (item.field_name) {
-			$("title").html(item.item_info.module_name);
-			item.view_options.title = 'Code Editor <span class="editor-title">' + item.item_info.module_name + '</span>';
+	function show_tab(task, tag) {
+		$('ul#task-tabs li').removeClass('active');
+		$('ul#task-tabs li#' + tag).addClass('active');
+		if (tag === 'admin') {
+			$('#tab-content #code-editor').hide();
+			$('#tab-content #admin').show();
 		}
-		else if (item.file_name) {
-			$("title").html(item.file_name);
-			item.view_options.title = 'Code Editor <span class="editor-title">' + item.file_name + '</span>';
+		else {
+			$('#tab-content #admin').hide();
+			$('#tab-content #code-editor').show();
 		}
-		item.view_form.find("#left-box").width(250);
-		item.view_form.find("#right-box").hide();
-		item.view_form.find("#cancel-btn").attr("tabindex", 101).on('click', function(e) {
-			cancel_edit(item);
-		});
-		item.view_form.find("#ok-btn").attr("tabindex", 100).on('click', function() {
-			save_edit(item);
-		});
-		item.view_form.find("#find-btn").attr("tabindex", 99).on('click', function() {
-			find_in_project(item);
-		});
-		update_size(item);
+		task.resize_elements(task);
+		if (tag !== 'admin') {
+			select_editor(task, tag);
+		}
 	}
 	
-	function on_view_form_shown(item) {
-		if (item.field_name) {
-			item.view_form.find('#editor-tabs ul')
+	function show_editor(task, info) {
+		var tag = info.tag;
+		if (task.tabs[tag]) {
+			show_tab(task, tag)
+		}
+		else {
+			$('ul#task-tabs').append(
+				'<li id="' + tag +
+				'" class="active"><a href="#code-editor" data-toggle="tab"><span> ' +
+			info.name + ' </span><i class="icon-remove close-editor-btn"></i></a></li>'
+			);
+			task.tabs[tag] = info;
+			show_tab(task, tag)
+		}
+	}
+	
+	function close_editor(task, tag) {
+		var tab = $('ul#task-tabs li#' + tag),
+			new_tab;
+			if (tab.next().length) {
+				new_tab = tab.next()
+			}
+			else {
+				new_tab = tab.prev()
+			}
+			show_tab(task, tag);
+			close_query(task, function () {
+				show_tab(task, new_tab.attr('id'));
+				delete task.tabs[tag];
+				tab.remove();
+			});
+	}
+	
+	function close_query(task, callback) {
+		if (get_modified(task)) {
+			task.yes_no_cancel(task.language.save_changes,
+				function() {
+					save_edit(task);
+					callback();
+				},
+				function() {
+					mark_clean(task);
+					callback();
+				}
+			)
+		}
+		else {
+			callback();
+		}
+	}
+	
+	function init_editor(task) {
+		task.editor = ace.edit("editor");
+		task.editor.on('input', function() {
+			$("#code-editor #error-info").text('');
+			update_buttons(task);
+		});
+		task.code_editor.find('#ok-btn').click(function() {
+			save_edit(task, $('ul#task-tabs li.active').attr('id'));
+		});
+		task.code_editor.find('#find-btn').click(function() {
+			task.sys_search.find_in_task(task);
+		});
+	
+		task.code_editor.on('click', '#editor-tabs > .nav > li', function() {
+			info_tab_clicked(task, $(this))
+		});
+		task.code_editor.on('dblclick', '.dbtree ul li', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			tree_node_clicked(task, $('ul#task-tabs li.active').attr('id'), $(this))
+		});
+	
+	
+		$(window).on('keydown.editor', function(e) {
+			if (e.ctrlKey && e.which === 83) {
+				var tag = $('ul#task-tabs li.active').attr('id');
+				if (tag && tag !== 'admin') {
+					e.preventDefault();
+					save_edit(task, tag);
+				}
+			}
+			//~ if (e.which === 27) {
+				//~ var tag = $('ul#task-tabs li.active').attr('id');
+				//~ if (tag && tag !== 'admin') {
+					//~ e.preventDefault();
+					//~ close_editor(task, tag);
+				//~ }
+			//~ }
+		});
+	}
+	
+	function select_editor(task, tag) {
+		var info = task.tabs[tag],
+			session;
+		if (task.editor === undefined) {
+			init_editor(task);
+		}
+		if (!info.session) {
+			session = new EditSession(info.doc);
+			session.setUndoManager(new UndoManager());
+			if (info.ext === 'py') {
+				session.setMode("ace/mode/python");
+				session.setOption("tabSize", 4);
+				session.setUseSoftTabs(true);
+			}
+			else if (info.ext === 'js') {
+				session.setMode("ace/mode/javascript");
+			}
+			else if (info.ext === 'html') {
+				session.setMode("ace/mode/html");
+			}
+			else if (info.ext === 'css') {
+				session.setMode("ace/mode/css");
+			}
+			info.session = session;
+			create_info_tabs(task, tag);
+			$(task.editor).focus();
+		}
+		else {
+			session = info.session;
+		}
+		task.editor.setSession(session);
+		show_info_tabs(task, info);
+		update_buttons(task);
+		task.resize_elements(task);
+	}
+	
+	function show_info_tabs(task, info) {
+		task.code_editor.find("#editor-tabs").detach();
+		task.code_editor.find('#left-box').append(info.editor_tabs);
+		if (info.name === 'project.css') {
+			task.code_editor.find("#left-box").hide();
+		}
+		else {
+			task.code_editor.find("#left-box").show();
+		}
+	}
+	
+	function update_buttons(task, info) {
+		task.code_editor.find('#ok-btn').prop("disabled", !get_modified(task));
+	}
+	
+	function update_error_message(task, mess) {
+		task.code_editor.find('#error-info').text(mess);
+	}
+	
+	function get_modified(task) {
+		return !task.editor.session.getUndoManager().isClean();
+	}
+	
+	function mark_clean(task) {
+		task.editor.session.getUndoManager().markClean();
+	}
+	
+	function save_module(task, info) {
+		var text = task.editor.getValue(),
+			result,
+			error,
+			line,
+			module_info;
+	
+		if (task.is_server && text.indexOf('\t') !== -1) {
+			text = text.split('\t').join(' ' + '   ');
+			task.editor.setValue(text);
+		}
+		result = task.task.server('server_save_edit', [info.rec_id, text, info.ext === 'py']);
+	
+		if (result.error && result.line && result.line < task.editor.session.getLength()) {
+			task.editor.gotoLine(result.line);
+		}
+		if (!result.error) {
+			info.module = result.module_info;
+			add_tree(task, info.module, "module");
+			update_tab_height(task);
+		}
+		return result.error;
+	}
+	
+	function save_file(task, info) {
+		var result =  task.server('server_save_file', [info.name, task.editor.getValue()]),
+			error = result.error;
+		if (result.templates) {
+			info.templates = result.templates;
+			add_tree(task, info.templates, "templates");
+			update_tab_height(task);
+		}
+	}
+	
+	function save_edit(task, tag) {
+		var error = '',
+			info = task.tabs[tag];
+		if (info.doc_type) {
+			error = save_module(task, info);
+		}
+		else {
+			error = save_file(task, info);
+		}
+		if (error) {
+			update_error_message(task, error);
+		}
+		else {
+			update_error_message(task, '');
+			mark_clean(task);
+			update_buttons(task)
+		}
+	}
+	
+	function create_info_tabs(task, tag) {
+		var info = task.tabs[tag],
+			editor_tabs;
+		task.code_editor.find("#editor-tabs").detach();
+		editor_tabs = $(
+			'<div id="editor-tabs">' +
+				'<ul class="nav nav-tabs editor">' +
+				'</ul>' +
+				'<div id="info-grids">' +
+				'</div>' +
+			'</div>'
+		);
+		task.code_editor.find('#left-box').append(editor_tabs);
+		set_info_grids_height();
+		if (info.doc_type) {
+			task.code_editor.find('#editor-tabs ul')
 				.append('<li id="module"><a href="#">Module</a></li>')
 				.append('<li id="events"><a href="#">Events</a></li>')
 				.append('<li id="task"><a href="#">Task</a></li>')
 				.append('<li id="fields"><a href="#">Fields</a></li>');
 	
-			add_tree(item, "Module");
-			add_tree(item, "Events");
-			add_tree(item, "Task");
-			add_tree(item, "Fields");
-	
-			item.view_form.find('#editor-tabs #info-grids').height(
-				item.view_form.find('#left-box').innerHeight() - item.view_form.find('ul.nav-tabs').outerHeight() - 14
-			)
-			info_tab_clicked(item, item.view_form.find('li#module'));
-	
-			item.editor = ace.edit("editor");
-			item.editor.$blockScrolling = Infinity;
-			if (item.is_server) {
-				item.is_server_module = true;
-				item.editor.getSession().setMode("ace/mode/python");
-				item.editor.getSession().setOption("tabSize", 4);
-				item.editor.getSession().setUseSoftTabs(true);
-			}
-			else {
-				item.editor.getSession().setMode("ace/mode/javascript");
-			}
+			add_tree(task, info.module, "module");
+			add_tree(task, info.events, "events");
+			add_tree(task, task.task_dict, "task");
+			add_tree(task, info.fields, "fields");
+			info_tab_clicked(task, $('#editor-tabs li#module'));
 		}
-		else if (item.file_name) {
-			if (item.item_info.Templates) {
-				item.view_form.find('#editor-tabs ul')
-					.append('<li id="templates"><a href="#">Templates</a></li>');
-				add_tree(item, "Templates");
-				item.view_form.find('#editor-tabs #info-grids').height(
-					item.view_form.find('#left-box').innerHeight() - item.view_form.find('ul.nav-tabs').outerHeight() - 14
-				)
-				info_tab_clicked(item, item.view_form.find('li#templates'));
-			}
-			else {
-				item.view_form.find("#left-box").hide();
-			}
-	
-			item.editor = ace.edit("editor");
-			item.editor.$blockScrolling = Infinity;
-			if (item.file_name === 'index.html') {
-				item.editor.getSession().setMode("ace/mode/html");
-			}
-			else {
-				item.editor.getSession().setMode("ace/mode/css");
-			}
-		}
-		item.loaded = true;
-		item.editor.session.setValue(item.item_info.code);
-		item.editor.gotoLine(1);
-	
-		item.view_form.find('#ok-btn').prop("disabled", true);
-	
-		item.editor.on('input', function() {
-			item.view_form.find("#error-info").text('');
-			if (item.loaded) {
-				item.loaded = false;
-				mark_clean(item);
-				return;
-			}
-			if (get_modified(item)) {
-				item.view_form.find('#ok-btn').prop("disabled", false);
-			}
-			else {
-				item.view_form.find('#ok-btn').prop("disabled", true);
-			}
-	
-		});
-	
-		item.view_form.on('click', '#editor-tabs > .nav > li', function() {
-			info_tab_clicked(item, $(this))
-		});
-		item.view_form.on('dblclick', '.dbtree ul li', function(e) {
-			e.preventDefault();
-			e.stopPropagation();
-			tree_node_clicked(item, $(this))
-		});
-		$(item.editor).focus();
-		setTimeout(function () {
-			item.view_form.off('keyup.dismiss.modal');
-			$(item.editor).focus();
-			},  100
-		);
-	}
-	
-	function get_modified(item) {
-		return !item.editor.session.getUndoManager().isClean();
-	}
-	
-	function mark_clean(item) {
-		item.editor.session.getUndoManager().markClean();
-	}
-	
-	function on_view_form_close_query(item) {
-		var result;
-		if (get_modified(item)) {
-			item.yes_no_cancel(task.language.save_changes,
-				function() {
-					save_edit(item);
-					item.close_view_form();
-				},
-				function() {
-					mark_clean(item);
-					item.close_view_form();
-				}
-			)
-			result = false;
+		else if (info.templates) {
+			task.code_editor.find('#editor-tabs ul')
+				.append('<li id="templates"><a href="#">templates</a></li>')
+				.append('<li id="task"><a href="#">Task</a></li>');
+			add_tree(task, info.templates, "templates");
+			add_tree(task, task.task_dict, "task");
+			info_tab_clicked(task, task.code_editor.find('#editor-tabs li#templates'));
 		}
 		else {
-			task.code_editor_item = undefined;
-			item.editor.destroy();
-			result = true;
+			task.code_editor.find('#editor-tabs ul')
+				.append('<li id="task"><a href="#">Task</a></li>');
+			add_tree(task, task.task_dict, "task");
+			info_tab_clicked(task, task.code_editor.find('#editor-tabs li#task'));
 		}
-		return result;
+		info.editor_tabs = editor_tabs;
 	}
 	
-	function on_view_form_closed(item) {
-		item.task.editing_finished();
-	}
-	
-	function save_to_field(item) {
-		var text = item.editor.getValue(),
-			info,
-			error,
-			line,
-			module_info;
-	
-		if (item.is_server && text.indexOf('\t') !== -1) {
-			text = text.split('\t').join(' ' + '   ');
-			item.editor.setValue(text);
-		}
-		info = item.task.server('server_save_edit', [item.task.sys_items.id.value, text, item.is_server]),
-		error = info[0],
-		line = info[1],
-		module_info = info[2];
-	
-		if (error && line && line < item.editor.session.getLength()) {
-			item.editor.gotoLine(line);
-		}
-		if (!error) {
-			item.item_info["Module"] = module_info;
-			add_tree(item, "Module");
-			update_tab_height(item);
-		}
-		return error;
-	}
-	
-	function save_to_file(item) {
-		var result =  item.task.server('server_save_file', [item.file_name, item.editor.getValue()]),
-			error = result.error;
-		if (result['Templates']) {
-			item.item_info["Templates"] = result['Templates'];
-			add_tree(item, "Templates");
-			update_tab_height(item);
-		}
-	}
-	
-	function save_edit(item) {
-		var error = false;
-		if (item.field_name) {
-			error = save_to_field(item);
-		}
-		else if (item.file_name) {
-			error = save_to_file(item);
-		}
-		if (error) {
-			item.view_form.find("#error-info").text(error);
-		}
-		else {
-			item.view_form.find("#error-info").text('');
-			mark_clean(item);
-			item.view_form.find('#ok-btn').prop("disabled", true);
-		}
-	}
-	
-	function cancel_edit(item) {
-		mark_clean(item);
-		item.close_view_form();
-	}
-	
-	function update_size(item) {
-		var height;
-		item.view_options.width = $(window).width() - 50;
-		height = $(window).height() - 200;
-		item.view_form.find("#editor-box").height(height);
-	}
-	
-	function resize(item) {
-		var height;
-		height = $(window).height() - 200;
-		item.view_options.width = $(window).width() - 50;
-	//	item.view_options.height = height;
-	//	item.view_form.find("#editor-box").height(height);
-	//	item.view_form.find("#editor").height(height);
-	//	item.view_form.find(".ace_content").height(height);
-	//	item.view_form.find("#editor-tabs").height(height);
-	//	item.view_form.find("#info-grids").height(height);
-	//	update_tab_height(item);
-		item.view_form.data('modal').layout();
-	}
-	
-	function find_text(item, text) {
-		return item.editor.find(text, {
-			backwards: false,
-			wrap: false,
-			caseSensitive: true,
-			wholeWord: true,
-			regExp: false
-		});
-	}
-	
-	function tree_node_clicked(item, $li) {
-		var tab = $li.closest('.info-tree').attr('id'),
-			node_text = $li.find('span.tree-text:first').text(),
-			text,
-			result,
-			params;
-	
-		if (tab === 'module') {
-			item.editor.gotoLine(1);
-			if (item.is_server_module) {
-				text = 'def ' + node_text;
-			}
-			else {
-				text = 'function ' + node_text;
-			}
-			result = find_text(item, text);
-		}
-		else if (tab === 'events') {
-			item.editor.gotoLine(1);
-			if (!find_text(item, node_text + '(')) {
-				params = item.item_info.Events[node_text];
-				item.editor.gotoLine(item.editor.session.getLength() + 1);
-				if (item.is_server_module) {
-					text = 'def ' + node_text + '(' + params + '):\n\tpass';
-				}
-				else {
-					text = 'function ' + node_text + '(' + params + ') {\n\n}';
-				}
-				item.editor.insert('\n\n' + text);
-			}
-		}
-		else if (tab === 'task' || tab === 'fields') {
-			item.editor.insert(node_text);
-		}
-		else if (tab === 'templates') {
-			item.editor.gotoLine(1);
-			text = node_text;
-			find_text(item, text);
-		}
-		item.editor.focus();
-	}
-	
-	function update_tab_height(item) {
-		var $li,
-			dbtree,
-			height;
-		$li = item.view_form.find('#editor-tabs > .nav > li.active');
-		if ($li.length) {
-			height = item.view_form.find('#editor-tabs #info-grids').innerHeight();
-			item.view_form.find('#editor-tabs div.info-tree').hide();
-			item.view_form.find('#editor-tabs div.info-tree.' + $li.attr('id'))
-				.show()
-				.height(height)
-				.find('.dbtree').height(height);
-			dbtree = item.view_form.find('#editor-tabs div.info-tree.' + $li.attr('id')).find('.dbtree').data('tree');
-			if (dbtree) {
-				dbtree.scroll_into_view();
-			}
-		}
-	}
-	
-	function info_tab_clicked(item, $li) {
-		var height;
-		item.view_form.find('#editor-tabs li').removeClass('active');
-		$li.addClass('active');
-		update_tab_height(item);
-	}
-	
-	function add_tree(item, title) {
-		var tree_item = item.copy(),
-			info_name = title.toLowerCase(),
-			$li = item.view_form.find('li#' + info_name),
-			tree_info = item.item_info[title],
+	function add_tree(task, tree_info, info_name) {
+		var tree_item = task.sys_code_editor.copy(),
+			$li = task.code_editor.find('#editor-tabs ul li#' + info_name),
 			tree_div;
 	
-		tree_div = item.view_form.find('#editor-tabs #info-grids > div.' + info_name);
+		tree_div = task.code_editor.find('#editor-tabs #info-grids > div.' + info_name);
 		if (tree_div.length) {
 			tree_div.empty();
 		}
 		else {
 			tree_div = $('<div id="' + info_name + '" class="info-tree ' + info_name + '">');
-			item.view_form.find('#editor-tabs #info-grids').append(tree_div);
+			task.code_editor.find('#editor-tabs #info-grids').append(tree_div);
 		}
 		tree_div.hide();
 		tree_item.open({open_empty: true});
@@ -2822,50 +2735,113 @@ function Events14() { // admin.catalogs.sys_code_editor
 		return cur_id;
 	}
 	
-	function find_in_project(item) {
-		item.task.sys_search.find_in_task(task);
+	function info_tab_clicked(task, $li) {
+		task.code_editor.find('#editor-tabs li').removeClass('active');
+		$li.addClass('active');
+		update_tab_height(task);
 	}
 	
-	function on_view_form_keydown(item, e) {
-		var code = (e.keyCode ? e.keyCode : e.which);
-		if (code === 27) {
-			if (!item.view_form.find('.ace_search').is(':visible')) {
-				item.close_view_form();
+	function tree_node_clicked(task, tag, $li) {
+		var info = task.tabs[tag],
+			tab = $li.closest('.info-tree').attr('id'),
+			node_text = $li.find('span.tree-text:first').text(),
+			text,
+			result,
+			params;
+	
+		if (tab === 'module') {
+			task.editor.gotoLine(1);
+			if (info.ext === 'py') {
+				text = 'def ' + node_text;
+			}
+			else {
+				text = 'function ' + node_text;
+			}
+			result = find_text(task, text);
+		}
+		else if (tab === 'events') {
+			task.editor.gotoLine(1);
+			if (!find_text(task, node_text + '(')) {
+				params = info.events[node_text];
+				task.editor.gotoLine(task.editor.session.getLength() + 1);
+				if (info.ext === 'py') {
+					text = 'def ' + node_text + '(' + params + '):\n\tpass';
+				}
+				else {
+					text = 'function ' + node_text + '(' + params + ') {\n\n}';
+				}
+				task.editor.insert('\n\n' + text);
 			}
 		}
-		if (e.ctrlKey && code === 83) {
-			e.preventDefault();
-			e.stopPropagation();
-			save_edit(item)
+		else if (tab === 'task' || tab === 'fields') {
+			task.editor.insert(node_text);
 		}
-		if (e.altKey && code === 70) {
-			e.preventDefault();
-			e.stopPropagation();
-			find_in_project(item);
+		else if (tab === 'templates') {
+			task.editor.gotoLine(1);
+			text = node_text;
+			find_text(task, text);
+		}
+		task.editor.focus();
+	}
+	
+	function set_info_grids_height() {
+		task.code_editor.find('#info-grids').height(
+			task.code_editor.find('#left-box').innerHeight() - task.code_editor.find('ul.nav-tabs').outerHeight() - 14
+		)
+	}
+	
+	function update_tab_height(task) {
+		var $li,
+			dbtree,
+			height;
+		$li = task.code_editor.find('#editor-tabs > .nav > li.active');
+		if ($li.length) {
+			height = task.code_editor.find('#editor-tabs #info-grids').innerHeight();
+			task.code_editor.find('#editor-tabs div.info-tree').hide();
+			task.code_editor.find('#editor-tabs div.info-tree.' + $li.attr('id'))
+				.show()
+				.height(height)
+				.find('.dbtree').height(height);
+			dbtree = task.code_editor.find('#editor-tabs div.info-tree.' + $li.attr('id')).find('.dbtree').data('tree');
+			if (dbtree) {
+				dbtree.scroll_into_view();
+			}
 		}
 	}
-	this.code_editor = code_editor;
-	this.file_editor = file_editor;
-	this.on_view_form_created = on_view_form_created;
-	this.on_view_form_shown = on_view_form_shown;
+	
+	function find_text(task, text) {
+		return task.editor.find(text, {
+			backwards: false,
+			wrap: false,
+			caseSensitive: true,
+			wholeWord: true,
+			regExp: false
+		});
+	}
+	this.init_tabs = init_tabs;
+	this.resize = resize;
+	this.show_tab = show_tab;
+	this.show_editor = show_editor;
+	this.close_editor = close_editor;
+	this.close_query = close_query;
+	this.init_editor = init_editor;
+	this.select_editor = select_editor;
+	this.show_info_tabs = show_info_tabs;
+	this.update_buttons = update_buttons;
+	this.update_error_message = update_error_message;
 	this.get_modified = get_modified;
 	this.mark_clean = mark_clean;
-	this.on_view_form_close_query = on_view_form_close_query;
-	this.on_view_form_closed = on_view_form_closed;
-	this.save_to_field = save_to_field;
-	this.save_to_file = save_to_file;
+	this.save_module = save_module;
+	this.save_file = save_file;
 	this.save_edit = save_edit;
-	this.cancel_edit = cancel_edit;
-	this.update_size = update_size;
-	this.resize = resize;
-	this.find_text = find_text;
-	this.tree_node_clicked = tree_node_clicked;
-	this.update_tab_height = update_tab_height;
-	this.info_tab_clicked = info_tab_clicked;
+	this.create_info_tabs = create_info_tabs;
 	this.add_tree = add_tree;
 	this.build_tree = build_tree;
-	this.find_in_project = find_in_project;
-	this.on_view_form_keydown = on_view_form_keydown;
+	this.info_tab_clicked = info_tab_clicked;
+	this.tree_node_clicked = tree_node_clicked;
+	this.set_info_grids_height = set_info_grids_height;
+	this.update_tab_height = update_tab_height;
+	this.find_text = find_text;
 }
 
 task.events.events14 = new Events14();
@@ -2985,7 +2961,7 @@ function Events15() { // admin.catalogs.sys_fields_editor
 	
 	function on_view_form_shown(item) {
 		prepare_grids(item);
-		item.right_grid.focus();
+	//	item.right_grid.focus();
 	}
 	
 	function prepare_grids(item) {
@@ -3114,10 +3090,6 @@ function Events15() { // admin.catalogs.sys_fields_editor
 		}
 	}
 	
-	function on_view_form_closed(item) {
-		item.task.editing_finished();
-	}
-	
 	function item_cancel(item) {
 		item.close_view_form();
 	}
@@ -3137,7 +3109,6 @@ function Events15() { // admin.catalogs.sys_fields_editor
 	this.move_right = move_right;
 	this.save_result = save_result;
 	this.on_view_form_close_query = on_view_form_close_query;
-	this.on_view_form_closed = on_view_form_closed;
 	this.item_cancel = item_cancel;
 	this.on_view_form_keydown = on_view_form_keydown;
 }
@@ -3153,7 +3124,6 @@ function Events11() { // admin.catalogs.sys_params
 		}
 		else {
 			if (item._safe_mode !== item.f_safe_mode.value) {
-	//			item.task.editing_finished();
 				item.task.logout();
 				location.reload();
 			}
@@ -3169,7 +3139,7 @@ function Events11() { // admin.catalogs.sys_params
 			options.label_width = 200;
 		}
 		else if (item.params === false) {
-			item.edit_options.width = 560;
+			item.edit_options.width = 620;
 			options.label_width = 360;
 		}
 	}
@@ -3180,16 +3150,8 @@ function Events11() { // admin.catalogs.sys_params
 		}
 	}
 	
-	function on_before_apply(item) {
-		item.task.editing_finished(item);
-	}
-	
 	function on_after_edit(item) {
 		item._safe_mode = item.f_safe_mode.value;
-	}
-	
-	function on_edit_form_closed(item) {
-		item.task.editing_finished();
 	}
 	
 	function on_field_select_value(field, lookup_item) {
@@ -3234,9 +3196,7 @@ function Events11() { // admin.catalogs.sys_params
 	this.on_after_apply = on_after_apply;
 	this.init_edit_options = init_edit_options;
 	this.on_field_validate = on_field_validate;
-	this.on_before_apply = on_before_apply;
 	this.on_after_edit = on_after_edit;
-	this.on_edit_form_closed = on_edit_form_closed;
 	this.on_field_select_value = on_field_select_value;
 	this.init_lookup_form = init_lookup_form;
 	this.create_system_item = create_system_item;
@@ -3380,17 +3340,12 @@ function Events18() { // admin.catalogs.sys_lookup_lists
 		});
 		item.f_lookup_values_text.value = JSON.stringify(list);
 	}
-	
-	function on_view_form_closed(item) {
-		item.task.editing_finished();
-	}
 	this.init_view_table = init_view_table;
 	this.can_delete = can_delete;
 	this.on_view_form_created = on_view_form_created;
 	this.on_edit_form_created = on_edit_form_created;
 	this.init_lookups = init_lookups;
 	this.on_before_post = on_before_post;
-	this.on_view_form_closed = on_view_form_closed;
 }
 
 task.events.events18 = new Events18();
@@ -3476,7 +3431,6 @@ function Events5() { // admin.tables.sys_filters
 			i++;
 		});
 		item.apply();
-		item.task.editing_finished();
 	}
 	this.on_view_form_created = on_view_form_created;
 	this.on_view_form_shown = on_view_form_shown;
@@ -3707,10 +3661,6 @@ function Events10() { // admin.tables.sys_indices
 	function on_before_apply(item) {
 		return {'manual_update': item.task._manual_update};
 	}
-	
-	function on_view_form_closed(item) {
-		item.task.editing_finished();
-	}
 	this.on_view_form_created = on_view_form_created;
 	this.on_view_form_keydown = on_view_form_keydown;
 	this.edit_index = edit_index;
@@ -3719,7 +3669,6 @@ function Events10() { // admin.tables.sys_indices
 	this.on_field_changed = on_field_changed;
 	this.on_field_validate = on_field_validate;
 	this.on_before_apply = on_before_apply;
-	this.on_view_form_closed = on_view_form_closed;
 }
 
 task.events.events10 = new Events10();
@@ -3798,7 +3747,6 @@ function Events7() { // admin.tables.sys_privileges
 	}
 	
 	function on_view_form_closed(item) {
-		item.task.editing_finished();
 		item.task.sys_roles.server('roles_changed');
 	}
 	this.on_view_form_created = on_view_form_created;
@@ -3869,12 +3817,7 @@ function Events17() { // admin.tables.sys_field_lookups
 			return 'Value must be greater than zero'
 		}
 	}
-	
-	function on_view_form_closed(item) {
-		item.task.editing_finished();
-	}
 	this.on_field_validate = on_field_validate;
-	this.on_view_form_closed = on_view_form_closed;
 }
 
 task.events.events17 = new Events17();

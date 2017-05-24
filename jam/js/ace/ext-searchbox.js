@@ -1,4 +1,4 @@
-ace.define("ace/ext/searchbox",["require","exports","module","ace/lib/dom","ace/lib/lang","ace/lib/event","ace/keyboard/hash_handler","ace/lib/keys"], function(require, exports, module) {
+define("ace/ext/searchbox",["require","exports","module","ace/lib/dom","ace/lib/lang","ace/lib/event","ace/keyboard/hash_handler","ace/lib/keys"], function(require, exports, module) {
 "use strict";
 
 var dom = require("../lib/dom");
@@ -42,6 +42,7 @@ outline: 1px solid red;\
 }\
 .ace_search_field {\
 background-color: white;\
+color: black;\
 border-right: 1px solid #cbcbcb;\
 border: 0 none;\
 -webkit-box-sizing: border-box;\
@@ -63,7 +64,6 @@ cursor: pointer;\
 float: left;\
 height: 22px;\
 margin: 0;\
-padding: 0;\
 position: relative;\
 }\
 .ace_searchbtn:last-child,\
@@ -255,10 +255,14 @@ var SearchBox = function(editor, range, showReplaceForm) {
     }]);
     this.$searchBarKb = new HashHandler();
     this.$searchBarKb.bindKeys({
-        "Ctrl-f|Command-f|Ctrl-H|Command-Option-F": function(sb) {
+        "Ctrl-f|Command-f": function(sb) {
             var isReplace = sb.isReplace = !sb.isReplace;
             sb.replaceBox.style.display = isReplace ? "" : "none";
-            sb[isReplace ? "replaceInput" : "searchInput"].focus();
+            sb.searchInput.focus();
+        },
+        "Ctrl-H|Command-Option-F": function(sb) {
+            sb.replaceBox.style.display = "";
+            sb.replaceInput.focus();
         },
         "Ctrl-G|Command-G": function(sb) {
             sb.findNext();
@@ -323,14 +327,15 @@ var SearchBox = function(editor, range, showReplaceForm) {
         this.editor.session.highlight(re || this.editor.$search.$options.re);
         this.editor.renderer.updateBackMarkers()
     };
-    this.find = function(skipCurrent, backwards) {
+    this.find = function(skipCurrent, backwards, preventScroll) {
         var range = this.editor.find(this.searchInput.value, {
             skipCurrent: skipCurrent,
             backwards: backwards,
             wrap: true,
             regExp: this.regExpOption.checked,
             caseSensitive: this.caseSensitiveOption.checked,
-            wholeWord: this.wholeWordOption.checked
+            wholeWord: this.wholeWordOption.checked,
+            preventScroll: preventScroll
         });
         var noMatch = !range && this.searchInput.value;
         dom.setCssClass(this.searchBox, "ace_nomatch", noMatch);
@@ -383,6 +388,9 @@ var SearchBox = function(editor, range, showReplaceForm) {
 
         if (value)
             this.searchInput.value = value;
+        
+        this.find(false, false, true);
+        
         this.searchInput.focus();
         this.searchInput.select();
 
@@ -404,6 +412,6 @@ exports.Search = function(editor, isReplace) {
 
 });
                 (function() {
-                    ace.require(["ace/ext/searchbox"], function() {});
+                    window.require(["ace/ext/searchbox"], function() {});
                 })();
             

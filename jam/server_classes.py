@@ -189,7 +189,7 @@ class ServerDataset(Dataset, SQL):
                                 det._master_id: self.ID,
                                 det._master_rec_id: self._primary_key_field.value
                             }
-                            det.open(fields=fields, expanded=detail.expanded, where=where)
+                            det.open(fields=fields, expanded=detail.expanded, where=where)#, order_by=[])
                             it.edit()
                             for d in det:
                                 detail.append()

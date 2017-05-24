@@ -164,6 +164,9 @@
             else if (this.options.width) {
                 width = this.options.width;
             }
+            else {
+                width = this.$element.width();
+            }
 
             if (width){
                 if (width > $(window).width()) {

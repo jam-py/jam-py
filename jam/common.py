@@ -293,7 +293,7 @@ def valid_identifier(name):
     except:
         return False
 
-def remove_comments(text, module_type, comment_sign):
+def remove_comments(text, is_server, comment_sign):
     result = []
     if text:
         comment = False
@@ -309,7 +309,7 @@ def remove_comments(text, module_type, comment_sign):
                 pos = line.find(comment_sign)
                 if pos != -1:
                     line = line[0:pos] + comment_sign + (len(line) - len(line[0:pos] + comment_sign) - 1) * ' ' + '\n'
-                if module_type == WEB_CLIENT_MODULE:
+                if not is_server:
                     pos = line.find('/*')
                     if pos != -1:
                         end = line.find('*/', pos + 2)
@@ -322,7 +322,7 @@ def remove_comments(text, module_type, comment_sign):
         result = ''.join(result)
     return result
 
-def get_funcs_info(text, module_type):
+def get_funcs_info(text, is_server):
 
     def check_line(line, comment_sign, func_literal):
         func_name = ''
@@ -366,13 +366,13 @@ def get_funcs_info(text, module_type):
     funcs = {}
     funcs['result'] = {}
     if text:
-        if module_type == WEB_CLIENT_MODULE:
-            comment_sign = '//'
-            func_literal = 'function'
-        else:
+        if is_server:
             comment_sign = '#'
             func_literal = 'def'
-        text = remove_comments(text, module_type, comment_sign)
+        else:
+            comment_sign = '//'
+            func_literal = 'function'
+        text = remove_comments(text, is_server, comment_sign)
         lines = text.splitlines()
         funcs_list = []
         for i, line in enumerate(lines):

@@ -160,7 +160,8 @@
 
             timeout = setTimeout(function () {
                     self.restoreFocus();
-                }, 100
+                },
+                0
             );
         },
 

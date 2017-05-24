@@ -1,15 +1,15 @@
 
 body {
     margin: 0 20px;    
-}
+} 
 
-#cancel-btn {
-    margin-left: 5px;
+.navbar {
+    margin-bottom: 0;
 }
 
 .dashboard-view {
     border: solid 2px #b4e3fa;
-    border-radius: 6px;
+    border-radius: 6px; 
     padding: 10px;
     /*margin: 10px;*/
 }
@@ -39,10 +39,10 @@ body {
     background-color: #196619;
 }
 
-/*.modal-body {*/
-/*    padding: 6px;*/
-/* }*/
- 
- .modal-footer .btn i {
-     display: None;
- }
+#cancel-btn {
+    margin-left: 5px;
+}
+
+.modal-footer .btn i {
+    display: None;
+}

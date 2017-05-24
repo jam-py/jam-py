@@ -99,7 +99,6 @@
             this.js_filename = 'js/' + js_filename;
         }
         this.modal_options = {
-            width: undefined,
             left: undefined,
             top: undefined,
             close_focusout: false,
@@ -2257,7 +2256,7 @@
                 this._set_rec_no(new_value);
             }
         });
-        Object.defineProperty(this, "rec_count", {
+        Object.defineProperty(this, "recs", {
             get: function() {
                 return this.record_count();
             },
@@ -3420,6 +3419,12 @@
                 text = arguments[1].trim(),
                 filter,
                 filter_type,
+                i, j,
+                ids,
+                substr,
+                str,
+                found,
+                lookup_values,
                 params = {};
             if (callback) {
                 if (arguments.length === 4) {
@@ -3434,6 +3439,29 @@
             }
             else {
                 filter_type = consts.FILTER_CONTAINS_ALL;
+            }
+
+            if (this.field_by_name(field_name).lookup_values) {
+                lookup_values = this.field_by_name(field_name).lookup_values;
+                ids = [];
+                for (i = 0; i < lookup_values.length; i++) {
+                    str = lookup_values[i][1].toLowerCase();
+                    substr = text.toLowerCase().split(' ');
+                    found = true;
+                    for (j = 0; j < substr.length; j++) {
+                        if (substr[j]) {
+                            if (str.indexOf(substr[j]) === -1) {
+                                found = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (found) {
+                        ids.push(lookup_values[i][0])
+                    }
+                }
+                text = ids;
+                filter_type = consts.FILTER_IN;
             }
 
             if (text.length) {
@@ -3629,11 +3657,6 @@
                 this._do_after_scroll();
             }
             this._do_after_cancel();
-            //~ if (this.details) {
-                //~ this.each_detail(function(d) {
-                    //~ console.log(d.record_count())
-                //~ })
-            //~ }
         },
 
         is_browsing: function() {
@@ -4207,9 +4230,23 @@
             this._search_record(this._get_rec_no(), -1);
         },
 
+        _count_filtered: function() {
+            var clone = this.clone(true),
+                result = 0;
+            this.each(function() {
+                result += 1;
+            })
+            return result;
+        },
+
         record_count: function() {
             if (this._dataset) {
-                return this._dataset.length;
+                if (this.filtered) {
+                    return this._count_filtered();
+                }
+                else {
+                    return this._dataset.length;
+                }
             } else {
                 return 0;
             }
@@ -4839,6 +4876,7 @@
                 label_width: undefined,
                 row_count: undefined,
                 autocomplete: false,
+                in_well: true,
                 tabindex: undefined
             };
 
@@ -4865,7 +4903,10 @@
 
             container.empty();
 
-            form = $('<form class="row-fluid well" autocomplete="off"></form>').appendTo($("<div></div>").appendTo(container));
+            form = $('<form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").appendTo(container));
+            if (options.in_well) {
+                form.addClass('well');
+            }
             if (options.autocomplete) {
                 form.attr("autocomplete", "on")
             }
@@ -4905,6 +4946,7 @@
                     label_on_top: false,
                     label_width: undefined,
                     autocomplete: false,
+                    in_well: true,
                     tabindex: undefined
             };
 
@@ -4923,7 +4965,10 @@
                 });
             }
             container.empty();
-            form = $('<form autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
+            form = $('<form form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
+            if (options.in_well) {
+                form.addClass('well');
+            }
             if (options.autocomplete) {
                 form.attr("autocomplete", "on")
             }
@@ -5055,7 +5100,7 @@
                 }
                 this.update_controls(consts.UPDATE_CANCEL);
                 if (callback) {
-                    callback.call(this, this);
+                    callback.call(this);
                 }
             }
         },
@@ -5357,6 +5402,7 @@
                 label_on_top: false,
                 label_width: undefined,
                 autocomplete: false,
+                in_well: true,
                 tabindex: undefined
             }
 
@@ -5385,7 +5431,10 @@
                 });
             }
             container.empty();
-            form = $('<form autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
+            form = $('<form form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
+            if (options.in_well) {
+                form.addClass('well');
+            }
             if (options.autocomplete) {
                 form.attr("autocomplete", "on")
             }
@@ -5666,7 +5715,7 @@
                 }
             } catch (e) {
                 result = '';
-                throw e;
+                console.error(e);
             }
             if (typeof result !== 'string') {
                 result = ''
@@ -5678,47 +5727,42 @@
             var error = "";
 
             if (value !== this.get_text()) {
-                try {
-                    switch (this.data_type) {
-                        case consts.TEXT:
-                            this.set_value(value);
-                            break;
-                        case consts.INTEGER:
-                            this.set_value(this.str_to_int(value));
-                            break;
-                        case consts.FLOAT:
-                            this.set_value(this.str_to_float(value));
-                            break;
-                        case consts.CURRENCY:
-                            this.set_value(this.str_to_float(value));
-                            break;
-                        case consts.DATE:
-                            this.set_value(this.str_to_date(value));
-                            break;
-                        case consts.DATETIME:
-                            this.set_value(this.str_to_datetime(value));
-                            break;
-                        case consts.BOOLEAN:
-                            if (language) {
-                                if (value.length && value.toUpperCase().trim() === language.yes.toUpperCase().trim()) {
-                                    this.set_value(true);
-                                } else {
-                                    this.set_value(false);
-                                }
+                switch (this.data_type) {
+                    case consts.TEXT:
+                        this.set_value(value);
+                        break;
+                    case consts.INTEGER:
+                        this.set_value(this.str_to_int(value));
+                        break;
+                    case consts.FLOAT:
+                        this.set_value(this.str_to_float(value));
+                        break;
+                    case consts.CURRENCY:
+                        this.set_value(this.str_to_float(value));
+                        break;
+                    case consts.DATE:
+                        this.set_value(this.str_to_date(value));
+                        break;
+                    case consts.DATETIME:
+                        this.set_value(this.str_to_datetime(value));
+                        break;
+                    case consts.BOOLEAN:
+                        if (language) {
+                            if (value.length && value.toUpperCase().trim() === language.yes.toUpperCase().trim()) {
+                                this.set_value(true);
                             } else {
-                                if (value.length && (value[0] === 'T' || value[0] === 't')) {
-                                    this.set_value(true);
-                                } else {
-                                    this.set_value(false);
-                                }
+                                this.set_value(false);
                             }
-                            break;
-                        default:
-                            this.set_value(value);
-                    }
-                } catch (e) {
-                    error = this.field_caption + ": " + this.type_error();
-                    throw error;
+                        } else {
+                            if (value.length && (value[0] === 'T' || value[0] === 't')) {
+                                this.set_value(true);
+                            } else {
+                                this.set_value(false);
+                            }
+                        }
+                        break;
+                    default:
+                        this.set_value(value);
                 }
             }
         },
@@ -7241,7 +7285,7 @@
                     auto_fit_width: true,
                     selections: undefined,
                     select_all: true,
-                    selection_limit: 1500,
+                    selection_limit: undefined,
                     tabindex: 0,
                     striped: true,
                     dblclick_edit: true,
@@ -7897,7 +7941,7 @@
             });
 
             this.createPager();
-            this.createFooter();
+            this.fill_footer();
             this.calculate();
         },
 
@@ -7917,8 +7961,8 @@
                 .css("position", "absolute")
                 .css("top", -1000),
             $element.width(this.$container.width());
-            this.fillTitle($element);
-            this.createFooter($element);
+            this.fill_title($element);
+            this.fill_footer($element);
             $table = $element.find("table.inner-table");
             if (this.item.selections && !this.item.master) {
                 row = '<tr><td><div><input type="checkbox"></div></td><td><div>W</div></td></tr>';
@@ -8207,7 +8251,7 @@
             }
         },
 
-        fillTitle: function($element) {
+        fill_title: function($element) {
             var i,
                 len,
                 self = this,
@@ -8354,7 +8398,7 @@
             this.selections_update_selected();
         },
 
-        createFooter: function($element) {
+        fill_footer: function($element) {
             var i,
                 len,
                 field,
@@ -8696,14 +8740,22 @@
                             self.showEditor();
                         },
                         75);
-                    //~ this.showEditor();
                 }
             }
         },
 
         get_field_text: function(field) {
-            return field.get_lookup_data_type() === consts.BOOLEAN ? field.get_lookup_value() ? '×' : '' :
-                field.get_display_text();
+            if (field.get_lookup_data_type() === consts.BOOLEAN) {
+                if (this.owner && (this.owner.on_field_get_text || this.owner.on_get_field_text)) {
+                    return field.get_display_text();
+                }
+                else {
+                    return field.get_lookup_value() ? '×' : ''
+                }
+            }
+            else {
+                return field.get_display_text();
+            }
         },
 
         next_record: function() {
@@ -9000,8 +9052,6 @@
             divStyleStr += '"';
             return '<td ' + classStr + ' ' + dataStr + ' ' + tdStyleStr + '>' +
                 '<div ' + classStr + ' ' + divStyleStr + '>' + text
-                //~ '<span ' + divStyleStr + '>' + text +
-                //~ '</span>' +
                 '</div>' +
                 '</td>';
         },
@@ -9117,60 +9167,22 @@
             }
             for (i = 0; i < count; i++) {
                 field = this.fields[i];
-//                if (i < this.fields.length - 1) {
-                    width = this.getCellWidth(field.field_name);
-                    row.find("td." + field.field_name).width(width);
-                    this.$head.find("th." + field.field_name).width(width);
-//                }
+                width = this.getCellWidth(field.field_name);
+                row.find("td." + field.field_name).width(width);
+                this.$head.find("th." + field.field_name).width(width);
             }
         },
 
-        refresh: function(callback) {
+        fill_rows: function() {
             var i,
                 len,
-                field,
-                row, tmpRow,
-                cell,
-                cellWidth,
-                headCell,
-                footCell,
-                table,
+                row,
                 rows,
-                title = '',
                 rec,
                 item_rec_no,
                 rec_nos = [],
                 info,
-                is_focused,
-                is_visible = this.$table.is(':visible'),
-                editable_val,
-                clone = this.item.clone(true),
-                container = $('<div>');
-
-            is_focused = this.is_focused();
-            if (this.options.editable && this.editMode && this.editor) {
-                if (!is_focused) {
-                    is_focused = this.editor.$input.is(':focus');
-                }
-                editable_val = this.editor.$input.value;
-                this.hideEditor();
-            }
-
-            container.css("position", "absolute")
-                .css("top", -1000)
-                .width(this.getElementWidth(this.$element));
-            $('body').append(container);
-            this.$element.detach();
-            container.append(this.$element);
-
-            this.$table.empty();
-            this.$head.empty();
-            if (this.selection_block) {
-                this.selection_block.remove();
-            }
-            this.$foot.hide();
-            this.$outer_table.find('#top-td').attr('colspan', this.colspan);
-
+                clone = this.item.clone(true);
             clone.on_field_get_text = this.item.on_field_get_text;
             rows = ''
             item_rec_no = this.item.rec_no;
@@ -9199,6 +9211,61 @@
             } finally {
                 this.item._cur_row = item_rec_no;
             }
+        },
+
+        refresh: function(fill_rows) {
+            var i,
+                len,
+                field,
+                row, tmpRow,
+                cell,
+                cellWidth,
+                headCell,
+                footCell,
+                table,
+                rows,
+                title = '',
+                rec,
+                item_rec_no,
+                rec_nos = [],
+                info,
+                is_focused,
+                is_visible = this.$table.is(':visible'),
+                editable_val,
+                clone = this.item.clone(true),
+                container = $('<div>');
+
+            if (fill_rows === undefined) {
+                fill_rows = true
+            }
+            is_focused = this.is_focused();
+            if (this.options.editable && this.editMode && this.editor) {
+                if (!is_focused) {
+                    is_focused = this.editor.$input.is(':focus');
+                }
+                editable_val = this.editor.$input.value;
+                this.hideEditor();
+            }
+
+            container.css("position", "absolute")
+                .css("top", -1000)
+                .width(this.getElementWidth(this.$element));
+            $('body').append(container);
+            this.$element.detach();
+            container.append(this.$element);
+
+            if (fill_rows) {
+                this.$table.empty();
+                this.$head.empty();
+                if (this.selection_block) {
+                    this.selection_block.remove();
+                }
+                this.$foot.hide();
+                this.$outer_table.find('#top-td').attr('colspan', this.colspan);
+
+                this.fill_rows();
+            }
+
             row = this.$table.find("tr:first");
             if (this.autoFieldWidth && !this.fieldWidthUpdated) {
                 this.$table.css('table-layout', 'auto');
@@ -9232,16 +9299,19 @@
                 }
                 this.$table.css('table-layout', 'fixed');
                 this.$outer_table.css('table-layout', 'fixed');
-                this.fillTitle(container);
-                this.createFooter(container);
+                this.fill_title(container);
+                this.fill_footer(container);
                 this.set_saved_width(row);
-                this.syncColWidth();
                 if (this.item.record_count() > 0 && is_visible) {
                     this.fieldWidthUpdated = true;
                 }
                 tmpRow.remove();
+                if (this.fieldWidthUpdated) {
+                    this.refresh(false);
+                }
             } else {
-                this.fillTitle(container);
+                this.fill_title(container);
+                this.fill_footer(container);
                 this.syncColWidth();
             }
 
@@ -9260,9 +9330,6 @@
             if (this.options.editable && this.editMode && this.editor) {
                 this.showEditor();
                 this.editor.$input.value = editable_val;
-            }
-            if (callback) {
-                callback.call(this);
             }
         },
 
@@ -9800,8 +9867,8 @@
                     this.errorValue = text;
                     this.error = e;
                     this.updateState(false);
-                    if (this.field && this.field.owner && this.field.owner.task.settings.DEBUGGING) {
-                        throw 'change_field_text error: ' + e
+                    if (e.stack) {
+                        console.error(e.stack);
                     }
                     result = false;
                 }

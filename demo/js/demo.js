@@ -4,10 +4,9 @@
 function Events1() { // demo 
 
 	function on_page_loaded(task) {
-	
-		$("title").text(task.item_caption);
+		$("title").text(task.item_caption); 
 		$("#title").text(task.item_caption);
-		
+		 
 		if (task.safe_mode) {
 			$("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
 			$('#log-out')
@@ -32,7 +31,8 @@ function Events1() { // demo
 					group.each_item(function(item) {
 						if (item.visible) {
 							ul.append($('<li>')
-								.append($('<a class="item-menu" href="#">' + item.item_caption + '</a>').data('item', item)));					
+								.append($('<a class="item-menu" href="#">' + item.item_caption + '</a>')
+								.data('item', item)));					
 						}
 					});
 				}
@@ -63,11 +63,11 @@ function Events1() { // demo
 					'<li><a href="#">Cerulean</a></li>' +				
 					'<li><a href="#">Amelia</a></li>' +				
 					'<li><a href="#">Flatly</a></li>' +
+					'<li><a href="#">Journal</a></li>' +				
 					'<li><a href="#">Slate</a></li>' +
+					'<li><a href="#">United</a></li>' +				
 					'<li><a href="#">Cosmo</a></li>' +
 					'<li><a href="#">Readable</a></li>' +
-					'<li><a href="#">United</a></li>' +				
-					'<li><a href="#">Journal</a></li>' +				
 					'<li><a href="#">Spacelab</a></li>' +				
 					'<li class="divider"></li>' +
 					'<li><a href="#">Container</a></li>' +
@@ -77,7 +77,7 @@ function Events1() { // demo
 		set_theme(task, 'Bootrap');
 		$('#menu #themes ul a').on('click', (function(e) {
 			e.preventDefault();		
-			set_theme(task, $(this).text());
+			set_theme(task, $(this).text().substr(2));
 		}));
 		$("#menu").append($('<li></li>').append($('<a href="#">About</a>').click(function(e) {
 			e.preventDefault();
@@ -90,7 +90,6 @@ function Events1() { // demo
 		
 		$("#menu").append($('<li><a href="http://jam-py.com/" target="_blank">Jam.py</a></li>'));	 
 	  
-	//	task.customers.view($("#content"));
 		$('#menu .item-menu:first').click(); 
 	
 		// $(document).ajaxStart(function() { $("html").addClass("wait"); });
@@ -105,11 +104,9 @@ function Events1() { // demo
 			task.small_font = true;
 			task.in_container = true;
 			$('#menu #themes ul a').each(function() {
-			   $(this).html(
-					'<span class="theme-name">' + $(this).text() + '</span>' +
-					'<span class="pull-right"><i class="icon-ok"></i></span>' 
-			   ); 
-			});		
+				var theme = $(this).text();
+				$(this).html('&nbsp;&nbsp;' + theme);
+			});
 		}
 		if (theme === 'Container') {
 			task.in_container = !task.in_container;
@@ -132,19 +129,20 @@ function Events1() { // demo
 					}
 				});
 				task.theme = theme;
-				$('window').resize();
+	//			$('#menu .item-menu:first').click();
+				$('window').resize();			
 			}
 		}
-		$('#menu #themes ul a .theme-name').each(function() {
-			var theme = $(this).text();
-			$(this).parent().find('i').hide();
-			if (theme === 'Container') {
-				if (task.in_container) {
-					$(this).parent().find('i').show();
-				}	
+		$('#menu #themes ul a').each(function() {
+			var theme = $(this).text().substr(2);
+			if (theme === 'Container' && task.in_container) {
+				$(this).html('&#x2714;&nbsp;' + theme);
 			}		
-			if (theme === task.theme) {
-				$(this).parent().find('i').show();
+			else if (theme === task.theme) {
+				$(this).html('&#x2714;&nbsp;' +theme);
+			}
+			else {
+				$(this).html('&nbsp;&nbsp;' + theme);			
 			}
 		});		
 	}
@@ -200,8 +198,8 @@ function Events1() { // demo
 			item.view_options.width = 1060;
 		}
 		else {
-			item.view$(".modal-body").css('padding', 0);
-			item.view$("#title-text")
+			item.view_form.find(".modal-body").css('padding', 0);
+			item.view_form.find("#title-text")
 				.text(item.item_caption)
 				.click(function() {
 					item.view(item.view_form.parent());
@@ -209,31 +207,31 @@ function Events1() { // demo
 			table_options.height = $(window).height() - $('body').height() - 10;
 		}
 		if (item.can_create()) {
-			item.view$("#new-btn").on('click.task', function() { item.insert_record(); });
+			item.view_form.find("#new-btn").on('click.task', function() { item.insert_record(); });
 		}
 		else {
-			item.view$("#new-btn").prop("disabled", true);
+			item.view_form.find("#new-btn").prop("disabled", true);
 		}
 		if (item.can_edit()) {
-			item.view$("#edit-btn").on('click.task', function() { item.edit_record() });
+			item.view_form.find("#edit-btn").on('click.task', function() { item.edit_record() });
 		}
 		else {
-			item.view$("#edit-btn").prop("disabled", true);
+			item.view_form.find("#edit-btn").prop("disabled", true);
 		}
 		if (item.can_delete()) {
-			item.view$("#delete-btn").on('click.task', function() { item.delete_record() } );
+			item.view_form.find("#delete-btn").on('click.task', function() { item.delete_record() } );
 		}
 		else {
-			item.view$("#delete-btn").prop("disabled", true);
+			item.view_form.find("#delete-btn").prop("disabled", true);
 		}
 		
 		create_print_btns(item);
 	
-		if (item.view$(".view-table").length) {
+		if (item.view_form.find(".view-table").length) {
 			if (item.init_table) {
 				item.init_table(item, table_options);
 			}
-			item.create_table(item.view$(".view-table"), table_options);
+			item.create_table(item.view_form.find(".view-table"), table_options);
 			item.open(true);		
 		}
 	}
@@ -253,8 +251,8 @@ function Events1() { // demo
 		if (options.create_inputs) {
 			item.create_inputs(item.edit_form.find(".edit-body"), options);
 		}
-		item.edit$("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
-		item.edit$("#ok-btn").on('click.task', function() { item.apply_record() });
+		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
+		item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
 	}
 	
 	function on_edit_form_close_query(item) {
@@ -280,18 +278,18 @@ function Events1() { // demo
 	
 	function on_filter_form_created(item) {
 		item.filter_options.title = item.item_caption + ' - filter';
-		item.create_filter_inputs(item.filter$(".edit-body"));
-		item.filter$("#cancel-btn")
+		item.create_filter_inputs(item.filter_form.find(".edit-body"));
+		item.filter_form.find("#cancel-btn")
 			.on('click.task', function() { item.close_filter_form() });
-		item.filter$("#ok-btn")
+		item.filter_form.find("#ok-btn")
 			.on('click.task', function() { item.apply_filters() });
 	}
 	
 	function on_param_form_created(item) {
-		item.create_param_inputs(item.param$(".edit-body"));
-		item.param$("#cancel-btn")
+		item.create_param_inputs(item.param_form.find(".edit-body"));
+		item.param_form.find("#cancel-btn")
 			.on('click.task', function() { item.close_param_form() });
-		item.param$("#ok-btn")
+		item.param_form.find("#ok-btn")
 			.on('click.task', function() { item.process_report() });
 	}
 	
@@ -317,7 +315,7 @@ function Events1() { // demo
 	
 	function on_edit_form_keyup(item, event) {
 		if (event.keyCode === 13 && event.ctrlKey === true){
-			item.edit$("#ok-btn").focus();
+			item.edit_form.find("#ok-btn").focus();
 			item.apply_record();
 		}
 	}
@@ -382,16 +380,17 @@ function Events2() { // demo.catalogs
 		if (item.default_field) {
 			search_field = item.default_field.field_name;
 			if (item.lookup_field && item.lookup_field.value && !item.lookup_field.multi_select) {
-				item.view$("#selected-value")
+				item.view_form.find("#selected-value")
 					.text(item.lookup_field.display_text)
 					.click(function() {
-						item.view$('#input-find').val(item.lookup_field.lookup_text);
+						item.view_form.find('#input-find').val(item.lookup_field.lookup_text);
 						item.search(item.default_field.field_name, item.lookup_field.lookup_text);
 					});
-				item.view$("#selected-div").show();
+				item.view_form.find("#selected-div").show();
 			}
-			item.view$('#title-right label').html('Seach by <b>' + item.field_by_name(search_field).field_caption + '</b>');
-			search = item.view$(".view-title input");
+			item.view_form.find('#search-fieldname').text(
+				item.field_by_name(search_field).field_caption);
+			search = item.view_form.find(".view-title input");
 			search.on('input', function() {
 				var input = $(this);
 				search.css('font-weight', 'normal');
@@ -415,7 +414,7 @@ function Events2() { // demo.catalogs
 					e.preventDefault();
 				}
 				else if (code === 40) {
-					item.view$(".inner-table").focus();
+					item.view_form.find(".inner-table").focus();
 					e.preventDefault();
 				}
 			});
@@ -430,20 +429,24 @@ function Events2() { // demo.catalogs
 					}
 				}
 			});
-	
-			item.view_form.off('click.search', '.dbtable.' + item.item_name + ' .inner-table td');		
-			item.view_form.on('click.search', '.dbtable.' + item.item_name + ' .inner-table td', function() {
+			item.view_form.find('#search-info').popover();
+			item.view_form.on('click.search', '.dbtable.' + item.item_name + ' .inner-table td', function(e) {
 				var field;
-				search_field = $(this).data('field_name');
-				field = item.field_by_name(search_field);
-				if (field && !field.lookup_values && field.lookup_type !== "blob" && field.lookup_type !== "boolean") {
-					item.view$('#title-right label').html('Seach by <b>' + item.field_by_name(search_field).field_caption + '</b>');
-					item.view$(".view-title input").val('');
+				if (e.ctrlKey) {			
+					if (search_field !== $(this).data('field_name')) {
+						search_field = $(this).data('field_name');
+						field = item.field_by_name(search_field);
+						if (field && field.lookup_type !== "blob" && field.lookup_type !== "boolean") {
+							item.view_form.find('#search-fieldname')
+								.text(item.field_by_name(search_field).field_caption);
+							item.view_form.find(".view-title input").val('');
+						}
+					}
 				}
 			});
 		}
 		else {
-			item.view$("#title-right .form-inline").hide();
+			item.view_form.find("#title-right .form-inline").hide();
 		}
 	}
 	
@@ -459,10 +462,10 @@ function Events2() { // demo.catalogs
 		setTimeout(
 			function() {
 				if (item.default_field) {
-					item.view$(".view-title input").focus();
+					item.view_form.find(".view-title input").focus();
 				}
 				else {
-					item.view$('.dbtable.' + item.item_name + ' .inner-table').focus();
+					item.view_form.find('.dbtable.' + item.item_name + ' .inner-table').focus();
 				}
 			},
 			100
@@ -505,21 +508,7 @@ function Events15() { // demo.catalogs.tracks
 		options.expand_selected_row = 3;
 		options.column_width = {'artist': '7%'};
 	}
-	
-	function on_edit_form_created(item) {
-		item.edit_options.width = 900;
-		item.create_inputs(item.edit_form.find("#edit-top"), {fields: ['name']});
-		item.create_inputs(item.edit_form.find("#edit-left"), {
-			fields: ['album', 'artist', 'composer', 'media_type'],
-			label_width: 90
-		});
-		item.create_inputs(item.edit_form.find("#edit-right"), {
-			fields: ['genre', 'milliseconds', 'bytes', 'unitprice'],
-			label_width: 90
-		}); 
-	}
 	this.init_table = init_table;
-	this.on_edit_form_created = on_edit_form_created;
 }
 
 task.events.events15 = new Events15();
@@ -615,7 +604,7 @@ function Events16() { // demo.journals.invoices
 				var footer = item.view_form.find('.dbtable.' + item.item_name + ' tfoot');
 				copy.each_field(function(f) {
 					footer.find('div.' + f.field_name)
-						.css('text-align', 'right')
+	//					.css('text-align', 'right')
 						.text(f.display_text);
 				});
 			}
@@ -798,8 +787,8 @@ task.events.events20 = new Events20();
 function Events24() { // demo.analytics.dashboard 
 
 	function on_view_form_created(item) {
-		show_cusomers(item, item.view$('#cutomers-canvas')[0].getContext('2d')),
-		show_tracks(item, item.view$('#tracks-canvas')[0].getContext('2d'));
+		show_cusomers(item, item.view_form.find('#cutomers-canvas')[0].getContext('2d')),
+		show_tracks(item, item.view_form.find('#tracks-canvas')[0].getContext('2d'));
 	}
 	
 	function show_cusomers(item, ctx) {
@@ -823,7 +812,7 @@ function Events24() { // demo.analytics.dashboard
 				});
 				inv.first();
 				draw_chart(item, ctx, labels, data, colors, 'Ten most active customers');
-				inv.create_table(item.view$('#customer-table'), 
+				inv.create_table(item.view_form.find('#customer-table'), 
 					{row_count: 10, dblclick_edit: false});		
 			}
 		);
@@ -851,7 +840,7 @@ function Events24() { // demo.analytics.dashboard
 				tracks.first();
 				tracks.name.field_caption = 'Track';
 				draw_chart(item, ctx, labels, data, colors, 'Ten most popular tracks');
-				tracks.create_table(item.view$('#tracks-table'), 
+				tracks.create_table(item.view_form.find('#tracks-table'), 
 					{row_count: 10, dblclick_edit: false});
 			}
 		);

@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/jam/img/j.png" type="image/png">
 
-    <!--<link href="/jam/css/bootstrap.css" rel="stylesheet">-->
-    <link href="/jam/css/bootstrap-cerulean.css" rel="stylesheet">
+    <link href="/jam/css/bootstrap.css" rel="stylesheet">
+    <!--<link href="/jam/css/bootstrap-cerulean.css" rel="stylesheet">-->
     <!--<link href="/jam/css/bootstrap-flatly.css" rel="stylesheet"> -->
     <!--<link href="/jam/css/bootstrap-slate.css" rel="stylesheet">-->
     <!--<link href="/jam/css/bootstrap-readable.css" rel="stylesheet">-->    
@@ -130,15 +130,22 @@
                         </div>
                         <div id="title-right" class="span6">
                             <form class="form-inline pull-right" style="margin: 6px 0px;">
-                                <label  class="control-label" for="input-find" style="margin: 0px 10px;">Search</label>
+                                <label  class="control-label" for="input-find" style="margin: 0px 10px;">Search by
+                                    <span class="label" id="search-fieldname"></span></label>
                                 <input id="input-find" type="text" class="input-medium search-query" autocomplete="off">
+                                <a id="search-info" href="#" 
+                                    title="Search field selection" data-placement="left"
+                                    data-toggle="popover" data-trigger="focus" 
+                                    data-content="To select a search field, hold down the Ctrl key and click the column">
+                                    <span class="badge help-badge">?</span>
+                                </a>
                             </form>
                         </div>
                     </div>
                 </div>
                 <div class="view-table">
                 </div>
-            </div>
+            </div>            
             <div class="modal-footer">
                 <button id="delete-btn" class="btn expanded-btn pull-left" type="button"><i class="icon-trash"></i> __$_delete_$__<small class="muted">&nbsp;[Ctrl+Del]</small></button>
                 <button id="new-btn" class="btn expanded-btn pull-right" type="button"><i class="icon-plus"></i> __$_new_$__<small class="muted">&nbsp;[Ctrl+Ins]</small></button>

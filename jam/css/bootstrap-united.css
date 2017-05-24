@@ -6363,6 +6363,7 @@ jam.py css
   color: #ffffff;
   text-decoration: none;
   background-color: #d44513;
+/*
   background-image: -moz-linear-gradient(top, #dd4814, #c64012);
   background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#dd4814), to(#c64012));
   background-image: -webkit-linear-gradient(top, #dd4814, #c64012);
@@ -6370,6 +6371,7 @@ jam.py css
   background-image: linear-gradient(to bottom, #dd4814, #c64012);
   background-repeat: repeat-x;
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffdd4814', endColorstr='#ffc64012', GradientType=0);
+*/
 }
 
 .table tbody td.field-selected {
