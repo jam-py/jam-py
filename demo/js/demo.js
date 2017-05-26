@@ -20,19 +20,23 @@ function Events1() { // demo
 		$("#taskmenu").show();
 		task.each_item(function(group) {
 			var li,
+				li_html = group.item_caption,
 				ul;
 			if (group.visible) {
+				if (group.items.length) {
+					li_html += ' <b class="caret"></b>';
+				}
 				li = $('<li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown" href="#">' + 
-					group.item_caption + ' <b class="caret"></b></a></li>');			
+					li_html + '</a></li>');						
 				$("#menu").append(li);
 				if (group.items.length) {
 					ul = $('<ul class="dropdown-menu">'); 
 					li.append(ul);
-					group.each_item(function(item) {
+					group.each_item(function(item) { 
 						if (item.visible) {
 							ul.append($('<li>')
-								.append($('<a class="item-menu" href="#">' + item.item_caption + '</a>')
-								.data('item', item)));					
+								.append($('<a class="item-menu" href="#">' + 
+								item.item_caption + '</a>').data('item', item)));					
 						}
 					});
 				}
@@ -90,6 +94,7 @@ function Events1() { // demo
 		
 		$("#menu").append($('<li><a href="http://jam-py.com/" target="_blank">Jam.py</a></li>'));	 
 	  
+	//	task.customers.view($("#content"));
 		$('#menu .item-menu:first').click(); 
 	
 		// $(document).ajaxStart(function() { $("html").addClass("wait"); });
@@ -429,7 +434,6 @@ function Events2() { // demo.catalogs
 					}
 				}
 			});
-			item.view_form.find('#search-info').popover();
 			item.view_form.on('click.search', '.dbtable.' + item.item_name + ' .inner-table td', function(e) {
 				var field;
 				if (e.ctrlKey) {			
@@ -787,8 +791,8 @@ task.events.events20 = new Events20();
 function Events24() { // demo.analytics.dashboard 
 
 	function on_view_form_created(item) {
-		show_cusomers(item, item.view_form.find('#cutomers-canvas')[0].getContext('2d')),
-		show_tracks(item, item.view_form.find('#tracks-canvas')[0].getContext('2d'));
+		show_cusomers(item, item.view_form.find('#cutomers-canvas').get(0).getContext('2d'));
+		show_tracks(item, item.view_form.find('#tracks-canvas').get(0).getContext('2d'));
 	}
 	
 	function show_cusomers(item, ctx) {
