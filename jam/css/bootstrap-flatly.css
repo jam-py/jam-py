@@ -6924,3 +6924,7 @@ textarea[readonly] {
     padding: 3px 4px;
     line-height: 22px;
 }
+
+.badge {
+    padding: 0 0;
+}

@@ -11,3 +11,4 @@ werkzeug. Session support was added.
    version_4_0_70
    version_4_0_71
    version_4_0_74
+   version_4_0_78

@@ -14,7 +14,6 @@ body {
     line-height: 16px;
 }
 
-
 .row-fluid [class*="span"] {
     min-height: 24px;
 }
@@ -155,6 +154,7 @@ form {
     z-index: 3000;
 }
 
+
 .badge {
     padding-left: 5px;
     padding-right: 5px;
@@ -163,13 +163,17 @@ form {
 .help-badge {
     margin-left: 5px;
     cursor: pointer;
+/*
     color: #0088cc;
     background-color: #ffffff;
+*/
 }
 
 .help-badge:hover {
+/*
     color: #ffffff;
     background-color: #3a87ad;
+*/
 }
 
 .pager {

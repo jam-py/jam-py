@@ -71,9 +71,9 @@ ITEM_TYPES = ["root", "users", "roles", "tasks", "task",
 
 GROUP_TYPES = ["Item group", "Detail group", "Report group"]
 
-TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB = range(1, 9)
-FIELD_TYPES = ('TEXT', 'INTEGER', 'FLOAT', 'CURRENCY', 'DATE', 'DATETIME', 'BOOLEAN', 'BLOB')
-FIELD_TYPE_NAMES = ('', 'text', 'integer', 'float', 'currency', 'date', 'datetime', 'boolean', 'blob')
+TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB, KEYS = range(1, 10)
+FIELD_TYPES = ('TEXT', 'INTEGER', 'FLOAT', 'CURRENCY', 'DATE', 'DATETIME', 'BOOLEAN', 'BLOB', 'KEYS')
+FIELD_TYPE_NAMES = ('', 'text', 'integer', 'float', 'currency', 'date', 'datetime', 'boolean', 'blob', 'keys')
 ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT = 1, 2, 3
 ALIGNMENT = ('ALIGN_LEFT', 'ALIGN_CENTER', 'ALIGN_RIGHT')
 ITEM_FIELD, FILTER_FIELD, PARAM_FIELD = range(1, 4)

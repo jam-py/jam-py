@@ -18,6 +18,7 @@
             "DATETIME": 6,
             "BOOLEAN": 7,
             "BLOB": 8,
+            "KEYS": 9,
 
             "ITEM_FIELD": 1,
             "FILTER_FIELD": 2,
@@ -218,6 +219,7 @@
                 child._master_rec_id = item_info.master_rec_id;
                 child.keep_history = item_info.keep_history;
                 child.lock_on_edit = item_info.lock_on_edit;
+                child.select_all = item_info.select_all
                 child.prototype_ID = item_info.prototype_ID
                 if (child.initAttr) {
                     child.initAttr(item_info);
@@ -393,6 +395,36 @@
             }
         },
 
+        _parse_template: function(template) {
+            var index,
+                keyword = '$include(',
+                include,
+                inc_template,
+                html = template.html(),
+                h = '';
+            template.empty();
+            html = html.replace(/<!--(.*?)-->/g, "");
+            while (true) {
+                index = html.indexOf(keyword);
+                if (index !== -1) {
+                    h += html.slice(0, index);
+                    html = html.slice(index + keyword.length);
+                    index = html.indexOf(')');
+                    include = html.slice(0, index + 1)
+                        .replace(/[('")]/g, '')
+                    inc_template = this.task.templates.find(include).clone();
+                    inc_template = this._parse_template(inc_template);
+                    h += inc_template.html();
+                    html = html.slice(index + 1);
+                }
+                else {
+                    h += html;
+                    break;
+                }
+            }
+            return template.append($(h));
+        },
+
         find_template: function(suffix, options) {
             var result,
                 template,
@@ -432,6 +464,7 @@
                 template = this._search_template('default', suffix);
             }
             if (template) {
+//                result = this._parse_template(template.clone());
                 result = template.clone();
             }
             else {
@@ -490,6 +523,7 @@
                 item_class = '';
 
             function captureMouseMove(e) {
+                var $title = $form.find('.modal-title');
                 if (mouseX) {
                     e.preventDefault();
                     $title.css('cursor', 'auto');
@@ -527,15 +561,14 @@
             );
             $doc = $(document);
             this._set_form_options($form, options);
-            $title = $form.find('.modal-title');
-            $title.on("mousedown", function(e) {
+            $form.on("mousedown", ".modal-title", function(e) {
                 mouseX = e.screenX;
                 mouseY = e.screenY;
                 $doc.on("mousemove.modalform", captureMouseMove);
                 $doc.on("mouseup.modalform", releaseMouseMove);
             });
 
-            $title.on("mousemove", function(e) {
+            $form.on("mousemove", ".modal-title", function(e) {
                 $(this).css('cursor', 'move');
             });
 
@@ -567,12 +600,13 @@
             if (options.show_history && this.keep_history && task.history_item) {
                 history_button = '<i id="history-btn" class="icon-film" style="float: right; margin: 5px;"></i>';
             }
-            if (!title.length) {
+            if (!title.text().length) {
                 title = ('<h4 class="modal-title">' + options.title + '</h4>');
-            } else {
-                title.detach();
-                title.html(options.title);
             }
+            //~ } else {
+                //~ title.detach();
+                //~ title.html(options.title);
+            //~ }
             header.empty();
             header.append(close_button + history_button + print_button);
             header.append(title);
@@ -657,45 +691,53 @@
                 } else {
                     if (this[formName].hasClass("modal")) {
                         this[formName].on("show", function(e) {
-                            e.stopPropagation();
-                            if (options.beforeShow) {
-                                options.beforeShow.call(self, e);
+                            if (e.target === self[formName].get(0)) {
+                                e.stopPropagation();
+                                if (options.beforeShow) {
+                                    options.beforeShow.call(self, e);
+                                }
+                                if (self[formName].title) {
+                                    item_options.title = self[formName].title;
+                                }
+                                if (self[formName].modal_width) {
+                                    item_options.width = self[formName].modal_width;
+                                }
+                                self._set_form_options(self[formName], item_options, formName);
                             }
-                            if (self[formName].title) {
-                                item_options.title = self[formName].title;
-                            }
-                            if (self[formName].modal_width) {
-                                item_options.width = self[formName].modal_width;
-                            }
-                            self._set_form_options(self[formName], item_options, formName);
                         });
 
                         this[formName].on("shown", function(e) {
-                            e.stopPropagation();
-                            if (options.onShown) {
-                                options.onShown.call(self, e);
+                            if (e.target === self[formName].get(0)) {
+                                e.stopPropagation();
+                                if (options.onShown) {
+                                    options.onShown.call(self, e);
+                                }
                             }
                         });
 
                         this[formName].on("hide", function(e) {
-                            var canClose = true;
-                            e.stopPropagation();
-                            if (options.onHide) {
-                                canClose = options.onHide.call(self, e);
-                            }
-                            if (canClose === false) {
-                                e.preventDefault();
-                                self[formName].data('_closing', false);
+                            if (e.target === self[formName].get(0)) {
+                                var canClose = true;
+                                e.stopPropagation();
+                                if (options.onHide) {
+                                    canClose = options.onHide.call(self, e);
+                                }
+                                if (canClose === false) {
+                                    e.preventDefault();
+                                    self[formName].data('_closing', false);
+                                }
                             }
                         });
 
                         this[formName].on("hidden", function(e) {
-                            e.stopPropagation();
-                            if (options.onHidden) {
-                                options.onHidden.call(self, e);
+                            if (e.target === self[formName].get(0)) {
+                                e.stopPropagation();
+                                if (options.onHidden) {
+                                    options.onHidden.call(self, e);
+                                }
+                                self[formName].remove();
+                                self[formName] = undefined;
                             }
-                            self[formName].remove();
-                            self[formName] = undefined;
                         });
 
                         this[formName].on("keydown." + keySuffix, function(e) {
@@ -861,16 +903,10 @@
                 }
             }
 
-            $element.on("shown", function(e) {
-                e.stopPropagation();
-            });
-
-            $element.on("hide", function(e) {
-                e.stopPropagation();
-            });
-
-            $element.on("hidden", function(e) {
-                e.stopPropagation();
+            $element.on("show shown hide hidden", function(e) {
+                if (e.target === $element.get(0)) {
+                    e.stopPropagation();
+                }
             });
 
             $element.on("keyup keydown", function(e) {
@@ -1152,14 +1188,6 @@
         this.user_info = {};
         this._script_cache = {};
         this.gridId = 0;
-        //~ $('body').on('mousedown.context_menu', function(e) {
-            //~ if (self.$context_menu) {
-                //~ self.$context_menu.hide();
-                //~ self.$context_menu.detach();
-                //~ self.$context_menu_parent.append(self.$context_menu);
-                //~ self.$context_menu = undefined;
-            //~ }
-        //~ });
     }
 
     $.extend(Task.prototype, {
@@ -1640,22 +1668,6 @@
 
         erase_cookie: function(name) {
             this.create_cookie(name, "", -1);
-        },
-
-        show_context_menu: function($menu, e) {
-            if ($menu.length) {
-                e.preventDefault();
-                this.$context_menu = $menu;
-                this.$context_menu_parent = $menu.parent();
-                $menu.detach();
-                $('body').prepend($menu);
-                $menu.show();
-                $menu.find('ul').css({
-                        top: e.pageY + "px",
-                        left: e.pageX + "px"
-                    })
-                    .show();
-            }
         }
     });
 
@@ -2241,7 +2253,7 @@
         this._limit = 20;
         this._offset = 0;
         this._selections = undefined;
-        this.filter_selected = false;
+        this.show_selected = false;
         this.selection_limit = 1500;
         this.is_loaded = false;
         this.view_options = $.extend({}, this.modal_options);
@@ -2258,7 +2270,7 @@
         });
         Object.defineProperty(this, "recs", {
             get: function() {
-                return this.record_count();
+                return this.get_recs();
             },
         });
         Object.defineProperty(this, "active", {
@@ -2328,8 +2340,6 @@
             }
         });
     }
-
-    // Item tree methods
 
     $.extend(Item.prototype, {
 
@@ -2689,6 +2699,8 @@
             result.edit_options = $.extend({}, this._edit_options);
             result.view_options = $.extend({}, this._view_options);
             result.keep_history = this.keep_history;
+            result.select_all = this.select_all
+
 
             len = result.field_defs.length;
             for (i = 0; i < len; i++) {
@@ -2846,12 +2858,7 @@
             if (this.master && value) {
                 this.master._set_modified(value);
             }
-        }
-    });
-
-    // Item server exchange methods
-
-    $.extend(Item.prototype, {
+        },
 
         _bind_fields: function(expanded) {
             var j = 0;
@@ -3016,6 +3023,7 @@
                 }
             }
             this.update_system_fields();
+            return fields
         },
 
         _do_before_open: function(expanded, fields, where, order_by, open_empty, params,
@@ -3028,11 +3036,12 @@
 
             params.__expanded = expanded;
             params.__fields = [];
+
+            fields = this._update_fields(fields);
+
             if (fields) {
                 params.__fields = fields;
             }
-
-            this._update_fields(fields);
 
             params.__open_empty = open_empty;
             params.__order = []
@@ -3062,7 +3071,7 @@
                         filter_type = params.__search[2];
                     filters.push([field_name, filter_type, text]);
                 }
-                if (this.filter_selected) {
+                if (this.show_selected) {
                     filters.push([this._primary_key, consts.FILTER_IN, this.selections]);
                 }
                 params.__filters = filters;
@@ -3940,12 +3949,7 @@
                 }
                 clone.next();
             }
-        }
-    });
-
-    // Item data navigation methods
-
-    $.extend(Item.prototype, {
+        },
 
         _get_active: function() {
             return this._active;
@@ -4239,7 +4243,7 @@
             return result;
         },
 
-        record_count: function() {
+        get_recs: function() {
             if (this._dataset) {
                 if (this.filtered) {
                     return this._count_filtered();
@@ -4247,6 +4251,14 @@
                 else {
                     return this._dataset.length;
                 }
+            } else {
+                return 0;
+            }
+        },
+
+        record_count: function() {
+            if (this._dataset) {
+                return this._dataset.length;
             } else {
                 return 0;
             }
@@ -4325,13 +4337,9 @@
         rec_modified: function() {
             return this._get_record_status() === consts.RECORD_MODIFIED ||
                 this._get_record_status() === consts.RECORD_DETAILS_MODIFIED;
-        }
-
-    });
+        },
 
     // Item interface methods
-
-    $.extend(Item.prototype, {
 
         insert_record: function(args) {
             if (this.can_create()) {
@@ -5037,7 +5045,10 @@
                 if (lookup_field.owner && lookup_field.owner.is_changing && !lookup_field.owner.is_changing()) {
                     lookup_field.owner.edit();
                 }
-                if (lookup_field.multi_select) {
+                if (this.lookup_field.data_type === consts.KEYS) {
+                    this.selections = [this._primary_key_field.value];
+                }
+                else if (lookup_field.multi_select) {
                     lookup_field.set_value([this._primary_key_field.value], lookup_value);
                 } else {
                     if (item) {
@@ -5338,7 +5349,7 @@
                 }
                 len = this.params.length;
                 for (i = 0; i < len; i++) {
-                    param_values.push(this.params[i].get_raw_value());
+                    param_values.push(this.params[i].get_data());
                 }
                 this.send_request('print_report', [param_values, host, this.extension], function(result) {
                     var url,
@@ -5592,7 +5603,7 @@
         ],
 
         type_names: ["", "text", "integer", "float", 'currency',
-            "date", "datetime", "boolean", "blob"
+            "date", "datetime", "boolean", "blob", "keys"
         ],
 
         copy: function(owner) {
@@ -5709,6 +5720,11 @@
                                 result = language.no;
                             }
                             break;
+                        case consts.KEYS:
+                            if (result.length) {
+                                result = language.items_selected.replace('%s', result.length);
+                            }
+                            break;
                     }
                 } else {
                     result = "";
@@ -5761,24 +5777,45 @@
                             }
                         }
                         break;
+                    case consts.KEYS:
+                        break;
                     default:
                         this.set_value(value);
                 }
             }
         },
 
-        convert_date_time: function(value) {
+        _convert_date_time: function(value) {
             if (value.search('.') !== -1) {
                 value = value.split('.')[0];
             }
             return this.format_string_to_date(value, '%Y-%m-%d %H:%M:%S');
         },
 
-        convert_date: function(value) {
+        _convert_date: function(value) {
             if (value.search(' ') !== -1) {
                 value = value.split(' ')[0];
             }
             return this.format_string_to_date(value, '%Y-%m-%d');
+        },
+
+        _convert_keys: function(value) {
+            var result = [];
+            if (this.get_lookup_data()) {
+                return this.get_lookup_data();
+            }
+            else if (value) {
+                if (this.get_lookup_data_type() === consts.TEXT) {
+                    result = value.split(';')
+                }
+                else {
+                    result = value.split(';').map(function(i) {
+                        return parseInt(i, 10);
+                    });
+                }
+            }
+            this.set_lookup_data(result);
+            return result;
         },
 
         get_raw_value: function() {
@@ -5816,19 +5853,25 @@
                         case consts.BOOLEAN:
                             value = false;
                             break;
+                        case consts.KEYS:
+                            value = [];
+                            break;
                     }
                 }
             }
             else {
                 switch (this.data_type) {
                     case consts.DATE:
-                        value = this.convert_date(value);
+                        value = this._convert_date(value);
                         break;
                     case consts.DATETIME:
-                        value = this.convert_date_time(value);
+                        value = this._convert_date_time(value);
                         break;
                     case consts.BOOLEAN:
                         return value ? true : false;
+                        break;
+                    case consts.KEYS:
+                        return this._convert_keys(value);
                         break;
                 }
             }
@@ -5938,6 +5981,10 @@
                         case consts.TEXT:
                             this.new_value = value + '';
                             break;
+                        case consts.KEYS:
+                            this.new_value = value.join(';')
+                            lookup_value = value;
+                            break;
                     }
                 }
             }
@@ -5994,12 +6041,12 @@
                     switch (this.get_lookup_data_type()) {
                         case consts.DATE:
                             if (typeof(value) === "string") {
-                                value = this.convert_date(value);
+                                value = this._convert_date(value);
                             }
                             break;
                         case consts.DATETIME:
                             if (typeof(value) === "string") {
-                                value = this.convert_date_time(value);
+                                value = this._convert_date_time(value);
                             }
                             break;
                         case consts.BOOLEAN:
@@ -6030,7 +6077,10 @@
                 result = '';
             try {
                 if (this.lookup_item) {
-                    if (this.get_value()) {
+                    if (this.data_type === consts.KEYS) {
+                        result = this.text;
+                    }
+                    else if (this.get_value()) {
                         result = this.get_lookup_value();
                     }
                     if (result === null) {
@@ -6651,9 +6701,20 @@
         },
 
         select_value: function() {
-            var copy = this.lookup_item.copy();
+            var self = this,
+                copy = this.lookup_item.copy(),
+                on_view_form_closed = copy.on_view_form_closed;
             copy.is_lookup_item = true; //depricated
             copy.lookup_field = this;
+            if (this.data_type === consts.KEYS) {
+                copy.selections = this.value;
+                copy.on_view_form_closed = function(item) {
+                    if (on_view_form_closed) {
+                        on_view_form_closed(item);
+                    }
+                    self.value = copy.selections;
+                }
+            }
             if (this.owner && this.owner.on_param_select_value) {
                 this.owner.on_param_select_value.call(this.owner, this, copy);
             }
@@ -7393,7 +7454,7 @@
             var sel_count = this.$element.find('th .multi-select .sel-count');
             if (this.item.selections) {
                 sel_count.text(this.item.selections.length);
-                if (this.item.filter_selected) {
+                if (this.item.show_selected) {
                     sel_count.addClass('selected-shown')
                 }
                 else {
@@ -7727,7 +7788,11 @@
                             'placement': 'right',
                             'title': $this.text()
                         })
-                        .on('hide hidden show shown', function(e) { e.stopPropagation() })
+                        .on('hide hidden show shown', function(e) {
+                            if (e.target === $this.get(0)) {
+                                e.stopPropagation()
+                            }
+                        })
                         .eq(0).tooltip('show');
                 }
             });
@@ -8321,7 +8386,7 @@
                             '<li id="munselect-all"><a tabindex="-1" href="#">' + task.language.unselect_all + '</a></li>'
                     }
                     shown_title = task.language.show_selected
-                    if (self.item.filter_selected) {
+                    if (self.item.show_selected) {
                         shown_title = task.language.show_all
                     }
                     select_menu +=
@@ -8345,14 +8410,17 @@
                     input = bl.find('#mselect-block')
                     bl.find("#mselect-all").click(function(e) {
                         self.selections_set_all_selected_ex(true);
+                        self.$table.focus();
                     });
                     bl.find("#munselect-all").click(function(e) {
                         self.selections_set_all_selected_ex(false);
+                        self.$table.focus();
                     });
                     bl.find("#mshow-selected").click(function(e) {
-                        self.item.filter_selected = !self.item.filter_selected;
+                        self.item.show_selected = !self.item.show_selected;
                         self.item.open(function() {
                             self.selections_update_selected();
+                            self.$table.focus();
                         });
                     });
                     this.selection_block = bl;
@@ -9146,6 +9214,8 @@
                     else {
                         this.$head.find('th.' + 'fake-column').hide();
                         this.$table.find('td.' + 'fake-column').hide();
+                        //~ this.set_saved_width($row, true);
+                        //~ this.syncColWidth(true);
                     }
                 }
             }
@@ -9412,6 +9482,7 @@
                 $input = $('<textarea>')
                     .attr("id", field.field_name)
                     .attr("tabindex", tabIndex + "")
+//                    .attr("rows", "10")
                     .innerHeight(70);
             } else {
                 $input = $('<input>')
@@ -9574,33 +9645,19 @@
             }
 
             if (!this.grid && this.field.field_help) {
-                $help = $('<span class="badge help-badge">?</span>');
-
-                $help.click(function() {
-                    var deleted = false,
-                        $title = $('<div><b>' + self.field.field_caption + '</b>' +
-                        '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;"> ×</button></div>');
-                        $title.find("#close-btn").click(function() {
-                        $input.popover('destroy');
-                        deleted = true;
-                    });
-                    $input.popover({
+                $help = $('<a href="#" tabindex="-1"><span class="badge help-badge">?</span></a>');
+                $help
+                    .popover({
                         container: 'body',
                         placement: 'right',
+                        trigger: 'hover',
                         html: true,
-                        title: $title,
+                        title: self.field.field_caption,
                         content: self.field.field_help
+                    })
+                    .click(function(e) {
+                        e.preventDefault();
                     });
-                    $input.popover('show');
-                    setTimeout(
-                        function() {
-                            if (!deleted) {
-                                $input.popover('destroy');
-                            }
-                        },
-                        10 * 1000
-                    );
-                })
                 if ($btnCtrls) {
                     $btnCtrls.append($help);
                 }
@@ -9612,15 +9669,19 @@
                     placement: 'bottom',
                     title: ''
                 })
-                .on('hide hidden show shown', function(e) { e.stopPropagation() });
+                .on('hide hidden show shown', function(e) {
+                    if (e.target === self.$input.get(0)) {
+                        e.stopPropagation()
+                    }
+                });
 
             this.$input.bind('destroyed', function() {
                 self.field.controls.splice(self.field.controls.indexOf(self), 1);
-                if (!self.grid && self.field.field_help) {
-                    if ($input.data('popover')) {
-                        $input.data('popover').$tip.remove();
-                    }
-                }
+                //~ if (!self.grid && self.field.field_help) {
+                    //~ if ($input.data('popover')) {
+                        //~ $input.data('popover').$tip.remove();
+                    //~ }
+                //~ }
                 if (self.dropdown){
                     self.dropdown.destroy();
                 }
@@ -9647,28 +9708,6 @@
                 this.$input.prop('disabled', value);
             }
         },
-
-        //~ set_read_only: function(value) {
-            //~ if (this.$firstBtn) {
-                //~ if (value) {
-                    //~ this.$firstBtn.removeClass('enabled');
-                //~ }
-                //~ else {
-                    //~ this.$firstBtn.addClass('enabled');
-                //~ }
-            //~ }
-            //~ if (this.$lastBtn) {
-                //~ if (value) {
-                    //~ this.$lastBtn.removeClass('enabled');
-                //~ }
-                //~ else {
-                    //~ this.$lastBtn.addClass('enabled');
-                //~ }
-            //~ }
-            //~ if (this.$input) {
-                //~ this.$input.prop('disabled', value);
-            //~ }
-        //~ },
 
         update: function() {
             var placeholder = this.field.field_placeholder,
@@ -9803,7 +9842,6 @@
         showDatePicker: function() {
             var self = this,
                 format;
-
             if (this.field.data_type === consts.DATE) {
                 format = settings.D_FMT;
             } else if (this.field.data_type === consts.DATETIME) {
@@ -9819,10 +9857,16 @@
                     date: this.field.value
                 })
                 .on('show', function(e) {
-                    e.stopPropagation();
-                    self.$input.datepicker().attr('data-weekStart', 1);
+                    if (e.target === self.$input.get(0)) {
+                        e.stopPropagation();
+                        self.$input.datepicker().attr('data-weekStart', 1);
+                    }
                 })
-                .on('hide hidden shown', function(e) { e.stopPropagation() })
+                .on('hide hidden shown', function(e) {
+                    if (e.target === self.$input.get(0)) {
+                        e.stopPropagation()
+                    }
+                })
                 .on('changeDate', function(e) {
                     self.field.set_value(e.date);
                     self.$input.datepicker('hide');

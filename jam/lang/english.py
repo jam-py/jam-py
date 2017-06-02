@@ -177,6 +177,7 @@ dictionary = \
     'server_module':                    'Server module',
     'virtual_table':                    'Virtual table',
     'js_external':                      'External js module',
+    'select_all':                       'Allowed to select all records',
     'primary_key':                      'Primary key field',
     'deleted_flag_field':               'Deleted flag field',
     'master_id':                        'Master ID field',
@@ -232,7 +233,6 @@ dictionary = \
     'caption_name':                     'Name',
     'caption_descening':                'Desc.',
 #inport messages
-    'import_sqlite_not_supported':      'Import is not supported for SQlite database.',
     'import_reading_data':              'Import: reading data',
     'import_checking_integrity':        'Import: checking data integrity',
     'import_analyzing':                 'Import: analyzing changes',

@@ -22,7 +22,7 @@ LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" %s'
 FIELD_AS = 'AS'
 LIKE = 'LIKE'
 
-JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB = range(1, 9)
+JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB, KEYS = range(1, 10)
 FIELD_TYPES = {
     INTEGER: 'NUMBER',
     TEXT: 'VARCHAR2',
@@ -31,7 +31,8 @@ FIELD_TYPES = {
     DATE: 'DATE',
     DATETIME: 'TIMESTAMP',
     BOOLEAN: 'NUMBER',
-    BLOB: 'BLOB'
+    BLOB: 'BLOB',
+    KEYS: 'BLOB'
 }
 
 def connect(database, user, password, host, port, encoding):
@@ -79,7 +80,7 @@ def process_sql_params(params, cursor):
     for i, p in enumerate(params):
         if type(p) == tuple:
             value, data_type = p
-            if data_type == BLOB:
+            if data_type in [BLOB, KEYS]:
                 if type(value) == unicode:
                     value = value.encode('utf-8')
                 blob = cursor.var(cx_Oracle.BLOB)

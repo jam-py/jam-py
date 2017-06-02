@@ -4,9 +4,6 @@ Import
 
 Use this button to import project metadata from zip file.
 
-.. note::
-    Import is not supported for SQlite databases.
-    
 When Import button is pressed, 
 :doc:`Administrator </admin/index>`
 opens a Dialog to select the 

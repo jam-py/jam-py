@@ -135,9 +135,10 @@ class ServerDataset(Dataset, SQL):
             result = self.on_count(self, params)
         elif result is None:
             error_mess = ''
-            sql = self.get_record_count_query(params)
-            rows = self.task.execute_select(sql)
-            count = rows[0][0]
+            count = 0
+            for sql in self.get_record_count_queries(params):
+                rows = self.task.execute_select(sql)
+                count += rows[0][0]
             result = count, error_mess
         return result
 
@@ -151,8 +152,23 @@ class ServerDataset(Dataset, SQL):
             result = self.on_open(self, params)
         elif result is None:
             error_mes = ''
-            sql = self.get_select_statement(params)
-            rows = self.task.execute_select(sql)
+            limit = params['__limit']
+            offset = params['__offset']
+            sqls = self.get_select_queries(params)
+            if len(sqls) == 1:
+                rows = self.task.execute_select(sqls[0])
+            else:
+                rows = []
+                cut = False
+                for sql in sqls:
+                    rows += self.task.execute_select(sql)
+                    if limit or offset:
+                        if len(rows) >= offset + limit:
+                            rows = rows[offset:offset + limit]
+                            cut = True
+                            break
+                if (limit or offset) and not cut:
+                    rows = rows[offset:offset + limit]
             result = rows, error_mes
         return result
 
@@ -407,7 +423,7 @@ class Report(AbstrReport):
         self.url = url
         template = self.template
         for i, param in enumerate(self.params):
-            param.value = param_values[i]
+            param.set_data(param_values[i]);
         if self.on_before_generate:
             self.on_before_generate(self)
         if template != self.template:

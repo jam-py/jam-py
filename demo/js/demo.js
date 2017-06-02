@@ -4,6 +4,7 @@
 function Events1() { // demo 
 
 	function on_page_loaded(task) {
+		
 		$("title").text(task.item_caption); 
 		$("#title").text(task.item_caption);
 		 
@@ -20,23 +21,19 @@ function Events1() { // demo
 		$("#taskmenu").show();
 		task.each_item(function(group) {
 			var li,
-				li_html = group.item_caption,
 				ul;
 			if (group.visible) {
-				if (group.items.length) {
-					li_html += ' <b class="caret"></b>';
-				}
 				li = $('<li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown" href="#">' + 
-					li_html + '</a></li>');						
+					group.item_caption + ' <b class="caret"></b></a></li>');			
 				$("#menu").append(li);
 				if (group.items.length) {
 					ul = $('<ul class="dropdown-menu">'); 
 					li.append(ul);
-					group.each_item(function(item) { 
+					group.each_item(function(item) {
 						if (item.visible) {
 							ul.append($('<li>')
-								.append($('<a class="item-menu" href="#">' + 
-								item.item_caption + '</a>').data('item', item)));					
+								.append($('<a class="item-menu" href="#">' + item.item_caption + '</a>')
+								.data('item', item)));					
 						}
 					});
 				}
@@ -94,7 +91,6 @@ function Events1() { // demo
 		
 		$("#menu").append($('<li><a href="http://jam-py.com/" target="_blank">Jam.py</a></li>'));	 
 	  
-	//	task.customers.view($("#content"));
 		$('#menu .item-menu:first').click(); 
 	
 		// $(document).ajaxStart(function() { $("html").addClass("wait"); });
@@ -206,7 +202,8 @@ function Events1() { // demo
 			item.view_form.find(".modal-body").css('padding', 0);
 			item.view_form.find("#title-text")
 				.text(item.item_caption)
-				.click(function() {
+				.click(function(e) {
+					e.preventDefault();
 					item.view(item.view_form.parent());
 				});
 			table_options.height = $(window).height() - $('body').height() - 10;
@@ -395,6 +392,17 @@ function Events2() { // demo.catalogs
 			}
 			item.view_form.find('#search-fieldname').text(
 				item.field_by_name(search_field).field_caption);
+			item.view_form.find('#search-field-info')
+				.popover({
+					container: 'body',
+					placement: 'left',
+					trigger: 'hover',
+					title: 'Search field selection',
+					content: 'To select a search field hold Ctrl key and click on the corresponding column of the table.'
+				})
+				.click(function(e) {
+					e.preventDefault();
+				});
 			search = item.view_form.find(".view-title input");
 			search.on('input', function() {
 				var input = $(this);
@@ -440,7 +448,8 @@ function Events2() { // demo.catalogs
 					if (search_field !== $(this).data('field_name')) {
 						search_field = $(this).data('field_name');
 						field = item.field_by_name(search_field);
-						if (field && field.lookup_type !== "blob" && field.lookup_type !== "boolean") {
+						if (field && field.lookup_type !== "blob" && field.lookup_type !== "currency" &&
+							field.lookup_type !== "float" && field.lookup_type !== "boolean") {
 							item.view_form.find('#search-fieldname')
 								.text(item.field_by_name(search_field).field_caption);
 							item.view_form.find(".view-title input").val('');
@@ -505,6 +514,34 @@ function Events3() { // demo.journals
 
 task.events.events3 = new Events3();
 
+function Events10() { // demo.catalogs.customers 
+
+	function init_table(item, options) {
+		if (!item.view_form.hasClass('modal')) {	
+			item.selections = [];	
+		}
+	}
+	
+	function on_view_form_created(item) {
+		item.view_form.find('#email-btn')
+			.click(function() {
+				item.task.mail.open({open_empty: true});
+				item.task.mail.append_record();
+			})
+			.show();
+		item.view_form.find('#print-btn')
+			.click(function() {
+				item.task.customers_report.customers.value = item.selections;
+				item.task.customers_report.print(false);
+			})
+			.show();
+	}
+	this.init_table = init_table;
+	this.on_view_form_created = on_view_form_created;
+}
+
+task.events.events10 = new Events10();
+
 function Events15() { // demo.catalogs.tracks 
 
 	function init_table(item, options) {
@@ -539,8 +576,6 @@ function Events16() { // demo.journals.invoices
 		
 		item.filters.invoicedate1.value = new Date(new Date().setYear(new Date().getFullYear() - 1));
 		
-		item.selections = [];	
-		
 		item.create_table(item.view_form.find(".view-master"), {
 			height: height,
 			sortable: true,
@@ -554,12 +589,6 @@ function Events16() { // demo.journals.invoices
 			}
 		});	
 	
-		if (item.can_delete()) {
-			item.view_form.find("#delete-btn")
-				.off('click.task')
-				.on('click', function() { delete_records(item) } );
-		}
-		
 		item.invoice_table.create_table(item.view_form.find(".view-detail"), {
 				height: 200 - 4, 
 				dblclick_edit: false, 
@@ -567,28 +596,6 @@ function Events16() { // demo.journals.invoices
 		});
 		
 		item.open(true);
-	}
-	
-	function delete_records(item) {
-		var delete_func = function() {
-				var copy = item.copy({handlers: false});
-				copy.set_where({id__in: item.selections});
-				copy.open({fields: ['id']}, function() {
-					while (!copy.eof()) {
-						copy.delete();
-					}
-					copy.apply(function() {
-						item.open();
-						item.selections = [];
-					});
-				});
-			};
-		if (item.selections.length) {
-			item.question('Delete ' + item.selections.length + ' records?', delete_func);
-		}
-		else {
-			item.delete_record();
-		}
 	}
 	
 	function on_filters_applied(item) {
@@ -608,7 +615,6 @@ function Events16() { // demo.journals.invoices
 				var footer = item.view_form.find('.dbtable.' + item.item_name + ' tfoot');
 				copy.each_field(function(f) {
 					footer.find('div.' + f.field_name)
-	//					.css('text-align', 'right')
 						.text(f.display_text);
 				});
 			}
@@ -722,7 +728,6 @@ function Events16() { // demo.journals.invoices
 	this.on_after_append = on_after_append;
 	this.init_inputs = init_inputs;
 	this.on_view_form_created = on_view_form_created;
-	this.delete_records = delete_records;
 	this.on_filters_applied = on_filters_applied;
 	this.calc_footer = calc_footer;
 	this.on_edit_form_created = on_edit_form_created;
@@ -791,7 +796,7 @@ task.events.events20 = new Events20();
 function Events24() { // demo.analytics.dashboard 
 
 	function on_view_form_created(item) {
-		show_cusomers(item, item.view_form.find('#cutomers-canvas').get(0).getContext('2d'));
+		show_cusomers(item, item.view_form.find('#cutomers-canvas').get(0).getContext('2d')),
 		show_tracks(item, item.view_form.find('#tracks-canvas').get(0).getContext('2d'));
 	}
 	
@@ -898,5 +903,52 @@ function Events24() { // demo.analytics.dashboard
 }
 
 task.events.events24 = new Events24();
+
+function Events25() { // demo.catalogs.mail 
+
+	function on_edit_form_created(item) {
+		var title = 'Email to ';
+		if (item.task.customers.selections.length)
+			title += item.task.customers.selections.length + ' selected customers';
+		else {
+			title += item.task.customers.firstname.value + ' ' +
+				item.task.customers.lastname.value;
+		}
+		item.edit_form.find('.modal-title').text(title);
+		item.edit_form.find('#ok-btn')
+			.text('Send email')
+			.off('click.task')
+			.on('click', function() {
+				item.send_email(item);
+			});
+		item.edit_form.find('textarea.mess').height(120);
+	}
+	
+	function send_email(item) {
+		var customers = item.task.customers.selections;
+		try {
+			item.post();
+			if (!customers.length) {
+				customers.push(item.task.customers.id.value);
+			}
+			item.server('send_email', [customers, item.subject.value, item.mess.value], function(result, err) {
+				if (err) {
+					item.warning('Failed to send the mail: ' + err);
+					item.edit();
+				}
+				else {
+					item.warning('Successfully sent the mail');
+					item.close_edit_form();
+					item.delete();			
+				}
+			});
+		}
+		catch (e) {}
+	}
+	this.on_edit_form_created = on_edit_form_created;
+	this.send_email = send_email;
+}
+
+task.events.events25 = new Events25();
 
 })(jQuery, task)

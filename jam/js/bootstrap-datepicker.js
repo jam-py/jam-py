@@ -22,6 +22,7 @@
     // Picker object
 
     var Datepicker = function(element, options){
+        var self = this;
         this.element = $(element);
         this.format = DPGlobal.parseFormat(options.format||this.element.data('date-format')||'mm/dd/yyyy');
         this.picker = $(DPGlobal.template)
@@ -31,6 +32,12 @@
                                 click: $.proxy(this.click, this)//,
                                 //mousedown: $.proxy(this.mousedown, this)
                             });
+        //~ this.picker.on('blur', function() {
+            //~ self.update();
+            //~ self.picker.hide();
+            //~ self.picker.remove();
+            //~ self.element.removeData('datepicker');
+        //~ });
         this.picker.css('background-color', $('body').css('background-color'));
         this.isInput = this.element.is('input');
 //        this.component = this.element.is('.date') ? this.element.find('.add-on') : false;
@@ -38,9 +45,7 @@
 
         if (this.isInput) {
             this.element.on({
-                //focus: $.proxy(this.show, this),
-                //blur: $.proxy(this.hide, this),
-                keyup: $.proxy(this.update, this)
+//                keyup: $.proxy(this.update, this)
             });
         } else {
             if (this.component){
@@ -109,16 +114,16 @@
             if (!this.isInput) {
             }
             var that = this;
-            $(document).on('mousedown', function(ev){
-                if ($(ev.target).closest('.datepicker').length == 0) {
-                    that.hide();
-                }
-            });
             //~ this.element.trigger({
                 //~ type: 'show',
                 //~ date: this.date
             //~ });
-            this.picker.on("keyup", function(e) {
+            $(document).on('mousedown.datepicker', function(ev){
+                if ($(ev.target).closest('.datepicker').length == 0) {
+                    that.hide();
+                }
+            });
+            this.picker.on("keyup.datepicker", function(e) {
                 if (e.keyCode === 27) {
                     e.stopPropagation();
                     e.preventDefault();
@@ -134,10 +139,10 @@
             $(window).off('resize', this.place);
             this.viewMode = this.startViewMode;
             this.showMode();
-            if (!this.isInput) {
-                $(document).off('mousedown', this.hide);
-            }
-            this.picker.off("keyup");
+//            if (!this.isInput) {
+                $(document).off('mousedown.datepicker');
+//            }
+            this.picker.off("keyup.datepicker");
             //this.set();
             //~ this.element.trigger({
                 //~ type: 'hide',

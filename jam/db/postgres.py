@@ -21,7 +21,7 @@ LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" AS %s'
 FIELD_AS = 'AS'
 LIKE = 'ILIKE'
 
-JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB = range(1, 9)
+JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB, KEYS = range(1, 10)
 FIELD_TYPES = {
     INTEGER: 'INTEGER',
     TEXT: 'VARCHAR',
@@ -30,7 +30,8 @@ FIELD_TYPES = {
     DATE: 'DATE',
     DATETIME: 'TIMESTAMP',
     BOOLEAN: 'INTEGER',
-    BLOB: 'BYTEA'
+    BLOB: 'BYTEA',
+    KEYS: 'BYTEA'
 }
 
 def connect(database, user, password, host, port, encoding):
@@ -52,7 +53,7 @@ def process_sql_params(params, cursor):
     for p in params:
         if type(p) == tuple:
             value, data_type = p
-            if data_type == BLOB:
+            if data_type in [BLOB, KEYS]:
                 if type(value) == unicode:
                     value = value.encode('utf-8')
                 value = psycopg2.Binary(value)

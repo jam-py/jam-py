@@ -168,6 +168,7 @@ def create_items(task):
     task.sys_items.add_field(28, 'f_keep_history', 'Keep_history', common.BOOLEAN)
     task.sys_items.add_field(29, 'f_edit_lock', 'Edit lock', common.BOOLEAN)
     task.sys_items.add_field(30, 'sys_id', 'sys_id', common.INTEGER)
+    task.sys_items.add_field(31, 'f_select_all', task.lang['select_all'], common.BOOLEAN)
 
     task.sys_items.add_filter('id', 'ID', 'id', common.FILTER_EQ, visible=False)
     task.sys_items.add_filter('not_id', 'ID', 'id', common.FILTER_NE, visible=False)
@@ -909,6 +910,7 @@ def load_task(target, app, first_build=True, after_import=False):
                         item.virtual_table = rec.f_virtual_table.value
                         item.server_code = rec.f_server_module.value
                         item.keep_history = rec.f_keep_history.value
+                        item.select_all = rec.f_select_all.value
                         item._primary_key = rec.f_primary_key.value
                         item._deleted_flag = rec.f_deleted_flag.value
                         item._master_id = rec.f_master_id.value
@@ -1525,8 +1527,8 @@ def server_import_task(task, task_id, file_name, from_client=False):
         task._import_message += '<div style="margin-left: 30px;">' + info + '</div>'
 
     db_type = get_db_type(task)
-    if db_type == db_modules.SQLITE:
-        return False, error, '<h5>' + task.lang['import_sqlite_not_supported'] + '</h5>'
+    #~ if db_type == db_modules.SQLITE:
+        #~ return False, error, '<h5>' + task.lang['import_sqlite_not_supported'] + '</h5>'
     task.app.under_maintenance = True
     success = False
     try:
@@ -2263,10 +2265,11 @@ def server_get_primary_key_type(task, lookup_item_id):
         primary_field_id = items.f_primary_key.value
         fields = task.sys_fields.copy()
         fields.set_where(id=primary_field_id)
-        fields.set_fields('id', 'f_data_type', 'f_size')
+        fields.set_fields('id', 'f_field_name', 'f_data_type', 'f_size')
         fields.open()
         if fields.record_count():
-            return fields.f_data_type.value, fields.f_size.value
+            return {'field_id': fields.id.value, 'field_name': fields.f_field_name.value,
+            'data_type': fields.f_data_type.value, 'size': fields.f_size.value}
     return None, None
 
 def server_set_literal_case(task, name):
@@ -2858,24 +2861,13 @@ def update_index(delta):
     else:
         return True
 
-def change_foreign_index(delta):
-    items = delta.task.sys_items.copy()
-    items.filters.id.value = delta.owner_rec_id.value
-    items.open()
-    it_fields = items.details.sys_fields
-    it_fields.open()
-    fields = get_table_fields(items, it_fields)
-    new_fields = list(fields)
-    return items.recreate_table_sql(db_modules.SQLITE, fields, new_fields, delta)
-
 def indices_insert_sql(item, delta, table_name=None, new_fields=None, manual_update=False, foreign_key_dict=None):
     if not manual_update and update_index(delta):
         if not table_name:
             table_name = delta.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
         db_type = get_db_type(item.task)
         if db_type == db_modules.SQLITE and delta.f_foreign_index.value:
-            if not new_fields:
-                return change_foreign_index(delta)
+            pass
         else:
             return delta.create_index_sql(db_type, table_name, new_fields=new_fields, foreign_key_dict=foreign_key_dict)
 
@@ -2892,7 +2884,7 @@ def indices_delete_sql(item, delta, manual_update=False):
     if not manual_update and update_index(delta):
         db_type = get_db_type(item.task)
         if db_type == db_modules.SQLITE and delta.f_foreign_index.value:
-            return change_foreign_index(delta)
+            pass
         else:
             return delta.delete_index_sql(db_type)
 

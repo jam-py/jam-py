@@ -19,7 +19,7 @@ LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" AS %s'
 FIELD_AS = 'AS'
 LIKE = 'LIKE'
 
-JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB = range(1, 9)
+JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB, KEYS = range(1, 10)
 FIELD_TYPES = {
     INTEGER: 'INT',
     TEXT: 'VARCHAR',
@@ -28,7 +28,8 @@ FIELD_TYPES = {
     DATE: 'DATE',
     DATETIME: 'DATETIME',
     BOOLEAN: 'INT',
-    BLOB: 'BLOB'
+    BLOB: 'BLOB',
+    KEYS: 'BLOB'
 }
 
 def connect(database, user, password, host, port, encoding):

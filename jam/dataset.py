@@ -120,6 +120,9 @@ class DBField(object):
                             result = self.owner.task.lang['no']
                         else:
                             result = 'False'
+                elif self.data_type == common.KEYS:
+                    if len(result):
+                        result = self.owner.task.lang['items_selected'] % len(result)
                 else:
                     result = str(result)
             else:
@@ -155,6 +158,8 @@ class DBField(object):
                             self.set_value(True)
                         else:
                             self.set_value(False)
+                elif self.data_type == common.KEYS:
+                    pass
                 else:
                     self.set_value(value)
             except Exception as e:
@@ -178,6 +183,17 @@ class DBField(object):
         except:
             return self.convert_date_time(value).date()
 
+    def convert_keys(self, value):
+        result = []
+        if self.get_lookup_data():
+            return self.get_lookup_data()
+        elif value:
+            if self.get_lookup_data_type() == common.TEXT:
+                result = value.split(';')
+            else:
+                result = [int(val) for val in value.split(';')]
+        self.set_lookup_data(result)
+        return result
 
     def get_raw_value(self):
         try:
@@ -206,6 +222,8 @@ class DBField(object):
                         value = False
                     elif self.data_type == common.TEXT:
                         value = ''
+                    elif self.data_type == common.KEYS:
+                        value = [];
             else:
                 if self.data_type == common.TEXT:
                     if not isinstance(value, unicode):
@@ -217,6 +235,8 @@ class DBField(object):
                         value = True
                     else:
                         value = False
+                elif self.data_type == common.KEYS:
+                    value = self.convert_keys(value)
             return value
         except Exception as e:
             traceback.print_exc()
@@ -264,6 +284,9 @@ class DBField(object):
                     self.new_value = float(value)
                 elif self.data_type == common.INTEGER:
                     self.new_value = int(value)
+                elif self.data_type == common.KEYS:
+                    self.new_value = ';'.join([str(v) for v in value])
+                    lookup_value = value
         if self.raw_value != self.new_value:
             self._do_before_changed()
             try:
@@ -947,6 +970,7 @@ class AbstractDataSet(object):
         self._is_delta = False
         self.keep_history = False
         self.lock_on_edit = False
+        self.select_all = False
         self.parent_read_only = True
         self.on_before_append = None
         self.on_after_append = None
@@ -1052,6 +1076,7 @@ class AbstractDataSet(object):
         result.field_defs = self.field_defs
         result.filter_defs = self.filter_defs
         result.keep_history = self.keep_history
+        result.select_all = self.select_all
 
         for field_def in result.field_defs:
             field = DBField(result, field_def)
