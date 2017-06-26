@@ -13,7 +13,7 @@ on_created(task)
 Description
 ===========
 
-Use ``on_created`` to initialize the application project task.
+Use ``on_created`` to initialize the application on the server side.
 
 The event is triggered when the project 
 :doc:`task tree </programming/task_tree>`
@@ -26,15 +26,10 @@ The ``task`` parameter is a reference to the
 Example
 =======
 
-In the following code a lock is created that will be later used in the 
-on_apply event handler of the **Invoices** journal in the Demo application.
-
 .. code-block:: py
 
-    from threading import Lock
-    
     def on_created(task):
-    	task.invoices_lock = Lock()
+        # some code
 
 See also
 ========

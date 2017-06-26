@@ -997,7 +997,10 @@ function Events3() { // admin.catalogs.sys_items
 	
 	function save_order(item) {
 		var i = 0,
-			rec = item.rec_no;
+			rec = item.rec_no,
+			handlers = item.store_handlers();
+		item.clear_handlers();
+		item.disable_controls();
 		try {
 			item.each(function(it) {
 				it.edit();
@@ -1005,11 +1008,13 @@ function Events3() { // admin.catalogs.sys_items
 				it.post();
 				i++;
 			})
-			item.apply();
 		}
 		finally {
 			item.rec_no = rec;
+			item.load_handlers(handlers);
+			item.enable_controls();
 		}
+		item.apply();
 	}
 	
 	function append_group(item) {
@@ -2508,7 +2513,6 @@ function Events14() { // admin.catalogs.sys_code_editor
 			tree_node_clicked(task, $('ul#task-tabs li.active').attr('id'), $(this))
 		});
 	
-	
 		$(window).on('keydown.editor', function(e) {
 			if (e.ctrlKey && e.which === 83) {
 				var tag = $('ul#task-tabs li.active').attr('id');
@@ -2517,13 +2521,19 @@ function Events14() { // admin.catalogs.sys_code_editor
 					save_edit(task, tag);
 				}
 			}
-			//~ if (e.which === 27) {
-				//~ var tag = $('ul#task-tabs li.active').attr('id');
-				//~ if (tag && tag !== 'admin') {
-					//~ e.preventDefault();
-					//~ close_editor(task, tag);
-				//~ }
-			//~ }
+		});
+	
+		$(window).on('keyup.editor', function(e) {
+			if (e.which === 27) {
+				return
+				var tag = $('ul#task-tabs li.active').attr('id');
+				if (tag && tag !== 'admin') {
+					e.preventDefault();
+					e.stopPropagation();
+					e.stopImmediatePropagation();
+					close_editor(task, tag);
+				}
+			}
 		});
 	}
 	

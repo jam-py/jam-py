@@ -16,8 +16,7 @@ It creates dynamic menu and then imitates clicking on menu buttons:
 
 .. code-block:: js
 
-    $('#menu').children(":first").find('a').click(); 
-    $('#submenu').children(":first").find('a').click();
+    $('#menu .item-menu:first').click(); 
 
 But there is a more simple way. You can use the 
 :doc:`view </refs/client/item/m_view>`

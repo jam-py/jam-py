@@ -125,7 +125,7 @@ def create_items(task):
     task.sys_params.add_field(21, 'f_language', task.lang['language'], common.INTEGER, required=True,
         lookup_values=get_value_list(langs.LANGUAGE, True), edit_visible=False)
     task.sys_params.add_field(22, 'f_author', task.lang['author'], common.TEXT, size = 30, edit_visible=False)
-    task.sys_params.add_field(23, 'f_version', task.lang['version'], common.TEXT, size = 15)
+    task.sys_params.add_field(23, 'f_version', task.lang['version'], common.TEXT, size = 256)
     task.sys_params.add_field(24, 'f_mp_pool', task.lang['mp_pool'], common.BOOLEAN)
     task.sys_params.add_field(25, 'f_persist_con', task.lang['persist_con'], common.BOOLEAN)
     task.sys_params.add_field(26, 'f_single_file_js', task.lang['single_file_js'], common.BOOLEAN)

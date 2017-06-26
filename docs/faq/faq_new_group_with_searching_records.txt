@@ -1,0 +1,36 @@
+============================================
+How can I implement a search for a new group
+============================================
+
+First, you have to specify a 
+:doc:`view form template </programming/interface/form_templates>`
+that supports the search. 
+
+By default, every new group have a div with class default-view as its view html 
+template, declared in the 
+:doc:`index.html </programming/interface/index_html>`
+file.
+
+You can have the same view template as the catalogs, just by adding
+the name-view class for the same div.
+
+For example the below div will be used as a view form template for catalogs and 
+import groups:
+
+.. code-block:: html
+
+    <div class="catalogs-view import-view">
+        
+    </div>
+    
+The initialization of search is implemeted in the on_view_form_created event 
+handler in the client module of the catalogs group. You can copy the same code 
+to the client module of your new group or just add the following code:
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        item.task.catalogs.on_view_form_created(item);
+    }
+    
+

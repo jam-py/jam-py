@@ -124,9 +124,8 @@ task_server_events = \
         'on_created': 'task',
         'on_open': 'item, params',
         'on_count': 'item, params',
-        'on_apply': 'item, delta, params'
-
-        #~ 'on_ext_request': 'task, request, params',
+        'on_apply': 'item, delta, params',
+        'on_ext_request': 'task, request, params'
         #~ 'on_before_request': 'item, request, params'
         #~ 'on_after_request': 'item, request, params, duration'
     }

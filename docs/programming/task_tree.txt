@@ -72,7 +72,7 @@ is::
         journals/
             invoices/
                 invoice_table
-        tables/
+        details/
             invoice_table
         reports/
             invoice

@@ -19,7 +19,7 @@ For example
 
     <link href="/jam/css/jam.css" rel="stylesheet">
 
-If needed other files can be added here. For example some charting library. 
+If needed, other files can be added here. For example some charting library. 
 It is better to place them in the *js* and *css* folders of the *static* 
 dicrectory of the project.
 

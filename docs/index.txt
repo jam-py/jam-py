@@ -1,17 +1,26 @@
-=================
-Table of contents
-=================
+====================
+Jam.py documentation
+====================
 
-.. toctree::
-    :hidden:
+Here is an overview of how the documentation is organized, that 
+will help you know where to look for certain things:
 
-.. toctree::
-    :maxdepth: 3
+:doc:`Getting started <intro/index>` topics take you through a series of steps 
+to create a Web application. 
 
-    intro/index
-    programming/index
-    faq/index
-    admin/index
-    refs/index
-    releases/index
-    
+:doc:`Programming guides<programming/index>`
+discuss key topics and concepts at a fairly high level and provide useful 
+background information and explanation.
+
+:doc:`Administrator reference <admin/index>` is a detailed description of 
+Administrator - a web application used for application development and database 
+administration.
+
+:doc:`Сlass reference guides <refs/index>` contain technical reference for 
+Jam.py classes APIs
+
+:doc:`FAQ <faq/index>` topics covers most frequently asked questions.
+
+
+Or you can go to the
+:doc:`table of contents <contents>`

@@ -1,0 +1,51 @@
+=======================================
+Can I use Jam.py with existing database
+=======================================
+
+You can use Jam.py with existing database, that is supported by the framework.
+
+* Create a new project with existing database.
+
+* If you want to import tables in catalogs or journals groups, delete 
+  :doc:`Common fields </programming/data/common_fields>`: 
+  
+  Select Groups node in the project tree, dbl click corresponding group and delete
+  common fields.
+  
+  Or create new empty groups.
+  
+* Select Project node and click Database button. Set 
+  :doc:`DB manual mode </admin/project/database>`
+  to true.
+
+* Select group you want to import a table to and click Import button. 
+
+* In the form that will appear dbl click on the table to import it.
+
+* In the 
+  :doc:`Item Editor Dialog </admin/items/item_editor_dialog>`
+  check that all fields have valid types. If field type is displayed in the red,
+  try to select appropriate type.
+  
+  You can import not all fields of the table.
+  
+  Before saving, specify the primary key field for the item and generator name, 
+  if nessesary.
+
+* After saving the imported item, go to the project page and check how it is 
+  displayed.
+   
+* After importing serveral tables, you can specify lookup fields (in DB manual mode).     
+
+.. note::
+
+    Please, do be very carefull when performing this operations.
+    
+    When DB manual mode is removed any changes to the item will be reflected in
+    the corresponding DB table. If you delete the item, the table will be dropped
+    from the database.
+
+.. note::
+
+    This is a new feature, so if you have some comments, suggestions or found
+    some bugs please send me a message.

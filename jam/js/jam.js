@@ -1188,6 +1188,13 @@
         this.user_info = {};
         this._script_cache = {};
         this.gridId = 0;
+        this.events = {};
+        this.constructors = {
+            task: Task,
+            group: Group,
+            item: Item,
+            detail: Detail
+        };
     }
 
     $.extend(Task.prototype, {
@@ -1411,11 +1418,10 @@
         },
 
         load: function() {
-            var self = this,
-                info;
+            var self = this;
             this.send_request('connect', null, function(success) {
                 if (success) {
-                    this.load_task();
+                    self.load_task();
                 }
                 else {
                     self.login();
@@ -3478,7 +3484,9 @@
                 this.open({params: params}, callback);
             } else {
                 this.open();
-                callback.call(this, this)
+                if (callback) {
+                    callback.call(this, this);
+                }
             }
         },
 
@@ -7343,7 +7351,6 @@
                     title_word_wrap: false,
                     row_line_count: 1,
                     expand_selected_row: 0,
-                    auto_fit_width: true,
                     selections: undefined,
                     select_all: true,
                     selection_limit: undefined,
@@ -7842,7 +7849,7 @@
                     left = parseInt($selection.css("left"), 10);
                 if (mouseX) {
                     e.preventDefault();
-                    if (newDelta > -($th.innerWidth() - 30) && (!self.options.auto_fit_width || newDelta < ($thNext.innerWidth() - 30))) {
+                    if (newDelta > -($th.innerWidth() - 30)) {
                         delta = newDelta;
                         $selection.css('left', left + e.screenX - mouseX);
                     }
@@ -7863,6 +7870,8 @@
                 oldCellWidth = self.getCellWidth(field_name);
                 cellWidth = oldCellWidth + delta;
 
+                self.setCellWidth(field_name, cellWidth);
+
                 $td.width(cellWidth);
                 $td.find('div').width(cellWidth);
                 $title.width(cellWidth);
@@ -7871,9 +7880,8 @@
                 $tf.find('div').width(cellWidth);
 
                 self.syncColWidth();
-                cellWidth = $title.width();
-                self.setCellWidth(field_name, cellWidth);
-                return cellWidth - oldCellWidth;
+//                cellWidth = $title.width();
+                //~ self.setCellWidth(field_name, cellWidth);
             }
 
             function releaseMouseMove(e) {
@@ -7884,19 +7892,7 @@
                 $doc.off("mousemove.grid-title");
                 $doc.off("mouseup.grid-title");
 
-                if (delta < 0) {
-                    delta = changeFieldWidth($th, delta);
-                    if (self.options.auto_fit_width) {
-                        changeFieldWidth($thNext, -delta);
-                    }
-                } else {
-                    if (self.options.auto_fit_width) {
-                        delta = -changeFieldWidth($thNext, -delta);
-                        changeFieldWidth($th, delta);
-                    } else {
-                        changeFieldWidth($th, delta);
-                    }
-                }
+                changeFieldWidth($th, delta);
 
                 mouseX = undefined;
                 $selection.remove()
@@ -10419,12 +10415,5 @@
     };
 
     window.task = new Task();
-    window.task.events = {}
-    window.task.constructors = {
-        task: Task,
-        group: Group,
-        item: Item,
-        detail: Detail
-    };
 
 })(jQuery);

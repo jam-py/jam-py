@@ -5,7 +5,7 @@ function Events1() { // demo
 
 	function on_page_loaded(task) {
 		
-		$("title").text(task.item_caption); 
+		$("title").text(task.item_caption);
 		$("#title").text(task.item_caption);
 		 
 		if (task.safe_mode) {
@@ -197,6 +197,7 @@ function Events1() { // demo
 	
 		if (item.view_form.hasClass('modal')) {
 			item.view_options.width = 1060;
+	//		item.view_form.find('.modal-footer button').hide();
 		}
 		else {
 			item.view_form.find(".modal-body").css('padding', 0);
@@ -523,18 +524,25 @@ function Events10() { // demo.catalogs.customers
 	}
 	
 	function on_view_form_created(item) {
-		item.view_form.find('#email-btn')
-			.click(function() {
-				item.task.mail.open({open_empty: true});
-				item.task.mail.append_record();
-			})
-			.show();
-		item.view_form.find('#print-btn')
-			.click(function() {
-				item.task.customers_report.customers.value = item.selections;
-				item.task.customers_report.print(false);
-			})
-			.show();
+		if (!item.view_form.hasClass('modal')) {	
+			item.view_form.find('#email-btn')
+				.click(function() {
+					if (item.task.mail.can_create()) {
+						item.task.mail.open({open_empty: true});
+						item.task.mail.append_record();
+					}
+					else {
+						item.warning('You are not allowed to send emails.');
+					}
+				})
+				.show();
+			item.view_form.find('#print-btn')
+				.click(function() {
+					item.task.customers_report.customers.value = item.selections;
+					item.task.customers_report.print(false);
+				})
+				.show();
+		}
 	}
 	this.init_table = init_table;
 	this.on_view_form_created = on_view_form_created;
@@ -720,7 +728,7 @@ function Events16() { // demo.journals.invoices
 		clearTimeout(ScrollTimeOut);
 		ScrollTimeOut = setTimeout(
 			function() {
-				item.invoice_table.open(function() {});
+				item.invoice_table.open(true);
 			},
 			100
 		);
@@ -919,7 +927,7 @@ function Events25() { // demo.catalogs.mail
 			.text('Send email')
 			.off('click.task')
 			.on('click', function() {
-				item.send_email(item);
+				send_email(item);
 			});
 		item.edit_form.find('textarea.mess').height(120);
 	}

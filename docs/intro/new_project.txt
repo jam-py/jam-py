@@ -84,6 +84,13 @@ of failure 	an error message will be displayed.
     * Oracle requires cx_Oracle library     
     * to generate reports LibreOffice must be installed
     
+.. note::
+
+    When the SQLite database is used, when an item field is deleted in the 
+    :doc:`Administrator </admin/index>`,
+    the field in the database table is not deleted, when the field is renamed, 
+    the field in the table does not change.
+    
 If all goes well a new project will be created and a project tree will appear in 
 Administrator.
 

@@ -1,0 +1,77 @@
+=============================================================================
+How to run a script on the server when the user clicks, for example, a button
+=============================================================================
+
+To use an item 
+:doc:`server </refs/client/abstr_item/m_server>`
+method to execute a function defined in the server module of the item
+
+The send_email function declared in the client module of mail item of the demo 
+application uses it execute the function with the same name decleared in the 
+server module:
+
+.. code-block:: js
+
+    function send_email(item) {
+        var customers = item.task.customers.selections;
+        try {
+            item.post();
+            if (!customers.length) {
+                customers.push(item.task.customers.id.value);
+            }
+            item.server('send_email', [customers, item.subject.value, item.mess.value], function(result, err) {
+                if (err) {
+                    item.warning('Failed to send the mail: ' + err);
+                    item.edit();
+                }
+                else {
+                    item.warning('Successfully sent the mail');
+                    item.close_edit_form();
+                    item.delete();            
+                }
+            });
+        }
+        catch (e) {}
+    }
+    
+This function passes to the server function the name of the function declared in 
+the server module, a list of parameters - id's of customers selected by user,
+the subject and the message of email and a callback function, that will be 
+executed after the call is completed. The application passes to the callback 
+function the result of execution and error message (if error occurs during execution).
+
+Below is a function declared in the server module. Please, note, that first 
+parameter of this function is the item:
+
+.. code-block:: py
+
+    def send_email(item, customers, subject, mess):
+        if not item.can_create():
+            raise Exception, (u'You are not allowed to send emails.')
+        cust = item.task.customers.copy()
+        cust.set_where(id__in=customers)
+        cust.open()
+        to = []
+        for c in cust:
+            to.append(c.email.value)
+    
+            
+        raise Exception, (u'This is a demo app. <br> For a real application, ' +
+            u'you must change the code in the server module of the mail item.')        
+            
+        # to send email using gmail you must turn on "Access for less secure apps"
+        # https://www.google.com/settings/security/lesssecureapps
+        
+        # #set gmail_user and gmail_pwd to your email and password
+        
+        
+        gmail_user = 'jam-py-demo@gmail.com'
+        gmail_pwd = 'pwd'
+    
+        message = 'From: %s\nTo: %s\nSubject: %s\n\n%s' % (gmail_user, ", ".join(to), subject, mess)    
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.ehlo()
+        server.starttls()
+        server.login(gmail_user, gmail_pwd)
+        server.sendmail(gmail_user, to, message)
+        server.close()

@@ -25,7 +25,7 @@ The the Jam.py workflow is the following:
 * If the project 
   :doc:`safe mode </admin/project/parameters>`
   parameter is set, the framework checks if a user is logged, before executing 
-  any request. If not, then it notifies the user that it must to login, the 
+  any request. If not, then the 
   application on the client creates a login form, and after the user inputs its 
   login and password, the client task sends the server a request to login.
 * After successfull login or if the project
