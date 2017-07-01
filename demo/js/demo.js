@@ -207,7 +207,7 @@ function Events1() { // demo
 					e.preventDefault();
 					item.view(item.view_form.parent());
 				});
-			table_options.height = $(window).height() - $('body').height() - 10;
+			table_options.height = $(window).height() - $('body').height() - 20;
 		}
 		if (item.can_create()) {
 			item.view_form.find("#new-btn").on('click.task', function() { item.insert_record(); });

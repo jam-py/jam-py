@@ -114,6 +114,15 @@ HISTORY_FIELDS = [
 ]
 HISTORY_INDEX_FIELDS = ['item_id', 'item_rec_id']
 
+LOCKS_FIELDS = [
+    ['id', INTEGER, None],
+    ['item_id', INTEGER, None],
+    ['item_rec_id', INTEGER, None],
+    ['user', TEXT, 30],
+    ['date', DATETIME, None]
+]
+LOCKS_INDEX_FIELDS = ['item_id', 'item_rec_id']
+
 def get_alignment(data_type, item=None, lookup_values=None):
     if (data_type == INTEGER) or (data_type == FLOAT) or (data_type == CURRENCY):
         result = ALIGN_RIGHT

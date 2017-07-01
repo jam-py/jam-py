@@ -1187,7 +1187,7 @@ function Events3() { // admin.catalogs.sys_items
 					else {
 						item.edit_form.find("#new-btn").prop("disabled", false);
 						item.edit_form.find("#delete-btn").prop("disabled", false);
-						update_sys_fields_read_only(item, True);
+						update_sys_fields_read_only(item, false);
 					}
 				}
 				else {
@@ -1346,8 +1346,6 @@ function Events3() { // admin.catalogs.sys_items
 		var item = field.owner,
 			copy,
 			types = item.task.item_types,
-			parent_types = [],
-			parent_ids = [],
 			check_detail,
 			check_item,
 			check_group,
@@ -1357,33 +1355,8 @@ function Events3() { // admin.catalogs.sys_items
 			if (!item.valid_identifier(field.value)) {
 				return item.task.language.invalid_name
 			}
-			parent_ids.push(item.parent.value)
-			if (item.type_id.value !== types.DETAIL_TYPE) {
-				parent_types.push(types.TASK_TYPE);
-			}
-			if (item.type_id.value === types.ITEM_TYPE ||
-				item.type_id.value === types.TABLE_TYPE ||
-				item.type_id.value === types.REPORT_TYPE) {
-				parent_types.push(types.ITEMS_TYPE);
-				parent_types.push(types.TABLES_TYPE);
-				parent_types.push(types.REPORTS_TYPE)
-			}
-			copy = item.copy({handlers: false, details: false})
-			if (parent_types.length) {
-				copy.set_where({type_id__in: parent_types})
-				copy.open()
-				copy.each(function(c) {
-					parent_ids.push(c.id.value);
-				});
-			}
-			copy.set_where({parent__in: parent_ids})
-			copy.open()
-			copy.each(function(c) {
-				if (c.id.value !== item.id.value && c.f_item_name.value === field.value) {
-					error = 'There is an item with this name';
-					return false;
-				}
-			});
+			error = item.task.server('server_valid_item_name', [item.id.value, item.parent.value,
+				field.value, item.type_id.value]);
 			if (error) {
 				return error;
 			}
@@ -3645,7 +3618,9 @@ function Events10() { // admin.tables.sys_indices
 			}
 		}
 	
-		lookup_item.view_options.fields = ['f_nane', 'f_field_name'];
+		var item = task.sys_items;
+		lookup_item.view_options.fields = ['f_name', 'f_field_name'];
+		lookup_item.set_where({owner_rec_id__in: [item.id.value, item.parent.value]});
 		lookup_item.on_filter_record = filter_record;
 		lookup_item.filtered = true;
 	}

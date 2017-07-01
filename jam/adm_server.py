@@ -953,6 +953,7 @@ def load_task(target, app, first_build=True, after_import=False):
                 table = target.item_by_ID(it.table_id.value)
                 if item and table:
                     detail = item.add_detail(table)
+                    detail.item_name = it.f_item_name.value
                     detail.ID = it.id.value
                     detail.gen_name = table.gen_name
                     detail.visible = it.f_visible.value
@@ -2179,6 +2180,26 @@ def server_can_delete_lookup_list(task, list_id):
         mess = task.lang['lookup_list_is_used_in'] % names
         return mess
 
+def server_valid_item_name(task, item_id, parent_id, name, type_id):
+    result = ''
+    items = task.sys_items.copy(handlers=False, details=False)
+    if type_id == common.DETAIL_TYPE:
+        items.set_where(parent=parent_id)
+        items.open()
+        for it in items:
+            if it.task_id.value and it.id.value != item_id and it.f_item_name.value == name:
+                result = 'There is an item with this name'
+                break
+    else:
+        items = task.sys_items.copy(handlers=False, details=False)
+        items.set_where(type_id__ne=common.DETAIL_TYPE)
+        items.open()
+        for it in items:
+            if it.task_id.value and it.id.value != item_id and it.f_item_name.value == name:
+                result = 'There is an item with this name'
+                break
+    return result
+
 def server_create_task(task):
     db_type, db_database, db_user, db_password, db_host, db_port, db_encoding = db_info(task)
     db_module = db_modules.get_db_module(db_type)
@@ -3005,6 +3026,7 @@ def register_defs(task):
     task.register(server_import_table)
     task.register(server_get_task_info)
     task.register(server_can_delete_lookup_list)
+    task.register(server_valid_item_name)
     task.register(server_get_primary_key_type)
     task.register(server_set_literal_case)
     task.register(get_new_table_name)

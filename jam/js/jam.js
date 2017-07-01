@@ -1263,7 +1263,7 @@
                             if (!self.task._version_changed) {
                                 self.task._version_changed = true;
                                 self.message('<h4>' + language.version_changed + '</h4>', {
-                                    margin: '50px 0px',
+                                    margin: '50px 20px',
                                     width: 500,
                                     text_center: true
                                 });
@@ -3829,6 +3829,12 @@
                 }
             }
             else if (callback) {
+                if (this.on_before_apply) {
+                    this.on_before_apply.call(this, this);
+                }
+                if (this.on_after_apply) {
+                    this.on_after_apply.call(this, this);
+                }
                 callback.call(this);
             }
         },
@@ -5865,6 +5871,9 @@
                             value = [];
                             break;
                     }
+                }
+                else if (this.data_type === consts.KEYS) {
+                    value = [];
                 }
             }
             else {
