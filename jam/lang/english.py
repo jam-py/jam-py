@@ -37,6 +37,7 @@ dictionary = \
     'invalid_length':                   'Text exceeds the maximum allowed length - %s',
     'save_changes':                     'Data has been modified. Do you want to save changes?',
     'delete_record':                    'Delete the record?',
+    'delete_sqlite_record':             "You are using SQLITE DB. The field in the DB table will not be deleted. You won't be able to create a field with this name. Delete the field?",
     'no_record':                        'Record is not selected.',
     'server_request_error':             'Server request error',
     'cant_delete_used_record':          "Can't delete the record. It's being used.",

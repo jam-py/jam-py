@@ -77,6 +77,8 @@ class DBField(object):
         if row and (self.bind_index >= 0):
             row[self.bind_index] = value
 
+    data = property (get_data)
+
     def get_lookup_data(self):
         if self.lookup_index:
             row = self.get_row()
@@ -311,9 +313,21 @@ class DBField(object):
         if self.lookup_item:
             return self.lookup_item._field_by_name(self.lookup_field).data_type;
 
+    def _get_value_in_list(self):
+        result = '';
+        for val, str_val in self.lookup_values:
+            if val == self.value:
+                result = str_val
+        return result
+
     def get_lookup_value(self):
         value = None
-        if self.lookup_item:
+        if self.lookup_values and self.value:
+            try:
+                value = self._get_value_in_list()
+            except:
+                pass
+        elif self.lookup_item:
             if self.value:
                 value = self.get_lookup_data()
                 data_type = self.get_lookup_data_type()
@@ -336,7 +350,9 @@ class DBField(object):
     def get_lookup_text(self):
         result = ''
         try:
-            if self.lookup_item:
+            if self.lookup_values and self.value:
+                result = self.get_lookup_value()
+            elif self.lookup_item:
                 if self.value:
                     result = self.get_lookup_value()
                 if result is None:
@@ -360,24 +376,13 @@ class DBField(object):
     lookup_text = property (get_lookup_text)
 
     def get_display_text(self):
-
-        def get_value_in_list():
-            result = '';
-            for val, str_val in self.lookup_values:
-                if val == self.value:
-                    result = str_val
-            return result
-
         result = ''
         if self.filter and self.filter.filter_type == common.FILTER_IN and self.filter.field.lookup_item and self.filter.value:
             result = self.filter.owner.task.lang['items_selected'] % len(self.filter.value)
         elif self.lookup_item:
             result = self.lookup_text
-        elif self.lookup_values and self.value:
-            try:
-                result = get_value_in_list()
-            except:
-                pass
+        elif self.lookup_values:
+            result = self.lookup_text
         else:
             if self.data_type == common.CURRENCY:
                 if not self.raw_value is None:
@@ -591,15 +596,16 @@ class DBFilter(object):
                 self.field1 = FilterField(self, field, self.owner)
 
     def set_value(self, value):
-        if self.filter_type == common.FILTER_RANGE:
-            if value is None:
-                self.field.value = None;
-                self.field1.value = None;
+        if not isinstance(value, FilterField):
+            if self.filter_type == common.FILTER_RANGE:
+                if value is None:
+                    self.field.value = None;
+                    self.field1.value = None;
+                else:
+                    self.field.value = value[0];
+                    self.field1.value = value[1];
             else:
-                self.field.value = value[0];
-                self.field1.value = value[1];
-        else:
-            self.field.value = value
+                self.field.value = value
 
     def get_value(self):
         return self.field.raw_value
@@ -1511,11 +1517,24 @@ class AbstractDataSet(object):
                 result.append([field_name, filter_type, value])
         return result
 
-    def set_fields(self, *fields):
-        self._select_field_list = [field for field in fields];
+    def set_fields(self, lst=None, *fields):
+        field_list = []
+        if lst:
+            if type(lst) in (list, tuple):
+                field_list = list(lst)
+            else:
+                field_list.append(lst)
+        field_list = field_list + list(fields)
+        self._select_field_list = field_list
 
-    def set_where(self, **fields):
-        self._where_list = self.get_where_list(fields)
+    def set_where(self, dic=None, **fields):
+        field_dict = {}
+        if dic:
+            field_dict = dic
+        if fields:
+            for key, value in fields.iteritems():
+                field_dict[key] = value
+        self._where_list = self.get_where_list(field_dict)
 
     def get_order_by_list(self, field_list):
         result = []
@@ -1532,8 +1551,15 @@ class AbstractDataSet(object):
             result.append([fld.ID, desc])
         return result
 
-    def set_order_by(self, *fields):
-        self._order_by_list = self.get_order_by_list(fields)
+    def set_order_by(self, lst=None, *fields):
+        field_list = []
+        if lst:
+            if type(lst) in (list, tuple):
+                field_list = list(lst)
+            else:
+                field_list.append(lst)
+        field_list = field_list + list(fields)
+        self._order_by_list = self.get_order_by_list(field_list)
 
     def _update_fields(self, fields):
 
@@ -2044,15 +2070,35 @@ class MasterDetailDataset(MasterDataSet):
             if self.master.record_status != common.RECORD_UNCHANGED:
                 return self.master.change_log.get_detail_log(str(self.ID))
 
-    def open(self, expanded=None, fields=None, where=None, order_by=None,
+    def open(self, options=None, expanded=None, fields=None, where=None, order_by=None,
         open_empty=False, params=None, offset=None, limit=None, funcs=None,
         group_by=None, safe=False):
         if safe and not self.can_view():
             raise Exception(self.task.lang['cant_view'] % self.item_caption)
+        if options:
+            if options.get('expanded'):
+                expanded = options['expanded']
+            if options.get('fields'):
+                fields = options['fields']
+            if options.get('where'):
+                where = options['where']
+            if options.get('order_by'):
+                order_by = options['order_by']
+            if options.get('open_empty'):
+                open_empty =False,
+            if options.get('params'):
+                params = options['params']
+            if options.get('offset'):
+                offset = options['offset']
+            if options.get('limit'):
+                limit = options['limit']
+            if options.get('funcs'):
+                funcs = options['funcs']
         if expanded is None:
             expanded = self.expanded
         else:
             self.expanded = expanded
+        group_by
         if not params:
             params = {}
         if self.master:

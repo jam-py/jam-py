@@ -30,7 +30,7 @@ function Events1() { // demo
 					ul = $('<ul class="dropdown-menu">'); 
 					li.append(ul);
 					group.each_item(function(item) {
-						if (item.visible) {
+						if (item.visible && item.can_view()) {
 							ul.append($('<li>')
 								.append($('<a class="item-menu" href="#">' + item.item_caption + '</a>')
 								.data('item', item)));					
@@ -197,7 +197,6 @@ function Events1() { // demo
 	
 		if (item.view_form.hasClass('modal')) {
 			item.view_options.width = 1060;
-	//		item.view_form.find('.modal-footer button').hide();
 		}
 		else {
 			item.view_form.find(".modal-body").css('padding', 0);
@@ -215,12 +214,9 @@ function Events1() { // demo
 		else {
 			item.view_form.find("#new-btn").prop("disabled", true);
 		}
-		if (item.can_edit()) {
-			item.view_form.find("#edit-btn").on('click.task', function() { item.edit_record() });
-		}
-		else {
-			item.view_form.find("#edit-btn").prop("disabled", true);
-		}
+		
+		item.view_form.find("#edit-btn").on('click.task', function() { item.edit_record() });
+		
 		if (item.can_delete()) {
 			item.view_form.find("#delete-btn").on('click.task', function() { item.delete_record() } );
 		}
@@ -235,7 +231,7 @@ function Events1() { // demo
 				item.init_table(item, table_options);
 			}
 			item.create_table(item.view_form.find(".view-table"), table_options);
-			item.open(true);		
+			item.open(true);
 		}
 	}
 	
@@ -428,7 +424,8 @@ function Events2() { // demo.catalogs
 					e.preventDefault();
 				}
 				else if (code === 40) {
-					item.view_form.find(".inner-table").focus();
+					item.view_form.find('.dbtable.' + item.item_name + ' .inner-table').focus();
+	//				item.view_form.find(".inner-table").focus();
 					e.preventDefault();
 				}
 			});
@@ -450,7 +447,8 @@ function Events2() { // demo.catalogs
 						search_field = $(this).data('field_name');
 						field = item.field_by_name(search_field);
 						if (field && field.lookup_type !== "blob" && field.lookup_type !== "currency" &&
-							field.lookup_type !== "float" && field.lookup_type !== "boolean") {
+							field.lookup_type !== "float" && field.lookup_type !== "boolean" && 
+							field.lookup_type !== "date" && field.lookup_type !== "datetime") {
 							item.view_form.find('#search-fieldname')
 								.text(item.field_by_name(search_field).field_caption);
 							item.view_form.find(".view-title input").val('');
@@ -473,17 +471,12 @@ function Events2() { // demo.catalogs
 	}
 	
 	function on_view_form_shown(item) {
-		setTimeout(
-			function() {
-				if (item.default_field) {
-					item.view_form.find(".view-title input").focus();
-				}
-				else {
-					item.view_form.find('.dbtable.' + item.item_name + ' .inner-table').focus();
-				}
-			},
-			100
-		);	
+		if (item.default_field) {
+			item.view_form.find(".view-title input").focus();
+		}
+		else {
+			item.view_form.find('.dbtable.' + item.item_name + ' .inner-table').focus();
+		}
 	}
 	this.on_view_form_created = on_view_form_created;
 	this.isCharCode = isCharCode;
@@ -503,14 +496,13 @@ function Events3() { // demo.journals
 				}
 			};
 		}
-		setTimeout(
-			function() {
-				item.view_form.find('.dbtable.' + item.item_name + ' .inner-table').focus();
-			},
-			100
-		);	
+	}
+	
+	function on_view_form_shown(item) {
+		item.view_form.find('.dbtable.' + item.item_name + ' .inner-table').focus();
 	}
 	this.on_view_form_created = on_view_form_created;
+	this.on_view_form_shown = on_view_form_shown;
 }
 
 task.events.events3 = new Events3();
@@ -557,7 +549,47 @@ function Events15() { // demo.catalogs.tracks
 		options.expand_selected_row = 3;
 		options.column_width = {'artist': '7%'};
 	}
+	
+	
+	
+	function on_view_form_close_query(item) {
+		var copy;
+		if (item.select_records) {
+			if (item.selections.length > 100) {
+				item. warning('Too many records selected. Maximum is 100');
+				return false;
+			}
+			else if (item.selections.length) {
+				copy = item.copy();
+				copy.set_where({id__in: item.selections});
+				copy.open(function() {
+					var rec_no = task.invoices.invoice_table.record_count();
+					task.invoices.invoice_table.disable_controls();
+					try {
+						copy.each(function(c){
+							if (!task.invoices.invoice_table.locate('track', c.id.value)) {
+								task.invoices.invoice_table.append();
+								task.invoices.invoice_table.track.value = c.id.value;
+								task.invoices.invoice_table.track.lookup_value = c.name.value;
+								task.invoices.invoice_table.album.lookup_value = c.album.display_text;
+								task.invoices.invoice_table.artist.lookup_value = c.artist.display_text;
+								task.invoices.invoice_table.unitprice.value = c.unitprice.value;
+								task.invoices.invoice_table.quantity.value = 1;
+								task.invoices.invoice_table.post();
+							}
+						});
+					}
+					finally {
+						task.invoices.invoice_table.rec_no = rec_no;
+						task.invoices.invoice_table.enable_controls();
+						task.invoices.invoice_table.update_controls();
+					}
+				});
+			}
+		}
+	}
 	this.init_table = init_table;
+	this.on_view_form_close_query = on_view_form_close_query;
 }
 
 task.events.events15 = new Events15();
@@ -645,8 +677,17 @@ function Events16() { // demo.journals.invoices
 			.on('click.task', function() { item.invoice_table.append_record() });
 		item.edit_form.find("#edit-btn")
 			.on('click.task', function() { item.invoice_table.edit_record() });
+		item.edit_form.find("#select-btn")
+			.on('click.task', function() { select_records(item) });
 		item.edit_form.find("#delete-btn")
 			.on('click.task', function() { item.invoice_table.delete_record() });
+	}
+	
+	function select_records(item) {
+		var tracks = task.tracks.copy();
+		tracks.select_records = true;
+		tracks.selections = [];
+		tracks.view();
 	}
 	
 	function on_field_get_text(field) {
@@ -739,6 +780,7 @@ function Events16() { // demo.journals.invoices
 	this.on_filters_applied = on_filters_applied;
 	this.calc_footer = calc_footer;
 	this.on_edit_form_created = on_edit_form_created;
+	this.select_records = select_records;
 	this.on_field_get_text = on_field_get_text;
 	this.on_field_changed = on_field_changed;
 	this.calc_total = calc_total;

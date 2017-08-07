@@ -213,7 +213,15 @@ class App():
         except KeyError:
             return request.environ['REMOTE_ADDR']
 
-    def create_session(self, request, task, user_info={}):
+    def create_session(self, request, task, user_info=None):
+        if not user_info:
+            user_info = {
+                'user_id': None,
+                'role_id': None,
+                'role_name': '',
+                'user_name': '',
+                'admin': False
+            }
         cookie = request.get_session(task)
         session = {}
         session['ip'] = self.get_client_address(request);
@@ -286,7 +294,7 @@ class App():
         user_info = {}
         if session:
             user_info = session['user_info']
-            if user_info:
+            if user_info['role_id']:
                 priv = self.get_privileges(user_info['role_id'])
         result = {
             'task': task.get_info(),
@@ -359,15 +367,15 @@ class App():
     def get_response(self, item, method, params):
         if method == 'open':
             return item.select_records(params, safe=True)
-        elif method == 'get_record_count':
-            return item.get_record_count(params, safe=True)
-        elif method == 'apply_changes':
+        elif method == 'apply':
             return item.apply_changes(params, safe=True)
-        elif method == 'print_report':
-            return item.print_report(*params), ''
-        elif method == 'server_function':
+        elif method == 'server':
             return self.server_func(item, params[0], params[1])
-        elif method == 'init_client':
+        elif method == 'total_records':
+            return item.get_record_count(params, safe=True)
+        elif method == 'print':
+            return item.print_report(*params, safe=True), ''
+        elif method == 'load':
             return self.init_client(item)
 
     def server_func(self, obj, func_name, params):
@@ -406,8 +414,8 @@ class App():
                 r['error'] = e.message
             except Exception as e:
                 traceback.print_exc()
-                if common.SETTINGS['DEBUGGING'] and task_id != 0:
-                    raise
+                #~ if common.SETTINGS['DEBUGGING']:
+                    #~ raise
                 r['result'] = {'data': [None, e.message]}
                 r['error'] = e.message
             return self.create_post_response(request, r)

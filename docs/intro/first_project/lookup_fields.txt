@@ -1,0 +1,78 @@
+=============
+Lookup fields
+=============
+
+Now we will create the "Contacts" item.
+
+Select the "Journals" group in the project task tree and add a new journal in the 
+same way that we created the "Customers" catalog. 
+
+First we add the "Date" field of the "datetime" type and then "Notes" fields of the "text" type.
+
+Let's add the
+:doc:`lookup field </programming/data/lookup_fields>`
+"Customer" that will store a reference to a record in the "Customers" catalog.
+
+.. image:: /intro/_images/contacs_cutomer_fld.png
+	:align: center
+	:alt: Adding Customer field
+
+To create a lookup field, after specifying its caption and name, we need to 
+select a lookup item. Click the button to the right of the **Lookup item** 
+input and double click the record to select it.
+
+.. image:: /intro/_images/cutomers_lookup_item.png
+	:align: center
+	:alt: Selecting Customer lookup item
+
+The same way specify a lookup field.
+
+Now we add "Firstname" and "Phone" lookup fields. But for this fields we specify 
+the "Customer" field as their master_field attribute. In this case the server 
+won't create for them fields in the database table.
+
+Now add the lookup fields "Firstname" and "Phone". But for these fields we 
+specify the "Customer" field as their master_field attribute. In this case, the 
+server will not create fields for them in the database table.
+
+.. image:: /intro/_images/contacts_firstname.png
+	:align: center
+	:alt: Firstname lookup item
+	
+Click the "OK" button to save the "Contacts" item. 
+
+.. image:: /intro/_images/contacts_sql.png
+	:align: center
+	:alt: Contacts sql
+
+Now we create a 
+:doc:`lookup List </admin/lookup_lists>`
+"Status".
+
+Select the "Task" node in the project tree and click the **Lookup lists** button.
+
+.. image:: /intro/_images/lookup_lists.png
+	:align: center
+	:alt: Lookup lists
+
+Click the **New** button and specify the new lookup list name and add a list of 
+integer-text pairs:
+
+.. image:: /intro/_images/lookup_list_ready.png
+	:align: center
+	:alt: Lookup list entries
+	
+Save the Lookup	Lists dialog and open the "Contacts" journal to add the "Status"
+field using the "Status" lookup list as a Lookup values attribute: 
+
+.. image:: /intro/_images/status_lookup_field.png
+	:align: center
+	:alt: Status lookup field
+	
+Before saving open the "Customer" field and set the **Required** and **Typeahead** 
+attributes. When the **Typeahead** checkbox is checked, typeahead is enabled for 
+the lookup field.
+
+.. image:: /intro/_images/customer_attr.png
+	:align: center
+	:alt: Customer attributes

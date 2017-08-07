@@ -136,6 +136,29 @@ class AbstractItem(object):
     def load_code(self):
         return self.item_name
 
+    def check_operation(self, operation):
+        try:
+            app = self.task.app
+            if not app.admin.safe_mode or self.master:
+                return True
+            elif self.task == app.admin:
+                if app.admin.safe_mode:
+                    session = self.session
+                    if session and session['user_info']['admin']:
+                        return True
+                else:
+                    return True
+            else:
+                session = self.session
+                if session:
+                    role_id = session['user_info']['role_id']
+                    privileges = self.task.app.get_privileges(role_id)
+                    priv_dic = privileges.get(self.ID)
+                    if priv_dic:
+                        return priv_dic[operation]
+        except:
+            return False
+
     def can_view(self):
         return self.check_operation('can_view')
 
@@ -253,29 +276,6 @@ class AbstrItem(AbstractItem):
     def bind_item(self):
         self.prepare_fields()
         self.prepare_filters()
-
-    def check_operation(self, operation):
-        try:
-            app = self.task.app
-            if not app.admin.safe_mode or self.master:
-                return True
-            elif self.task == app.admin:
-                if app.admin.safe_mode:
-                    session = self.session
-                    if session and session['user_info']['admin']:
-                        return True
-                else:
-                    return True
-            else:
-                session = self.session
-                if session:
-                    role_id = session['user_info']['role_id']
-                    privileges = self.task.app.get_privileges(role_id)
-                    priv_dic = privileges.get(self.ID)
-                    if priv_dic:
-                        return priv_dic[operation]
-        except:
-            return False
 
     def can_create(self):
         return self.check_operation('can_create')

@@ -67,7 +67,7 @@ In the New project dialog box fill in:
   created in advance and its attributes should be entered in the 
   corresponding form fields. 
 
-.. image:: _images/new_project_setup.png
+.. image:: _images/project_params.png
 	:align: center
 	:alt: New project setup
 
@@ -90,23 +90,23 @@ of failure 	an error message will be displayed.
     :doc:`Administrator </admin/index>`,
     the field in the database table is not deleted, when the field is renamed, 
     the field in the table does not change.
-    
-If all goes well a new project will be created and a project tree will appear in 
-Administrator.
+
+If all goes well, a new project will be created and the project tree will appear 
+in the Administrator.    
 
 
-.. image:: _images/admin.png
+.. image:: _images/adm_new_project.png
 	:align: center
 	:alt: Jam.py Administrator
 
-Now to see the project itself create new page in the browser and type in
-the address bar:
-   
+Now, to see the project itself, create a new page in the browser and type in the 
+address bar:
+
 .. code-block:: console
 
     127.0.0.1:8080
 
 
-.. image:: _images/project.png
+.. image:: _images/empty_project.png
 	:align: center
 	:alt: Jam.py project

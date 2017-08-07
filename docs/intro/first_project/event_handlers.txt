@@ -1,0 +1,27 @@
+==============
+Event handlers
+==============
+
+Click the **Client module** button to open the
+:doc:`Code editor </admin/code_editor>`.
+
+Let's create then 
+:doc:`on_after_append </refs/client/item/on_after_append>`
+handler and the 
+:doc:`on_field_get_text </refs/client/item/on_get_field_text>`
+event handler. 
+
+To add an event handler, click the Events tab in the information pane to the 
+left of the editor and double-click one of the events
+
+
+.. image:: /intro/_images/creating_events.png
+	:align: center
+	:alt: Creating events
+
+The on_after_append event handler will be triggered when a new record is added 
+to the "Contacts" journal and sets the "Date" field to the current date 
+and the "Status" field to 1, with the lookup value of "Contact".
+
+The on_field_get_text event handler will display in the "Customer" field 
+first and last name of the customer.

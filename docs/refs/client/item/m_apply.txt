@@ -2,7 +2,7 @@
 apply
 =====
 
-.. js:function:: apply(callback, params) 
+.. js:function:: apply(callback, params, async) 
 
 **domain**: client 
 
@@ -26,7 +26,10 @@ The ``apply`` method can have the following parameters:
   on the server in the
   :doc:`on_apply </refs/server/item/on_apply>`
   event handler for some additional processing
-  
+
+* ``async``: if its value is true, and callback parameter is missing, the request 
+  is executed asynchronously 
+
 The order of parameters doesn't matter.
 
 The ``apply`` method
@@ -37,7 +40,14 @@ The ``apply`` method
   :doc:`state <at_item_state>`
   , and if so, posts the record
   
-* checks if the change log has changes, and if not, returns
+* checks if the change log has changes, and if not, 
+  triggers the 
+  :doc:`on_before_apply <on_before_apply>`
+  event handler if one is defined for the item, 
+  triggers the 
+  :doc:`on_after_apply <on_after_apply>`
+  event handler if one is defined for the item, 
+  executes callback if it is passed and then returns
 
 * triggers the 
   :doc:`on_before_apply <on_before_apply>`
@@ -50,7 +60,7 @@ The ``apply`` method
   event handler is defined for the item, and if it is, executes it, otherwise   
   generates and executes SQL query to write changes to the database
   
-* when generating an SQL query, check whether a user, that send the request, has 
+* when generating an SQL query, checks whether a user, that send the request, has 
   rights to make these changes, if not raises an exception
   
 * writes changes to the database  

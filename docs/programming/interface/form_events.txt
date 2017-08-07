@@ -30,36 +30,42 @@ defined in the client module of the task:
 
     function on_view_form_created(item) {
         var table_options = {
-                height: 480,
-                word_wrap: false,
+                height: 580,
                 sortable: true
             };
-    
         if (item.view_form.hasClass('modal')) {
-            item.view_options.width = 960;
+            item.view_options.width = 1060;
         }
         else {
-            item.view_form.find(".view-title #title-left")
-                .append($('<h4>' + item.item_caption + '<h4>'));
-            table_options.height = $(window).height() - $('body').height() - 10;
+            item.view_form.find(".modal-body").css('padding', 0);
+            item.view_form.find("#title-text").text(item.item_caption)
+            table_options.height = $(window).height() - $('body').height() - 20;
         }
-    
-        item.view_form.find("#new-btn").on('click.task', function() {
-            item.insert_record();
-        });
-        item.view_form.find("#edit-btn").on('click.task', function() {
-            item.edit_record();
-        });
-        item.view_form.find("#delete-btn").on('click.task', function() {
-            item.delete_record();
-        });
-    
-        item.paginate = true;
         
-        if (item.init_table) {
-            item.init_table(item, table_options);
+        if (item.can_create()) {
+            item.view_form.find("#new-btn").on('click.task', function() { item.insert_record(); });
         }
-        item.create_table(item.view_form.find(".view-table"), table_options);
+        else {
+            item.view_form.find("#new-btn").prop("disabled", true);
+        }
+        
+        item.view_form.find("#edit-btn").on('click.task', function() { item.edit_record() });
+        
+        if (item.can_delete()) {
+            item.view_form.find("#delete-btn").on('click.task', function() { item.delete_record() } );
+        }
+        else {
+            item.view_form.find("#delete-btn").prop("disabled", true);
+        }
+
+        item.paginate = true;        
+        if (item.view_form.find(".view-table").length) {
+            if (item.init_table) {
+                item.init_table(item, table_options);
+            }
+            item.create_table(item.view_form.find(".view-table"), table_options);
+            item.open(true);
+        }
     }
     
 This code is executed for every item, whose 
@@ -70,7 +76,7 @@ attribute is a JQuery object of the form’s html.
 
 This event performs the following:
 
-* Defines the options for an html table that will be created later by 
+* Defines the options for a table that will be created later by 
   :doc:`create_table </refs/client/item/m_create_table>`
   method.
 
@@ -86,79 +92,66 @@ This event performs the following:
 * Sets the 
   :doc:`paginate </refs/client/item/at_paginate>`
   atrribute to true, so the table will paginate the item’s 
-  dataset.
+  dataset. When this attribute is set, the table calculates the number of the 
+  rows displayed, based on its height. The table will internally manipulate the 
+  limit and offset parameters of the open method, depending on its height and 
+  current page, reopening the dataset when needed.
   
-* Uses 
+* Checks if the div with 'view-table' class is defined if the view form html template,
+  and if it exists, creates a table in this div using
   :doc:`create_table </refs/client/item/m_create_table>`
-  method of the item to creates the html table in the div 
-  with class=“view-table”. But before doing so, the event checks if the client 
+  method of the item. But before doing so, checks if the client 
   module of the item has init_table function, and if the init_table function is 
   defined, calls it, passing table_options as a parameter, see 
   :doc:`Working with modules </programming/modules>`.
+  
+* Executes open method, that sends a request to the server, that generates an sql
+  query to the database
   
 After the 
 :doc:`on_view_form_created </refs/client/task/on_view_form_created>`
 of the task is executed, the application triggers the 
 :doc:`on_view_form_created </refs/client/group/on_view_form_created>`
-event of the group that owns the item. In the 
-:doc:`Demo project </intro/demo_project>` 
-this event is only defined for **Catalogs** group, in which the search 
-functionality for catalogs is added.
+event of the group that owns the item. So the
+:doc:`default code </intro/default_code>` implements searching for catalogs
+group and filters for journals. Developers can create their own groups and write 
+code common for all items that these groups own.
 
 And finally, the on_view_form_created of the item itself is triggered (if defined).
 
-In the Demo, the client module of the **Invoices** journal has the following 
-event handler:
+In the Demo, the client module of the "Customers" catalog has the following 
+event handler, that assign JQuery events to "Email" and "Print" buttons:
 
 .. code-block:: js
 
     function on_view_form_created(item) {
-        item.invoice_table.create_table(item.view_form.find(".view-detail"),
-            {height: 200 - 4, dblclick_edit: false, column_width: {"track": "60%"}});
-    
-        item.filters.invoicedate1.value = new Date(new Date().setYear(new Date().getFullYear() - 1));
-        item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});
-    }
-    
-This event performs the following:
-
-* Creates a table for the **InvoiceTable** detail of the item, see 
-  :doc:`Details </programming/data/details>`
-
-* Sets a value of the ``invoicedate1`` filter of the journal to a date one year 
-  ago, see 
-  :doc:`Filters </programming/data/filters>`
-
-* Attaches the event handler to the filter button to create a form for editing 
-  of filter values of the item.
-  
-In this module the init_table function is defined. In this function the options 
-passed to the 
-:doc:`create_table </refs/client/item/m_create_table>`
-method of the 
-:doc:`on_view_form_created </refs/client/task/on_view_form_created>`
-event handler of the task are specified.
-
-.. code-block:: js
-
-    function init_table(item, table_options) {
-        table_options.height = $(window).height() - $('body').height() - 200 - 10;
-        if (table_options.height < 200) {
-            table_options.height = 200;
+        if (!item.view_form.hasClass('modal')) {    
+            item.view_form.find('#email-btn')
+                .click(function() {
+                    if (item.task.mail.can_create()) {
+                        item.task.mail.open({open_empty: true});
+                        item.task.mail.append_record();
+                    }
+                    else {
+                        item.warning('You are not allowed to send emails.');
+                    }
+                })
+                .show();
+            item.view_form.find('#print-btn')
+                .click(function() {
+                    item.task.customers_report.customers.value = item.selections;
+                    item.task.customers_report.print(false);
+                })
+                .show();
         }
-        table_options.show_footer = true;    
-        table_options.row_callback = function(row, it) {
-            var font_weight = 'normal';
-            if (it.total.value > 10) {
-                font_weight = 'bold';
-            }
-            row.find('td.total').css('font-weight', font_weight);
-        };
     }
+
 
 The same way the 
 
 * ``on_view_form_shown``
+
+* ``on_view_form_closed``
 
 * ``on_view_form_keydown``
 

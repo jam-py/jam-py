@@ -2,55 +2,22 @@
 Changing interface
 ==================
 
-Now we'll change the **Tasks** journal interface. We'll add **Done** button.
-Select **Task** node in the project tree and click on the **index html** 
-button:
+Jam.py framework has predefined css themes. Let's change the default boostrap 
+theme to the cerulean theme:
 
-.. image:: /intro/_images/index_html.png
+.. image:: /intro/_images/cerulean-theme.png
 	:align: center
-	:alt: Index.html button
+	:alt: cerulean-theme.png
 
-The 
-:doc:`index.html </programming/interface/index_html>`
-file from the project folder will be displayed in the 
-**Editor**.
+In the project's root folder, there is a project.css file that you can use to 
+change how the elements of the project page look. For example, let's change 
+how the customer field is displayed in the table:
 
-.. image:: /intro/_images/index_html_editor.png
+.. image:: /intro/_images/project_css.png
 	:align: center
-	:alt: Index.html editor
-	
-There is a div with class="templates". It contains the default templates of 
-project 
-:doc:`form templates </programming/interface/form_templates>`
-. By default, the template of view 
-forms of jounals of a project is defined in div with class="journals-view"
+	:alt: project_css.png
 
-Let's make a copy this div and replace 'journals-view' with 'tasks-view'. This 
-div will now be used as the template of our **Tasks** journal. We'll add the 
-**Done** button by inserting the following line in the template:
 
-.. code-block:: console
-
-    <button id="done-btn" class="btn pull-right" type="button"><i class="icon-remove-sign"></i> Done</button>
-
-.. image:: /intro/_images/index_html_tasks_view.png
+.. image:: /intro/_images/done.png
 	:align: center
-	:alt: Tasks view template
-
-To write a code that will be executed when the button is clicked open the client
-module of the **Tasks** journal in the code editor. Add a 
-:doc:`on_view_form_created </refs/client/item/on_view_form_created>`
-event handler (see
-:doc:`Form events </programming/interface/form_events>`
-) and the following lines of code:
-    
-.. image:: /intro/_images/on_view_form_created.png
-	:align: center
-	:alt: Done btn code
-
-The following figure shows the result of pressing the **Done** button in the 
-project:
-
-.. image:: /intro/_images/tasks_done_executed.png
-	:align: center
-	:alt: Done btn clicked
+	:alt: done.png

@@ -1,0 +1,61 @@
+===========
+New catalog
+===========
+
+Let's go back to the Administrator page and create a "Customers" catalog.
+
+Now we select the "Catalogs" group in the project tree and and click on the **New** 
+button at the bottom right corner of the page
+
+.. image:: /intro/_images/catalogs.png
+	:align: center
+	:alt: Catalogs
+
+In the 
+:doc:`Item Editor </admin/items/item_editor_dialog>`
+dialog, fill in the caption and name of the new catalog 
+
+.. image:: /intro/_images/customers_new.png
+	:align: center
+	:alt: New customes catalog
+
+and click the **New** button in the bottom right corner of the dialog to add a new field.
+The 
+:doc:`Field Editor </admin/items/field_editor_dialog>`
+dialog appears. Type the caption and name of the 
+"Firstname" field, select its type and click **OK** button.
+
+.. image:: /intro/_images/firstname.png
+	:align: center
+	:alt: New journal tasks
+
+Similarly, add the "Lastname" and "Phone" fields.
+
+.. image:: /intro/_images/customers_fields.png
+	:align: center
+	:alt: Customers fields
+	
+Now, to save the changes, click the **OK** button. When saving, the Administrator 
+created the CRM_CUSTOMERS table in the ctm.sqlite database:
+
+.. image:: /intro/_images/customer_sql.png
+	:align: left
+	:alt: Table created
+	
+Go to the Project page and press F5 to refresh it and click on the **New** 
+button
+
+.. image:: /intro/_images/customers_refresh.png
+	:align: center
+	:alt: Customers page
+
+Go back to the Administrator, double-click the "Clients" catalog, and then, 
+the "Lastname" field and set the "Required" and "Default" attributes. For catalogs 
+whose "Default" attribute is set, the 
+:doc:`default code </intro/default_code>`
+supports searching.
+
+.. image:: /intro/_images/customers_attr.png
+	:align: center
+	:alt: Customers page after attributes are set
+

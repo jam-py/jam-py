@@ -473,31 +473,34 @@
             return result;
         },
 
-        server: function(func_name, params, callback) {
-            var args,
+        server: function(func_name, params) {
+            var args = this._check_args(arguments),
+                callback = args['function'],
+                async = args['boolean'],
                 res,
                 err,
                 result;
-            if (!callback) {
-                args = this._check_args(arguments);
-                callback = args['function'];
+            if (params !== undefined && (params === callback || params === async)) {
+                params = undefined;
             }
-            if (params === undefined || params === callback) {
+            if (params === undefined) {
                 params = [];
             } else if (!$.isArray(params)) {
                 params = [params];
             }
-            if (callback) {
-                this.send_request('server_function', [func_name, params], function(result) {
+            if (callback || async) {
+                this.send_request('server', [func_name, params], function(result) {
                     res = result[0];
                     err = result[1];
-                    callback.call(this, res, err);
+                    if (callback) {
+                        callback.call(this, res, err);
+                    }
                     if (err) {
                         throw err;
                     }
                 });
             } else {
-                result = this.send_request('server_function', [func_name, params]);
+                result = this.send_request('server', [func_name, params]);
                 res = result[0];
                 err = result[1];
                 if (err) {
@@ -710,7 +713,12 @@
                             if (e.target === self[formName].get(0)) {
                                 e.stopPropagation();
                                 if (options.onShown) {
-                                    options.onShown.call(self, e);
+                                    setTimeout(
+                                        function() {
+                                            options.onShown.call(self, e);
+                                        },
+                                        0
+                                    )
                                 }
                             }
                         });
@@ -935,7 +943,7 @@
             var buttons = {},
                 default_options = {
                     buttons: buttons,
-                    margin: "20px 20px",
+                    margin: "40px 20px",
                     text_center: true,
                     center_buttons: true
                 };
@@ -949,7 +957,7 @@
             var buttons = {"OK": callback},
                 default_options = {
                     buttons: buttons,
-                    margin: "20px 20px",
+                    margin: "40px 20px",
                     text_center: true,
                     center_buttons: true
                 }
@@ -972,7 +980,7 @@
             buttons[language.cancel] = cancelCallback;
             return this.message(mess, {
                 buttons: buttons,
-                margin: "20px 20px",
+                margin: "40px 20px",
                 text_center: true,
                 width: 500,
                 center_buttons: true
@@ -1263,7 +1271,7 @@
                             if (!self.task._version_changed) {
                                 self.task._version_changed = true;
                                 self.message('<h4>' + language.version_changed + '</h4>', {
-                                    margin: '50px 20px',
+                                    margin: '40px 40px',
                                     width: 500,
                                     text_center: true
                                 });
@@ -1495,7 +1503,7 @@
         load_task: function() {
             var self = this,
                 info;
-            this.send_request('init_client', null, function(data) {
+            this.send_request('load', null, function(data) {
                 var info = data[0],
                     error = data[1],
                     templates;
@@ -2274,9 +2282,9 @@
                 this._set_rec_no(new_value);
             }
         });
-        Object.defineProperty(this, "recs", {
+        Object.defineProperty(this, "rec_count", {
             get: function() {
-                return this.get_recs();
+                return this.get_rec_count();
             },
         });
         Object.defineProperty(this, "active", {
@@ -2396,15 +2404,30 @@
         },
 
         can_create: function() {
-            return this.task.has_privilege(this, 'can_create');
+            if (this.master) {
+                return this.task.has_privilege(this.master, 'can_create');
+            }
+            else {
+                return this.task.has_privilege(this, 'can_create');
+            }
         },
 
         can_edit: function() {
-            return this.task.has_privilege(this, 'can_edit');
+            if (this.master) {
+                return this.task.has_privilege(this.master, 'can_edit');
+            }
+            else {
+                return this.task.has_privilege(this, 'can_edit');
+            }
         },
 
         can_delete: function() {
-            return this.task.has_privilege(this, 'can_delete');
+            if (this.master) {
+                return this.task.has_privilege(this.master, 'can_delete');
+            }
+            else {
+                return this.task.has_privilege(this, 'can_delete');
+            }
         },
 
         prepare_fields: function() {
@@ -2771,6 +2794,7 @@
             result.item_type = this.item_type;
             result.ID = this.ID;
             result.item_name = this.item_name;
+            result.expanded = this.expanded;
 
             result.field_defs = this.field_defs;
             result.filter_defs = this.filter_defs;
@@ -2805,7 +2829,7 @@
 
             result.update_system_fields();
 
-            result._bind_fields();
+            result._bind_fields(result.expanded);
             result._dataset = this._dataset;
             if (keep_filtered) {
                 result.on_filter_record = this.on_filter_record;
@@ -3044,6 +3068,7 @@
             params.__fields = [];
 
             fields = this._update_fields(fields);
+            this._select_field_list = [];
 
             if (fields) {
                 params.__fields = fields;
@@ -3340,12 +3365,16 @@
 
         close: function() {
             var len = this.details.length;
+            this.update_controls(consts.UPDATE_CLOSE);
             this._do_close();
             for (var i = 0; i < len; i++) {
                 this.details[i].close();
             }
-            this.update_controls(consts.UPDATE_CLOSE);
+//            this.update_controls(consts.UPDATE_CLOSE);
         },
+
+        //~ empty: function() {
+        //~ },
 
         sort: function(field_list) {
             var list = this.get_order_by_list(field_list)
@@ -3483,10 +3512,11 @@
                 params.__search = [field_name, text, filter_type];
                 this.open({params: params}, callback);
             } else {
-                this.open();
-                if (callback) {
-                    callback.call(this, this);
-                }
+                this.open(function() {;
+                    if (callback) {
+                        callback.call(this, this);
+                    }
+                });
             }
         },
 
@@ -3495,7 +3525,7 @@
             if (this._open_params.__open_empty && callback) {
                 return 0;
             } else {
-                this.send_request('get_record_count', this._open_params, function(data) {
+                this.send_request('total_records', this._open_params, function(data) {
                     if (data && callback) {
                         callback.call(self, data[0]);
                     }
@@ -3797,6 +3827,7 @@
             var args = this._check_args(arguments),
                 callback = args['function'],
                 params = args['object'],
+                async = args['boolean'],
                 self = this,
                 changes = {},
                 result,
@@ -3819,12 +3850,12 @@
                         params = $.extend({}, params, result);
                     }
                 }
-                if (callback) {
-                    this.send_request('apply_changes', [changes, params], function(data) {
+                if (callback || async) {
+                    this.send_request('apply', [changes, params], function(data) {
                         self._process_apply(data, callback);
                     });
                 } else {
-                    data = this.send_request('apply_changes', [changes, params]);
+                    data = this.send_request('apply', [changes, params]);
                     result = this._process_apply(data);
                 }
             }
@@ -3835,7 +3866,9 @@
                 if (this.on_after_apply) {
                     this.on_after_apply.call(this, this);
                 }
-                callback.call(this);
+                if (callback) {
+                    callback.call(this);
+                }
             }
         },
 
@@ -4257,7 +4290,7 @@
             return result;
         },
 
-        get_recs: function() {
+        get_rec_count: function() {
             if (this._dataset) {
                 if (this.filtered) {
                     return this._count_filtered();
@@ -4378,71 +4411,15 @@
                 if (!this.is_changing()) {
                     this.edit();
                 }
-                this.create_edit_form(args);
             }
-        },
-
-        copy_record: function(after_copy) {
-
-            function get_record_values(it) {
-                var record = {};
-                it.each_field(function(f) {
-                    if (!f.system_field()) {
-                        record[f.field_name] = [f.value, f.lookup_value]
-                    }
-                })
-                return record;
-            }
-
-            function set_record_values(it, values) {
-                for (var field_name in values) {
-                    if (values.hasOwnProperty(field_name)) {
-                        it.field_by_name(field_name).value = values[field_name][0];
-                        it.field_by_name(field_name).lookup_value = values[field_name][1];
-                    }
-                }
-            }
-
-            var record = {},
-                details = [],
-                i,
-                d,
-                records;
-            if (this.can_create()) {
-                record = get_record_values(this);
-                this.each_detail(function(dt) {
-                    var records = [];
-                    if (dt.record_count()) {
-                        dt.each(function(d) {
-                            records.push(get_record_values(d));
-                        });
-                        details[dt.ID] = records
-                    }
-                });
-                this.append();
-                set_record_values(this, record);
-                for (var ID in details) {
-                    if (details.hasOwnProperty(ID)) {
-                        d = this.item_by_ID(parseInt(ID, 10));
-                        records = details[ID];
-                        d.open();
-                        for (i = 0; i < records.length; i++) {
-                            d.append();
-                            set_record_values(d, records[i]);
-                            d.post();
-                        }
-                    }
-                }
-                if (after_copy) {
-                    after_copy.call(this, this);
-                }
-                this.create_edit_form();
-            }
+            this.create_edit_form(args);
         },
 
         cancel_edit: function() {
             this.close_edit_form();
-            this.cancel();
+            if (this.is_changing()) {
+                this.cancel();
+            }
         },
 
         delete_record: function(callback) {
@@ -4553,6 +4530,9 @@
                     }
                 }
             }
+            else {
+                this.close_edit_form();
+            }
         },
 
         do_on_view_keyup: function(e) {
@@ -4587,6 +4567,7 @@
 
         view: function(container) {
             var self = this;
+            self.show_selected = false;
             this.load_modules([this, this.owner], function() {
                 self.create_view_form(container);
             })
@@ -4835,11 +4816,11 @@
         },
 
         disable_controls: function() {
-            this._disabled_count -= 1;
+            this._disabled_count += 1;
         },
 
         enable_controls: function() {
-            this._disabled_count += 1;
+            this._disabled_count -= 1;
             if (this.controls_enabled()) {
                 this.update_controls(consts.UPDATE_SCROLLED);
             }
@@ -4861,7 +4842,7 @@
             }
             if (this.controls_enabled()) {
                 for (i = 0; i < len; i++) {
-                    this.fields[i].update_controls(true);
+                    this.fields[i].update_controls(state, true);
                 }
                 len = this.controls.length;
                 if (this.on_update_controls) {
@@ -5155,7 +5136,38 @@
                     this._do_on_refresh_record(copy);
                 }
             }
+        },
+
+        refresh_page: function(call_back) {
+            var args = this._check_args(arguments),
+                callback = args['function'],
+                async = args['boolean'],
+                self = this,
+                rec_no = this.rec_no;
+            if (callback || async) {
+                this.disable_controls();
+                this.open({params: this._open_params, offset: this._open_params.__offset}, function() {
+                    self.enable_controls();
+                    self.rec_no = rec_no;
+                    self.update_controls();
+                    if (callback) {
+                        callback.call(self);
+                    }
+                });
+            }
+            else {
+                this.disable_controls();
+                try {
+                    this.open({params: this._open_params, offset: this._open_params.__offset});
+                }
+                finally {
+                    this.enable_controls();
+                    this.rec_no = rec_no;
+                    this.update_controls();
+                }
+            }
         }
+
     });
 
     /**********************************************************************/
@@ -5347,7 +5359,8 @@
 
         process_report: function(callback) {
             var self = this,
-                host = location.protocol + '//' + location.hostname + (location.port ? ':' + location.port : ''),
+//                host = location.protocol + '//' + location.hostname + (location.port ? ':' + location.port : ''),
+                host = [location.protocol, '//', location.host, location.pathname].join(''),
                 i,
                 len,
                 param_values = [];
@@ -5365,7 +5378,7 @@
                 for (i = 0; i < len; i++) {
                     param_values.push(this.params[i].get_data());
                 }
-                this.send_request('print_report', [param_values, host, this.extension], function(result) {
+                this.send_request('print', [param_values, host, this.extension], function(result) {
                     var url,
                         error,
                         ext,
@@ -5519,6 +5532,11 @@
         if (owner) {
             owner._fields.push(this);
         }
+        Object.defineProperty(this, "data", {
+            get: function() {
+                return this.get_data();
+            }
+        });
         Object.defineProperty(this, "value", {
             get: function() {
                 return this.get_value();
@@ -6050,9 +6068,26 @@
             }
         },
 
+        _get_value_in_list: function() {
+            var i = 0,
+                len = this.lookup_values.length,
+                result = '';
+            for (; i < len; i++) {
+                if (this.lookup_values[i][0] === this.value) {
+                    result = this.lookup_values[i][1];
+                }
+            }
+            return result
+        },
+
         get_lookup_value: function() {
             var value = null;
-            if (this.lookup_item) {
+            if (this.lookup_values) {
+                try {
+                    value = this._get_value_in_list();
+                } catch (e) {}
+            }
+            else if (this.lookup_item) {
                 if (this.get_value()) {
                     value = this.get_lookup_data();
                     switch (this.get_lookup_data_type()) {
@@ -6093,7 +6128,10 @@
                 data_type,
                 result = '';
             try {
-                if (this.lookup_item) {
+                if (this.lookup_values) {
+                    result = this.get_lookup_value();
+                }
+                else if (this.lookup_item) {
                     if (this.data_type === consts.KEYS) {
                         result = this.text;
                     }
@@ -6126,18 +6164,6 @@
             return result;
         },
 
-        _get_value_in_list: function() {
-            var i = 0,
-                len = this.lookup_values.length,
-                result = '';
-            for (; i < len; i++) {
-                if (this.lookup_values[i][0] === this.value) {
-                    result = this.lookup_values[i][1];
-                }
-            }
-            return result
-        },
-
         get_display_text: function() {
             var res,
                 len,
@@ -6158,9 +6184,7 @@
                 }
             }
             else if (this.lookup_values) {
-                try {
-                    result = this._get_value_in_list();
-                } catch (e) {}
+                result = this.get_lookup_text();
             } else if (this.lookup_item) {
                 result = this.get_lookup_text();
             } else {
@@ -6366,12 +6390,25 @@
             }
         },
 
-        update_controls: function(owner_updating) {
+        _check_args: function(args) {
             var i,
-                len;
+                result = {};
+            for (i = 0; i < args.length; i++) {
+                result[typeof args[i]] = args[i];
+            }
+            return result;
+        },
+
+        update_controls: function() {
+            var i,
+                len,
+                args = this._check_args(arguments),
+                owner_updating = args['boolean'],
+                state = args['number'];
+
             len = this.controls.length;
             for (i = 0; i < len; i++) {
-                this.controls[i].update();
+                this.controls[i].update(state);
             }
             if (!owner_updating && this.owner && this.owner.controls) {
                 len = this.owner.controls.length;
@@ -7697,7 +7734,7 @@
                         self.keypress(e);
                     });
                 },
-                400
+                300
             );
         },
 
@@ -7755,7 +7792,8 @@
                 this.$table.addClass("table-striped");
             }
 
-            this.$table.on('mousedown dblclick', 'td', function(e) {
+            this.$table.on('mouseup dblclick', 'td', function(e) {
+//            this.$table.on('mousedown dblclick', 'td', function(e) {
                 var td = this;
                 if (this.nodeName !== 'TD') {
                     td = $(this).closest('td');
@@ -7990,7 +8028,7 @@
                         self.item.open({
                             params: self.item._open_params,
                             offset: 0
-                        });
+                        }, true);
                     }
                 }
             });
@@ -8414,14 +8452,17 @@
                     );
                     input = bl.find('#mselect-block')
                     bl.find("#mselect-all").click(function(e) {
+                        e.preventDefault();
                         self.selections_set_all_selected_ex(true);
                         self.$table.focus();
                     });
                     bl.find("#munselect-all").click(function(e) {
+                        e.preventDefault();
                         self.selections_set_all_selected_ex(false);
                         self.$table.focus();
                     });
                     bl.find("#mshow-selected").click(function(e) {
+                        e.preventDefault();
                         self.item.show_selected = !self.item.show_selected;
                         self.item.open(function() {
                             self.selections_update_selected();
@@ -8972,7 +9013,7 @@
         },
 
         updatePageInfo: function() {
-            if (this.options.show_paginator) {
+            if (this.options.show_paginator && this.$pageInput) {
                 this.$pageInput.val(this.page + 1);
                 if (this.page === 0) {
                     this.$fistPageBtn.addClass("disabled");
@@ -9398,6 +9439,8 @@
 
             container.remove();
 
+            this.$container.find('tfoot .pager').attr('colspan', this.colspan);
+
             this.syncronize();
             if (is_focused) {
                 this.focus();
@@ -9477,7 +9520,6 @@
             }
             if (field.get_lookup_data_type() === consts.BOOLEAN) {
                 $input = $('<input>')
-                    .attr("id", field.field_name)
                     .attr("type", "checkbox")
                     .attr("tabindex", tabIndex + "")
                     .click(function(e) {
@@ -9485,13 +9527,11 @@
                     });
             } else if (field.get_lookup_data_type() === consts.BLOB) {
                 $input = $('<textarea>')
-                    .attr("id", field.field_name)
                     .attr("tabindex", tabIndex + "")
 //                    .attr("rows", "10")
                     .innerHeight(70);
             } else {
                 $input = $('<input>')
-                    .attr("id", field.field_name)
                     .attr("type", "text")
                     .attr("tabindex", tabIndex + "");
             }
@@ -9714,7 +9754,7 @@
             }
         },
 
-        update: function() {
+        update: function(state) {
             var placeholder = this.field.field_placeholder,
                 focused = this.$input.get(0) === document.activeElement,
                 is_changing = this.is_changing;
@@ -9763,6 +9803,10 @@
                 }
                 this.$input.attr('placeholder', placeholder);
                 this.updateState(true);
+            }
+            if (state === consts.UPDATE_CLOSE) {
+                this.$input.val('');
+                this.set_read_only(true);
             }
         },
 

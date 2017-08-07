@@ -1918,10 +1918,10 @@ def server_get_task_dict(task):
     f_dict = {}
     items = task.sys_items.copy(handlers=False)
     items.details_active = False
-    items.open(['id', 'type_id', 'parent', 'f_item_name'])
+    items.open(fields=['id', 'type_id', 'parent', 'f_item_name'])
 
     fields = task.sys_fields.copy(handlers=False)
-    fields.open(['owner_rec_id', 'f_field_name'])
+    fields.open(fields=['owner_rec_id', 'f_field_name'])
     for f in fields:
         if f.f_field_name.value.lower() != 'deleted':
             d = f_dict.get(f.owner_rec_id.value, [])
@@ -1930,7 +1930,7 @@ def server_get_task_dict(task):
             d.append(f.f_field_name.value)
 
     params = task.sys_report_params.copy(handlers=False)
-    params.open(['owner_rec_id', 'f_param_name'])
+    params.open(fields=['owner_rec_id', 'f_param_name'])
     for f in params:
         d = f_dict.get(f.owner_rec_id.value, [])
         if not d:
@@ -2039,7 +2039,7 @@ def server_save_edit(task, item_id, text, is_server):
         try:
             item = task.sys_items.copy()
             item.set_where(id=item_id)
-            item.open(['id', 'f_server_module', 'f_web_client_module', 'f_js_funcs'])
+            item.open(fields=['id', 'f_server_module', 'f_web_client_module', 'f_js_funcs'])
             if item.record_count() == 1:
                 item.edit()
                 if is_server:

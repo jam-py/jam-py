@@ -1,0 +1,36 @@
+=================
+Displayed fields 
+=================
+
+When we open the "Contacts" journal in the browser the fields in the table and 
+in the edit form are displayed in the order in which they were created. 
+
+To change how fields are displayed in the table, click the **View** 
+button to open the
+:doc:`View Fields Dialog </admin/items/view_fields_dialog>`. 
+
+.. image:: /intro/_images/view_contacts1.png
+	:align: center
+	:alt: View contacts1
+
+Let's change the displayed fields using the buttons **left**, **right**, **up** 
+and **down**
+
+.. image:: /intro/_images/view_contacts2.png
+	:align: center
+	:alt: View contacts2
+
+To change the way the fields are displayed in the edit form click the **Edit**
+button to open the
+:doc:`Edit Fields Dialog </admin/items/edit_fields_dialog>`.
+
+.. image:: /intro/_images/edit_contacts2.png
+	:align: center
+	:alt: Edit contacts2
+
+To see the result of our work, go to the project page and and refresh it.
+
+.. image:: /intro/_images/contacts_view.png
+	:align: center
+	:alt: Contacts view
+

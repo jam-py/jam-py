@@ -25,4 +25,6 @@ button in the center or press **Space** key on a keyboard.
 
 To order the selected fields use the buttons that located below left panel.
 
+Click the **Desc** column to set descending/ascending sorting order for the field.
+
 Click the **OK** button to save to result or **Cancel** to cancel the operation.

@@ -290,14 +290,6 @@ class Param(DBField):
     def _change_lookup_field(self, lookup_value=None, slave_field_values=None):
         pass
 
-    def raw_display_text(self):
-        result = ''
-        if self.lookup_item:
-            result = self.lookup_text
-        else:
-            result = self.text
-        return result
-
     def copy(self, owner):
         result = Param(owner, self.param_caption, self.field_name, self.data_type,
             self.lookup_item, self.lookup_field, self.required,
@@ -385,6 +377,12 @@ class Report(AbstrReport):
                 param.lookup_item = self.task.item_by_ID(param.lookup_item)
             if param.lookup_field and type(param.lookup_field) == int:
                 param.lookup_field = param.lookup_item._field_by_ID(param.lookup_field).field_name
+            if param.lookup_values and type(param.lookup_values) == int:
+                try:
+                    param.lookup_values = self.task.lookup_lists[param.lookup_values]
+                except:
+                    pass
+
 
     def copy(self):
         result = self.__class__(self.owner, self.item_name, self.item_caption, self.visible,
@@ -941,9 +939,9 @@ class AbstractServerTask(AbstrTask):
                     s_office = _winreg.QueryValue(root, "")
                 else:
                     s_office = "soffice"
-                convertion = Popen([s_office, '--headless', '--convert-to', ext,
+                convertion = Popen([s_office, '--headless', '--convert-to', '--norestore', ext,
                     report.report_filename, '--outdir', os.path.join(self.work_dir, 'static', 'reports') ],
-                    stderr=STDOUT,stdout = PIPE)#, shell=True)
+                    stderr=STDOUT,stdout=PIPE)#, shell=True)
                 out, err = convertion.communicate()
                 converted = True
             except Exception as e:

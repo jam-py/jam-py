@@ -8,6 +8,7 @@ Jam.py FAQ
    faq_catalogs_vs_journals
    faq_forms
    faq_new_group_with_searching_records
+   faq_seach_for_journals
    faq_using_other_libraries
    faq_can_i_use_jam_py_with_existing_database
    faq_execute_script_on_the_server

@@ -2,7 +2,7 @@
 open
 ====
 
-.. js:function:: open(options, callback)
+.. js:function:: open(options, callback, async)
 
 **domain**: client 
 
@@ -22,6 +22,8 @@ The ``open`` method can have the following parameters:
 * ``callback``: if the parameter is not present, the request is sent to the 
   server synchronously, otherwise, the request is executed asynchronously and 
   after the dataset is received, the callback is executed
+* ``async``: if its value is true, and callback parameter is missing, the request 
+  is executed asynchronously 
   
 The order of parameters doesn't matter.
 

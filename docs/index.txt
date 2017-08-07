@@ -2,6 +2,9 @@
 Jam.py documentation
 ====================
 
+How the documentation is organized
+==================================
+
 Here is an overview of how the documentation is organized, that 
 will help you know where to look for certain things:
 
@@ -21,6 +24,46 @@ Jam.py classes APIs
 
 :doc:`FAQ <faq/index>` topics covers most frequently asked questions.
 
-
 Or you can go to the
 :doc:`table of contents <contents>`
+
+Tutorials
+=========
+
+If you are new to Jam.py, we highly recommend that you watch these video tutorials
+
+Tutorial 1 - `Task tree`_ 
+
+.. _`Task tree`: https://www.youtube.com/watch?v=hsSKqEh6vL4
+
+Tutorial 2 - Forms_
+
+.. _Forms: https://www.youtube.com/watch?v=DY463lcv0R4
+
+Tutorial 3 - `Form events`_
+ 
+.. _`Form events`: https://www.youtube.com/watch?v=DY463lcv0R4
+
+Tutorial 4 - `Data aware controls`_
+ 
+.. _`Data aware controls`: https://www.youtube.com/watch?v=fMTq8P4XdGw
+
+Tutorial 5 - `Datasets`_
+ 
+.. _`Datasets`: https://www.youtube.com/watch?v=gHTYj7h9ljI
+
+Tutorial 6 - `Datasets Part 2`_
+ 
+.. _`Datasets Part 2`: https://www.youtube.com/watch?v=1bUGmgBfrNw
+
+Tutorial 7 - `Fields and filters`_
+ 
+.. _`Fields and filters`: https://www.youtube.com/watch?v=ahXqlZrA0fQ
+
+Tutorial 8 - `Client-server interactions`_
+ 
+.. _`Client-server interactions`: https://www.youtube.com/watch?v=nLOhdA2FX0I
+
+Tutorial 9 - `Working with data on the server`_
+ 
+.. _`Working with data on the server`: https://www.youtube.com/watch?v=dDK78lIjHHY

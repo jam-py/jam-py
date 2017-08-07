@@ -2,25 +2,20 @@
 First project
 ==============
 
-There is a video_, that demonstrates process of creation of simple CRM application. 
-
-.. _video: https://www.youtube.com/watch?v=4Sd3YKSUoy4
-
-Now, we’ll walk you through the creation of a basic to-do list application.
-
+Now, we’ll walk you through the creation of a basic CRM application. 
 Please follow the steps below:
 
 .. toctree::
    :maxdepth: 1
 
-   creating_project
-   creating_journal
-   creating_catalog
-   creating_lookup_field
-   setting_fields_displayed
-   adding_filters
-   creating_index
-   writing_some_code
-   preliminary_results
+   new_project
+   new_catalog
+   lookup_fields
+   event_handlers
+   displayed_fields
+   filters
+   default_sort_order
+   changing_default_code
+   view_form
    changing_interface
 

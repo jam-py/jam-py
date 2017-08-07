@@ -1,0 +1,59 @@
+=========
+View form
+=========
+
+We have removed the dynamic menu and call the 
+:doc:`view </refs/client/item/m_view>`
+method of the "Contacts" 
+journal. This method displays the view form of the journal. Forms in the 
+project are based on 
+:doc:`html templates </programming/interface/form_templates>`, 
+defined in the
+:doc:`index.html </programming/interface/index_html>`
+file in the root folder of the project.
+
+Select task node in the project tree and click the **index.html** button to open
+the file.
+
+There is a div with class ``templates`` that contains html templates of 
+project forms. 
+
+.. image:: /intro/_images/templates.png
+	:align: center
+	:alt: Templates
+
+
+When an html template is not defined for an item application uses a template of 
+its owner. So for "Contacts" journal the "Journals" group template is used:
+
+.. image:: /intro/_images/journals_view_temp.png
+	:align: center
+	:alt: Journals template
+
+Let's make a copy this div and replace ``journals-view`` with ``contacts-view``: 
+
+.. image:: /intro/_images/contacts_view_temp.png
+	:align: center
+	:alt: Contacts template
+
+This div will now be used as the template of our **Contacts** journal. We have 
+added the **Customers** button by inserting the following line in the template:
+
+.. code-block:: html
+
+    <button id="customers-btn" class="btn expanded-btn pull-right" type="button"> Customers</button>
+
+Let's write a code that will be executed when a user clicks this button. To do so 
+we open the "Contacts" journal client module and add the
+:doc:`on_view_form_created </refs/client/item/on_view_form_created>`
+event handler 
+    
+.. image:: /intro/_images/on_view_form_created.png
+	:align: center
+	:alt: on_view_form_created
+
+Let's refresh the project page and click on the **Customers** button:
+
+.. image:: /intro/_images/customers_view.png
+	:align: center
+	:alt: customers_view.png

@@ -846,7 +846,7 @@ function Events3() { // admin.catalogs.sys_items
 			item.fields_editor = true;
 			item.view_options.fields = ['id', 'f_name', 'f_item_name', 'f_visible'];
 			item.edit_options.fields = ['f_name', 'f_item_name', 'f_visible'];
-			if (item.task._manual_update) {
+			if (item.task._manual_update || item.task.db_options.DATABASE === 'SQLITE') {
 				item.sys_fields.view_options.fields = ['f_name', 'f_field_name', 'f_db_field_name',
 					'f_data_type', 'f_size', 'f_required', 'f_read_only', 'f_object',
 					'f_object_field', 'f_master_field', 'f_enable_typehead',
@@ -865,7 +865,7 @@ function Events3() { // admin.catalogs.sys_items
 			item.view_options.fields = ['id', 'f_name', 'f_item_name', 'f_table_name',
 				'f_visible', 'f_soft_delete']
 			item.edit_options.fields = ['f_name', 'f_item_name', 'f_table_name']
-			if (item.task._manual_update) {
+			if (item.task._manual_update || item.task.db_options.DATABASE === 'SQLITE') {
 				item.sys_fields.view_options.fields = ['f_name', 'f_field_name',  'f_db_field_name',
 					'f_data_type', 'f_size', 'f_required', 'f_read_only', 'f_object',
 					'f_object_field', 'f_master_field', 'f_enable_typehead',
@@ -1226,22 +1226,36 @@ function Events3() { // admin.catalogs.sys_items
 				item.edit_form.find("#edit-btn").attr("tabindex", 91).on('click.task', function() {item.sys_fields.edit_record()});
 				item.edit_form.find("#delete-btn").attr("tabindex", 90).off('click.task')
 					.on('click', function() {
-						item.question(item.task.language.delete_record, function() {
-							var error = item.sys_fields.can_delete(item.sys_fields);
-							if (error) {
-								item.warning(error);
-							}
-							else {
+						if (!item.task._manual_update && item.task.db_options.DATABASE === 'SQLITE' &&
+							!item.f_virtual_table.value && !item.sys_fields.new_field(item.sys_fields) &&
+							!item.sys_fields.f_master_field.value) {
+							item.question(item.task.language.delete_sqlite_record, function() {
 								item.sys_fields.delete();
 								item.sys_fields.apply();
-							}
-					})
-				});
+							})
+						}
+						else {
+							delete_field(item)
+						}
+					});
 			}
 			else {
 				item.edit_form.find('#edit-detail-footer').hide();
 			}
 		}
+	}
+	
+	function delete_field(item) {
+	   item.question(item.task.language.delete_record, function() {
+			var error = item.sys_fields.can_delete(item.sys_fields);
+			if (error) {
+				item.warning(error);
+			}
+			else {
+				item.sys_fields.delete();
+				item.sys_fields.apply();
+			}
+		})
 	}
 	
 	function field_colors(row, item) {
@@ -2044,6 +2058,7 @@ function Events3() { // admin.catalogs.sys_items
 	this.can_delete = can_delete;
 	this.on_view_form_created = on_view_form_created;
 	this.on_edit_form_created = on_edit_form_created;
+	this.delete_field = delete_field;
 	this.field_colors = field_colors;
 	this.on_edit_form_shown = on_edit_form_shown;
 	this.update_sys_fields_read_only = update_sys_fields_read_only;
@@ -2843,7 +2858,7 @@ function Events15() { // admin.catalogs.sys_fields_editor
 	function fields_editor(item, title, source_def, source_list, dest_def, dest_list, save_func, cancel_func, can_move, read_only) {
 		var editor = this.copy();
 		editor.item = item;
-		editor.title = title;
+		editor.view_options.title = title;
 		editor.source_def = source_def;
 		editor.source_list = source_list;
 		editor.dest_def = dest_def;
@@ -2873,7 +2888,6 @@ function Events15() { // admin.catalogs.sys_fields_editor
 		item.source = item.copy(),
 		item.dest = item.copy();
 		item.view_options.width = 680;
-		item.view_form.title = item.title;
 	
 		view_fields = [];
 		for (i = 0; i < item.source_def.length; i++) {
@@ -4033,13 +4047,13 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 			}
 		}
 		if (!error) {
-			field = item.id;
-			if (field_name === 'id') {
-				field = item.deleted;
-			}
-			if (field[field_name] !== undefined) {
-				error = item.task.language.reserved_word;
-			}
+	//		field = item.id;
+	//		if (field_name === 'id') {
+	//			field = item.deleted;
+	//		}
+	//		if (field[field_name] !== undefined) {
+	//			error = item.task.language.reserved_word;
+	//		}
 		}
 		return error;
 	}

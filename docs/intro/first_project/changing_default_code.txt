@@ -1,0 +1,45 @@
+=====================
+Changing default code
+=====================
+
+Let's change the interface of the application. We will remove the dynamic menu 
+that 
+:doc:`Default code </intro/default_code>` 
+creates, and change the code so that the **Contacts** journal will appear when 
+a user opens the application in a web browser.
+
+Select **Task** node in the project tree and click the **Client module** 
+button:
+
+.. image:: /intro/_images/task_client_module.png
+	:align: center
+	:alt: Task client module
+
+The 
+:doc:`Code editor </admin/code_editor>`
+appears displaying the task client module:
+
+.. image:: /intro/_images/task_menu_code.png
+	:align: center
+	:alt: Dynamic menu code
+
+In the 
+:doc:`on_page_loaded </refs/client/task/on_page_loaded>`
+event handler, delete the code that creates the dynamic menu, and add the 
+following line instead:
+
+.. code-block:: console
+
+    task.contacts.view($('#content'));
+
+.. image:: /intro/_images/task_mo_menu_code.png
+	:align: center
+	:alt: No dynamic menu 
+	
+To see the result refresh the project page:
+
+.. image:: /intro/_images/project_no_menu.png
+	:align: center
+	:alt: Contacts no menu
+
+	

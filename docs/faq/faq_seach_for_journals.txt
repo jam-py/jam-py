@@ -1,0 +1,86 @@
+================================================
+How to add the search functionality for journals
+================================================
+
+To add search functions to the journals, you need to change journals view html 
+template like this:
+
+.. code-block:: html
+
+    <div class="journals-view">
+        <div class="modal-body">
+            <div class="view-title">
+                <div class="row-fluid">
+                    <div id="title-left" class="span2">
+                        <h4><a href="#" id="title-text" tabindex="-1"></a></h4>
+                    </div>
+                    <div id="title-center" class="span4">
+                        <form class="form-inline pull-left" style="margin: 6px 0px;">
+                            <label  class="control-label" for="input-find" style="margin: 0px 10px;">Search by
+                                <span class="label" id="search-fieldname"></span>
+                            </label>
+                            <input id="input-find" type="text" class="input-medium search-query" autocomplete="off">
+                            <a id="search-field-info" href="#" tabindex="-1">
+                                <span class="badge">?</span>
+                            </a>                                
+                        </form>
+                    </div>
+                    <div id="title-right" class="span6">
+                        <h5 id="filter-text" class="pull-right"></h5>
+                    </div>
+                </div>
+            </div>
+            <div class="view-master">
+            </div>
+            <div class="view-detail" style="margin-top: 4px; margin-bottom: 4px">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <!--buttons defined here-->
+        </div>
+    </div>
+
+Here, the div with id "title-center" is added that have the search input. 
+
+Then you need to change the on_view_form_created event handler in the journals 
+client module:
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        if (item.view_form.find('input#input-find')) {
+            task.catalogs.on_view_form_created(item);
+        }
+        item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});    
+        if (!item.on_filters_applied) {
+            item.on_filters_applied = function() {
+                if (item.view_form) {
+                    item.view_form.find("#filter-text").text(item.get_filter_text());        
+                }
+            };
+        }
+        if (!item.on_filters_apply) {    
+            item.on_filters_apply = function() {
+                if (item.view_form) {
+                    item.view_form.find('input#input-find').val('');
+                }
+            };
+        }
+    }
+
+In this event handler the code
+
+.. code-block:: js
+
+    task.catalogs.on_view_form_created(item); 
+    
+initializes the search and 
+
+.. code-block:: js
+
+    item.view_form.find('input#input-find').val('')
+
+clears the search input after filters have been applied.
+
+And you must select some "Default" fields for journals. 
+

@@ -14,7 +14,7 @@ Description
 ===========
 
 Write an ``on_field_validate`` event handler to validate changes made to the 
-data in the field.
+field data.
 
 The ``field`` parameter is the field whose data has been changed. To get the 
 item that owns the field, use the 
