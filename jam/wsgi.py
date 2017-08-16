@@ -238,7 +238,7 @@ class App():
     def valid_session(self, task, session, request):
         if self.admin.safe_mode:
             user_info = session['user_info']
-            if not user_info:
+            if not (user_info and user_info.get('user_id')):
                 return False
             if not self.admin.ignore_change_ip and task != self.admin:
                 ip = self.get_client_address(request);
@@ -294,8 +294,9 @@ class App():
         user_info = {}
         if session:
             user_info = session['user_info']
-            if user_info['role_id']:
-                priv = self.get_privileges(user_info['role_id'])
+            role_id = user_info.get('role_id')
+            if role_id:
+                priv = self.get_privileges(role_id)
         result = {
             'task': task.get_info(),
             'settings': self.admin.get_settings(),

@@ -60,7 +60,7 @@ function Events1() { // demo
 			'<li id="themes" class="dropdown">' +
 				'<a class="dropdown-toggle" data-toggle="dropdown" href="#">Themes <b class="caret"></b></a>' +
 				'<ul class="dropdown-menu">' +
-					'<li><a href="#">Bootrap</a></li>' +
+					'<li><a href="#">Bootstrap</a></li>' +
 					'<li><a href="#">Cerulean</a></li>' +				
 					'<li><a href="#">Amelia</a></li>' +				
 					'<li><a href="#">Flatly</a></li>' +
@@ -75,7 +75,7 @@ function Events1() { // demo
 				'</ul>' +
 			'</li>'
 		);  
-		set_theme(task, 'Bootrap');
+		set_theme(task, 'Cerulean');
 		$('#menu #themes ul a').on('click', (function(e) {
 			e.preventDefault();		
 			set_theme(task, $(this).text().substr(2));
@@ -150,7 +150,7 @@ function Events1() { // demo
 	
 	function get_theme(task, theme) {
 		var css;
-		if (theme === 'Bootrap') {
+		if (theme === 'Bootstrap') {
 			css = "bootstrap.css";
 		}
 		else if (theme === 'Cosmo') {
