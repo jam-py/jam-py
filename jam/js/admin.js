@@ -522,17 +522,17 @@ function Events0() { // admin
 				.text(item.task.language.ok)
 				.on('click.task', function() {item.apply_record()});
 		}
+	//	if (item.details_active) {
+	//		item.each_detail(function(d) {
+	//			d.update_controls();
+	//		});
+	//	}
+	//	else {
+	//		item.open_details();
+	//	}
 	}
 	
 	function on_edit_form_shown(item) {
-		if (item.details_active) {
-			item.each_detail(function(d) {
-				d.update_controls();
-			});
-		}
-		else {
-			item.open_details();
-		}
 	}
 	
 	function on_edit_form_close_query(item) {
@@ -576,6 +576,7 @@ function Events0() { // admin
 		open_sys_params(task);
 		task.sys_params.params = true;
 		task.sys_params.edit_options.fields = ['f_safe_mode', 'f_debugging', 'f_con_pool_size',
+	//		'f_mp_pool', 'f_persist_con', 'f_single_file_js', 'f_dynamic_js',
 			'f_mp_pool', 'f_persist_con', 'f_compressed_js', 'f_single_file_js', 'f_dynamic_js',
 	//	  'f_history_item', 'f_lock_item', 'f_timeout', 'f_ignore_change_ip', 'f_version'];
 			'f_timeout', 'f_ignore_change_ip', 'f_version'];
@@ -1222,6 +1223,7 @@ function Events3() { // admin.catalogs.sys_items
 	//				title_word_wrap: true,
 						row_callback: field_colors
 					});
+				item.sys_fields.open();
 				item.edit_form.find("#new-btn").attr("tabindex", 92).on('click.task', function() {item.sys_fields.append_record()});
 				item.edit_form.find("#edit-btn").attr("tabindex", 91).on('click.task', function() {item.sys_fields.edit_record()});
 				item.edit_form.find("#delete-btn").attr("tabindex", 90).off('click.task')
@@ -1230,12 +1232,11 @@ function Events3() { // admin.catalogs.sys_items
 							!item.f_virtual_table.value && !item.sys_fields.new_field(item.sys_fields) &&
 							!item.sys_fields.f_master_field.value) {
 							item.question(item.task.language.delete_sqlite_record, function() {
-								item.sys_fields.delete();
-								item.sys_fields.apply();
+								delete_field(item);
 							})
 						}
 						else {
-							delete_field(item)
+							try_delete_field(item);
 						}
 					});
 			}
@@ -1246,16 +1247,20 @@ function Events3() { // admin.catalogs.sys_items
 	}
 	
 	function delete_field(item) {
-	   item.question(item.task.language.delete_record, function() {
-			var error = item.sys_fields.can_delete(item.sys_fields);
-			if (error) {
-				item.warning(error);
-			}
-			else {
-				item.sys_fields.delete();
-				item.sys_fields.apply();
-			}
-		})
+		var error = item.sys_fields.can_delete(item.sys_fields);
+		if (error) {
+			item.warning(error);
+		}
+		else {
+			item.sys_fields.delete();
+			item.sys_fields.apply();
+		}
+	}
+	
+	function try_delete_field(item) {
+		item.question(item.task.language.delete_record, function() {
+			delete_field(item);
+		});
 	}
 	
 	function field_colors(row, item) {
@@ -2059,6 +2064,7 @@ function Events3() { // admin.catalogs.sys_items
 	this.on_view_form_created = on_view_form_created;
 	this.on_edit_form_created = on_edit_form_created;
 	this.delete_field = delete_field;
+	this.try_delete_field = try_delete_field;
 	this.field_colors = field_colors;
 	this.on_edit_form_shown = on_edit_form_shown;
 	this.update_sys_fields_read_only = update_sys_fields_read_only;
@@ -4191,9 +4197,10 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 			}
 			item.f_lookup_values.read_only = true;
 			item.f_object.read_only = true;
-			item.f_master_field.read_only = true;
+	 //	   item.f_master_field.read_only = true;
 			item.f_multi_select.read_only = false;
 			item.f_object_field.read_only = !item.f_object.value;
+			item.f_master_field.read_only = !item.f_object.value;
 			item.f_object_field1.read_only = !item.f_object_field.value;
 			item.f_object_field2.read_only = !item.f_object_field1.value;
 			item.f_enable_typehead.read_only = !(item.f_object.value && !item.f_master_field.value);
@@ -4304,8 +4311,8 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 			clone = item.clone()
 			clone.each(function(c) {
 				if (c.f_object.value === item.f_object.value && c.f_master_field.value === item.id.value) {
-					error = 'You can not delete the <b>' + item.f_field_name.value +
-						'</b>field. It is a master field to the <b>' + c.f_field_name.value + '.</b> field';
+					error = item.format_string(task.language.cant_delete_master_field,
+						{field1: item.f_field_name.value, field2: c.f_field_name.value});
 					return false;
 				}
 			})

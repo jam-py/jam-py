@@ -2,6 +2,7 @@ import datetime
 import traceback
 
 import jam.common as common
+from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_unicode
 
 FIELD_DEF = FIELD_ID, FIELD_NAME, NAME, FIELD_DATA_TYPE, REQUIRED, LOOKUP_ITEM, MASTER_FIELD, LOOKUP_FIELD, LOOKUP_FIELD1, \
     LOOKUP_FIELD2, FIELD_VISIBLE, FIELD_VIEW_INDEX, FIELD_EDIT_VISIBLE, FIELD_EDIT_INDEX, FIELD_READ_ONLY, FIELD_EXPAND, \
@@ -110,7 +111,7 @@ class DBField(object):
                 elif self.data_type == common.DATETIME:
                     result = self.datetime_to_str(result)
                 elif self.data_type == common.TEXT:
-                    result = unicode(result)
+                    result = text_type(result)
                 elif self.data_type == common.BOOLEAN:
                     if self.value:
                         if self.owner:
@@ -138,7 +139,7 @@ class DBField(object):
         if value != self.text:
             try:
                 if self.data_type == common.TEXT:
-                    self.set_value(unicode(value))
+                    self.set_value(text_type(value))
                 elif self.data_type == common.INTEGER:
                     self.set_value(int(value))
                 if self.data_type == common.FLOAT:
@@ -201,10 +202,10 @@ class DBField(object):
         try:
             value = self.get_data()
             if self.data_type == common.DATE:
-                if type(value) in [str, unicode]:
+                if type(value) in string_types:
                     value = self.convert_date(value)
             elif self.data_type == common.DATETIME:
-                if type(value) in [str, unicode]:
+                if type(value) in string_types:
                     value = self.convert_date_time(value)
             return value
         except Exception as e:
@@ -228,8 +229,8 @@ class DBField(object):
                         value = [];
             else:
                 if self.data_type == common.TEXT:
-                    if not isinstance(value, unicode):
-                        value = value.decode('utf-8')
+                    if not isinstance(value, text_type):
+                        value = to_unicode(value, 'utf-8')
                 if self.data_type in (common.FLOAT, common.CURRENCY):
                     value = float(value)
                 elif self.data_type == common.BOOLEAN:
@@ -332,10 +333,10 @@ class DBField(object):
                 value = self.get_lookup_data()
                 data_type = self.get_lookup_data_type()
                 if data_type == common.DATE:
-                    if isinstance(value, unicode):
+                    if isinstance(value, text_type):
                         value = self.convert_date(value)
                 elif data_type == common.DATETIME:
-                    if isinstance(value, unicode):
+                    if isinstance(value, text_type):
                         value = self.convert_date_time(value)
                 elif self.data_type == common.BOOLEAN:
                     value = bool(value)
@@ -368,7 +369,7 @@ class DBField(object):
                             result = self.float_to_str(result)
                         elif data_type == common.CURRENCY:
                             result = self.cur_to_str(result)
-            result = unicode(result)
+            result = text_type(result)
         except Exception as e:
             traceback.print_exc()
         return result
@@ -742,14 +743,14 @@ class ChangeLog(object):
         result['fields'] = self.fields
         result['expanded'] = False
         result['data'] = data
-        for key, record_log in self.logs.iteritems():
+        for key, record_log in iteritems(self.logs):
             record = record_log['record']
             info = self.item.get_rec_info(record=record)
             if info[common.REC_STATUS] != common.RECORD_UNCHANGED:
                 old_record = record_log['old_record']
                 new_record = self.copy_record(record_log['record'], expanded=False)
                 new_details = {}
-                for detail_id, detail in record_log['details'].iteritems():
+                for detail_id, detail in iteritems(record_log['details']):
                     new_detail = {}
                     detail_item = self.item.item_by_ID(int(detail_id))
                     detail_item.change_log.logs = detail['logs']
@@ -771,7 +772,7 @@ class ChangeLog(object):
         self.expanded = changes['expanded']
         data = changes['data']
         self._change_id = 0
-        for key, record_log in data.iteritems():
+        for key, record_log in iteritems(data):
             if self._change_id < int(key):
                 self._change_id = int(key)
             record = record_log['record']
@@ -783,7 +784,7 @@ class ChangeLog(object):
                 'record': record,
                 'details': details
             }
-            for detail_id, detail in record_log['details'].iteritems():
+            for detail_id, detail in iteritems(record_log['details']):
                 detail_item = self.item.item_by_ID(int(detail_id))
                 detail_item.change_log.set_changes(detail)
                 details[detail_id] = {
@@ -815,7 +816,7 @@ class ChangeLog(object):
                 fields = detail['fields']
                 expanded = detail['expanded']
                 records = self.copy_records(cur_records)
-                for key, record_log in cur_logs.iteritems():
+                for key, record_log in iteritems(cur_logs):
                     cur_record = record_log['record']
                     record = detail_item.change_log.copy_record(cur_record)
                     index = None
@@ -1496,7 +1497,7 @@ class AbstractDataSet(object):
 
     def get_where_list(self, field_dict):
         result = []
-        for field_arg in field_dict.iterkeys():
+        for field_arg in iterkeys(field_dict):
             field_name = field_arg
             pos = field_name.find('__')
             if pos > -1:
@@ -1532,7 +1533,7 @@ class AbstractDataSet(object):
         if dic:
             field_dict = dic
         if fields:
-            for key, value in fields.iteritems():
+            for key, value in iteritems(fields):
                 field_dict[key] = value
         self._where_list = self.get_where_list(field_dict)
 
@@ -1948,7 +1949,7 @@ class AbstractDataSet(object):
 
     def set_filters(self, **filters):
         self.clear_filters()
-        for filter_name in filters.iterkeys():
+        for filter_name in iterkeys(filters):
             try:
                 filter = self.filter_by_name(filter_name)
                 filter.value = filters[filter_name]
@@ -2075,7 +2076,7 @@ class MasterDetailDataset(MasterDataSet):
         group_by=None, safe=False):
         if safe and not self.can_view():
             raise Exception(self.task.lang['cant_view'] % self.item_caption)
-        if options:
+        if options and type(options) == dict:
             if options.get('expanded'):
                 expanded = options['expanded']
             if options.get('fields'):
@@ -2150,11 +2151,11 @@ class MasterDetailDataset(MasterDataSet):
             return result
 
         params = {}
-        for args, value in locals().iteritems():
+        for args, value in iteritems(locals()):
             if not args in ['self', 'ids', 'params', 'slice_ids']:
                 params[args] = value
         if type(ids) == dict:
-            keys = list(ids.iterkeys())
+            keys = list(iterkeys(ids))
             id_field_name = keys[0]
             ids = ids[id_field_name]
         elif type(ids) == list:

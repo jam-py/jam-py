@@ -19,8 +19,7 @@ import sys
 
 from werkzeug._compat import iteritems
 
-# the version.  Usually set automatically by a script.
-__version__ = '0.12-dev'
+__version__ = '0.13-dev'
 
 
 # This import magic raises concerns quite often which is why the implementation
@@ -99,7 +98,7 @@ all_by_module = {
 }
 
 # modules that should be imported when accessed as attributes of werkzeug
-attribute_modules = frozenset(['exceptions', 'routing', 'script'])
+attribute_modules = frozenset(['exceptions', 'routing'])
 
 
 object_origins = {}

@@ -60,7 +60,7 @@ function Events1() { // demo
 			'<li id="themes" class="dropdown">' +
 				'<a class="dropdown-toggle" data-toggle="dropdown" href="#">Themes <b class="caret"></b></a>' +
 				'<ul class="dropdown-menu">' +
-					'<li><a href="#">Bootstrap</a></li>' +
+					'<li><a href="#">Bootrap</a></li>' +
 					'<li><a href="#">Cerulean</a></li>' +				
 					'<li><a href="#">Amelia</a></li>' +				
 					'<li><a href="#">Flatly</a></li>' +
@@ -75,6 +75,7 @@ function Events1() { // demo
 				'</ul>' +
 			'</li>'
 		);  
+		// set_theme(task, 'Bootrap');
 		set_theme(task, 'Cerulean');
 		$('#menu #themes ul a').on('click', (function(e) {
 			e.preventDefault();		
@@ -150,7 +151,7 @@ function Events1() { // demo
 	
 	function get_theme(task, theme) {
 		var css;
-		if (theme === 'Bootstrap') {
+		if (theme === 'Bootrap') {
 			css = "bootstrap.css";
 		}
 		else if (theme === 'Cosmo') {
@@ -487,7 +488,7 @@ task.events.events2 = new Events2();
 
 function Events3() { // demo.journals 
 
-	function on_view_form_created(item) {
+	function on_view_form_created(item) { 
 		item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});	
 		if (!item.on_filters_applied) {
 			item.on_filters_applied = function() {
@@ -510,26 +511,26 @@ task.events.events3 = new Events3();
 function Events10() { // demo.catalogs.customers 
 
 	function init_table(item, options) {
-		if (!item.view_form.hasClass('modal')) {	
+		if (!item.view_form.hasClass('modal')) {
 			item.selections = [];	
-		}
-	}
-	
+		} 
+	} 
+	 
 	function on_view_form_created(item) {
 		if (!item.view_form.hasClass('modal')) {	
 			item.view_form.find('#email-btn')
 				.click(function() {
 					if (item.task.mail.can_create()) {
-						item.task.mail.open({open_empty: true});
-						item.task.mail.append_record();
+						item.task.mail.open({open_empty: true}); 
+						item.task.mail.append_record(); 
 					}
-					else {
+					else { 
 						item.warning('You are not allowed to send emails.');
 					}
-				})
-				.show();
+				}) 
+				.show(); 
 			item.view_form.find('#print-btn')
-				.click(function() {
+				.click(function() { 
 					item.task.customers_report.customers.value = item.selections;
 					item.task.customers_report.print(false);
 				})
@@ -597,7 +598,7 @@ task.events.events15 = new Events15();
 function Events16() { // demo.journals.invoices 
 
 	function on_after_append(item) {
-		item.date.value = new Date();
+		item.date.value = new Date(); 
 		item.taxrate.value = 5;
 	}
 	

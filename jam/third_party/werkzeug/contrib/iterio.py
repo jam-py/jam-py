@@ -34,7 +34,7 @@ r"""
         print iterator.next()       # prints otherthing
         iterator.next()             # raises StopIteration
 
-    .. _greenlet: http://codespeak.net/py/dist/greenlet.html
+    .. _greenlet: https://github.com/python-greenlet/greenlet
 
     :copyright: (c) 2014 by the Werkzeug Team, see AUTHORS for more details.
     :license: BSD, see LICENSE for more details.
@@ -260,7 +260,7 @@ class IterO(IterIO):
         try:
             tmp_end_pos = len(self._buf)
             while pos > tmp_end_pos:
-                item = self._gen.next()
+                item = next(self._gen)
                 tmp_end_pos += len(item)
                 buf.append(item)
         except StopIteration:

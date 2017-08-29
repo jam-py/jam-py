@@ -8,23 +8,24 @@
     :copyright: (c) 2014 by the Werkzeug Team, see AUTHORS for more details.
     :license: BSD, see LICENSE for more details.
 """
-import re
+import io
+import mimetypes
 import os
 import posixpath
-import mimetypes
-from itertools import chain
-from zlib import adler32
-from time import time, mktime
+import re
 from datetime import datetime
 from functools import partial, update_wrapper
+from itertools import chain
+from time import mktime, time
+from zlib import adler32
 
-from werkzeug._compat import iteritems, text_type, string_types, \
-    implements_iterator, make_literal_wrapper, to_unicode, to_bytes, \
-    wsgi_get_bytes, try_coerce_native, PY2
+from werkzeug._compat import BytesIO, PY2, implements_iterator, iteritems, \
+    make_literal_wrapper, string_types, text_type, to_bytes, to_unicode, \
+    try_coerce_native, wsgi_get_bytes
 from werkzeug._internal import _empty_stream, _encode_idna
-from werkzeug.http import is_resource_modified, http_date
-from werkzeug.urls import uri_to_iri, url_quote, url_parse, url_join
 from werkzeug.filesystem import get_filesystem_encoding
+from werkzeug.http import http_date, is_resource_modified
+from werkzeug.urls import uri_to_iri, url_join, url_parse, url_quote
 
 
 def responder(f):
@@ -43,7 +44,7 @@ def responder(f):
 def get_current_url(environ, root_only=False, strip_querystring=False,
                     host_only=False, trusted_hosts=None):
     """A handy helper function that recreates the full URL as IRI for the
-    current request or parts of it.  Here an example:
+    current request or parts of it.  Here's an example:
 
     >>> from werkzeug.test import create_environ
     >>> env = create_environ("/?param=foo", "http://localhost/script")
@@ -165,7 +166,7 @@ def get_host(environ, trusted_hosts=None):
 
 def get_content_length(environ):
     """Returns the content length from the WSGI environment as
-    integer.  If it's not available `None` is returned.
+    integer. If it's not available ``None`` is returned.
 
     .. versionadded:: 0.9
 
@@ -179,19 +180,23 @@ def get_content_length(environ):
             pass
 
 
-def get_input_stream(environ, safe_fallback=True):
+def get_input_stream(environ, safe_fallback=True, max_content_length=None):
     """Returns the input stream from the WSGI environment and wraps it
     in the most sensible way possible.  The stream returned is not the
     raw WSGI stream in most cases but one that is safe to read from
     without taking into account the content length.
 
+    .. versionchanged:: 0.13
+        Added the ``max_content_length`` parameter.
+
     .. versionadded:: 0.9
 
     :param environ: the WSGI environ to fetch the stream from.
-    :param safe: indicates whether the function should use an empty
-                 stream as safe fallback or just return the original
-                 WSGI input stream if it can't wrap it safely.  The
-                 default is to return an empty string in those cases.
+    :param safe_fallback: use an empty stream as a safe fallback when neither
+        the environ content length nor the max is set. Disabling this allows
+        infinite streams, which can be a denial-of-service risk.
+    :param max_content_length: if the environ does not set ``Content-Length``
+        or it is greater than this value, the stream is limited to this length.
     """
     stream = environ['wsgi.input']
     content_length = get_content_length(environ)
@@ -202,15 +207,19 @@ def get_input_stream(environ, safe_fallback=True):
     if environ.get('wsgi.input_terminated'):
         return stream
 
-    # If we don't have a content length we fall back to an empty stream
-    # in case of a safe fallback, otherwise we return the stream unchanged.
-    # The non-safe fallback is not recommended but might be useful in
-    # some situations.
-    if content_length is None:
+    # If the request doesn't specify a content length and there is no max
+    # length set, returning the stream is potentially dangerous because it
+    # could be infinite, maliciously or not. If safe_fallback is true, return
+    # an empty stream for safety instead.
+    if content_length is None and max_content_length is None:
         return safe_fallback and _empty_stream or stream
 
-    # Otherwise limit the stream to the content length
-    return LimitedStream(stream, content_length)
+    # Otherwise limit the stream to the content length or max length,
+    # whichever is lower.
+    if max_content_length is not None:
+        return LimitedStream(stream, min(content_length, max_content_length))
+    else:
+        return LimitedStream(stream, content_length)
 
 
 def get_query_string(environ):
@@ -545,10 +554,11 @@ class SharedDataMiddleware(object):
             if filesystem_bound:
                 return basename, self._opener(
                     provider.get_resource_filename(manager, path))
+            s = provider.get_resource_string(manager, path)
             return basename, lambda: (
-                provider.get_resource_stream(manager, path),
+                BytesIO(s),
                 loadtime,
-                0
+                len(s)
             )
         return loader
 
@@ -754,6 +764,22 @@ class FileWrapper(object):
         if hasattr(self.file, 'close'):
             self.file.close()
 
+    def seekable(self):
+        if hasattr(self.file, 'seekable'):
+            return self.file.seekable()
+        if hasattr(self.file, 'seek'):
+            return True
+        return False
+
+    def seek(self, *args):
+        if hasattr(self.file, 'seek'):
+            self.file.seek(*args)
+
+    def tell(self):
+        if hasattr(self.file, 'tell'):
+            return self.file.tell()
+        return None
+
     def __iter__(self):
         return self
 
@@ -762,6 +788,87 @@ class FileWrapper(object):
         if data:
             return data
         raise StopIteration()
+
+
+@implements_iterator
+class _RangeWrapper(object):
+    # private for now, but should we make it public in the future ?
+
+    """This class can be used to convert an iterable object into
+    an iterable that will only yield a piece of the underlying content.
+    It yields blocks until the underlying stream range is fully read.
+    The yielded blocks will have a size that can't exceed the original
+    iterator defined block size, but that can be smaller.
+
+    If you're using this object together with a :class:`BaseResponse` you have
+    to use the `direct_passthrough` mode.
+
+    :param iterable: an iterable object with a :meth:`__next__` method.
+    :param start_byte: byte from which read will start.
+    :param byte_range: how many bytes to read.
+    """
+
+    def __init__(self, iterable, start_byte=0, byte_range=None):
+        self.iterable = iter(iterable)
+        self.byte_range = byte_range
+        self.start_byte = start_byte
+        self.end_byte = None
+        if byte_range is not None:
+            self.end_byte = self.start_byte + self.byte_range
+        self.read_length = 0
+        self.seekable = hasattr(iterable, 'seekable') and iterable.seekable()
+        self.end_reached = False
+
+    def __iter__(self):
+        return self
+
+    def _next_chunk(self):
+        try:
+            chunk = next(self.iterable)
+            self.read_length += len(chunk)
+            return chunk
+        except StopIteration:
+            self.end_reached = True
+            raise
+
+    def _first_iteration(self):
+        chunk = None
+        if self.seekable:
+            self.iterable.seek(self.start_byte)
+            self.read_length = self.iterable.tell()
+            contextual_read_length = self.read_length
+        else:
+            while self.read_length <= self.start_byte:
+                chunk = self._next_chunk()
+            if chunk is not None:
+                chunk = chunk[self.start_byte - self.read_length:]
+            contextual_read_length = self.start_byte
+        return chunk, contextual_read_length
+
+    def _next(self):
+        if self.end_reached:
+            raise StopIteration()
+        chunk = None
+        contextual_read_length = self.read_length
+        if self.read_length == 0:
+            chunk, contextual_read_length = self._first_iteration()
+        if chunk is None:
+            chunk = self._next_chunk()
+        if self.end_byte is not None and self.read_length >= self.end_byte:
+            self.end_reached = True
+            return chunk[:self.end_byte - contextual_read_length]
+        return chunk
+
+    def __next__(self):
+        chunk = self._next()
+        if chunk:
+            return chunk
+        self.end_reached = True
+        raise StopIteration()
+
+    def close(self):
+        if hasattr(self.iterable, 'close'):
+            self.iterable.close()
 
 
 def _make_chunk_iter(stream, limit, buffer_size):
@@ -784,7 +891,8 @@ def _make_chunk_iter(stream, limit, buffer_size):
         yield item
 
 
-def make_line_iter(stream, limit=None, buffer_size=10 * 1024):
+def make_line_iter(stream, limit=None, buffer_size=10 * 1024,
+                   cap_at_buffer=False):
     """Safely iterates line-based over an input stream.  If the input stream
     is not a :class:`LimitedStream` the `limit` parameter is mandatory.
 
@@ -803,11 +911,18 @@ def make_line_iter(stream, limit=None, buffer_size=10 * 1024):
     .. versionadded:: 0.9
        added support for iterators as input stream.
 
+    .. versionadded:: 0.11.10
+       added support for the `cap_at_buffer` parameter.
+
     :param stream: the stream or iterate to iterate over.
     :param limit: the limit in bytes for the stream.  (Usually
                   content length.  Not necessary if the `stream`
                   is a :class:`LimitedStream`.
     :param buffer_size: The optional buffer size.
+    :param cap_at_buffer: if this is set chunks are split if they are longer
+                          than the buffer size.  Internally this is implemented
+                          that the buffer size might be exhausted by a factor
+                          of two however.
     """
     _iter = _make_chunk_iter(stream, limit, buffer_size)
 
@@ -831,11 +946,19 @@ def make_line_iter(stream, limit=None, buffer_size=10 * 1024):
             if not new_data:
                 break
             new_buf = []
+            buf_size = 0
             for item in chain(buffer, new_data.splitlines(True)):
                 new_buf.append(item)
+                buf_size += len(item)
                 if item and item[-1:] in crlf:
                     yield _join(new_buf)
                     new_buf = []
+                elif cap_at_buffer and buf_size >= buffer_size:
+                    rv = _join(new_buf)
+                    while len(rv) >= buffer_size:
+                        yield rv[:buffer_size]
+                        rv = rv[buffer_size:]
+                    new_buf = [rv]
             buffer = new_buf
         if buffer:
             yield _join(buffer)
@@ -854,7 +977,8 @@ def make_line_iter(stream, limit=None, buffer_size=10 * 1024):
         yield previous
 
 
-def make_chunk_iter(stream, separator, limit=None, buffer_size=10 * 1024):
+def make_chunk_iter(stream, separator, limit=None, buffer_size=10 * 1024,
+                    cap_at_buffer=False):
     """Works like :func:`make_line_iter` but accepts a separator
     which divides chunks.  If you want newline based processing
     you should use :func:`make_line_iter` instead as it
@@ -865,12 +989,19 @@ def make_chunk_iter(stream, separator, limit=None, buffer_size=10 * 1024):
     .. versionadded:: 0.9
        added support for iterators as input stream.
 
+    .. versionadded:: 0.11.10
+       added support for the `cap_at_buffer` parameter.
+
     :param stream: the stream or iterate to iterate over.
     :param separator: the separator that divides chunks.
     :param limit: the limit in bytes for the stream.  (Usually
                   content length.  Not necessary if the `stream`
                   is otherwise already limited).
     :param buffer_size: The optional buffer size.
+    :param cap_at_buffer: if this is set chunks are split if they are longer
+                          than the buffer size.  Internally this is implemented
+                          that the buffer size might be exhausted by a factor
+                          of two however.
     """
     _iter = _make_chunk_iter(stream, limit, buffer_size)
 
@@ -895,19 +1026,31 @@ def make_chunk_iter(stream, separator, limit=None, buffer_size=10 * 1024):
             break
         chunks = _split(new_data)
         new_buf = []
+        buf_size = 0
         for item in chain(buffer, chunks):
             if item == separator:
                 yield _join(new_buf)
                 new_buf = []
+                buf_size = 0
             else:
+                buf_size += len(item)
                 new_buf.append(item)
+
+                if cap_at_buffer and buf_size >= buffer_size:
+                    rv = _join(new_buf)
+                    while len(rv) >= buffer_size:
+                        yield rv[:buffer_size]
+                        rv = rv[buffer_size:]
+                    new_buf = [rv]
+                    buf_size = len(rv)
+
         buffer = new_buf
     if buffer:
         yield _join(buffer)
 
 
 @implements_iterator
-class LimitedStream(object):
+class LimitedStream(io.IOBase):
 
     """Wraps a stream so that it doesn't read more than n bytes.  If the
     stream is exhausted and the caller tries to get more bytes from it
@@ -1059,3 +1202,6 @@ class LimitedStream(object):
         if not line:
             raise StopIteration()
         return line
+
+    def readable(self):
+        return True

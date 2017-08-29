@@ -2,8 +2,9 @@ import sys
 import logging
 
 import jam
-import jam.lang.langs as langs
+import jam.langs as langs
 import jam.common as common
+from werkzeug._compat import iteritems
 
 class AbortException(Exception):
     pass
@@ -108,18 +109,18 @@ class AbstractItem(object):
 
     def store_handlers(self):
         result = {}
-        for key, value in self.__dict__.iteritems():
+        for key, value in iteritems(self.__dict__):
             if key[0:3] == 'on_':
                 result[key] = self.__dict__[key]
         return result
 
     def clear_handlers(self):
-        for key, value in self.__dict__.iteritems():
+        for key, value in iteritems(self.__dict__):
             if key[0:3] == 'on_':
                 self.__dict__[key] = None
 
     def load_handlers(self, handlers):
-        for key, value in handlers.iteritems():
+        for key, value in iteritems(handlers):
             self.__dict__[key] = handlers[key]
 
     def get_master_field(self, fields, master_field):
@@ -175,6 +176,7 @@ class AbstrTask(AbstractItem):
         self.item_type_id = common.TASK_TYPE
         self.history_item = None
         self.log = None
+        self.languages = langs.get_langs()
 
     def write_info(self, info):
         super(AbstrTask, self).write_info(info)

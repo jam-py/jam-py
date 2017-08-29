@@ -9,15 +9,15 @@ import traceback
 import sqlite3
 from threading import Lock
 from operator import itemgetter
-
-from jsparser import parse, SyntaxError_
+from pyjsparser import PyJsParser, JsSyntaxError
 
 import jam.common as common
+from jam.common import error_message
 import jam.db.db_modules as db_modules
 from jam.server_classes import *
-import jam.lang.langs as langs
 from jam.events import get_events
 from jam.execute import execute_sql
+from werkzeug._compat import iteritems, iterkeys, to_unicode, to_bytes, text_type, string_types
 
 def read_language(task):
     result = None
@@ -35,7 +35,7 @@ def read_language(task):
 
 def read_setting(task):
     sql = 'SELECT '
-    keys = list(common.DEFAULT_SETTINGS.iterkeys())
+    keys = list(iterkeys(common.DEFAULT_SETTINGS))
     for key in keys:
         sql += 'F_%s, ' % key
     sql = sql[:-2]
@@ -56,7 +56,7 @@ def read_setting(task):
                 common.SETTINGS[key] = setting_type(rec[i])
         except:
             common.SETTINGS[key] = common.DEFAULT_SETTINGS[key]
-    for key in common.SETTINGS.iterkeys():
+    for key in iterkeys(common.SETTINGS):
         common.__dict__[key] = common.SETTINGS[key]
 
 def get_value_list(str_list, order=False):
@@ -74,7 +74,7 @@ def get_value_list(str_list, order=False):
 def write_setting(task):
     sql = 'UPDATE SYS_PARAMS SET '
     params = []
-    for key in common.DEFAULT_SETTINGS.iterkeys():
+    for key in iterkeys(common.DEFAULT_SETTINGS):
         value = common.SETTINGS[key]
         setting_type = type(common.DEFAULT_SETTINGS[key])
         if setting_type == bool:
@@ -82,7 +82,7 @@ def write_setting(task):
                 value = 1
             else:
                 value = 0
-        if setting_type == str:
+        if setting_type in string_types:
             sql += 'F_%s="%s", ' % (key, value)
         else:
             sql += 'F_%s=%s, ' % (key, value)
@@ -123,7 +123,7 @@ def create_items(task):
     task.sys_params.add_field(19, 'f_d_fmt', task.lang['d_fmt'], common.TEXT, size = 30)
     task.sys_params.add_field(20, 'f_d_t_fmt', task.lang['d_t_fmt'], common.TEXT, size = 30)
     task.sys_params.add_field(21, 'f_language', task.lang['language'], common.INTEGER, required=True,
-        lookup_values=get_value_list(langs.LANGUAGE, True), edit_visible=False)
+        lookup_values=task.languages, edit_visible=False)
     task.sys_params.add_field(22, 'f_author', task.lang['author'], common.TEXT, size = 30, edit_visible=False)
     task.sys_params.add_field(23, 'f_version', task.lang['version'], common.TEXT, size = 256)
     task.sys_params.add_field(24, 'f_mp_pool', task.lang['mp_pool'], common.BOOLEAN)
@@ -383,38 +383,44 @@ def create_items(task):
 
     task.sys_new_group.add_field(1, 'group_type',  'Group type', common.INTEGER, required=True, lookup_values=get_value_list(common.GROUP_TYPES))
 
-    task.sys_lang = task.sys_catalogs.add_catalog('sys_lang', 'Languages', '')
+    #~ task.jam_languages = task.sys_catalogs.add_catalog('jam_languages', 'Languages', '')
+    #~ task.jam_languages.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
+    #~ task.jam_languages.add_field(2, 'f_abr', '', common.INTEGER, required=True, visible=False, edit_visible=False)
+    #~ task.jam_languages.add_field(3, 'f_name', task.lang['language'], common.TEXT, required=True, size = 20)
 
-    task.sys_lang.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.sys_lang.add_field(2, 'f_abr', '', common.INTEGER, required=True, visible=False, edit_visible=False)
-    task.sys_lang.add_field(3, 'f_name', task.lang['language'], common.TEXT, required=True, size = 20)
-    task.sys_lang.add_field(4, 'f_decimal_point', task.lang['decimal_point'], common.TEXT, size = 1)
-    task.sys_lang.add_field(5, 'f_mon_decimal_point', task.lang['mon_decimal_point'], common.TEXT, size = 1)
-    task.sys_lang.add_field(6, 'f_mon_thousands_sep', task.lang['mon_thousands_sep'], common.TEXT, size = 3)
-    task.sys_lang.add_field(7, 'f_currency_symbol', task.lang['currency_symbol'], common.TEXT, size = 10)
-    task.sys_lang.add_field(8, 'f_frac_digits', task.lang['frac_digits'], common.INTEGER)
-    task.sys_lang.add_field(9, 'f_p_cs_precedes', task.lang['p_cs_precedes'], common.BOOLEAN)
-    task.sys_lang.add_field(10, 'f_n_cs_precedes', task.lang['n_cs_precedes'], common.BOOLEAN)
-    task.sys_lang.add_field(11, 'f_p_sep_by_space', task.lang['p_sep_by_space'], common.BOOLEAN)
-    task.sys_lang.add_field(12, 'f_n_sep_by_space', task.lang['n_sep_by_space'], common.BOOLEAN)
-    task.sys_lang.add_field(13, 'f_positive_sign', task.lang['positive_sign'], common.TEXT, size = 1)
-    task.sys_lang.add_field(14, 'f_negative_sign', task.lang['negative_sign'], common.TEXT, size = 1)
-    task.sys_lang.add_field(15, 'f_p_sign_posn', task.lang['p_sign_posn'], common.INTEGER)
-    task.sys_lang.add_field(16, 'f_n_sign_posn', task.lang['n_sign_posn'], common.INTEGER)
-    task.sys_lang.add_field(17, 'f_d_fmt', task.lang['d_fmt'], common.TEXT, size = 30)
-    task.sys_lang.add_field(18, 'f_d_t_fmt', task.lang['d_t_fmt'], common.TEXT, size = 30)
+    task.jam_lang = task.sys_catalogs.add_catalog('jam_lang', 'Languages', '')
 
-    task.sys_lang_keys = task.sys_catalogs.add_catalog('sys_lang_keys', 'Language keys', '')
+    task.jam_lang.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.jam_lang.add_field(2, 'f_abr', '', common.INTEGER, required=True, visible=False, edit_visible=False)
+    task.jam_lang.add_field(3, 'f_name', task.lang['language'], common.TEXT, required=True, size = 20)
+    task.jam_lang.add_field(4, 'f_decimal_point', task.lang['decimal_point'], common.TEXT, size = 1)
+    task.jam_lang.add_field(5, 'f_mon_decimal_point', task.lang['mon_decimal_point'], common.TEXT, size = 1)
+    task.jam_lang.add_field(6, 'f_mon_thousands_sep', task.lang['mon_thousands_sep'], common.TEXT, size = 3)
+    task.jam_lang.add_field(7, 'f_currency_symbol', task.lang['currency_symbol'], common.TEXT, size = 10)
+    task.jam_lang.add_field(8, 'f_frac_digits', task.lang['frac_digits'], common.INTEGER)
+    task.jam_lang.add_field(9, 'f_p_cs_precedes', task.lang['p_cs_precedes'], common.BOOLEAN)
+    task.jam_lang.add_field(10, 'f_n_cs_precedes', task.lang['n_cs_precedes'], common.BOOLEAN)
+    task.jam_lang.add_field(11, 'f_p_sep_by_space', task.lang['p_sep_by_space'], common.BOOLEAN)
+    task.jam_lang.add_field(12, 'f_n_sep_by_space', task.lang['n_sep_by_space'], common.BOOLEAN)
+    task.jam_lang.add_field(13, 'f_positive_sign', task.lang['positive_sign'], common.TEXT, size = 1)
+    task.jam_lang.add_field(14, 'f_negative_sign', task.lang['negative_sign'], common.TEXT, size = 1)
+    task.jam_lang.add_field(15, 'f_p_sign_posn', task.lang['p_sign_posn'], common.INTEGER)
+    task.jam_lang.add_field(16, 'f_n_sign_posn', task.lang['n_sign_posn'], common.INTEGER)
+    task.jam_lang.add_field(17, 'f_d_fmt', task.lang['d_fmt'], common.TEXT, size = 30)
+    task.jam_lang.add_field(18, 'f_d_t_fmt', task.lang['d_t_fmt'], common.TEXT, size = 30)
 
-    task.sys_lang_keys.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.sys_lang_keys.add_field(2, 'f_keyword', 'Keyword', common.TEXT, required=True, size = 128)
 
-    task.sys_lang_values = task.sys_catalogs.add_catalog('sys_lang_values', 'Language values', '')
+    task.jam_lang_keys = task.sys_catalogs.add_catalog('jam_lang_keys', 'Language keys', '')
 
-    task.sys_lang_values.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.sys_lang_values.add_field(2, 'f_lang', 'Key', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_lang_values.add_field(3, 'f_key', task.lang['key'], common.INTEGER, visible=False, edit_visible=False)
-    task.sys_lang_values.add_field(4, 'f_value', task.lang['value'], common.TEXT, size = 1048)
+    task.jam_lang_keys.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.jam_lang_keys.add_field(2, 'f_keyword', 'Keyword', common.TEXT, required=True, size = 128)
+
+    task.jam_lang_values = task.sys_catalogs.add_catalog('jam_lang_values', 'Language values', '')
+
+    task.jam_lang_values.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.jam_lang_values.add_field(2, 'f_lang', 'Key', common.INTEGER, visible=False, edit_visible=False)
+    task.jam_lang_values.add_field(3, 'f_key', task.lang['key'], common.INTEGER, visible=False, edit_visible=False)
+    task.jam_lang_values.add_field(4, 'f_value', task.lang['value'], common.TEXT, size = 1048)
 
 
     def init_item(item, id_value, *order_by):
@@ -459,9 +465,9 @@ def create_items(task):
     init_item(task.sys_search, 16)
     init_item(task.sys_field_lookups, 17)
     init_item(task.sys_lookup_lists, 18, 'f_name')
-    init_item(task.sys_lang, 19)
-    init_item(task.sys_lang_keys, 20)
-    init_item(task.sys_lang_values, 21)
+    init_item(task.jam_lang, 19)
+    init_item(task.jam_lang_keys, 20)
+    init_item(task.jam_lang_values, 21)
     init_item(task.sys_new_group, 22)
 
     task.sys_catalogs.ID = 101
@@ -530,13 +536,13 @@ def update_admin_fields(task):
                     cursor.execute("UPDATE SYS_FIELDS SET F_DB_FIELD_NAME=? WHERE ID=%d" % id_val, (f_db_field_name,))
                 con.commit()
         if field.field_name.lower() == 'f_fields_list':
-            import cPickle, json
+            import pickle, json
             cursor = con.cursor()
             cursor.execute("SELECT ID, F_FIELDS, F_FIELDS_LIST, DESCENDING FROM SYS_INDICES")
             rows = cursor.fetchall()
             for (id_val, f_fields, f_fields_list, descending) in rows:
                 if f_fields:
-                    fields = cPickle.loads(str(f_fields))
+                    fields = pickle.loads(to_bytes(f_fields, 'utf-8'))
                     f_fields_list = []
                     for f in fields:
                         f_fields_list.append([f[0], bool(descending)])
@@ -572,7 +578,7 @@ def update_admin_fields(task):
             rows = cursor.fetchall()
             for (id_value, code) in rows:
                 if code:
-                    js_funcs = parse_js(code.encode('utf-8'))
+                    js_funcs = parse_js(to_bytes(code, 'utf-8'))
                     cursor.execute("UPDATE SYS_ITEMS SET F_JS_FUNCS='%s' WHERE ID=%d" % (js_funcs, id_value))
                 else:
                     cursor.execute("UPDATE SYS_ITEMS SET F_JS_FUNCS=NULL WHERE ID=%d" % id_value)
@@ -641,7 +647,7 @@ def update_admin_fields(task):
     #~ cursor = con.cursor()
     #~ for group in task.items:
         #~ for item in group.items:
-            #~ if item.item_name.find('sys_lang') != -1:
+            #~ if item.item_name.find('jam_lang') != -1:
                 #~ if check_table_exists(item, item.item_name.upper()):
                     #~ check_item_fields(item, item.item_name.upper())
     #~ con.close()
@@ -676,8 +682,8 @@ def create_admin(app):
 def db_info(task):
     tasks = task.sys_tasks.copy()
     tasks.open()
-    return tasks.f_db_type.value, str(tasks.f_alias.value), str(tasks.f_login.value), \
-        str(tasks.f_password.value), tasks.f_host.value, \
+    return tasks.f_db_type.value, tasks.f_alias.value, tasks.f_login.value, \
+        tasks.f_password.value, tasks.f_host.value, \
         tasks.f_port.value, tasks.f_encoding.value
 
 def execute(task, task_id, sql, params=None):
@@ -1011,7 +1017,7 @@ def load_task(target, app, first_build=True, after_import=False):
             target.lookup_lists[l.id.value] = json.loads(l.f_lookup_values_text.value)
 
     def remove_attr(target):
-        for key in list(target.__dict__.iterkeys()):
+        for key in list(iterkeys(target.__dict__)):
             try:
                 value = target.init_dict[key]
                 if hasattr(target.__dict__[key], '__call__'):
@@ -1117,7 +1123,7 @@ def server_set_project_langage(task, lang):
 
     file_name = 'index.html'
     with open(file_name, 'r') as f:
-        data = f.read().decode('utf-8')
+        data = to_unicode(f.read(), 'utf-8')
     start = data.find('__$_')
     label_list = []
     while start > -1:
@@ -1132,9 +1138,8 @@ def server_set_project_langage(task, lang):
             data = data.replace(search, task.lang[replace])
         except:
             pass
-    with open(file_name, 'w') as f:
-        f.write(data.encode('utf-8'))
-
+    with open(file_name, 'wb') as f:
+        f.write(to_bytes(data, 'utf8'))
     register_defs(task)
 
 def server_update_has_children(task):
@@ -1742,23 +1747,12 @@ def server_web_print_code(task, task_id):
             add_code(items, common.SERVER_MODULE)
     return result
 
-def server_load_report_module(task, module_name):
-    file_name = os.path.join(task.work_dir, 'reports', module_name)
-    with open(file_name) as f:
-        result = f.read()
-    return result
-
-def server_store_report_module(task, text, module_name):
-    file_name = os.path.join(task.work_dir, 'reports', module_name)
-    with open(file_name, 'wb') as f:
-        f.write(text)
-
 def update_events_code(task):
 
     def process_events(code, js_funcs, ID, path):
         script = ''
         if code:
-            script += str('\nfunction Events%s() { // %s \n\n' % (ID, path))
+            script += '\nfunction Events%s() { // %s \n\n' % (ID, path)
             code = '\t' + code.replace('\n', '\n\t')
             code = code.replace('    ', '\t')
             script += code
@@ -1811,7 +1805,7 @@ def update_events_code(task):
     for it in it:
         js_path = get_js_path(it)
         js_filename = js_path + '.js'
-        file_name = os.path.join(os.getcwd().decode('utf-8'), 'js', js_filename)
+        file_name = os.path.join(to_unicode(os.getcwd(), 'utf-8'), 'js', js_filename)
         if os.path.exists(file_name):
             os.remove(file_name)
         min_file_name = get_minified_name(file_name)
@@ -1822,8 +1816,7 @@ def update_events_code(task):
         js_funcs = it.f_js_funcs.value
         cur_js_filename = ''
         if code:
-            code = code.strip().encode('utf-8')
-            js_funcs = js_funcs.encode('utf-8')
+            code = code.strip()
             if code:
                 script = process_events(code, js_funcs, it.id.value, js_path)
                 external = get_external(it)
@@ -1842,13 +1835,13 @@ def update_events_code(task):
         js_file_name = it.f_item_name.value + '.js'
         js_filenames[it.id.value] = js_file_name
         script = script_start + script_common + script_end
-        file_name = os.path.join(os.getcwd().decode('utf-8'), 'js', js_file_name)
+        file_name = os.path.join(to_unicode(os.getcwd(), 'utf-8'), 'js', js_file_name)
         with open(file_name, 'w') as f:
             f.write(script)
         if common.SETTINGS['COMPRESSED_JS']:
             minify(file_name)
     sql = []
-    for key, value in js_filenames.iteritems():
+    for key, value in iteritems(js_filenames):
         sql.append("UPDATE %s SET F_JS_FILENAME = '%s' WHERE ID = %s" % (it.table_name, value, key))
     it.task.execute(sql)
     if it.task.app.task:
@@ -1864,12 +1857,12 @@ def get_minified_name(file_name):
 
 def minify(file_name):
     min_file_name = get_minified_name(file_name)
-    from slimit import minify
+    from jam.third_party.jsmin import jsmin
 
     with open(file_name, 'r') as f:
         text = f.read()
     text = text.replace('.delete(', '["delete"](')
-    new_text = minify(text, mangle=True, mangle_toplevel=True)
+    new_text = jsmin(text)
     with open(min_file_name, 'w') as f:
         f.write(new_text)
 
@@ -1982,19 +1975,19 @@ def server_item_info(task, item_id, is_server):
     return result
 
 def parse_js(code):
+    p = PyJsParser()
+    tree = p.parse(to_unicode(code, 'utf-8'))
     script = ''
-    code = code.replace('.delete(', '["delete"](')
-    n = parse(code)
-    for key in n:
-        if key.type == 'FUNCTION':
-            script += '\tthis.%s = %s;\n' % (key.name, key.name)
+    for p in tree['body']:
+        if p['type'] == 'FunctionDeclaration':
+            script += '\tthis.%s = %s;\n' % (p['id']['name'], p['id']['name'])
     if script:
         script = '\n' + script
     return script
 
 def server_save_edit(task, item_id, text, is_server):
     code = text
-    text = text.encode('utf-8')
+    text = to_bytes(text, 'utf-8')
     line = None
     error = ''
     module_info = None
@@ -2005,22 +1998,19 @@ def server_save_edit(task, item_id, text, is_server):
         if is_server:
             compile(text, 'check_item_code', "exec")
         else:
-            text = text.replace('.delete(', '["delete"](')
+            text = text.replace(to_bytes('.delete('), to_bytes('["delete"]('))
             js_funcs = parse_js(text)
-    except SyntaxError_, e:
+    except JsSyntaxError as e:
         try:
             err_str = e.args[0]
-            pos = err_str.find('\nNone:')
-            error = err_str[:pos]
-            error = 'invalid syntax'
+            line, err = err_str.split(':')
             try:
-                line = int(err_str[pos+len('\nNone:'):])
+                line = int(line[5:])
             except:
                 pass
-            if line:
-                error += ' - line %s' % line
+            error = err_str
         except:
-            error = e.message
+            error = error_message(e)
             traceback.print_exc()
     except Exception as e:
         try:
@@ -2033,7 +2023,7 @@ def server_save_edit(task, item_id, text, is_server):
             else:
                 error = e.args[0]
         except:
-            error = e.message
+            error = error_message(e)
             traceback.print_exc()
     if not error:
         try:
@@ -2054,7 +2044,7 @@ def server_save_edit(task, item_id, text, is_server):
                 error = task.lang['item_with_id_not found'] % item_id
         except Exception as e:
             traceback.print_exc()
-            error = e.message
+            error = error_message(e)
         if is_server:
             task.app.task_server_modified = True
         else:
@@ -2062,6 +2052,7 @@ def server_save_edit(task, item_id, text, is_server):
     return {'error': error, 'line': line, 'module_info': module_info}
 
 def get_templates(text):
+    text = to_unicode(text, 'utf-8')
     result = {}
     all = []
     views = []
@@ -2116,20 +2107,20 @@ def server_file_info(task, file_name):
     return result
 
 def server_save_file(task, file_name, code):
-    code = code.encode('utf-8')
+    code = to_bytes(code, 'utf-8')
     result = {}
     error = ''
     if file_name == 'project.css':
         file_name = os.path.join('css', 'project.css')
     file_name = os.path.normpath(file_name)
     try:
-        with open(file_name, 'w') as f:
-            f.write(code)
+        with open(file_name, 'wb') as f:
+            f.write(to_bytes(code, 'utf-8'))
         if file_name == 'index.html':
             result['Templates'] = get_templates(code)
     except Exception as e:
         traceback.print_exc()
-        error = e.message
+        error = error_message(e)
     result['error'] = error
     return result
 
@@ -2174,7 +2165,7 @@ def server_can_delete_lookup_list(task, list_id):
     fields.open()
     used = []
     for f in fields:
-        used.append((task.sys_items.field_by_id(f.owner_rec_id.value, 'f_item_name'), f.f_field_name.value))
+        used.append({'field1': task.sys_items.field_by_id(f.owner_rec_id.value, 'f_item_name'), 'field2': f.f_field_name.value})
     if len(used) != 0:
         names = ',<br>'.join([task.lang['field_mess'] % use for use in used])
         mess = task.lang['lookup_list_is_used_in'] % names
@@ -2698,10 +2689,10 @@ def server_can_delete(item, id_value):
     details.open()
     used = []
     for d in details:
-        used.append((item.task.sys_items.field_by_id(d.parent.value, 'f_item_name'), d.f_item_name.value))
+        used.append({'item1': item.task.sys_items.field_by_id(d.parent.value, 'f_item_name'), 'item2': d.f_item_name.value})
     if len(used) != 0:
         names = ',<br>'.join([item.task.lang['detail_mess'] % use for use in used])
-        mess = item.task.lang['item_used_in_items'] % (item.f_item_name.value, names)
+        mess = item.task.lang['item_used_in_items'] % {'item': item.f_item_name.value, 'items': names}
         return mess
 
     fields = item.task.sys_fields.copy()
@@ -2720,10 +2711,10 @@ def server_can_delete(item, id_value):
     used = []
     for p in params:
         if p.f_object.value == id_value:
-             used.append((item.task.sys_items.field_by_id(p.owner_rec_id.value, 'f_item_name'), p.f_param_name.value))
+             used.append({'param1': item.task.sys_items.field_by_id(p.owner_rec_id.value, 'f_item_name'), 'param2': p.f_param_name.value})
     if len(used) != 0:
         names = ',<br>'.join([item.task.lang['param_mess'] % use for use in used])
-        mess = item.task.lang['item_used_in_params'] % (item.f_item_name.value, names)
+        mess = item.task.lang['item_used_in_params'] % {'item': item.f_item_name.value, 'params': names}
         return mess
 
     details = item.task.sys_items.copy()
@@ -2832,7 +2823,7 @@ def server_can_delete_field(item, id_value):
     if len(used) != 0:
         names = ',<br>'.join(['<p>%s - %s</p>' % use for use in used])
         mess = item.task.lang['field_used_in_fields'] % \
-            (item.f_field_name.value, names)
+            {'field': item.f_field_name.value, 'fields': names}
         return mess
 
     field_id = item.id.value
@@ -2852,7 +2843,7 @@ def server_can_delete_field(item, id_value):
     if len(ind_list):
         names = ',<br>'.join(ind_list)
         mess = item.task.lang['field_used_in_indices'] % \
-            (item.f_field_name.value, names)
+            {'field': item.f_field_name.value, 'indexes': names}
         return mess
 
     field_id = item.id.value
@@ -2866,7 +2857,7 @@ def server_can_delete_field(item, id_value):
     if len(filters_list):
         names = ',<br>'.join(filters_list)
         mess = item.task.lang['field_used_in_filters'] % \
-            (item.f_field_name.value, names)
+            {'field': item.f_field_name.value, 'filter': names}
         return mess
 
 ###############################################################################
@@ -2968,7 +2959,7 @@ def privileges_table_get_select(item, query):
     try:
         rows = item.task.execute_select(result_sql)
     except Exception as e:
-        error_mes = e.message
+        error_mes = error_message(e)
     return rows, error_mes
 
 def roles_changed(item):
@@ -2999,7 +2990,7 @@ def privileges_open(item, params):
     try:
         rows = item.task.execute_select(result_sql)
     except Exception as e:
-        error_mes = e.message
+        error_mes = error_message(e)
     return rows, error_mes
 
 
@@ -3012,8 +3003,6 @@ def register_defs(task):
     task.register(server_import_task)
     task.register(server_find_in_task)
     task.register(server_web_print_code)
-    task.register(server_load_report_module)
-    task.register(server_store_report_module)
     task.register(server_item_info)
     task.register(server_get_task_dict)
     task.register(server_save_edit)

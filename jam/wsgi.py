@@ -8,6 +8,7 @@ from threading import Lock
 from types import MethodType
 import mimetypes
 import jam
+import base64
 
 sys.path.insert(1, os.path.join(os.path.dirname(jam.__file__), 'third_party'))
 
@@ -19,13 +20,35 @@ from werkzeug.local import Local, LocalManager
 from werkzeug.http import parse_date, http_date
 from werkzeug.contrib.securecookie import SecureCookie
 from werkzeug.utils import cached_property
+from werkzeug._compat import to_unicode, to_bytes
 
 import jam.common as common
+from jam.common import error_message
 import jam.adm_server as adm_server
 from jam.items import AbortException
 
 class JamSecureCookie(SecureCookie):
     serialization_method = json
+
+    @classmethod
+    def quote(cls, value):
+        if cls.serialization_method is not None:
+            value = cls.serialization_method.dumps(value)
+            ### Added line
+            value = to_bytes(value, 'utf-8')
+        if cls.quote_base64:
+            value = b''.join(base64.b64encode(value).splitlines()).strip()
+        return value
+
+    @classmethod
+    def unquote(cls, value):
+        if cls.quote_base64:
+            value = base64.b64decode(value)
+    ### Added line
+        value = to_unicode(value, 'utf-8')
+        if cls.serialization_method is not None:
+            value = cls.serialization_method.loads(value)
+        return value
 
 class JamRequest(Request):
 
@@ -34,8 +57,9 @@ class JamRequest(Request):
 
     def get_session(self, task):
         if not hasattr(self, '_cookie') and task:
+            secret_key = to_bytes('', 'utf-8')
             key = self.session_key(task)
-            self._cookie = JamSecureCookie.load_cookie(self, key=key, secret_key='')
+            self._cookie = JamSecureCookie.load_cookie(self, key=key, secret_key=secret_key)
             expires = self._cookie.get('session_expires')
             if expires and time.time() > expires:
                 self._cookie = {}
@@ -107,8 +131,7 @@ class App():
         self.admin = self.create_admin()
 
     def create_admin(self):
-        from adm_server import create_admin
-        return create_admin(self)
+        return adm_server.create_admin(self)
 
     def get_task(self):
         if self.task:
@@ -307,10 +330,14 @@ class App():
         return result, ''
 
     def on_api(self, request):
+        error = ''
         if request.method == 'POST':
             r = {'result': None, 'error': None}
             try:
-                method, task_id, item_id, params, date = json.loads(request.get_data())
+                data = request.get_data()
+                if type(data) != str:
+                    data = to_unicode(data, 'utf-8')
+                method, task_id, item_id, params, date = json.loads(data)
                 if task_id == 0:
                     task = self.admin
                 else:
@@ -353,14 +380,16 @@ class App():
                 r ['result'] = result
             except AbortException as e:
                 traceback.print_exc()
-                r['result'] = {'data': [None, e.message]}
-                r['error'] = e.message
+                error = error_message(e)
+                r['result'] = {'data': [None, error]}
+                r['error'] = error
             except Exception as e:
                 traceback.print_exc()
+                error = error_message(e)
                 if common.SETTINGS['DEBUGGING'] and task_id != 0:
                     raise
-                r['result'] = {'data': [None, e.message]}
-                r['error'] = e.message
+                r['result'] = {'data': [None, error]}
+                r['error'] = error
             response = self.create_post_response(request, r)
             request.save_session(response, self, task)
             return response
@@ -393,7 +422,10 @@ class App():
         if request.method == 'POST':
             r = {'result': None, 'error': None}
             method = get_path_info(request.environ)
-            params = json.loads(request.get_data())
+            data = request.get_data()
+            if type(data) != str:
+                data = to_unicode(data, 'utf-8')
+            params = json.loads(data)
             task = self.get_task()
             try:
                 data = None
@@ -411,20 +443,20 @@ class App():
                 r['result'] = {'status': status, 'data': data, 'version': task.version}
             except AbortException as e:
                 traceback.print_exc()
-                r['result'] = {'data': [None, e.message]}
-                r['error'] = e.message
+                r['result'] = {'data': [None, error_message(e)]}
+                r['error'] = error_message(e)
             except Exception as e:
                 traceback.print_exc()
                 #~ if common.SETTINGS['DEBUGGING']:
                     #~ raise
-                r['result'] = {'data': [None, e.message]}
-                r['error'] = e.message
+                r['result'] = {'data': [None, error_message(e)]}
+                r['error'] = error_message(e)
             return self.create_post_response(request, r)
 
     def on_upload(self, request):
 
         def find_param(data):
-            pos = data.find(';')
+            pos = data.find(to_bytes(';', 'utf-8'))
             return data[:pos], pos + 1
 
         def read_user_info(data):
@@ -440,9 +472,9 @@ class App():
             try:
                 data = request.get_data()
                 header = []
-                header_str = ''
+                header_str = to_bytes('', 'utf-8')
                 length = 0
-                string = ''
+                string = to_bytes('', 'utf-8')
                 task_name, task_id, pos = read_user_info(data)
                 if task_id == 0:
                     task = self.admin
@@ -451,25 +483,26 @@ class App():
                 if self.admin.safe_mode:
                     if not request.get_session(task).get('info'):
                         return Response()
-                for s in data[pos:]:
+                for i in range(len(data)):
+                    s = data[pos + i:pos+i+1]
                     header_str += s
-                    if s == ';':
+                    if s == to_bytes(';', 'utf-8'):
                         if len(header) == 0:
                             length = int(string)
                         header.append(int(string))
                         if len(header) == 2 * (length + 1):
                             break;
-                        string = ''
+                        string = to_bytes('', 'utf-8')
                     else:
                         string += s
                 start = len(header_str) + pos
-                path = os.path.join(os.getcwd(), os.path.normpath(data[start: start + header[1]]))
+                path = os.path.join(os.getcwd(), os.path.normpath(to_unicode(data[start: start + header[1]], 'utf-8')))
                 if not os.path.exists(path):
                     os.makedirs(path)
                 start = start + header[1]
                 for i in range(length):
                     index = 2 * i + 2
-                    file_name = data[start: start + header[index]]
+                    file_name = to_unicode(data[start: start + header[index]], 'utf-8')
                     start = start + header[index]
                     index += 1
                     content = data[start: start + header[index]]

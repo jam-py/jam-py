@@ -1,6 +1,8 @@
 import sys, os
-
-import Queue
+try:
+    import Queue as Queue
+except ImportError:
+    import queue as Queue
 import multiprocessing
 import threading
 import zipfile
@@ -17,6 +19,8 @@ from jam.items import *
 from jam.dataset import *
 from jam.sql import *
 from jam.execute import process_request, execute_sql
+from jam.third_party.six import exec_, print_
+from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_bytes
 
 class ServerDataset(Dataset, SQL):
     def __init__(self, table_name='', soft_delete=True):
@@ -306,6 +310,7 @@ class Report(AbstrReport):
         self.template = view_template
         self.template_name = None
         self.template_content = {}
+        self.ext = 'ods'
 
         self.on_before_generate = None
         self.on_generate = None
@@ -407,6 +412,7 @@ class Report(AbstrReport):
         if not self.template_content:
             self.parse_template()
         copy_report = self.copy()
+        copy_report.ext = ext
         return copy_report.generate(param_values, url, ext)
 
     def generate_file_name(self, ext=None):
@@ -459,17 +465,6 @@ class Report(AbstrReport):
                         converted = True
                     except:
                         pass
-                #~ if not converted:
-                    #~ # OpenOffice must be running in server mode
-                    #~ # soffice --headless --accept="socket,host=127.0.0.1,port=2002;urp;"
-                    #~ ext_file_name = self.report_filename.replace('.ods', '.' + ext)
-                    #~ try:
-                        #~ from DocumentConverter import DocumentConverter
-                        #~ converter = DocumentConverter()
-                        #~ converter.convert(self.report_filename, ext_file_name)
-                        #~ converted = True
-                    #~ except:
-                        #~ pass
                 if not converted:
                     converted = self.task.convert_report(self, ext)
                 converted_file = self.report_filename.replace('.ods', '.' + ext)
@@ -490,6 +485,15 @@ class Report(AbstrReport):
     def delete_report(self, file_name):
         report_name = os.path.join(self.task.work_dir, 'static', 'reports', file_name)
         os.remove(report_name)
+
+    def find(self, text, search, beg=None, end=None):
+        return to_bytes(text, 'utf-8').find(to_bytes(search, 'utf-8'), beg, end)
+
+    def rfind(self, text, search, beg=None, end=None):
+        return to_bytes(text, 'utf-8').rfind(to_bytes(search, 'utf-8'), beg, end)
+
+    def replace(self, text, find, replace):
+        return to_bytes(text, 'utf-8').replace(to_bytes(find, 'utf-8'), to_bytes(replace, 'utf-8'))
 
     def parse_template(self):
         if not os.path.isabs(self.template):
@@ -524,7 +528,7 @@ class Report(AbstrReport):
                         if child.nodeName == 'table:table-row':
                             repeated = child.getAttribute('table:number-rows-repeated')
                             if repeated and repeated.isdigit():
-                                repeated_rows = str(repeated)
+                                repeated_rows = to_bytes(repeated, 'utf-8')
                             for row_child in child.childNodes:
                                 if row_child.nodeName == 'table:table-cell':
                                     text = row_child.getElementsByTagName('text:p')
@@ -534,12 +538,12 @@ class Report(AbstrReport):
                 start = 0
                 columns_start = 0
                 for col in colum_defs:
-                    start = data.find('<table:table-column', start)
+                    start = self.find(data, '<table:table-column', start)
                     if columns_start == 0:
                         columns_start = start
-                    end = data.find('/>', start)
+                    end = self.find(data, '/>', start)
                     col_text = data[start: end + 2]
-                    columns = '%s%s' % (columns, col_text)
+                    columns = to_bytes('%s%s' % (columns, col_text), 'utf-8')
                     col[0] = data[start: end + 2]
                     start = end + 2
                 columns_end = start
@@ -548,14 +552,14 @@ class Report(AbstrReport):
                 positions = []
                 start = 0
                 for tag in band_tags:
-                    text = str('>%s<' % tag)
-                    i = data.find(text)
-                    i = data.rfind('<table:table-row', start, i)
+                    text = '>%s<' % tag
+                    i = self.find(data, text)
+                    i = self.rfind(data, '<table:table-row', start, i)
                     positions.append(i)
                     start = i
                 if repeated_rows and int(repeated_rows) > 1000:
-                    i = data.find(repeated_rows)
-                    i = data.rfind('<table:table-row', start, i)
+                    i = self.find(data, repeated_rows)
+                    i = self.rfind(data, '<table:table-row', start, i)
                     band_tags.append('$$$end_of_report')
                     positions.append(i)
                 rows = data[columns_end:positions[0]]
@@ -564,8 +568,8 @@ class Report(AbstrReport):
                     try:
                         end = positions[i + 1]
                     except:
-                        end = data.find('</table:table>', start)
-                    bands[tag] = data[start: end].replace(str(tag), '')
+                        end = self.find(data, '</table:table>', start)
+                    bands[tag] = self.replace(data[start: end], str(tag), '')
                 footer = data[end:len(data)]
                 self.template_content = {}
                 self.template_content['bands'] = bands
@@ -596,13 +600,13 @@ class Report(AbstrReport):
 
         def remove_repeated(col, repeated):
             result = col
-            p = col.find('table:number-columns-repeated')
+            p = self.find(col, 'table:number-columns-repeated')
             if p != -1:
-                r = col.find(str(repeated), p)
+                r = self.find(col, str(repeated), p)
                 if r != -1:
                     for i in xrange(r, 100):
                         if col[i] in ("'", '"'):
-                            result = col.replace(col[p:i+1], '')
+                            result = self.replace(col, col[p:i+1], '')
                             break
             return result
 
@@ -630,8 +634,8 @@ class Report(AbstrReport):
         text = self.template_content['bands'][band]
         if dic:
             d = dic.copy()
-            for key, value in d.iteritems():
-                if type(value) in (str, unicode):
+            for key, value in iteritems(d):
+                if type(value) in string_types:
                     d[key] = escape(value)
             cell_start = 0
             cell_start_tag = '<table:table-cell'
@@ -640,24 +644,24 @@ class Report(AbstrReport):
             start_tag = '<text:p>'
             end_tag = '</text:p>'
             while True:
-                cell_start = text.find(cell_start_tag, cell_start)
+                cell_start = self.find(text, cell_start_tag, cell_start)
                 if cell_start == -1:
                     break
                 else:
-                    start = text.find(start_tag, cell_start)
+                    start = self.find(text, start_tag, cell_start)
                     if start != -1:
-                        end = text.find(end_tag, start + len(start_tag))
+                        end = self.find(text, end_tag, start + len(start_tag))
                         if end != -1:
                             text_start = start + len(start_tag)
                             text_end = end
                             cell_text = text[text_start:text_end]
-                            cell_text_start = cell_text.find('%(', 0)
+                            cell_text_start = self.find(cell_text, '%(', 0)
                             if cell_text_start != -1:
-                                end = cell_text.find(')s', cell_text_start + 2)
+                                end = self.find(cell_text, ')s', cell_text_start + 2)
                                 if end != -1:
                                     end += 2
-                                    val = cell_text[cell_text_start:end]
-                                    key = val[2:-2]
+                                    val = to_unicode(cell_text[cell_text_start:end], 'utf-8')
+                                    key = to_unicode(val[2:-2], 'utf-8')
                                     value = d.get(key)
                                     if isinstance(value, DBField):
                                         raise Exception('Report: "%s" band: "%s" key "%s" a field object is passed. Specify a value attribute.' % \
@@ -665,23 +669,20 @@ class Report(AbstrReport):
                                     elif not value is None:
                                         val = val % d
                                         if type(value) == float:
-                                            val = val.replace('.', common.DECIMAL_POINT)
+                                            val = self.replace(val, '.', common.DECIMAL_POINT)
                                     else:
-                                        if not key in d.iterkeys():
+                                        if not key in iterkeys(d):
                                             print('Report: "%s" band: "%s" key "%s" not found in the dictionary' % \
                                                 (self.item_name, band, key))
-                                    if  isinstance(cell_text, unicode):
-                                        cell_text = cell_text.encode('utf8')
-                                    if  isinstance(val, unicode):
-                                        val = val.encode('utf8')
-                                    cell_text = '%s%s%s' % (cell_text[:cell_text_start], val, cell_text[end:])
-                                    text = '%s%s%s' % (text[:text_start], cell_text, text[text_end:])
+                                    cell_text = to_unicode(cell_text, 'utf-8')
+                                    cell_text = to_bytes('%s%s%s' % (cell_text[:cell_text_start], val, cell_text[end:]), 'utf-8')
+                                    text = to_bytes('', 'utf-8').join([text[:text_start], cell_text, text[text_end:]])
                                     if type(value) in (int, float):
                                         start_text = text[cell_start:start]
-                                        office_value = str(value)
-                                        start_text = start_text.replace(cell_type_tag, 'office:value-type="float" office:value="%s"' % office_value)
-                                        start_text = start_text.replace(calcext_type_tag, 'calcext:value-type="float"')
-                                        text = '%s%s%s' % (text[:cell_start], start_text, text[start:])
+                                        office_value = value
+                                        start_text = self.replace(start_text, cell_type_tag, 'office:value-type="float" office:value="%s"' % office_value)
+                                        start_text = self.replace(start_text, calcext_type_tag, 'calcext:value-type="float"')
+                                        text = to_bytes('', 'utf-8').join([text[:cell_start], start_text, text[start:]])
                     cell_start += 1
             if update_band_text:
                 text = update_band_text(text)
@@ -905,11 +906,11 @@ class AbstractServerTask(AbstrTask):
             sys.modules[item.owner.get_module_name()].__dict__[item.module_name] = item_module
         if code:
             try:
-                code = code.encode('utf-8')
+                code = to_bytes(code, 'utf-8')
             except Exception as e:
                 print(e)
             comp_code = compile(code, item.module_name, "exec")
-            exec comp_code in item_module.__dict__
+            exec_(comp_code, item_module.__dict__)
 
             item_module.__dict__['__loader__'] = item._loader
             funcs = inspect.getmembers(item_module, inspect.isfunction)
@@ -939,7 +940,8 @@ class AbstractServerTask(AbstrTask):
                     s_office = _winreg.QueryValue(root, "")
                 else:
                     s_office = "soffice"
-                convertion = Popen([s_office, '--headless', '--convert-to', '--norestore', ext,
+                convertion = Popen([s_office, '--headless', '--convert-to', ext,
+#                convertion = Popen([s_office, '--headless', '--convert-to', '--norestore', ext,
                     report.report_filename, '--outdir', os.path.join(self.work_dir, 'static', 'reports') ],
                     stderr=STDOUT,stdout=PIPE)#, shell=True)
                 out, err = convertion.communicate()
@@ -1015,7 +1017,7 @@ class Task(AbstractServerTask):
         self.on_created = None
         self.on_ext_request = None
         self.init_dict = {}
-        for key, value in self.__dict__.iteritems():
+        for key, value in iteritems(self.__dict__):
             self.init_dict[key] = value
 
 class AdminTask(AbstractServerTask):

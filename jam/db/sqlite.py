@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import sqlite3
 
 DATABASE = 'SQLITE'
@@ -208,8 +206,7 @@ def get_table_info(connection, table_name, db_name):
                 'unique': unique,
                 'fields': defs
             })
-        except Exception, e:
-            print e
+        except Exception as e:
             pass
     return {'fields': fields, 'indexes': indexes}
 

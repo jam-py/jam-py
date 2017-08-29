@@ -23,7 +23,7 @@ from werkzeug._compat import range_type, PY2, text_type, izip, to_bytes, \
 
 
 SALT_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-DEFAULT_PBKDF2_ITERATIONS = 1000
+DEFAULT_PBKDF2_ITERATIONS = 50000
 
 
 _pack_int = Struct('>I').pack
@@ -59,7 +59,7 @@ def pbkdf2_hex(data, salt, iterations=DEFAULT_PBKDF2_ITERATIONS,
                    the digest size will be used.
     :param hashfunc: the hash function to use.  This can either be the
                      string name of a known hash function, or a function
-                     from the hashlib module.  Defaults to sha1.
+                     from the hashlib module.  Defaults to sha256.
     """
     rv = pbkdf2_bin(data, salt, iterations, keylen, hashfunc)
     return to_native(codecs.encode(rv, 'hex_codec'))
@@ -72,7 +72,7 @@ def pbkdf2_bin(data, salt, iterations=DEFAULT_PBKDF2_ITERATIONS,
                keylen=None, hashfunc=None):
     """Returns a binary digest for the PBKDF2 hash algorithm of `data`
     with the given `salt`. It iterates `iterations` times and produces a
-    key of `keylen` bytes. By default, SHA-1 is used as hash function;
+    key of `keylen` bytes. By default, SHA-256 is used as hash function;
     a different hashlib `hashfunc` can be provided.
 
     .. versionadded:: 0.9
@@ -84,12 +84,12 @@ def pbkdf2_bin(data, salt, iterations=DEFAULT_PBKDF2_ITERATIONS,
                    the digest size will be used.
     :param hashfunc: the hash function to use.  This can either be the
                      string name of a known hash function or a function
-                     from the hashlib module.  Defaults to sha1.
+                     from the hashlib module.  Defaults to sha256.
     """
     if isinstance(hashfunc, string_types):
         hashfunc = _hash_funcs[hashfunc]
     elif not hashfunc:
-        hashfunc = hashlib.sha1
+        hashfunc = hashlib.sha256
     data = to_bytes(data)
     salt = to_bytes(salt)
 
@@ -201,7 +201,7 @@ def _hash_internal(method, salt, password):
     return rv, actual_method
 
 
-def generate_password_hash(password, method='pbkdf2:sha1', salt_length=8):
+def generate_password_hash(password, method='pbkdf2:sha256', salt_length=8):
     """Hash a password with the given method and salt with a string of
     the given length. The format of the string returned includes the method
     that was used so that :func:`check_password_hash` can check the hash.
@@ -217,8 +217,8 @@ def generate_password_hash(password, method='pbkdf2:sha1', salt_length=8):
     If PBKDF2 is wanted it can be enabled by setting the method to
     ``pbkdf2:method:iterations`` where iterations is optional::
 
-        pbkdf2:sha1:2000$salt$hash
-        pbkdf2:sha1$salt$hash
+        pbkdf2:sha256:80000$salt$hash
+        pbkdf2:sha256$salt$hash
 
     :param password: the password to hash.
     :param method: the hash method to use (one that hashlib supports). Can
@@ -248,17 +248,23 @@ def check_password_hash(pwhash, password):
     return safe_str_cmp(_hash_internal(method, salt, password)[0], hashval)
 
 
-def safe_join(directory, filename):
-    """Safely join `directory` and `filename`.  If this cannot be done,
-    this function returns ``None``.
+def safe_join(directory, *pathnames):
+    """Safely join `directory` and one or more untrusted `pathnames`.  If this
+    cannot be done, this function returns ``None``.
 
     :param directory: the base directory.
-    :param filename: the untrusted filename relative to that directory.
+    :param pathnames: the untrusted pathnames relative to that directory.
     """
-    filename = posixpath.normpath(filename)
-    for sep in _os_alt_seps:
-        if sep in filename:
+    parts = [directory]
+    for filename in pathnames:
+        if filename != '':
+            filename = posixpath.normpath(filename)
+        for sep in _os_alt_seps:
+            if sep in filename:
+                return None
+        if os.path.isabs(filename) or \
+           filename == '..' or \
+           filename.startswith('../'):
             return None
-    if os.path.isabs(filename) or filename.startswith('../'):
-        return None
-    return os.path.join(directory, filename)
+        parts.append(filename)
+    return posixpath.join(*parts)

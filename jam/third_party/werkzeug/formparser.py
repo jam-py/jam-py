@@ -286,15 +286,11 @@ class MultiPartParser(object):
 
     def __init__(self, stream_factory=None, charset='utf-8', errors='replace',
                  max_form_memory_size=None, cls=None, buffer_size=64 * 1024):
-        self.stream_factory = stream_factory
         self.charset = charset
         self.errors = errors
         self.max_form_memory_size = max_form_memory_size
-        if stream_factory is None:
-            stream_factory = default_stream_factory
-        if cls is None:
-            cls = MultiDict
-        self.cls = cls
+        self.stream_factory = default_stream_factory if stream_factory is None else stream_factory
+        self.cls = MultiDict if cls is None else cls
 
         # make sure the buffer size is divisible by four so that we can base64
         # decode chunk by chunk
@@ -372,7 +368,7 @@ class MultiPartParser(object):
             # the assert is skipped.
             self.fail('Boundary longer than buffer size')
 
-    def parse_lines(self, file, boundary, content_length):
+    def parse_lines(self, file, boundary, content_length, cap_at_buffer=True):
         """Generate parts of
         ``('begin_form', (headers, name))``
         ``('begin_file', (headers, name, filename))``
@@ -387,7 +383,8 @@ class MultiPartParser(object):
         last_part = next_part + b'--'
 
         iterator = chain(make_line_iter(file, limit=content_length,
-                                        buffer_size=self.buffer_size),
+                                        buffer_size=self.buffer_size,
+                                        cap_at_buffer=cap_at_buffer),
                          _empty_string_iter)
 
         terminator = self._find_terminator(iterator)

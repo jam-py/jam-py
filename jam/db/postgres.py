@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-
 import psycopg2
+from werkzeug._compat import iteritems
 
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 
@@ -150,7 +149,7 @@ def change_field_sql(table_name, old_field, new_field):
     result = []
     if FIELD_TYPES[old_field['data_type']] != FIELD_TYPES[new_field['data_type']] \
         or old_field['size'] != new_field['size']:
-        raise Exception, u"Don't know how to change field's size or type of %s" % old_field['field_name']
+        raise Exception(u"Don't know how to change field's size or type of %s" % old_field['field_name'])
     if old_field['field_name'] != new_field['field_name']:
         result.append('ALTER TABLE "%s" RENAME COLUMN  "%s" TO "%s"' % \
             (table_name, old_field['field_name'], new_field['field_name']))
@@ -263,7 +262,7 @@ def get_table_info(connection, table_name, db_name):
                 index['fields'].append([column_name, desc])
     ind = []
     indexes.values()
-    for key, value in indexes.iteritems():
+    for key, value in iteritems(indexes):
         ind.append(value)
     return {'fields': fields, 'indexes': ind}
 

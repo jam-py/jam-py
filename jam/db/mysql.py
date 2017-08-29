@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-
 import MySQLdb
+from werkzeug._compat import iteritems
 
 DATABASE = 'MYSQL'
 NEED_DATABASE_NAME = True
@@ -241,7 +240,7 @@ def get_table_info(connection, table_name, db_name):
             index['fields'].append([r[4], False])
     ind = []
     indexes.values()
-    for key, value in indexes.iteritems():
+    for key, value in iteritems(indexes):
         ind.append(value)
     return {'fields': fields, 'indexes': ind}
 

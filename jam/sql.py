@@ -5,6 +5,7 @@ import traceback
 import jam.common as common
 import jam.db.db_modules as db_modules
 from jam.dataset import *
+from werkzeug._compat import iteritems, text_type, string_types
 
 class SQL(object):
 
@@ -250,7 +251,7 @@ class SQL(object):
         funcs = query.get('__funcs')
         if funcs:
             functions = {}
-            for key, value in funcs.iteritems():
+            for key, value in iteritems(funcs):
                 functions[key.upper()] = value
         sql = []
         for field in fields:
@@ -363,20 +364,20 @@ class SQL(object):
     def _convert_field_value(self, field, value, filter_type, db_module):
         data_type = field.data_type
         if data_type == common.DATE:
-            if type(value) in (str, unicode):
+            if type(value) in string_types:
                 result = value
             else:
                 result = value.strftime('%Y-%m-%d')
             return db_module.cast_date(result)
         elif data_type == common.DATETIME:
-            if type(value) in (str, unicode):
+            if type(value) in string_types:
                 result = value
             else:
                 result = value.strftime('%Y-%m-%d %H:%M')
             result = db_module.cast_datetime(result)
             return result
         elif data_type == common.INTEGER:
-            if type(value) == int or type(value) in [str, unicode] and value.isdigit():
+            if type(value) == int or type(value) in string_types and value.isdigit():
                 return str(value)
             else:
                 if filter_type and filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
@@ -415,7 +416,7 @@ class SQL(object):
         esc_char = '/'
         cond_field_name = '%s."%s"' % (self.table_alias(), field.db_field_name)
         if type(value) == str:
-            value = value.decode('utf-8')
+            value = to_unicode(value, 'utf-8')
         filter_sign = self._get_filter_sign(filter_type, value, db_module)
         cond_string = '%s %s %s'
         if filter_type in (common.FILTER_IN, common.FILTER_NOT_IN):
@@ -519,7 +520,7 @@ class SQL(object):
         funcs = query.get('__funcs')
         functions = {}
         if funcs:
-            for key, value in funcs.iteritems():
+            for key, value in iteritems(funcs):
                 functions[key.upper()] = value
         if db_module is None:
             db_module = self.task.db_module
@@ -758,10 +759,10 @@ class SQL(object):
                     comp[field['id']] = [None, field]
                 else:
                     comp[field['field_name']] = [None, field]
-        for key, (old_field, new_field) in comp.iteritems():
+        for key, (old_field, new_field) in iteritems(comp):
             if old_field and not new_field and db_type != db_modules.SQLITE:
                 result.append(db_module.del_field_sql(table_name, old_field))
-        for key, (old_field, new_field) in comp.iteritems():
+        for key, (old_field, new_field) in iteritems(comp):
             if old_field and new_field and db_type != db_modules.SQLITE:
                 if (old_field['field_name'] != new_field['field_name']) or \
                     (db_module.FIELD_TYPES[old_field['data_type']] != db_module.FIELD_TYPES[new_field['data_type']]) or \
@@ -772,7 +773,7 @@ class SQL(object):
                         result += sql
                     else:
                         result.append()
-        for key, (old_field, new_field) in comp.iteritems():
+        for key, (old_field, new_field) in iteritems(comp):
             if not old_field and new_field:
                 result.append(db_module.add_field_sql(table_name, new_field))
         for i, s in enumerate(result):

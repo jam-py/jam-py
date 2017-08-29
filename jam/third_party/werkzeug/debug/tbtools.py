@@ -26,7 +26,7 @@ from werkzeug.filesystem import get_filesystem_encoding
 
 
 _coding_re = re.compile(br'coding[:=]\s*([-\w.]+)')
-_line_re = re.compile(br'^(.*?)$(?m)')
+_line_re = re.compile(br'^(.*?)$', re.MULTILINE)
 _funcdef_re = re.compile(r'^(\s*def\s)|(.*(?<!\w)lambda(:|\s))|^(\s*@)')
 UTF8_COOKIE = b'\xef\xbb\xbf'
 
@@ -60,7 +60,7 @@ HEADER = u'''\
           SECRET = "%(secret)s";
     </script>
   </head>
-  <body>
+  <body style="background-color: #fff">
     <div class="debugger">
 '''
 FOOTER = u'''\
@@ -358,7 +358,7 @@ class Traceback(object):
             'exception':        exc,
             'exception_type':   escape(self.exception_type),
             'summary':          self.render_summary(include_title=False),
-            'plaintext':        self.plaintext,
+            'plaintext':        escape(self.plaintext),
             'plaintext_cs':     re.sub('-{2,}', '-', self.plaintext),
             'traceback_id':     self.id,
             'secret':           secret

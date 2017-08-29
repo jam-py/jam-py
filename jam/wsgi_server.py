@@ -6,7 +6,7 @@ def run(app):
 
     host = '0.0.0.0'
     try:
-        port = sys.argv[1]
+        port = int(sys.argv[1])
     except:
-        port = '8080'
+        port = 8080
     run_simple(host, port, app, threaded=True, use_debugger=True)

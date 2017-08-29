@@ -603,13 +603,12 @@
             if (options.show_history && this.keep_history && task.history_item) {
                 history_button = '<i id="history-btn" class="icon-film" style="float: right; margin: 5px;"></i>';
             }
+
             if (!title.text().length) {
                 title = ('<h4 class="modal-title">' + options.title + '</h4>');
+            } else {
+                title.html(options.title);
             }
-            //~ } else {
-                //~ title.detach();
-                //~ title.html(options.title);
-            //~ }
             header.empty();
             header.append(close_button + history_button + print_button);
             header.append(title);
@@ -713,12 +712,13 @@
                             if (e.target === self[formName].get(0)) {
                                 e.stopPropagation();
                                 if (options.onShown) {
-                                    setTimeout(
-                                        function() {
-                                            options.onShown.call(self, e);
-                                        },
-                                        0
-                                    )
+                                    options.onShown.call(self, e);
+                                    //~ setTimeout(
+                                        //~ function() {
+                                            //~ options.onShown.call(self, e);
+                                        //~ },
+                                        //~ 0
+                                    //~ )
                                 }
                             }
                         });
@@ -5166,6 +5166,21 @@
                     this.update_controls();
                 }
             }
+        },
+
+        format_string: function(str, value) {
+            var result = str;
+            if (typeof value === 'object') {
+                for (var key in value) {
+                    if (value.hasOwnProperty(key)) {
+                        result = result.replace('%(' + key + ')s', value[key] + '')
+                    }
+                }
+            }
+            else {
+                result = result.replace('%s', value + '')
+            }
+            return result
         }
 
     });
@@ -7792,8 +7807,8 @@
                 this.$table.addClass("table-striped");
             }
 
-            this.$table.on('mouseup dblclick', 'td', function(e) {
-//            this.$table.on('mousedown dblclick', 'td', function(e) {
+//            this.$table.on('mouseup dblclick', 'td', function(e) {
+            this.$table.on('mousedown dblclick', 'td', function(e) {
                 var td = this;
                 if (this.nodeName !== 'TD') {
                     td = $(this).closest('td');
@@ -9520,6 +9535,7 @@
             }
             if (field.get_lookup_data_type() === consts.BOOLEAN) {
                 $input = $('<input>')
+                    .attr("id", field.field_name)
                     .attr("type", "checkbox")
                     .attr("tabindex", tabIndex + "")
                     .click(function(e) {
@@ -9527,11 +9543,12 @@
                     });
             } else if (field.get_lookup_data_type() === consts.BLOB) {
                 $input = $('<textarea>')
+                    .attr("id", field.field_name)
                     .attr("tabindex", tabIndex + "")
-//                    .attr("rows", "10")
                     .innerHeight(70);
             } else {
                 $input = $('<input>')
+                    .attr("id", field.field_name)
                     .attr("type", "text")
                     .attr("tabindex", tabIndex + "");
             }
@@ -9722,11 +9739,6 @@
 
             this.$input.bind('destroyed', function() {
                 self.field.controls.splice(self.field.controls.indexOf(self), 1);
-                //~ if (!self.grid && self.field.field_help) {
-                    //~ if ($input.data('popover')) {
-                        //~ $input.data('popover').$tip.remove();
-                    //~ }
-                //~ }
                 if (self.dropdown){
                     self.dropdown.destroy();
                 }
@@ -9844,15 +9856,17 @@
             }
             if (code === 13 && !e.ctrlKey && !e.shiftKey) {
                 if (this.grid && this.grid.editMode) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    if (!this.grid.item.is_changing()) {
-                        this.grid.item.edit();
-                    }
-                    this.grid.flushEditor();
-                    this.grid.hideEditor();
-                    if (this.grid.item.is_changing()) {
-                        this.grid.item.post();
+                    if (!(this.dropdown && this.dropdown.shown)) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (!this.grid.item.is_changing()) {
+                            this.grid.item.edit();
+                        }
+                        this.grid.flushEditor();
+                        this.grid.hideEditor();
+                        if (this.grid.item.is_changing()) {
+                            this.grid.item.post();
+                        }
                     }
                 } else if (this.field.lookup_item && !this.field.enable_typeahead) {
                     e.stopPropagation();
@@ -9934,26 +9948,28 @@
         change_field_text: function() {
             var result = true,
                 text;
-            if (this.field.owner && this.field.owner.is_changing &&
-                !this.field.owner.is_changing()) {
-                this.field.owner.edit();
-            }
             this.errorValue = undefined;
             this.error = undefined;
-            if (this.field.lookup_item) {
+            if (this.field.lookup_item || this.field.lookup_values) {
                 if (this.$input.val() !== this.field.get_lookup_text()) {
                     this.$input.val(this.field.get_display_text());
                 }
             } else {
                 try {
                     text = this.$input.val();
-                    if (text === '') {
-                        this.field.set_value(null);
-                    } else {
-                        this.field.set_text(text);
-                        this.field.check_valid();
-                        if (this.$input.is(':visible')) {
-                            this.$input.val(text);
+                    if (text !== this.field.text) {
+                        if (this.field.owner && this.field.owner.is_changing &&
+                            !this.field.owner.is_changing()) {
+                            this.field.owner.edit();
+                        }
+                        if (text === '') {
+                            this.field.set_value(null);
+                        } else {
+                            this.field.set_text(text);
+                            this.field.check_valid();
+                            if (this.$input.is(':visible')) {
+                                this.$input.val(text);
+                            }
                         }
                     }
                 } catch (e) {
@@ -9999,11 +10015,6 @@
                 }
             }
             if (this.field.data_type === consts.BOOLEAN) {
-                result = true;
-            } else if (this.field.lookup_values) {
-                if (this.$input.parent().hasClass('open')) {
-                    this.$input.parent().removeClass('open');
-                }
                 result = true;
             } else if (this.change_field_text()) {
                 if (this.$input.is(':visible')) {
@@ -10132,23 +10143,26 @@
         },
 
         show: function() {
-            var pos = $.extend({}, this.$element.offset(), {
-                height: this.$element[0].offsetHeight
-            });
+            var pos;
+            if (this.$element) {
+                pos = $.extend({}, this.$element.offset(), {
+                    height: this.$element[0].offsetHeight
+                });
 
-            this.$menu
-                .appendTo($('body'))
-                .css({
-                    top: pos.top + pos.height,
-                    left: pos.left,
-                    "min-width": this.$element.innerWidth(),
-                    "max-width": $(window).width() - this.$element.offset().left - 20,
-                    "overflow": "hidden"
-                })
-                .show()
+                this.$menu
+                    .appendTo($('body'))
+                    .css({
+                        top: pos.top + pos.height,
+                        left: pos.left,
+                        "min-width": this.$element.innerWidth(),
+                        "max-width": $(window).width() - this.$element.offset().left - 20,
+                        "overflow": "hidden"
+                    })
+                    .show()
 
-            this.shown = true
-            return this
+                this.shown = true
+                return this
+            }
         },
 
         hide: function() {
@@ -10347,8 +10361,8 @@
                     default:
                         this.lookup()
                 }
-                e.stopPropagation()
-                e.preventDefault()
+                e.stopPropagation();
+                e.preventDefault();
             }
         },
 
@@ -10408,13 +10422,18 @@
 
         select: function() {
             var $li = this.$menu.find('.active');
+            if (this.field.owner && !this.field.owner.is_changing()) {
+                this.field.owner.edit();
+            }
             this.field.value = $li.data('id-value');
             return this.hide();
         },
 
         enter_pressed: function() {
             this.query = '';
-            this.$element.focus();
+            if (this.$element) {
+                this.$element.focus();
+            }
             this.process(this.source);
         }
 

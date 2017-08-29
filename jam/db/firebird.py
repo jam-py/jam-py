@@ -1,8 +1,4 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import with_statement
 import sys
-import cPickle
 import fdb
 
 DATABASE = 'FIREBIRD'
@@ -147,7 +143,7 @@ def change_field_sql(table_name, old_field, new_field):
     result = []
     if FIELD_TYPES[old_field['data_type']] != FIELD_TYPES[new_field['data_type']] \
         or old_field['size'] != new_field['size']:
-        raise Exception, u"Don't know how to change field's size or type of %s" % old_field['field_name']
+        raise Exception(u"Don't know how to change field's size or type of %s" % old_field['field_name'])
     if old_field['field_name'] != new_field['field_name']:
         sql = 'ALTER TABLE "%s" ALTER "%s" TO "%s"' % \
             (table_name, old_field['field_name'], new_field['field_name'])
@@ -264,7 +260,6 @@ def get_table_info(connection, table_name, db_name):
                     'unique': unique,
                     'fields': field_defs
                 })
-        except Exception, e:
-            print e
+        except Exception as e:
             pass
     return {'fields': fields, 'indexes': []}

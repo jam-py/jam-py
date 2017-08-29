@@ -56,7 +56,7 @@ class JSONRequestMixin(object):
         if 'json' not in self.environ.get('CONTENT_TYPE', ''):
             raise BadRequest('Not a JSON request')
         try:
-            return loads(self.data)
+            return loads(self.data.decode(self.charset, self.encoding_errors))
         except Exception:
             raise BadRequest('Unable to read JSON request')
 
@@ -101,7 +101,7 @@ class RoutingArgsRequestMixin(object):
     """This request mixin adds support for the wsgiorg routing args
     `specification`_.
 
-    .. _specification: http://www.wsgi.org/wsgi/Specifications/routing_args
+    .. _specification: https://wsgi.readthedocs.io/en/latest/specifications/routing_args.html
     """
 
     def _get_routing_args(self):

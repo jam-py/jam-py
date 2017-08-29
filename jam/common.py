@@ -3,12 +3,17 @@ import os
 import datetime, time
 import xml.dom.minidom
 import json
-import cPickle
+import pickle
 import locale
 import decimal
 import zipfile
 import gzip
-import cStringIO
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import BytesIO as StringIO
+
+from werkzeug._compat import to_unicode, to_bytes
 
 DEFAULT_SETTINGS = {
     'LANGUAGE': 1,
@@ -122,6 +127,12 @@ LOCKS_FIELDS = [
     ['date', DATETIME, None]
 ]
 LOCKS_INDEX_FIELDS = ['item_id', 'item_rec_id']
+
+def error_message(e):
+    try:
+        return str(e)
+    except:
+        return unicode(e)
 
 def get_alignment(data_type, item=None, lookup_values=None):
     if (data_type == INTEGER) or (data_type == FLOAT) or (data_type == CURRENCY):
@@ -252,17 +263,13 @@ def str_to_datetime(date_str):
     return datetime.datetime(time_tuple.tm_year, time_tuple.tm_mon,
         time_tuple.tm_mday, time_tuple.tm_hour, time_tuple.tm_min, time_tuple.tm_sec)
 
-def ui_to_string(file_name):
-    with open(file_name, "r") as f:
-        return f.read()
-
 def load_interface(item):
     item._view_list = []
     item._edit_list = []
     item._order_list = []
     item._reports_list = []
     if item.f_info.value:
-        lists = cPickle.loads(str(item.f_info.value))
+        lists = pickle.loads(to_bytes(item.f_info.value, 'utf-8'))
         item._view_list = lists['view']
         item._edit_list = lists['edit']
         item._order_list = lists['order']
@@ -278,7 +285,7 @@ def store_interface(item):
                 'edit': item._edit_list,
                 'order': item._order_list,
                 'reports': item._reports_list}
-        item.f_info.value = str(cPickle.dumps(dic))
+        item.f_info.value = to_unicode(pickle.dumps(dic, protocol=0), 'utf-8')
         item.post()
         item.apply()
     finally:
@@ -448,7 +455,7 @@ def json_defaul_handler(obj):
     return result
 
 def zip_dir(dir, zip_file, exclude_dirs=[], exclude_ext=[], recursive=True):
-    folder = os.path.join(os.getcwd().decode('utf-8'), dir)
+    folder = os.path.join(to_unicode(os.getcwd(), 'utf-8'), dir)
     if os.path.exists(folder):
         if recursive:
             for dirpath, dirnames, filenames in os.walk(folder):
@@ -468,19 +475,10 @@ def zip_dir(dir, zip_file, exclude_dirs=[], exclude_ext=[], recursive=True):
                     arcname = os.path.relpath(os.path.join(dir, file_path))
                     zip_file.write(file_path, arcname)
 
-def now():
-    return datetime.datetime.now()
-
-def min_diff(diff):
-    return divmod(diff.days * 86400 + diff.seconds, 60)[0]
-
-def hour_diff(diff):
-    return divmod(diff.days * 86400 + diff.seconds, 3600)[0]
-
 def compressBuf(buf):
-    zbuf = cStringIO.StringIO()
+    zbuf = StringIO()
     zfile = gzip.GzipFile(mode = 'wb',  fileobj = zbuf, compresslevel = 9)
-    zfile.write(buf)
+    zfile.write(buf.encode())
     zfile.close()
     return zbuf.getvalue()
 
@@ -503,7 +501,7 @@ def timeit(method):
         result = method(*args, **kw)
         te = time.time()
 
-        print '%s  %s' %  (method.__name__, te-ts)
+        print('%s  %s' %  (method.__name__, te-ts))
         return result
 
     return timed

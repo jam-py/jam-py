@@ -99,8 +99,8 @@ def stream_encode_multipart(values, use_tempfile=True, threshold=1024 * 500,
             else:
                 if not isinstance(value, string_types):
                     value = str(value)
-                else:
-                    value = to_bytes(value, charset)
+
+                value = to_bytes(value, charset)
                 write('\r\n\r\n')
                 write_binary(value)
             write('\r\n')
@@ -192,7 +192,8 @@ class _TestCookieJar(CookieJar):
 
 
 def _iter_data(data):
-    """Iterates over a dict or multidict yielding all keys and values.
+    """Iterates over a `dict` or :class:`MultiDict` yielding all keys and
+    values.
     This is used to iterate over the data passed to the
     :class:`EnvironBuilder`.
     """
@@ -226,16 +227,21 @@ class EnvironBuilder(object):
 
     `data` can be any of these values:
 
-    -   a `str`: If it's a string it is converted into a :attr:`input_stream`,
-        the :attr:`content_length` is set and you have to provide a
-        :attr:`content_type`.
-    -   a `dict`: If it's a dict the keys have to be strings and the values
-        any of the following objects:
+    -   a `str` or `bytes` object: The object is converted into an
+        :attr:`input_stream`, the :attr:`content_length` is set and you have to
+        provide a :attr:`content_type`.
+    -   a `dict` or :class:`MultiDict`: The keys have to be strings. The values
+        have to be either any of the following objects, or a list of any of the
+        following objects:
 
-        -   a :class:`file`-like object.  These are converted into
+        -   a :class:`file`-like object:  These are converted into
             :class:`FileStorage` objects automatically.
-        -   a tuple.  The :meth:`~FileMultiDict.add_file` method is called
-            with the tuple items as positional arguments.
+        -   a `tuple`:  The :meth:`~FileMultiDict.add_file` method is called
+            with the key and the unpacked `tuple` items as positional
+            arguments.
+        -   a `str`:  The string is set as form data for the associated key.
+    -   a file-like object: The object content is loaded in memory and then
+        handled like a regular `str` or a `bytes`.
 
     .. versionadded:: 0.6
        `path` and `base_url` can now be unicode strings that are encoded using
@@ -266,7 +272,8 @@ class EnvironBuilder(object):
     :param multiprocess: controls `wsgi.multiprocess`.  Defaults to `False`.
     :param run_once: controls `wsgi.run_once`.  Defaults to `False`.
     :param headers: an optional list or :class:`Headers` object of headers.
-    :param data: a string or dict of form data.  See explanation above.
+    :param data: a string or dict of form data or a file-object.
+                 See explanation above.
     :param environ_base: an optional dict of environment defaults.
     :param environ_overrides: an optional dict of environment overrides.
     :param charset: the charset used to encode unicode data.
@@ -325,6 +332,8 @@ class EnvironBuilder(object):
         if data:
             if input_stream is not None:
                 raise TypeError('can\'t provide input stream and data')
+            if hasattr(data, 'read'):
+                data = data.read()
             if isinstance(data, text_type):
                 data = data.encode(self.charset)
             if isinstance(data, bytes):
@@ -433,7 +442,7 @@ class EnvironBuilder(object):
         def setter(self, value):
             self._input_stream = None
             setattr(self, key, value)
-        return property(getter, setter, doc)
+        return property(getter, setter, doc=doc)
 
     form = form_property('form', MultiDict, doc='''
         A :class:`MultiDict` of form values.''')
@@ -679,6 +688,10 @@ class Client(object):
 
         cur_server_name = netloc.split(':', 1)[0].split('.')
         real_server_name = get_host(environ).rsplit(':', 1)[0].split('.')
+        if cur_server_name == ['']:
+            # this is a local redirect having autocorrect_location_header=False
+            cur_server_name = real_server_name
+            base_url = EnvironBuilder(environ).base_url
 
         if self.allow_subdomain_redirects:
             allowed = cur_server_name[-len(real_server_name):] == real_server_name

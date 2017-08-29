@@ -3,13 +3,14 @@ import datetime
 
 import jam.common as common
 import jam.db.db_modules as db_modules
+from werkzeug._compat import string_types
 
 def execute_select(cursor, db_module, command):
 #    print('')
 #    print(command)
     try:
         cursor.execute(command)
-    except Exception, x:
+    except Exception as x:
         print ('\nError: %s\n command: %s' % (str(x), command))
         raise
     return db_module.process_sql_result(cursor.fetchall())
@@ -23,7 +24,7 @@ def execute(cursor, command, params):
             cursor.execute(command, params)
         else:
             cursor.execute(command)
-    except Exception, x:
+    except Exception as x:
         print ('\nError: %s\n command: %s\n params: %s' % (str(x), command, params))
         raise
 
@@ -39,7 +40,7 @@ def execute_dll(cursor, db_module, command, params, messages):
         else:
             messages.append('<p>' + command + '</p>')
         result = execute(cursor, command, params)
-    except Exception, x:
+    except Exception as x:
         error = '\nError: %s\n command: %s\n params: %s' % (str(x), command, params)
         print(error)
         if ddl:
@@ -111,9 +112,7 @@ def execute_list(cursor, db_module, command, delta_result, params, select, ddl, 
     res = None
     for com in command:
         command_type = type(com)
-        if command_type == unicode:
-            res = execute_command(cursor, db_module, com, params, select, ddl, messages)
-        elif command_type == str:
+        if command_type in string_types:
             res = execute_command(cursor, db_module, com, params, select, ddl, messages)
         elif command_type == dict:
             res = execute_delta(cursor, db_module, com, params, delta_result)
@@ -134,7 +133,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
     if connection is None:
         try:
             connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
-        except Exception, x:
+        except Exception as x:
              print(str(x))
              return  None, (None, str(x))
     delta_result = {}
@@ -147,14 +146,12 @@ def execute_sql(db_module, db_database, db_user, db_password,
             try:
                 cursor.callproc(command, params)
                 result = cursor.fetchone()
-            except Exception, x:
+            except Exception as x:
                 print('\nError: %s in command: %s' % (str(x), command))
                 raise
         else:
             command_type = type(command)
-            if command_type == unicode:
-                result = execute_command(cursor, db_module, command, params, select, ddl, messages)
-            elif command_type == str:
+            if command_type in string_types:
                 result = execute_command(cursor, db_module, command, params, select, ddl, messages)
             elif command_type == dict:
                 res = execute_delta(cursor, db_module, command, params, delta_result)
@@ -168,7 +165,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
             connection.commit()
         if delta_result:
             result = delta_result
-    except Exception, x:
+    except Exception as x:
         try:
             if connection:
                 connection.rollback()

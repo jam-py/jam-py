@@ -28,8 +28,8 @@
     You can also pass it a `extra_files` keyword argument with a list of
     additional files (like configuration files) you want to observe.
 
-    For bigger applications you should consider using `werkzeug.script`
-    instead of a simple start file.
+    For bigger applications you should consider using `click`
+    (http://click.pocoo.org) instead of a simple start file.
 
 
     :copyright: (c) 2014 by the Werkzeug Team, see AUTHORS for more details.
@@ -41,6 +41,15 @@ import os
 import socket
 import sys
 import signal
+
+
+can_fork = hasattr(os, "fork")
+
+
+try:
+    import termcolor
+except ImportError:
+    termcolor = None
 
 try:
     import ssl
@@ -62,22 +71,30 @@ def _get_openssl_crypto_module():
 
 
 try:
-    from SocketServer import ThreadingMixIn, ForkingMixIn
+    import SocketServer as socketserver
     from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 except ImportError:
-    from socketserver import ThreadingMixIn, ForkingMixIn
+    import socketserver
     from http.server import HTTPServer, BaseHTTPRequestHandler
+
+ThreadingMixIn = socketserver.ThreadingMixIn
+
+if can_fork:
+    ForkingMixIn = socketserver.ForkingMixIn
+else:
+    class ForkingMixIn(object):
+        pass
 
 # important: do not use relative imports here or python -m will break
 import werkzeug
 from werkzeug._internal import _log
-from werkzeug._compat import PY2, reraise, wsgi_encoding_dance
+from werkzeug._compat import PY2, WIN, reraise, wsgi_encoding_dance
 from werkzeug.urls import url_parse, url_unquote
 from werkzeug.exceptions import InternalServerError
 
 
 LISTEN_QUEUE = 128
-can_open_by_fd = hasattr(socket, 'fromfd')
+can_open_by_fd = not WIN and hasattr(socket, 'fromfd')
 
 
 class WSGIRequestHandler(BaseHTTPRequestHandler, object):
@@ -111,8 +128,6 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
             'SCRIPT_NAME':          '',
             'PATH_INFO':            wsgi_encoding_dance(path_info),
             'QUERY_STRING':         wsgi_encoding_dance(request_url.query),
-            'CONTENT_TYPE':         self.headers.get('Content-Type', ''),
-            'CONTENT_LENGTH':       self.headers.get('Content-Length', ''),
             'REMOTE_ADDR':          self.address_string(),
             'REMOTE_PORT':          self.port_integer(),
             'SERVER_NAME':          self.server.server_address[0],
@@ -121,9 +136,10 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
         }
 
         for key, value in self.headers.items():
-            key = 'HTTP_' + key.upper().replace('-', '_')
-            if key not in ('HTTP_CONTENT_TYPE', 'HTTP_CONTENT_LENGTH'):
-                environ[key] = value
+            key = key.upper().replace('-', '_')
+            if key not in ('CONTENT_TYPE', 'CONTENT_LENGTH'):
+                key = 'HTTP_' + key
+            environ[key] = value
 
         if request_url.scheme and request_url.netloc:
             environ['HTTP_HOST'] = request_url.netloc
@@ -263,13 +279,37 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
         return BaseHTTPRequestHandler.version_string(self).strip()
 
     def address_string(self):
-        return self.client_address[0]
+        if getattr(self, 'environ', None):
+            return self.environ['REMOTE_ADDR']
+        else:
+            return self.client_address[0]
 
     def port_integer(self):
         return self.client_address[1]
 
     def log_request(self, code='-', size='-'):
-        self.log('info', '"%s" %s %s', self.requestline, code, size)
+        msg = self.requestline
+        code = str(code)
+
+        if termcolor:
+            color = termcolor.colored
+
+            if code[0] == '1':    # 1xx - Informational
+                msg = color(msg, attrs=['bold'])
+            if code[0] == '2':    # 2xx - Success
+                msg = color(msg, color='white')
+            elif code == '304':   # 304 - Resource Not Modified
+                msg = color(msg, color='cyan')
+            elif code[0] == '3':  # 3xx - Redirection
+                msg = color(msg, color='green')
+            elif code == '404':   # 404 - Resource Not Found
+                msg = color(msg, color='yellow')
+            elif code[0] == '4':  # 4xx - Client Error
+                msg = color(msg, color='red', attrs=['bold'])
+            else:                 # 5xx, or any other response
+                msg = color(msg, color='magenta', attrs=['bold'])
+
+        self.log('info', '"%s" %s %s', msg, code, size)
 
     def log_error(self, *args):
         self.log('error', *args)
@@ -309,9 +349,9 @@ def generate_adhoc_ssl_pair(cn=None):
     issuer.O = 'Self-Signed'
 
     pkey = crypto.PKey()
-    pkey.generate_key(crypto.TYPE_RSA, 1024)
+    pkey.generate_key(crypto.TYPE_RSA, 2048)
     cert.set_pubkey(pkey)
-    cert.sign(pkey, 'md5')
+    cert.sign(pkey, 'sha256')
 
     return cert, pkey
 
@@ -526,6 +566,8 @@ class ForkingWSGIServer(ForkingMixIn, BaseWSGIServer):
 
     def __init__(self, host, port, app, processes=40, handler=None,
                  passthrough_errors=False, ssl_context=None, fd=None):
+        if not can_fork:
+            raise ValueError('Your platform does not support forking.')
         BaseWSGIServer.__init__(self, host, port, app, handler,
                                 passthrough_errors, ssl_context, fd)
         self.max_children = processes
@@ -629,6 +671,8 @@ def run_simple(hostname, port, application, use_reloader=False,
                         the server should automatically create one, or ``None``
                         to disable SSL (which is the default).
     """
+    if not isinstance(port, int):
+        raise TypeError('port must be an integer')
     if use_debugger:
         from werkzeug.debug import DebuggedApplication
         application = DebuggedApplication(application, use_evalex)
@@ -688,7 +732,9 @@ def run_simple(hostname, port, application, use_reloader=False,
             else:
                 s.close()
 
-        from ._reloader import run_with_reloader
+        # Do not use relative imports, otherwise "python -m werkzeug.serving"
+        # breaks.
+        from werkzeug._reloader import run_with_reloader
         run_with_reloader(inner, extra_files, reloader_interval,
                           reloader_type)
     else:
@@ -698,7 +744,7 @@ def run_simple(hostname, port, application, use_reloader=False,
 def run_with_reloader(*args, **kwargs):
     # People keep using undocumented APIs.  Do not use this function
     # please, we do not guarantee that it continues working.
-    from ._reloader import run_with_reloader
+    from werkzeug._reloader import run_with_reloader
     return run_with_reloader(*args, **kwargs)
 
 

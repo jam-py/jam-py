@@ -17,15 +17,18 @@
     :license: BSD, see LICENSE for more details.
 """
 import re
+import warnings
 from time import time, gmtime
 try:
     from email.utils import parsedate_tz
 except ImportError:  # pragma: no cover
     from email.Utils import parsedate_tz
 try:
-    from urllib2 import parse_http_list as _parse_list_header
-except ImportError:  # pragma: no cover
     from urllib.request import parse_http_list as _parse_list_header
+    from urllib.parse import unquote_to_bytes as _unquote
+except ImportError:  # pragma: no cover
+    from urllib2 import parse_http_list as _parse_list_header, \
+        unquote as _unquote
 from datetime import datetime, timedelta
 from hashlib import md5
 import base64
@@ -61,7 +64,8 @@ _etag_re = re.compile(r'([Ww]/)?(?:"(.*?)"|(.*?))(?:\s*,\s*|$)')
 _unsafe_header_chars = set('()<>@,;:\"/[]?={} \t')
 _quoted_string_re = r'"[^"\\]*(?:\\.[^"\\]*)*"'
 _option_header_piece_re = re.compile(
-    r';\s*(%s|[^\s;,=]+)\s*(?:=\s*(%s|[^;,]+)?)?\s*' %
+    r';\s*(%s|[^\s;,=\*]+)\s*'
+    r'(?:\*?=\s*(?:([^\s]+?)\'([^\s]*?)\')?(%s|[^;,]+)?)?\s*' %
     (_quoted_string_re, _quoted_string_re)
 )
 _option_header_start_mime_type = re.compile(r',\s*([^;,\s]+)([;,]\s*.+)?')
@@ -337,7 +341,6 @@ def parse_options_header(value, multiple=False):
     :return: (mimetype, options) or (mimetype, options, mimetype, options, …)
              if multiple=True
     """
-
     if not value:
         return '', {}
 
@@ -356,12 +359,14 @@ def parse_options_header(value, multiple=False):
             optmatch = _option_header_piece_re.match(rest)
             if not optmatch:
                 break
-            option, option_value = optmatch.groups()
+            option, encoding, _, option_value = optmatch.groups()
             option = unquote_header_value(option)
             if option_value is not None:
                 option_value = unquote_header_value(
                     option_value,
                     option == 'filename')
+                if encoding is not None:
+                    option_value = _unquote(option_value).decode(encoding)
             options[option] = option_value
             rest = rest[optmatch.end():]
         result.append(options)
@@ -369,7 +374,7 @@ def parse_options_header(value, multiple=False):
             return tuple(result)
         value = rest
 
-    return tuple(result)
+    return tuple(result) if result else ('', {})
 
 
 def parse_accept_header(value, cls=None):
@@ -553,15 +558,24 @@ def parse_range_header(value, make_inclusive=True):
         if item.startswith('-'):
             if last_end < 0:
                 return None
-            begin = int(item)
+            try:
+                begin = int(item)
+            except ValueError:
+                return None
             end = None
             last_end = -1
         elif '-' in item:
             begin, end = item.split('-', 1)
+            begin = begin.strip()
+            end = end.strip()
+            if not begin.isdigit():
+                return None
             begin = int(begin)
             if begin < last_end or last_end < 0:
                 return None
             if end:
+                if not end.isdigit():
+                    return None
                 end = int(end) + 1
                 if begin >= end:
                     return None
@@ -768,7 +782,51 @@ def http_date(timestamp=None):
     return _dump_date(timestamp, ' ')
 
 
-def is_resource_modified(environ, etag=None, data=None, last_modified=None):
+def parse_age(value=None):
+    """Parses a base-10 integer count of seconds into a timedelta.
+
+    If parsing fails, the return value is `None`.
+
+    :param value: a string consisting of an integer represented in base-10
+    :return: a :class:`datetime.timedelta` object or `None`.
+    """
+    if not value:
+        return None
+    try:
+        seconds = int(value)
+    except ValueError:
+        return None
+    if seconds < 0:
+        return None
+    try:
+        return timedelta(seconds=seconds)
+    except OverflowError:
+        return None
+
+
+def dump_age(age=None):
+    """Formats the duration as a base-10 integer.
+
+    :param age: should be an integer number of seconds,
+                a :class:`datetime.timedelta` object, or,
+                if the age is unknown, `None` (default).
+    """
+    if age is None:
+        return
+    if isinstance(age, timedelta):
+        # do the equivalent of Python 2.7's timedelta.total_seconds(),
+        # but disregarding fractional seconds
+        age = age.seconds + (age.days * 24 * 3600)
+
+    age = int(age)
+    if age < 0:
+        raise ValueError('age cannot be negative')
+
+    return str(age)
+
+
+def is_resource_modified(environ, etag=None, data=None, last_modified=None,
+                         ignore_if_range=True):
     """Convenience method for conditional requests.
 
     :param environ: the WSGI environment of the request to be checked.
@@ -776,6 +834,8 @@ def is_resource_modified(environ, etag=None, data=None, last_modified=None):
     :param data: or alternatively the data of the response to automatically
                  generate an etag using :func:`generate_etag`.
     :param last_modified: an optional date of the last modification.
+    :param ignore_if_range: If `False`, `If-Range` header will be taken into
+                            account.
     :return: `True` if the resource was modified, otherwise `False`.
     """
     if etag is None and data is not None:
@@ -794,18 +854,32 @@ def is_resource_modified(environ, etag=None, data=None, last_modified=None):
     if last_modified is not None:
         last_modified = last_modified.replace(microsecond=0)
 
-    modified_since = parse_date(environ.get('HTTP_IF_MODIFIED_SINCE'))
+    if_range = None
+    if not ignore_if_range and 'HTTP_RANGE' in environ:
+        # http://tools.ietf.org/html/rfc7233#section-3.2
+        # A server MUST ignore an If-Range header field received in a request
+        # that does not contain a Range header field.
+        if_range = parse_if_range_header(environ.get('HTTP_IF_RANGE'))
+
+    if if_range is not None and if_range.date is not None:
+        modified_since = if_range.date
+    else:
+        modified_since = parse_date(environ.get('HTTP_IF_MODIFIED_SINCE'))
 
     if modified_since and last_modified and last_modified <= modified_since:
         unmodified = True
+
     if etag:
-        if_none_match = parse_etags(environ.get('HTTP_IF_NONE_MATCH'))
-        if if_none_match:
-            # http://tools.ietf.org/html/rfc7232#section-3.2
-            # "A recipient MUST use the weak comparison function when comparing
-            # entity-tags for If-None-Match"
-            etag, _ = unquote_etag(etag)
-            unmodified = if_none_match.contains_weak(etag)
+        etag, _ = unquote_etag(etag)
+        if if_range is not None and if_range.etag is not None:
+            unmodified = parse_etags(if_range.etag).contains(etag)
+        else:
+            if_none_match = parse_etags(environ.get('HTTP_IF_NONE_MATCH'))
+            if if_none_match:
+                # http://tools.ietf.org/html/rfc7232#section-3.2
+                # "A recipient MUST use the weak comparison function when comparing
+                # entity-tags for If-None-Match"
+                unmodified = if_none_match.contains_weak(etag)
 
     return not unmodified
 
@@ -857,7 +931,7 @@ def is_hop_by_hop_header(header):
     .. versionadded:: 0.5
 
     :param header: the header to test.
-    :return: `True` if it's an entity header, `False` otherwise.
+    :return: `True` if it's an HTTP/1.1 "Hop-by-Hop" header, `False` otherwise.
     """
     return header.lower() in _hop_by_hop_headers
 
@@ -907,7 +981,7 @@ def parse_cookie(header, charset='utf-8', errors='replace', cls=None):
 
 def dump_cookie(key, value='', max_age=None, expires=None, path='/',
                 domain=None, secure=False, httponly=False,
-                charset='utf-8', sync_expires=True):
+                charset='utf-8', sync_expires=True, max_size=4093):
     """Creates a new Set-Cookie header without the ``Set-Cookie`` prefix
     The parameters are the same as in the cookie Morsel object in the
     Python standard library but it accepts unicode data, too.
@@ -943,6 +1017,11 @@ def dump_cookie(key, value='', max_age=None, expires=None, path='/',
     :param charset: the encoding for unicode values.
     :param sync_expires: automatically set expires if max_age is defined
                          but expires not.
+    :param max_size: Warn if the final header value exceeds this size. The
+        default, 4093, should be safely `supported by most browsers
+        <cookie_>`_. Set to 0 to disable this check.
+
+    .. _`cookie`: http://browsercookielimits.squawky.net/
     """
     key = to_bytes(key, charset)
     value = to_bytes(value, charset)
@@ -991,6 +1070,28 @@ def dump_cookie(key, value='', max_age=None, expires=None, path='/',
     rv = b'; '.join(buf)
     if not PY2:
         rv = rv.decode('latin1')
+
+    # Warn if the final value of the cookie is less than the limit. If the
+    # cookie is too large, then it may be silently ignored, which can be quite
+    # hard to debug.
+    cookie_size = len(rv)
+
+    if max_size and cookie_size > max_size:
+        value_size = len(value)
+        warnings.warn(
+            'The "{key}" cookie is too large: the value was {value_size} bytes'
+            ' but the header required {extra_size} extra bytes. The final size'
+            ' was {cookie_size} bytes but the limit is {max_size} bytes.'
+            ' Browsers may silently ignore cookies larger than this.'.format(
+                key=key,
+                value_size=value_size,
+                extra_size=cookie_size - value_size,
+                cookie_size=cookie_size,
+                max_size=max_size
+            ),
+            stacklevel=2
+        )
+
     return rv
 
 

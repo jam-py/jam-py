@@ -89,7 +89,7 @@
     If matching succeeded but the URL rule was incompatible to the given
     method (for example there were only rules for `GET` and `HEAD` and
     routing system tried to match a `POST` request) a `MethodNotAllowed`
-    method is raised.
+    exception is raised.
 
 
     :copyright: (c) 2014 by the Werkzeug Team, see AUTHORS for more details.
@@ -614,6 +614,8 @@ class Rule(RuleFactory):
         if methods is None:
             self.methods = None
         else:
+            if isinstance(methods, str):
+                raise TypeError('param `methods` should be `Iterable[str]`, not `str`')
             self.methods = set([x.upper() for x in methods])
             if 'HEAD' not in self.methods and 'GET' in self.methods:
                 self.methods.add('HEAD')
@@ -745,9 +747,9 @@ class Rule(RuleFactory):
         )
         self._regex = re.compile(regex, re.UNICODE)
 
-    def match(self, path):
+    def match(self, path, method=None):
         """Check if the rule matches a given path. Path is a string in the
-        form ``"subdomain|/path(method)"`` and is assembled by the map.  If
+        form ``"subdomain|/path"`` and is assembled by the map.  If
         the map is doing host matching the subdomain part will be the host
         instead.
 
@@ -765,7 +767,9 @@ class Rule(RuleFactory):
                 # tells the map to redirect to the same url but with a
                 # trailing slash
                 if self.strict_slashes and not self.is_leaf and \
-                   not groups.pop('__suffix__'):
+                        not groups.pop('__suffix__') and \
+                        (method is None or self.methods is None or
+                         method in self.methods):
                     raise RequestSlash()
                 # if we are not in strict slashes mode we have to remove
                 # a __suffix__
@@ -884,6 +888,8 @@ class Rule(RuleFactory):
     def __eq__(self, other):
         return self.__class__ is other.__class__ and \
             self._trace == other._trace
+
+    __hash__ = None
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -1521,7 +1527,7 @@ class MapAdapter(object):
         have_match_for = set()
         for rule in self.map._rules:
             try:
-                rv = rule.match(path)
+                rv = rule.match(path, method)
             except RequestSlash:
                 raise RequestRedirect(self.make_redirect_url(
                     url_quote(path_info, self.map.charset,
