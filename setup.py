@@ -9,7 +9,7 @@ setup(
     version=version(),
     url='http://jam-py.com/',
     author='Andrew Yushev',
-    author_email='yushevaa@gmail.com',
+    author_email='andrew@jam-py.com',
     description=('Jam.py is an event-driven framework for the development of web database applications.'),
     license='BSD',
     packages=['jam', 'jam.db', 'jam.third_party', 'jam.third_party.werkzeug',
