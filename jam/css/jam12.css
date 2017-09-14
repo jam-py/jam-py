@@ -3,6 +3,42 @@ html.wait, html.wait * {
     cursor: wait !important;
 }
 
+body {
+  font-size: 12px;
+}
+
+.table th,
+.table td {
+    height: 18px;
+    padding: 4px;
+    line-height: 16px;
+}
+
+.row-fluid [class*="span"] {
+    min-height: 24px;
+}
+
+div.dropdown.lookup-list {
+    display: inline-block;
+    height: 20px;
+    padding: 2px 6px 0px;
+    margin-bottom:4px;
+    font-size: 12px;
+    line-height: 16px;
+    color: #555555;
+    vertical-align: middle;
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-radius: 0;
+    -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+       -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+          box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+    -webkit-transition: border linear 0.2s, box-shadow linear 0.2s;
+      -moz-transition: border linear 0.2s, box-shadow linear 0.2s;
+        -o-transition: border linear 0.2s, box-shadow linear 0.2s;
+          transition: border linear 0.2s, box-shadow linear 0.2s;
+}
+
 div.dropdown input {
     width: 100%;
     color: #555555;
@@ -16,78 +52,112 @@ div.dropdown input:focus {
     outline: 0;
 }
 
-}
-
 input.dropdown-toggle {
     border-width: 0;
     padding: 0;
+}
+
+select {
+  height: 24px;
+  padding: 4px 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.form-horizontal select,
+.form-inline select {
+  margin-bottom: 4px;
+}
+
+textarea,
+input[type="text"],
+input[type="password"],
+input[type="datetime"],
+input[type="datetime-local"],
+input[type="date"],
+input[type="month"],
+input[type="time"],
+input[type="week"],
+input[type="number"],
+input[type="email"],
+input[type="url"],
+input[type="search"],
+input[type="tel"],
+input[type="color"],
+.uneditable-input {
+  height: 16px;
+  padding: 4px 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+label, input, button, select, textarea {
+    font-size: 12px;
+    font-weight: normal;
+    line-height: 16px;
+}
+
+.input-prepend,
+.input-append {
+  margin-bottom: 0;
+}
+
+.input-append input,
+.input-prepend input,
+.input-append select,
+.input-prepend select,
+.input-append .uneditable-input,
+.input-prepend .uneditable-input,
+.input-append .dropdown-menu,
+.input-prepend .dropdown-menu,
+.input-append .popover,
+.input-prepend .popover {
+  font-size: 12px;
+  margin-bottom: 4px;
 }
 
 .typeahead-li {
     width: 100%;
 }
 
-
-form {
-    margin-bottom: 10px;
-    padding: 9px;
+.btn-group > .btn,
+.btn-group > .dropdown-menu,
+.btn-group > .popover {
+  font-size: 12px;
 }
 
-.form-horizontal .control-group {
-    margin-bottom: 10px;
+.btn-group > .btn-mini {
+  font-size: 9.5px;
+}
+
+.btn-group > .btn-small {
+  font-size: 10.9px;
+}
+
+.btn-group > .btn-large {
+  font-size: 15.5px;
 }
 
 .btn-bar {
-/*
-    margin-top: 14px;
-*/
+    margin: 10px 0;
 }
 
-.modal {
-    width: 680px;
+form {
+    margin-bottom: 0;
 }
 
-
-.form-well {
-    min-height: 20px;
-    background-color: #f5f5f5;
-    border: 1px solid #e3e3e3;
-    -webkit-border-radius: 4px;
-     -moz-border-radius: 4px;
-          border-radius: 4px;
-    -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
-     -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
-          box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
-    width: auto;
-    margin-top: 9px;
-    margin-bottom: 9px;
-    padding: 9px;
-    padding-bottom: 0;
-}
-
-
-.modal.fade {
-    -webkit-transition: opacity 0.1s linear;
-       -moz-transition: opacity 0.1s linear;
-         -o-transition: opacity 0.1s linear;
-            transition: opacity 0.1s linear;
-}
-
-.modal-backdrop,
-.modal-backdrop.fade.in{
-    opacity: 0.2;
-    filter: alpha(opacity=20);
-    background: #fff;
-}
-
-.pager-input {
-    text-align: center;
+.form-horizontal .control-group {
+    margin-bottom: 4px;
+    margin-top: 0;
 }
 
 .typeahead,
 .popover {
     z-index: 3000;
 }
+
 
 .badge {
     padding-left: 5px;
@@ -103,12 +173,73 @@ form {
     margin-left: 18px;
 }
 
+.pager {
+    padding: 0px;
+}
+
+.pager-input {
+    height: 16px;
+    margin-top: 4px;
+    text-align: center;
+}
+
+.btn {
+    font-size: 12px;
+    line-height: 18px;
+}
+
 .expanded-btn {
-    min-width: 120px;
+    min-width: 100px;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 36px;
+}
+
+h1 {
+  font-size: 36.5px;
+}
+
+h2 {
+  font-size: 29.5px;
+}
+
+h3 {
+  font-size: 22.5px;
+}
+
+h4 {
+  font-size: 15.5px;
+}
+
+h5 {
+  font-size: 12px;
+}
+
+h6 {
+  font-size: 11.9px;
+}
+
+h1 small {
+  font-size: 22.5px;
+}
+
+h2 small {
+  font-size: 15.5px;
+}
+
+h3 small {
+  font-size: 12px;
+}
+
+h4 small {
+  font-size: 12px;
 }
 
 .input-integer {
-  width: 28%;
+  width: 26%;
 }
 
 .input-float {
@@ -128,28 +259,33 @@ form {
 }
 
 .input-with-buttons {
-    width: 85%;
+    width: 80%;
 }
 
 .input-lookupitem {
     width: 78%;
-    width: calc(100% - 2 * 40px);
-    width: -moz-calc(100% - 2 * 40px);
-    width: -webkit-calc(100% - 2 * 40px);
-    width: -o-calc(100% - 2 * 40px);
+    width: calc(100% - 2 * 24px);
+    width: -moz-calc(100% - 2 * 24px);
+    width: -webkit-calc(100% - 2 * 24px);
+    width: -o-calc(100% - 2 * 24px);
 }
 
 .input-lookupvalues {
-  width: 54%;
+  width: 36%;
 }
 
 .input-text {
-  width: 85%;
+  width: 80%;
 }
 
 .input-blob {
   width: 100%;
 }
+
+.navbar, .nav {
+    margin-bottom: 10px;
+}
+
 @media (max-width: 767px) {
   .input-prepend input.input-lookupitem,
   .input-append input.input-lookupitem,
@@ -168,7 +304,46 @@ form {
 }
 
 .close {
-    font-size: 13px;
+    font-size: 12px;
+}
+
+.modal {
+    width: 600px;
+}
+
+.form-well {
+    min-height: 20px;
+    background-color: #f5f5f5;
+    border: 1px solid #e3e3e3;
+    -webkit-border-radius: 4px;
+     -moz-border-radius: 4px;
+          border-radius: 4px;
+    -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+     -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+          box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+    width: auto;
+    margin-top: 6px;
+    margin-bottom: 6px;
+    padding: 6px;
+    padding-bottom: 0;
+}
+
+.modal-body {
+    padding: 8px 14px;
+}
+
+.modal.fade {
+    -webkit-transition: opacity 0.1s linear;
+       -moz-transition: opacity 0.1s linear;
+         -o-transition: opacity 0.1s linear;
+            transition: opacity 0.1s linear;
+}
+
+.modal-backdrop,
+.modal-backdrop.fade.in{
+    opacity: 0.2;
+    filter: alpha(opacity=20);
+    background: #fff;
 }
 
 .inner-table {
@@ -179,6 +354,14 @@ form {
     border-left: 0;
 }
 
+.inner-table thead:first-child tr:first-child > th:first-child,
+.inner-table tbody:first-child tr:first-child > td:first-child,
+.inner-table tbody:first-child tr:first-child > th:first-child {
+  -webkit-border-top-left-radius: 0;
+          border-top-left-radius: 0;
+  -moz-border-radius-topleft: 0;
+}
+
 .table td,
 .table th {
     cursor: default;
@@ -186,9 +369,9 @@ form {
     -moz-user-select: none;
     -khtml-user-select: none;
     -ms-user-select: none;
+
 }
 
-/*
 .tooltip-inner {
   max-width: 400px;
   padding: 8px;
@@ -200,7 +383,6 @@ form {
      -moz-border-radius: 4px;
           border-radius: 4px;
 }
-*/
 
 .top-margin {
   margin-top: 6px;
@@ -214,6 +396,10 @@ form {
     position:    absolute;
     background: transparent;
     border:     1px dotted #999;
+}
+
+.datepicker {
+    font-size: 12px;
 }
 
 .dbtable thead th {
@@ -268,7 +454,7 @@ form {
 .dbtree li div span.tree-text {
     display: inline-block;
     cursor: default;
-    padding: 2px 8px;
+    padding: 1px 10px;
 }
 
 .dbtree ul:first-child {
@@ -291,7 +477,6 @@ form {
 
 .accordion-toggle.history-toggle {
     font-size: 13px;
-    background-color: #eaf5fb;
     outline: 0;
 }
 

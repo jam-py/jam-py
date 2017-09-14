@@ -36,19 +36,19 @@ modal-footer {
 }
 
 .form-horizontal .control-group {
-    margin-bottom: 0;
+    margin-bottom: 2px;
     margin-top: 0;
 }
 
 .modal-body {
-    padding: 8px 14px;
+    padding: 6px 6px;
 }
 
-.modal .well {
+.form-well {
     width: auto;
-    margin: 4px 0;
-    padding-top: 8px;
-    padding-bottom: 4px;
+    margin: 2px 0 4px;
+    padding-top: 4px;
+    padding-bottom: 2px;
 }
 
 .dbtree li.selected-focused > div span.tree-text {
@@ -117,7 +117,6 @@ modal-footer {
 }
 
 .vert-btn {
-    margin-left: 20px;
     margin-top: 1px;
     margin-bottom: 4px;
     width: 160px;
@@ -133,6 +132,10 @@ modal-footer {
     vertical-align: top;
 }
 
+#btns-panel {
+    text-align: center;
+}
+
 .side-panel {
     padding: 10px;
     border: solid 1px #eee;
@@ -143,12 +146,17 @@ modal-footer {
     margin-top: 16px;
 }
 
-.fields-grid .inner-table td {
+.fields-grid .inner-table td,
+.langs-table .inner-table td {
     border: 0;
 }
 
 #left-box, #right-box {
     border: solid 1px #eee;
+}
+
+#right-box {
+    padding-left: 10px;
 }
 
 .left-right-btn {
@@ -161,7 +169,7 @@ modal-footer {
 
 #vert-btns-box {
     margin-top: 14px;
-    text-align:center;
+    text-align: center;
 }
 
 #left-btn {
@@ -187,7 +195,7 @@ modal-footer {
 }
 
 #editor {
-    font-size: 14px;
+    font-size: 15px;
     position: absolute;
     top: 0;
     right: 0;

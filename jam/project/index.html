@@ -7,20 +7,21 @@
     <link rel="icon" href="/jam/img/j.png" type="image/png">
 
     <link href="jam/css/bootstrap.css" rel="stylesheet">
-    <!--<link href="jam/css/bootstrap-cerulean.css" rel="stylesheet">-->
+    <!--<link href="jam/css/bootstrap-cerulean.css" rel="stylesheet"> -->
+    <!--<link href="jam/css/bootstrap-amelia.css" rel="stylesheet">-->    
     <!--<link href="jam/css/bootstrap-flatly.css" rel="stylesheet"> -->
-    <!--<link href="jam/css/bootstrap-slate.css" rel="stylesheet">-->
-    <!--<link href="jam/css/bootstrap-readable.css" rel="stylesheet">-->    
-    <!--<link href="jam/css/bootstrap-amelia.css" rel="stylesheet">-->
-    <!--<link href="jam/css/bootstrap-cosmo.css" rel="stylesheet">-->    
     <!--<link href="jam/css/bootstrap-journal.css" rel="stylesheet">-->    
-    <!--<link href="jam/css/bootstrap-spacelab.css" rel="stylesheet">-->    
-    <!--<link href="jam/css/bootstrap-united.css" rel="stylesheet">-->    
-
+    <!--<link href="jam/css/bootstrap-slate.css" rel="stylesheet">-->
+    <!--<link href="jam/css/bootstrap-united.css" rel="stylesheet">-->
+    <!--<link href="jam/css/bootstrap-cosmo.css" rel="stylesheet">-->    
+    <!--<link href="jam/css/bootstrap-readable.css" rel="stylesheet">-->
+    <!--<link href="jam/css/bootstrap-spacelab.css" rel="stylesheet">-->
+    
     <link href="jam/css/bootstrap-responsive.css" rel="stylesheet">
     <link href="jam/css/bootstrap-modal.css" rel="stylesheet">
     <link href="jam/css/datepicker.css" rel="stylesheet">
-    <link href="jam/css/jam.css" rel="stylesheet">
+    <link href="jam/css/jam.css" rel="stylesheet">    
+    <!--<link href="jam/css/jam12.css" rel="stylesheet">    -->
     <link href="css/project.css" rel="stylesheet">
   </head>
 
@@ -30,7 +31,7 @@
             <div class="span6">
                 <h3 id="title" class="muted"></h3>
             </div>
-            <div class="span6" style="margin-top: 20px; text-align:right;">
+            <div class="span6 logging-info">
                 <span id="user-info"></span>
                 <a href="#" id="log-out" style="display: none">&nbsp;&nbsp;&nbsp;Log out</a>
             </div>
@@ -38,10 +39,8 @@
         <div class="container" style="width: auto;">        
             <div id="taskmenu" class="navbar" style="display: none">        
                 <div class="navbar-inner">
-                    <div class="container" style="width: auto;">
-                        <ul id="menu" class="nav">
-                        </ul>
-                    </div>                
+                    <ul id="menu" class="nav">
+                    </ul>
                 </div>
             </div>            
         </div>
@@ -52,141 +51,158 @@
     <div class="templates" style="display: none">
 
         <div class="default-view">
-            <div class="modal-body">
-                <div class="view-title">
-                    <div class="row-fluid">
-                        <div id="title-left" class="span6">
-                            <h4><a href="#" id="title-text" tabindex="-1"></a></h4>
-                        </div>
-                        <div id="title-right" class="span6"></div>
-                    </div>
+            <div class="form-body">
+                <div class="form-header">
+                    <h4 id="form-title" class="header-text"><a href="#"></a></h4>                    
                 </div>
                 <div class="view-table">
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="delete-btn" class="btn expanded-btn pull-left" type="button"><i class="icon-trash"></i> __$_delete_$__<small class="muted">&nbsp;[Ctrl+Del]</small></button>
-                <button id="new-btn" class="btn expanded-btn pull-right" type="button"><i class="icon-plus"></i> __$_new_$__<small class="muted">&nbsp;[Ctrl+Ins]</small></button>
-                <button id="edit-btn" class="btn expanded-btn pull-right" type="button"><i class="icon-edit"></i> __$_edit_$__</button>
-                <div id="report-btn" class="btn-group dropup pull-right">
-                    <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+            <div class="form-footer">
+                <button id="delete-btn" class="btn expanded-btn pull-left" type="button">
+                    <i class="icon-trash"></i> __$_delete_$__<small class="muted">&nbsp;[Ctrl+Del]</small>                    
+                </button>
+                <div id="report-btn" class="btn-group dropup">
+                    <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
                         <i class="icon-print"></i> Reports
                         <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu bottom-up">
                     </ul>
                 </div>
+                <button id="edit-btn" class="btn expanded-btn" type="button">
+                    <i class="icon-edit"></i> __$_edit_$__                    
+                </button>
+                <button id="new-btn" class="btn expanded-btn" type="button">
+                    <i class="icon-plus"></i> __$_new_$__<small class="muted">&nbsp;[Ctrl+Ins]</small>                    
+                </button>
             </div>
         </div>
 
         <div class="default-edit default-details-edit">
-            <div class="modal-body">
+            <div class="form-body">
                 <div class="edit-body">
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" id="cancel-btn" class="btn expanded-btn btn_lap pull-right"><i class="icon-remove"></i> __$_cancel_$__</button>
-                <button type="button" id="ok-btn" class="btn expanded-btn pull-right"><i class="icon-ok"></i> __$_ok_$__<small class="muted">&nbsp;[Ctrl+Enter]</small></button>
+            <div class="form-footer">
+                <button type="button" id="ok-btn" class="btn btn-ary expanded-btn">
+                    <i class="icon-ok"></i> __$_ok_$__<small class="muted">&nbsp;[Ctrl+Enter]</small>                    
+                </button>
+                <button type="button" id="cancel-btn" class="btn expanded-btn">
+                    <i class="icon-remove"></i> __$_cancel_$__                    
+                </button>
             </div>
         </div>
 
         <div class="default-param">
-            <div class="modal-body">
+            <div class="form-body">
                 <div class="edit-body">
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="form-footer">
                 <select id='extension' class="pull-left" style="width: 60px">
                     <option>pdf</option>
                     <option>ods</option>
                     <option>xls</option>
                     <option>html</option>
                 </select>
-                <button type="button" id="cancel-btn" class="btn expanded-btn pull-right"><i class="icon-remove"></i> __$_close_$__</button>
-                <button type="button" id="ok-btn" class="btn expanded-btn pull-right"><i class="icon-print"></i> __$_print_$__</button>
+                <button type="button" id="ok-btn" class="btn expanded-btn">
+                    <i class="icon-print"></i> __$_print_$__                    
+                </button>
+                <button type="button" id="cancel-btn" class="btn expanded-btn">
+                    <i class="icon-remove"></i> __$_close_$__                    
+                </button>
             </div>
         </div>
 
         <div class="default-filter">
-            <div class="modal-body">
+            <div class="form-body">
                 <div class="edit-body">
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" id="cancel-btn" class="btn expanded-btn pull-right"><i class="icon-remove"></i> __$_close_$__</button>
-                <button type="button" id="ok-btn" class="btn expanded-btn pull-right"><i class="icon-filter"></i> __$_apply_$__</button>
+            <div class="form-footer">
+                <button type="button" id="ok-btn" class="btn expanded-btn">
+                    <i class="icon-filter"></i> __$_apply_$__                    
+                </button>
+                <button type="button" id="cancel-btn" class="btn expanded-btn">
+                    <i class="icon-remove"></i> __$_close_$__                    
+                </button>
             </div>
         </div>
 
         <div class="catalogs-view">
-            <div class="modal-body">
-                <div class="view-title">
-                    <div class="row-fluid">
-                        <div id="title-left" class="span6">
-                            <h4><a href="#" id="title-text" tabindex="-1"></a></h4>
-                            <h5 id="selected-div" style="display: none">
-                                <a id="selected-value" href="#" tabindex="-1"></a>
-                            </h5>
-                        </div>
-                        <div id="title-right" class="span6">
-                            <form class="form-inline pull-right" style="margin: 6px 0px;">
-                                <label  class="control-label" for="input-find" style="margin: 0px 10px;">Search by
-                                    <span class="label" id="search-fieldname"></span>
-                                </label>
-                                <input id="input-find" type="text" class="input-medium search-query" autocomplete="off">
-                                <a id="search-field-info" href="#" tabindex="-1">
-                                    <span class="badge">?</span>
-                                </a>                                
-                            </form>
-                        </div>
-                    </div>
+            <div class="form-body">
+                <div class="form-header">
+                    <h4 id="form-title" class="header-text"><a href="#"></a></h4>                    
+                    <h5 id="selected-div" class="header-text" style="display: none">
+                        <a id="selected-value" href="#"></a>
+                    </h5>
+                    <form id="search-form" class="form-inline pull-right">
+                        <label  class="control-label" for="search-input">Search by
+                            <span class="label" id="search-fieldname"></span>
+                        </label>
+                        <input id="search-input" type="text" class="input-medium search-query" autocomplete="off">
+                        <a id="search-field-info" href="#" tabindex="-1">
+                            <span class="badge">?</span>
+                        </a>                                
+                    </form>
                 </div>
                 <div class="view-table">
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="delete-btn" class="btn expanded-btn pull-left" type="button"><i class="icon-trash"></i> __$_delete_$__<small class="muted">&nbsp;[Ctrl+Del]</small></button>
-                <button id="new-btn" class="btn expanded-btn pull-right" type="button"><i class="icon-plus"></i> __$_new_$__<small class="muted">&nbsp;[Ctrl+Ins]</small></button>
-                <button id="edit-btn" class="btn expanded-btn pull-right" type="button"><i class="icon-edit"></i> __$_edit_$__</button>
-                <div id="report-btn" class="btn-group dropup pull-right">
-                    <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+            <div class="form-footer">
+                <button id="delete-btn" class="btn expanded-btn pull-left" type="button">
+                    <i class="icon-trash"></i> __$_delete_$__<small class="muted">&nbsp;[Ctrl+Del]</small>                    
+                </button>
+                <div id="report-btn" class="btn-group dropup">
+                    <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
                         <i class="icon-print"></i> Reports
                         <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu bottom-up">
                     </ul>
                 </div>
+                <button id="edit-btn" class="btn expanded-btn" type="button">
+                    <i class="icon-edit"></i> __$_edit_$__                    
+                </button>
+                <button id="new-btn" class="btn expanded-btn" type="button">
+                    <i class="icon-plus"></i> __$_new_$__<small class="muted">&nbsp;[Ctrl+Ins]</small>                    
+                </button>
             </div>
         </div>
 
         <div class="journals-view">
-            <div class="modal-body">
-                <div class="view-title">
-                    <div class="row-fluid">
-                        <div id="title-left" class="span4">
-                            <h4><a href="#" id="title-text" tabindex="-1"></a></h4>
-                        </div>
-                        <div id="title-right" class="span8">
-                            <h5 id="filter-text" class="pull-right"></h5>
-                        </div>
-                    </div>
+            <div class="form-body">
+                <div class="form-header">
+                    <h4 id="form-title" class="header-text"><a href="#"></a></h4>                    
+                    <h5 id="filter-text" class="header-text pull-right"></h5>                
                 </div>
-                <div class="view-table">
+                <div class="view-master">
+                </div>
+                <div class="view-detail" style="margin-top: 4px; margin-bottom: 4px">
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="delete-btn" class="btn expanded-btn pull-left" type="button"><i class="icon-trash"></i> __$_delete_$__<small class="muted">&nbsp;[Ctrl+Del]</small></button>
-                <button id="new-btn" class="btn expanded-btn pull-right" type="button"><i class="icon-plus"></i> __$_new_$__<small class="muted">&nbsp;[Ctrl+Ins]</small></button>
-                <button id="edit-btn" class="btn expanded-btn pull-right" type="button"><i class="icon-edit"></i> __$_edit_$__</button>
-                <button id="filter-btn" class="btn expanded-btn pull-right" type="button"><i class="icon-filter"></i> __$_filter_$__</button>
-                <div id="report-btn" class="btn-group dropup pull-right">
-                    <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
-                        <i class="icon-print"></i> __$_reports_$__
+            <div class="form-footer">
+                <button id="delete-btn" class="btn expanded-btn pull-left" type="button">
+                    <i class="icon-trash"></i> __$_delete_$__<small class="muted">&nbsp;[Ctrl+Del]</small>                    
+                </button>
+                <div id="report-btn" class="btn-group dropup">
+                    <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
+                        <i class="icon-print"></i> Reports
                         <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu bottom-up">
                     </ul>
                 </div>
+                <button id="filter-btn" class="btn expanded-btn" type="button">
+                    <i class="icon-filter"></i> __$_filter_$__                    
+                </button>
+                <button id="edit-btn" class="btn expanded-btn" type="button">
+                    <i class="icon-edit"></i> __$_edit_$__                    
+                </button>
+                <button id="new-btn" class="btn expanded-btn" type="button">
+                    <i class="icon-plus"></i> __$_new_$__<small class="muted">&nbsp;[Ctrl+Ins]</small>                    
+                </button>
             </div>
         </div>
 

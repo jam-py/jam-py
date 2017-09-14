@@ -4906,9 +4906,10 @@
 
             container.empty();
 
-            form = $('<form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").appendTo(container));
+//            form = $('<form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").appendTo(container));
+            form = $('<form class="row-fluid" autocomplete="off"></form>').appendTo(container);
             if (options.in_well) {
-                form.addClass('well');
+                form.addClass('form-well');
             }
             if (options.autocomplete) {
                 form.attr("autocomplete", "on")
@@ -4970,7 +4971,7 @@
             container.empty();
             form = $('<form form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
             if (options.in_well) {
-                form.addClass('well');
+                form.addClass('form-well');
             }
             if (options.autocomplete) {
                 form.attr("autocomplete", "on")
@@ -5486,7 +5487,7 @@
             container.empty();
             form = $('<form form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
             if (options.in_well) {
-                form.addClass('well');
+                form.addClass('form-well');
             }
             if (options.autocomplete) {
                 form.attr("autocomplete", "on")
@@ -9553,6 +9554,7 @@
                     .attr("tabindex", tabIndex + "");
             }
             $controls = $('<div class="controls"></div>');
+//            $controls.addClass(field.field_name)
             if (this.label_width) {
                 $controls.css('margin-left', this.label_width + 20 + 'px');
             }
@@ -9708,6 +9710,7 @@
 
             if (!this.grid && this.field.field_help) {
                 $help = $('<a href="#" tabindex="-1"><span class="badge help-badge">?</span></a>');
+//                $help = $('<span class="help-inline"><a href="#" tabindex="-1"><span class="badge help-badge">?</span></a></span>');
                 $help
                     .popover({
                         container: 'body',
@@ -9721,7 +9724,9 @@
                         e.preventDefault();
                     });
                 if ($btnCtrls) {
-                    $btnCtrls.append($help);
+//                    $btnCtrls.append($help);
+                    $controls.append($help);
+                    $help.find('span').addClass('btns-help-badge')
                 }
                 else {
                     $controls.append($help);

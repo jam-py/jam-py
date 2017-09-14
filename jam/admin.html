@@ -296,29 +296,45 @@
             </div>
         </div>
 
-        <div class="sys_lang-view">
+        <div class="sys_langs-view">
             <div class="modal-body">
                 <div class="view-title"></div>
                 <table class="table-fixed">
                     <tr>
-                        <td id="left-box" class="td-panel" style="width: 290px; padding: 4px">
-                            <div id="langs"> </div>
-                        </td>
                         <td id="center-box" class="td-panel" style="width: auto">
-                            <ul class="nav nav-tabs">
-                                <li class="active"><a href="#">Language</a></li>
-                                <li><a href="#">Locale</a></li>
-                            </ul>
-                            <div id="keywords">
+                            <div class="view-table langs-table">
+                        </td>
+                        <td id="right-box" class="td-panel" style="width: 220px; padding: 4px">
+                            <div class="text-center">
+                                <button id="select-btn" class="btn vert-btn" type="button">Select</button>
+                                <div class="btns-divider"></div>
+                                <button id="edit-btn" class="btn vert-btn" type="button">Edit</button>
+                                <button id="new-btn" class="btn vert-btn" type="button">New</button>
                             </div>
                         </td>
                     </tr>
                 </table>
             </div>
+        </div>
+
+        <div class="sys_langs-edit">
+            <div class="modal-body">
+                <ul class="nav nav-tabs" id="langs-edit">
+                    <li class="active"><a href="#langs-language">Language</a></li>
+                    <li><a href="#langs-locale">Locale</a></li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="langs-language">
+                        11111111
+                    </div>
+                    <div class="tab-pane" id="langs-locale">
+                        22222222
+                    </div>
+                </div>
+            </div>
             <div class="modal-footer">
-                <span id="error-info" class="code_error pull-left"></span>
-                <button type="button" id="cancel-btn" class="btn pull-right"><i class="icon-remove"></i> Cancel<small class="muted">&nbsp;[Esc]</small></button>
-                <button type="button" id="ok-btn" class="btn pull-right"><i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+S]</small></button>
+                <button type="button" id="cancel-btn" class="btn expanded-btn pull-right"><i class="icon-remove"></i> Cancel<small class="muted">&nbsp;[Esc]</small></button>
+                <button type="button" id="ok-btn" class="btn expanded-btn pull-right"><i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+S]</small></button>
             </div>
         </div>
 
