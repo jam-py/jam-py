@@ -175,7 +175,7 @@ function Events1() { // demo
 		item.clear_filters();
 	
 		if (item.view_form.hasClass('modal')) {
-			item.view_options.width = 1100;
+			item.view_options.width = 1060;
 			item.view_form.find("#form-title").hide();
 		}
 		else {

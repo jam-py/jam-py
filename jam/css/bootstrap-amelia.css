@@ -7381,3 +7381,11 @@ body {
     padding: 1px 4px;
     line-height: 22px;
 }
+
+.form-footer {
+    background-color: #17909b;
+    border-top: 1px solid #b7ecf3;
+    -webkit-box-shadow: inset 0 1px 0 #b7ecf3;
+    -moz-box-shadow: inset 0 1px 0 #b7ecf3;
+    box-shadow: inset 0 1px 0 #b7ecf3;
+}

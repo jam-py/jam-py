@@ -32,7 +32,7 @@ event handler:
         });
     }
 
-In this event handler, the application, first, sets the text of the ``h3`` div with
+In this event handler, the application, first, sets the text of the div with
 id="title" to the value of the
 :doc:`item_caption </refs/client/abstr_item/at_item_caption>` attribute of the
 task.

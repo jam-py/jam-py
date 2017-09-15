@@ -170,6 +170,7 @@ class App():
         return response(environ, start_response)
 
     def check_modified(self, file_path, environ):
+        #~ return
         if environ.get('HTTP_IF_MODIFIED_SINCE'):
             date1 = parse_date(environ['HTTP_IF_MODIFIED_SINCE'])
             date2 = datetime.datetime.utcfromtimestamp(os.path.getmtime(file_path)).replace(microsecond=0)

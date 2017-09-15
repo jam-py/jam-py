@@ -4909,7 +4909,7 @@
 //            form = $('<form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").appendTo(container));
             form = $('<form class="row-fluid" autocomplete="off"></form>').appendTo(container);
             if (options.in_well) {
-                form.addClass('form-well');
+                form.addClass('well');
             }
             if (options.autocomplete) {
                 form.attr("autocomplete", "on")
@@ -4971,7 +4971,7 @@
             container.empty();
             form = $('<form form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
             if (options.in_well) {
-                form.addClass('form-well');
+                form.addClass('well');
             }
             if (options.autocomplete) {
                 form.attr("autocomplete", "on")
@@ -5487,7 +5487,7 @@
             container.empty();
             form = $('<form form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
             if (options.in_well) {
-                form.addClass('form-well');
+                form.addClass('well');
             }
             if (options.autocomplete) {
                 form.attr("autocomplete", "on")

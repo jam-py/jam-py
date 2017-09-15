@@ -2,10 +2,10 @@
 Workflow
 ========
 
-In Jam.py framework two tasks work at the same time: Administrator and Project. 
-Each of which represents a tree of objects - there are the Administrator task 
-tree and the Project task tree. So prior to consideration of the Jam.py workflow,
-it's necessary to be familiar with the concept of the 
+In the Jam.py framework, two tasks work at the same time: Administrator and Project. 
+Each of them represents a tree of objects - there is the Administrator task 
+tree and the Project task tree. Therefore, before considering the Jam.py workflow, 
+you need to familiarize yourself with the concept of the 
 :doc:`task tree <task_tree>`.
 
 The the Jam.py workflow is the following:
@@ -61,5 +61,15 @@ The the Jam.py workflow is the following:
   of the execution to the client. These server methods could trigger their own 
   events that can override the default behavior. See
   :doc:`Server side programming <server/index>`
+
+Video
+=====
+
+`Form events`_ and `Client-server interactions`_ video tutorials illustrate 
+the workflow of Jam.py project.
+ 
+.. _`Form events`: https://youtu.be/DY463lcv0R4
+
+.. _`Client-server interactions`: https://youtu.be/nLOhdA2FX0I
 
   

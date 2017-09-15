@@ -7139,3 +7139,11 @@ textarea[readonly] {
     padding: 2px 4px;
     line-height: 22px;
 }
+
+.form-footer {
+  background-color: #272b30;
+  border-top: none;
+  -webkit-box-shadow: none;
+     -moz-box-shadow: none;
+          box-shadow: none;
+}

@@ -27,12 +27,59 @@ input.dropdown-toggle {
     width: 100%;
 }
 
+
 form {
-    margin-bottom: 6px;
+    margin-bottom: 10px;
+    padding: 9px;
 }
 
 .form-horizontal .control-group {
+    margin-bottom: 10px;
+}
+
+.btn-bar {
+/*
+    margin-top: 14px;
+*/
+}
+
+.modal {
+    width: 680px;
+}
+
+
+.form-body .well,
+.modal-body .well {
+    min-height: 20px;
+/*
+    background-color: #f5f5f5;
+    border: 1px solid #e3e3e3;
+    -webkit-border-radius: 4px;
+     -moz-border-radius: 4px;
+          border-radius: 4px;
+    -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+     -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+          box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+*/
+    width: auto;
+    margin-top: 6px;
     margin-bottom: 6px;
+    padding: 6px;
+    padding-bottom: 0;
+}
+
+.modal.fade {
+    -webkit-transition: opacity 0.1s linear;
+       -moz-transition: opacity 0.1s linear;
+         -o-transition: opacity 0.1s linear;
+            transition: opacity 0.1s linear;
+}
+
+.modal-backdrop,
+.modal-backdrop.fade.in{
+    opacity: 0.2;
+    filter: alpha(opacity=20);
+    background: #fff;
 }
 
 .pager-input {
@@ -52,24 +99,14 @@ form {
 .help-badge {
     margin-left: 5px;
     cursor: pointer;
-    color: #0088cc;
-    background-color: #ffffff;
 }
 
-.help-badge:hover {
-    color: #ffffff;
-    background-color: #3a87ad;
+.btns-help-badge {
+    margin-left: 18px;
 }
-
-/*
-.input-button {
-    padding: 1px 4px;
-    line-height: 20px;
-}
-*/
 
 .expanded-btn {
-    min-width: 100px;
+    min-width: 120px;
 }
 
 .input-integer {
@@ -85,7 +122,7 @@ form {
 }
 
 .input-date {
-  width: 27%;
+  width: 28%;
 }
 
 .input-datetime {
@@ -93,19 +130,23 @@ form {
 }
 
 .input-with-buttons {
-  width: 100%;
+    width: 85%;
 }
 
 .input-lookupitem {
-  width: 71%;
+    width: 78%;
+    width: calc(100% - 2 * 40px);
+    width: -moz-calc(100% - 2 * 40px);
+    width: -webkit-calc(100% - 2 * 40px);
+    width: -o-calc(100% - 2 * 40px);
 }
 
 .input-lookupvalues {
-  width: 32%;
+  width: 54%;
 }
 
 .input-text {
-  width: 80%;
+  width: 85%;
 }
 
 .input-blob {
@@ -132,31 +173,6 @@ form {
     font-size: 13px;
 }
 
-.modal {
-    width: 680px;
-}
-
-.modal .well {
-    width: inherit;
-    margin-bottom: 6px;
-    padding: 6px;
-    padding-bottom: 0;
-}
-
-.modal.fade {
-    -webkit-transition: opacity 0.1s linear;
-       -moz-transition: opacity 0.1s linear;
-         -o-transition: opacity 0.1s linear;
-            transition: opacity 0.1s linear;
-}
-
-.modal-backdrop,
-.modal-backdrop.fade.in{
-    opacity: 0.2;
-    filter: alpha(opacity=20);
-    background: #fff;
-}
-
 .inner-table {
     outline: none;
 }
@@ -177,10 +193,8 @@ form {
 .tooltip-inner {
   max-width: 400px;
   padding: 8px;
-  color: #ffffff;
   text-align: center;
   text-decoration: none;
-  background-color: #b94a48;
   -webkit-border-radius: 4px;
      -moz-border-radius: 4px;
           border-radius: 4px;
@@ -198,10 +212,6 @@ form {
     position:    absolute;
     background: transparent;
     border:     1px dotted #999;
-}
-
-.datepicker {
-    font-size: 12px;
 }
 
 .dbtable thead th {
@@ -291,4 +301,97 @@ form {
 
 .accordion-group.history-group {
     border-color: #cceeff;
+}
+
+.form-body {
+  position: relative;
+  overflow-y: auto;
+}
+
+.modal .form-body {
+  padding: 15px;
+}
+
+.form-header {
+  padding: 6px 0 6px;
+  margin-bottom: 0;
+  *zoom: 1;
+}
+
+.form-header:before,
+.form-header:after {
+  display: table;
+  line-height: 0;
+  content: "";
+}
+
+.form-header:after {
+  clear: both;
+}
+
+.form-header .btn + .btn {
+  margin-bottom: 0;
+  margin-left: 5px;
+}
+
+.form-header .btn-group .btn + .btn {
+  margin-left: -1px;
+}
+
+.form-header .btn-block + .btn-block {
+  margin-left: 0;
+}
+
+.form-footer {
+  padding: 14px 15px 15px;
+  margin-bottom: 0;
+  text-align: right;
+  -webkit-border-radius: 0 0 6px 6px;
+     -moz-border-radius: 0 0 6px 6px;
+          border-radius: 0 0 6px 6px;
+  *zoom: 1;
+}
+
+.form-footer:before,
+.form-footer:after {
+  display: table;
+  line-height: 0;
+  content: "";
+}
+
+.form-footer:after {
+  clear: both;
+}
+
+.form-footer .btn + .btn {
+  margin-bottom: 0;
+  margin-left: 5px;
+}
+
+.form-footer .btn-group .btn + .btn {
+  margin-left: -1px;
+}
+
+.form-footer .btn-block + .btn-block {
+  margin-left: 0;
+}
+
+.form-header .form-inline,
+.form-footer .form-inline {
+    margin-bottom: 0;
+    padding: 0 9px;
+    *zoom: 1;
+}
+
+.header-text {
+    display: inline;
+    vertical-align: middle;
+    margin: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.logging-info {
+    margin-top: 20px;
+    text-align: right;
 }

@@ -1,0 +1,264 @@
+=============
+Form exapmles
+=============
+
+Currently, the Framework uses `Bootstrap 2`_ with a simple and easy to use grid
+system that uses 12 columns and allows you to create any kind of layouts.
+It is responsive and have many components, such as dropdowns, 
+dropdown buttons, button groups, navs, navbars, tabs, breadcrumbs, badges,
+progress bars, etc.
+
+.. _`Bootstrap 2`: http://getbootstrap.com/2.3.2/index.html
+
+Default edit form template
+--------------------------
+
+.. code-block:: html
+
+    <div class="default-edit default-details-edit">
+        <div class="modal-body">
+            <div class="edit-body">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" id="cancel-btn" class="btn expanded-btn pull-right">
+                <i class="icon-remove"></i> Cancel
+            </button>
+            <button type="button" id="ok-btn" class="btn btn-ary expanded-btn pull-right">
+                <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
+            </button>
+        </div>
+    </div>
+
+.. code-block:: js
+
+    function on_edit_form_created(item) {
+        var options = {
+                col_count: 1,
+                create_inputs: true
+            };
+        if (item.init_inputs) {
+            item.init_inputs(item, options);
+        }
+        if (options.create_inputs) {
+            item.create_inputs(item.edit_form.find(".edit-body"), options);
+        }
+        item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
+        item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
+    }
+
+.. image:: /programming/_images/default_edit_form_template.png
+	:align: center
+	:alt: Default edit form template
+
+
+Edit form template with tabs
+----------------------------
+
+.. code-block:: html
+
+    <div class="customers-edit">
+        <div class="modal-body">
+            <ul class="nav nav-tabs" id="customer-tabs">
+                <li class="active"><a href="#cust-name">Name</a></li>
+                <li><a href="#cust-address">Address</a></li>
+                <li><a href="#cust-contact">Contact</a></li>
+            </ul>
+            <div class="tab-content">
+                <div class="tab-pane active" id="cust-name">
+                </div>
+                <div class="tab-pane" id="cust-address">
+                </div>
+                <div class="tab-pane" id="cust-contact">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" id="cancel-btn" class="btn expanded-btn pull-right">
+                <i class="icon-remove"></i> Cancel
+            </button>
+            <button type="button" id="ok-btn" class="btn btn-ary expanded-btn pull-right">
+                <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
+            </button>
+        </div>
+    </div>
+
+.. code-block:: js
+
+    function on_edit_form_created(item) {
+    	item.edit_form.find('#customer-tabs a').click(function (e) {
+    	  e.preventDefault();
+    	  $(this).tab('show');
+    	});
+    	item.create_inputs(item.edit_form.find("#cust-name"), 
+    	    {fields: ['firstname', 'lastname', 'company', 'support_rep_id']}
+    	);
+    	item.create_inputs(item.edit_form.find("#cust-address"), 
+    	    {fields: ['country', 'state', 'address', 'postalcode']}
+    	);
+    	item.create_inputs(item.edit_form.find("#cust-contact"), 
+    	    {fields: ['phone', 'fax', 'email']}
+    	);
+    }
+
+.. image:: /programming/_images/edit_form_template_with_tabs.png
+	:align: center
+	:alt: Edit form template with tabs
+
+
+Edit form template using grid layout
+------------------------------------
+
+.. code-block:: html
+
+    <div class="tracks-edit">
+        <div class="modal-body">
+            <div class="row-fluid">
+                <div id="edit-top" class="span12 edit-border"></div>
+            </div>
+            <div class="row-fluid">
+                <div id="edit-left" class="span6 edit-border"></div>
+                <div id="edit-right" class="span6 edit-border"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button 
+                type="button" id="cancel-btn" class="btn expanded-btn pull-right">
+                <i class="icon-remove"></i> Cancel</button>
+            <button type="button" id="ok-btn" class="btn expanded-btn pull-right">
+                <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small></button>
+        </div>
+    </div>
+
+
+.. image:: /programming/_images/edit_form_tepmlate_layout.png
+	:align: center
+	:alt: Edit form template using grid layout
+
+Catalogs view form template
+-----------------------------------
+
+.. code-block:: html
+
+    <div class="catalogs-view">
+        <div class="modal-body">
+            <div class="view-title">
+                <div class="row-fluid">
+                    <div id="title-left" class="span6">
+                        <h4><a href="#" id="title-text" tabindex="-1"></a></h4>
+                        <h5 id="selected-div" style="display: none">
+                            <a id="selected-value" href="#" tabindex="-1"></a>
+                        </h5>
+                    </div>
+                    <div id="title-right" class="span6">
+                        <form class="form-inline pull-right" style="margin: 6px 0px;">
+                            <label  class="control-label" for="input-find" style="margin: 0px 10px;">Search by
+                                <span class="label" id="search-fieldname"></span>
+                            </label>
+                            <input id="input-find" type="text" class="input-medium search-query" autocomplete="off">
+                            <a id="search-field-info" href="#" tabindex="-1">
+                                <span class="badge">?</span>
+                            </a>                                
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="view-table">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="delete-btn" class="btn expanded-btn pull-left" type="button">
+                <i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small>
+            </button>
+            <button id="new-btn" class="btn expanded-btn pull-right" type="button">
+                <i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small>
+            </button>
+            <button id="edit-btn" class="btn expanded-btn pull-right" type="button">
+                <i class="icon-edit"></i> Edit
+            </button>
+            <div id="report-btn" class="btn-group dropup pull-right">
+                <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
+                    <i class="icon-print"></i> Reports
+                    <span class="caret"></span>
+                </a>
+                <ul class="dropdown-menu bottom-up">
+                </ul>
+            </div>
+        </div>
+    </div>
+
+
+.. image:: /programming/_images/catalogs_view_teplate.png
+	:align: center
+	:alt: Catalogs view form template
+
+View form template with buttons at the top
+------------------------------------------
+
+.. code-block:: html
+
+    <div class="customers-view">
+        <div class="modal-body">
+            <div class="view-title">
+                <div class="row-fluid">
+                    <div id="title-left" class="span2">
+                        <h4><a href="#" id="title-text" tabindex="-1"></a></h4>
+                        <h5 id="selected-div" style="display: none">
+                            <a id="selected-value" href="#" tabindex="-1"></a>
+                        </h5>
+                    </div>
+                    <div class="span5 btn-bar">       
+                        <div class="btn-group">
+                            <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
+                                Action
+                                <span class="caret"></span>
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a id="new-btn" href="#">
+                                    <i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small>
+                                </a></li>
+                                <li><a id="edit-btn" href="#">
+                                    <i class="icon-edit"></i> Edit
+                                </a></li>
+                                <li class="divider"></li>
+                                <li><a id="delete-btn" href="#">
+                                    <i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small>
+                                </a></li>                                    
+                            </ul>
+                        </div>                            
+                        <div id="report-btn" class="btn-group dropup pull-right">
+                            <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
+                                <i class="icon-print"></i> Reports
+                                <span class="caret"></span>
+                            </a>
+                            <ul class="dropdown-menu bottom-up">
+                            </ul>
+                        </div>
+                        <button style="display: none" id="email-btn" class="btn expanded-btn" type="button">
+                            <i class="icon-pencil"></i> Send email
+                        </button>                
+                        <button style="display: none" id="print-btn" class="btn expanded-btn" type="button">
+                            <i class="icon-print"></i> Print
+                        </button>                
+                    </div>
+                    <div id="title-right" class="span5">
+                        <form class="form-inline pull-right" style="margin: 6px 0px;">
+                            <label  class="control-label" for="input-find" style="margin: 0px 10px;">Search by
+                                <span class="label" id="search-fieldname"></span>
+                            </label>
+                            <input id="input-find" type="text" class="input-medium search-query" autocomplete="off">
+                            <a id="search-field-info" href="#" tabindex="-1">
+                                <span class="badge">?</span>
+                            </a>                                
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="view-table">
+            </div>
+        </div>
+    </div>
+
+.. image:: /programming/_images/view_template_btns_top.png
+	:align: center
+	:alt: View form template with buttons at the top

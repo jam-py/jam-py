@@ -1,0 +1,15 @@
+==============
+Version 4.0.84
+==============
+
+Library:
+
+* Python 3 is now supported
+* The work is started to support multiple languages
+* Reports on server now have ext attribute
+
+Demo:
+    
+* Example of using 
+  :doc:`on_convert_report </refs/server/reports/on_convert_report>`
+  event of reports group on the server is created

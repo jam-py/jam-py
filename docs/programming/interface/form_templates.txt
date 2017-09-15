@@ -30,7 +30,7 @@ For example:
 	
 is an edit form template of the **invoices** item. 
 
-For a detail item before its name there should be the name of its master, 
+For a detail before its name there should be the name of its master, 
 separated by a hyphen: 
 
 .. code-block:: html
@@ -39,7 +39,7 @@ separated by a hyphen:
 		...
 	</div>
 	
-If an item doesn't have a form template then its owner form template, if 
+If an item doesn't have a form template then the form template of its owner, if 
 defined, will be used. 
 
 So the template
@@ -70,3 +70,25 @@ them and their owners.
 
 When a new project is created the index.html already contains such templates.
 
+Below is an example of default edit form template from index.html file:
+
+.. code-block:: html
+
+    <div class="default-edit default-details-edit">
+        <div class="modal-body">
+            <div class="edit-body">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" id="cancel-btn" class="btn expanded-btn pull-right">
+                <i class="icon-remove"></i> Cancel
+            </button>
+            <button type="button" id="ok-btn" class="btn btn-ary expanded-btn pull-right">
+                <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
+            </button>
+        </div>
+    </div>
+
+There are more template examples in the
+:doc:`Form exapmles <form_exapmles>`
+section.

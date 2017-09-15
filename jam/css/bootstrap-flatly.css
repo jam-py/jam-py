@@ -6928,3 +6928,11 @@ textarea[readonly] {
 .badge {
     padding: 0 0;
 }
+
+.form-footer {
+  background-color: #ecf0f1;
+  border-top: none;
+  -webkit-box-shadow: none;
+     -moz-box-shadow: none;
+          box-shadow: none;
+}

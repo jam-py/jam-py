@@ -6656,3 +6656,11 @@ textarea[readonly] {
     padding: 2px 4px;
     line-height: 18px;
 }
+
+.form-footer {
+  background: transparent;
+  border-top: none;
+  -webkit-box-shadow: none;
+     -moz-box-shadow: none;
+          box-shadow: none;
+}

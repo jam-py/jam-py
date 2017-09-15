@@ -32,38 +32,42 @@ Tutorials
 
 If you are new to Jam.py, we highly recommend that you watch these video tutorials
 
-Tutorial 1 - `Task tree`_ 
+Tutorial 1 - `Getting started`_ 
 
-.. _`Task tree`: https://www.youtube.com/watch?v=hsSKqEh6vL4
+.. _`Getting started`: https://youtu.be/4Sd3YKSUoy4
 
-Tutorial 2 - Forms_
+Tutorial 2 - `Task tree`_ 
 
-.. _Forms: https://www.youtube.com/watch?v=DY463lcv0R4
+.. _`Task tree`: https://youtu.be/hsSKqEh6vL4
 
-Tutorial 3 - `Form events`_
+Tutorial 3 - Forms_
+
+.. _Forms: https://youtu.be/3sh-TSt52P0
+
+Tutorial 4 - `Form events`_
  
-.. _`Form events`: https://www.youtube.com/watch?v=DY463lcv0R4
+.. _`Form events`: https://youtu.be/DY463lcv0R4
 
-Tutorial 4 - `Data aware controls`_
+Tutorial 5 - `Data aware controls`_
  
-.. _`Data aware controls`: https://www.youtube.com/watch?v=fMTq8P4XdGw
+.. _`Data aware controls`: https://youtu.be/fMTq8P4XdGw
 
-Tutorial 5 - `Datasets`_
+Tutorial 6 - `Datasets`_
  
-.. _`Datasets`: https://www.youtube.com/watch?v=gHTYj7h9ljI
+.. _`Datasets`: https://youtu.be/gHTYj7h9ljI
 
-Tutorial 6 - `Datasets Part 2`_
+Tutorial 7 - `Datasets Part 2`_
  
-.. _`Datasets Part 2`: https://www.youtube.com/watch?v=1bUGmgBfrNw
+.. _`Datasets Part 2`: https://youtu.be/1bUGmgBfrNw
 
-Tutorial 7 - `Fields and filters`_
+Tutorial 8 - `Fields and filters`_
  
-.. _`Fields and filters`: https://www.youtube.com/watch?v=ahXqlZrA0fQ
+.. _`Fields and filters`: https://youtu.be/ahXqlZrA0fQ
 
-Tutorial 8 - `Client-server interactions`_
+Tutorial 9 - `Client-server interactions`_
  
-.. _`Client-server interactions`: https://www.youtube.com/watch?v=nLOhdA2FX0I
+.. _`Client-server interactions`: https://youtu.be/nLOhdA2FX0I
 
 Tutorial 9 - `Working with data on the server`_
  
-.. _`Working with data on the server`: https://www.youtube.com/watch?v=dDK78lIjHHY
+.. _`Working with data on the server`: https://youtu.be/dDK78lIjHHY

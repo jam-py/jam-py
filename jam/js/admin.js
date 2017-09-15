@@ -2893,7 +2893,7 @@ function Events15() { // admin.catalogs.sys_fields_editor
 		}
 		item.source = item.copy(),
 		item.dest = item.copy();
-		item.view_options.width = 680;
+		item.view_options.width = 662;
 	
 		view_fields = [];
 		for (i = 0; i < item.source_def.length; i++) {

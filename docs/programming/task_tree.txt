@@ -93,15 +93,56 @@ of tracks in an customer's invoice. So there are two items with the same name
 Every item is an attribute of its owner and all items, tables and reports are 
 attibutes the task as well (they all have a unique ``item_name``). 
 
-Jam.py is an event driven framework. Each event has, as a parameter, an item (or field)
-that triggered the event. For example (on the client):
+A task is a global object on the client. To access it, just type ``task`` 
+anywhere in the code.
+
+On the server, the task is not global. Jam.py is an event-driven environment.
+Each event has as an parameter the item (or field) that triggered the event.
+Functions defined in the server module of an item that can be executed from 
+the client module using the 
+:doc:`server </refs/client/abstr_item/m_server>`
+method have the corresponding item as the first parameter as well.
+
+
+In the example below, the ``send_email`` function, defined in the client module 
+of the **Mail** item in the 
+:doc:`Demo project </intro/demo_project>`
+executes ``send_email`` function defined in the server module of the **Mail** 
+item:
 
 .. code-block:: js
 
-    function on_after_append(item) {
+    function send_email(item) {
+        var customers = task.customers.selections;
+        try {
+            item.post();
+            if (!customers.length) {
+                customers.push(task.customers.id.value);
+            }
+            item.server('send_email', [customers, item.subject.value, item.mess.value], 
+                function(result, err) {
+                    // the code processing the result of function execution
+                }
+            );
+        }
+        catch (e) {}
     }
 
-Knowing this item, we can get access to any item of the task tree. For example to
+The ``send_email`` function on the server have the **Mail** item of the server
+task tree as the first argument and uses its task attribute to access the 
+**Customers** item of the task tree:
+
+.. code-block:: py
+
+    import smtplib
+    
+    def send_email(item, customers, subject, mess):
+        cust = item.task.customers.copy()
+        cust.set_where(id__in=customers)
+        cust.open()
+        # the code sening email
+
+Knowing an item, we can access any other item of the task tree. For example to
 get access to the **customers** catalog we can write
 
 .. code-block:: js
@@ -125,3 +166,11 @@ the task, that can be expanded in the event handler of the group, and finally,
 if nessesary, can be specified in the event handler of the item itself. For more 
 details see
 :doc:`Form events <interface/form_events>`
+
+Video
+=====
+
+The `Task tree`_  video tutorial demonstrates the task tree using
+:doc:`Demo project </intro/demo_project>`
+
+.. _`Task tree`: https://youtu.be/hsSKqEh6vL4
