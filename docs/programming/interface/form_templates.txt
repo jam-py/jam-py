@@ -75,16 +75,16 @@ Below is an example of default edit form template from index.html file:
 .. code-block:: html
 
     <div class="default-edit default-details-edit">
-        <div class="modal-body">
+        <div class="form-body">
             <div class="edit-body">
             </div>
         </div>
-        <div class="modal-footer">
-            <button type="button" id="cancel-btn" class="btn expanded-btn pull-right">
-                <i class="icon-remove"></i> Cancel
-            </button>
-            <button type="button" id="ok-btn" class="btn btn-ary expanded-btn pull-right">
+        <div class="form-footer">
+            <button type="button" id="ok-btn" class="btn btn-ary expanded-btn">
                 <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
+            </button>
+            <button type="button" id="cancel-btn" class="btn expanded-btn">
+                <i class="icon-remove"></i> Cancel
             </button>
         </div>
     </div>

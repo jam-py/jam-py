@@ -30,8 +30,9 @@ records of the item dataset.
 
 The following parameters are passed to the method:
 
-* ``container`` - an JQuery object that will contain the table. Before creating 
-  the table an application empties the container.
+* ``container`` - an JQuery object that will contain the table, if 
+  container length is 0 (no container), the method returns. Before creating 
+  the table the application empties the container.
 
 * ``options`` - options that specify the way the table will be displayed
 

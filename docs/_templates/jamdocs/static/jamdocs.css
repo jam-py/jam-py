@@ -70,6 +70,7 @@ a.headerlink:hover {
 
 .note, .admonition {
     border: 1px solid #b94a48;
+    border-radius: 4px;
     padding: 10px;
     margin-bottom: 4px;
 }
@@ -132,7 +133,7 @@ code {
   font-size: 18px;
   border-radius: 4px;
   background-color: #ffffff;
-  color: #076654;
+  color: #317eac;
 }
 
 dt {

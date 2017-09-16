@@ -40,5 +40,12 @@ To update visual controls use the
 :doc:`update_controls </refs/client/item/m_update_controls>`
 method. 
 
+Videos
+======
+
+`Data aware controls`_
+ 
+.. _`Data aware controls`: https://youtu.be/fMTq8P4XdGw
+
 
 

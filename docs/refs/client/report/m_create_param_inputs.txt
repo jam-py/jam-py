@@ -11,8 +11,8 @@ create_param_inputs
 Description
 ===========
 
-Use ``create_param_inputs`` to create data-aware visual controls (inputs, cheboxes) 
-for editing of report parameters.
+Use ``create_param_inputs`` to create data-aware visual controls (inputs, 
+cheboxes) for editing of report parameters.
 
 This method is usually used in ``on_param_form_created`` events triggered by
 :doc:`create_param_form <m_create_param_form>`
@@ -22,7 +22,8 @@ method.
 
 The following parameters are passed to the method:
 
-* ``container`` - an JQuery object that will contain visual controls
+* ``container`` - a JQuery object that will contain visual controls, if 
+  container length is 0 (no container), the method returns.
 
 * ``options`` - options that specify how controls are displayed
 
@@ -46,7 +47,7 @@ The ``options`` parameter is an object that may have following attributes:
 * ``autocomplete`` - the default value is false. If this attribute is set to 
   true, the autocomplete attribute of controls is set to "on"   
 
-Before creating controls an application empties a container.
+Before creating controls the application empties the container.
 
 Example
 =======

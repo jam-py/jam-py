@@ -11,10 +11,10 @@ create_filter_inputs
 Description
 ===========
 
-Use ``create_filter_inputs`` to create data-aware visual controls (inputs, cheboxes) 
-for editing 
+Use ``create_filter_inputs`` to create data-aware visual controls (inputs, 
+cheboxes) for editing 
 :doc:`filters <at_filters>`
-of the item.
+of an item.
 
 This method is usually used in ``on_filter_form_created`` events triggered by
 :doc:`create_filter_form <m_create_filter_form>`
@@ -22,7 +22,8 @@ method.
 
 The following parameters are passed to the method:
 
-* ``container`` - an JQuery object that will contain visual controls
+* ``container`` - a JQuery object that will contain visual controls, if 
+  container length is 0 (no container), the method returns.
 
 * ``options`` - options that specify how controls are displayed
 
@@ -48,7 +49,7 @@ The ``options`` parameter is an object that may have following attributes:
 * ``autocomplete`` - the default value is false. If this attribute is set to 
   true, the autocomplete attribute of controls is set to "on"   
 
-Before creating controls an application empties a container.
+Before creating controls the application empties the container.
 
 Example
 =======

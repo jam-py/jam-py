@@ -187,3 +187,11 @@ event handler of the task.
 If no event handler is defined or none of these event handlers return false, the 
 form is destroyed and the item’s view_form atrribute is set to undefined.
 
+Video
+=====
+
+`Form events`_ - this video demonstrates the form events, using the Demo 
+application, and shows how to debug the Jam.py application using the browser 
+debugger.
+
+.. _`Form events`: https://youtu.be/DY463lcv0R4

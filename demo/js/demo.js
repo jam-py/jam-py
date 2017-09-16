@@ -230,12 +230,13 @@ function Events1() { // demo
 		var options = {
 				col_count: 1
 			};
+			
 		if (item.init_inputs) {
 			item.init_inputs(item, options);
 		}
-		if (item.edit_form.find(".edit-body").length) {
-			item.create_inputs(item.edit_form.find(".edit-body"), options);
-		}
+	
+		item.create_inputs(item.edit_form.find(".edit-body"), options);
+			
 		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
 		item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
 	}

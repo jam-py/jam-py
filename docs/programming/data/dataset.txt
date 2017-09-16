@@ -87,4 +87,13 @@ the apply method (see
         for c in customers:
             print c.firstname.value
         
+Videos
+======
+
+`Datasets`_ and `Datasets Part 2`_ demonstrate almost all methods of working with 
+datasets on specific examples
+
+.. _`Datasets`: https://youtu.be/gHTYj7h9ljI
+.. _`Datasets Part 2`: https://youtu.be/1bUGmgBfrNw
+
     

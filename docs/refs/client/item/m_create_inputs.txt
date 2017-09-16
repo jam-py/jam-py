@@ -16,12 +16,12 @@ for editing
 :doc:`fields <at_fields>`
 of the item.
 
-This method is usually used in the ``on_edit_form_created`` evets triggered by
-
+This method is usually used in the ``on_edit_form_created`` events.
 
 The following parameters are passed to the method:
 
-* ``container`` - an JQuery object that will contain visual controls
+* ``container`` - a JQuery object that will contain visual controls, if 
+  container length is 0 (no container), the method returns.
 
 * ``options`` - options that specify how controls are displayed
 
@@ -32,7 +32,8 @@ The ``options`` parameter is an object that may have following attributes:
   default) then the fields attribute of an 
   :doc:`edit_options <at_edit_options>`
   will be used (by default it lists all edit fields, specified in the 
-  Administrator (Edit button for the item)),
+  Administrator 
+  :doc:`Edit Fields Dialog </admin/items/edit_fields_dialog>`
 
 * ``col_count`` - the number of columns that will be created for visual controls, 
   the default value is 1, 
@@ -49,7 +50,7 @@ The ``options`` parameter is an object that may have following attributes:
 * ``autocomplete`` - the default value is false. If this attribute is set to 
   true, the autocomplete attribute of controls is set to "on"   
 
-Before creating controls an application empties a container.
+Before creating controls the application empties the container.
 
 Example
 =======
@@ -57,16 +58,19 @@ Example
 .. code-block:: js
 
     function on_edit_form_created(item) {
-        item.edit_options.width = 600;
-        item.create_filter_inputs(item.edit_form.find(".edit-body"), {
-            fields: ['name', 'adress', 'phone', 'email'],
-        });
-        item.edit_form.find("#cancel-btn").on('click.task', function(e) {
-            item.cancel_edit(e);
-        });
-        item.edit_form.find("#ok-btn").on('click.task', function() {
-            item.apply_record();
-        });
+    	item.edit_form.find('#customer-tabs a').click(function (e) {
+    	  e.preventDefault();
+    	  $(this).tab('show');
+    	});
+    	item.create_inputs(item.edit_form.find("#cust-name"), 
+    	    {fields: ['firstname', 'lastname', 'company', 'support_rep_id']}
+    	);
+    	item.create_inputs(item.edit_form.find("#cust-address"), 
+    	    {fields: ['country', 'state', 'address', 'postalcode']}
+    	);
+    	item.create_inputs(item.edit_form.find("#cust-contact"), 
+    	    {fields: ['phone', 'fax', 'email']}
+    	);
     }
 
 See also

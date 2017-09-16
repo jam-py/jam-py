@@ -4872,6 +4872,10 @@
                 tabindex,
                 form;
 
+            if (!container.length) {
+                return;
+            }
+
             default_options = {
                 fields: [],
                 col_count: 1,
@@ -4882,10 +4886,6 @@
                 in_well: true,
                 tabindex: undefined
             };
-
-            if (!container) {
-                return;
-            }
 
             options = $.extend({}, default_options, options);
 
@@ -4943,6 +4943,10 @@
                 cols = [],
                 tabindex,
                 form;
+
+            if (!container.length) {
+                return;
+            }
 
             default_options = {
                     filters: [],
@@ -5449,6 +5453,10 @@
                 cols = [],
                 form,
                 tabindex;
+
+            if (!container.length) {
+                return;
+            }
 
             default_options = {
                 params: [],
@@ -7437,6 +7445,10 @@
                     show_paginator: true,
                     paginator_container: undefined
                 };
+
+            if (!container.length) {
+                return;
+            }
 
             this.item = item;
             if (!this.item.paginate) {
@@ -9711,7 +9723,11 @@
             if (!this.grid && this.field.field_help) {
                 $help = $('<a href="#" tabindex="-1"><span class="badge help-badge">?</span></a>');
 //                $help = $('<span class="help-inline"><a href="#" tabindex="-1"><span class="badge help-badge">?</span></a></span>');
-                $help
+                $help.click(function(e) {
+                    e.preventDefault();
+                    self.$lastBtn.focus().click();
+                });
+                $help.find('span')
                     .popover({
                         container: 'body',
                         placement: 'right',
@@ -9724,7 +9740,6 @@
                         e.preventDefault();
                     });
                 if ($btnCtrls) {
-//                    $btnCtrls.append($help);
                     $controls.append($help);
                     $help.find('span').addClass('btns-help-badge')
                 }
