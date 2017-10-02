@@ -14,5 +14,5 @@ modify and delete, respectively).
 
 .. image:: _images/roles.png
 	:align: center
-	:alt: Jam.py Administrator roles 
+	:alt: Jam.py roles 
 

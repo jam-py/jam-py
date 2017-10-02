@@ -2,8 +2,9 @@
 Workflow
 ========
 
-In the Jam.py framework, two tasks work at the same time: Administrator and Project. 
-Each of them represents a tree of objects - there is the Administrator task 
+In the Jam.py framework, two tasks work at the same time: the Application builder 
+and the Project. 
+Each of them represents a tree of objects - there is the Application builder task 
 tree and the Project task tree. Therefore, before considering the Jam.py workflow, 
 you need to familiarize yourself with the concept of the 
 :doc:`task tree <task_tree>`.
@@ -11,15 +12,15 @@ you need to familiarize yourself with the concept of the
 The the Jam.py workflow is the following:
 
 * When server.py is run it creates WSGI application that, in its own turn, 
-  creates the Administrator task tree.
-* The Project task tree is created on the server by Administrator after the 
+  creates the Application builder task tree.
+* The Project task tree is created on the server by Application builder after the 
   server receives first request from the Project client. To do so, the 
-  Administrator uses metadata stored in admin.sqlite database in the root folder
+  Application builder uses metadata stored in admin.sqlite database in the root folder
   of the project. After creating a task tree the server application triggers the
   :doc:`on_created </refs/server/task/on_created>`
   event, that can be used to initialize the server task tree.
-* When an application on the client (Administrator or Project) is first run in 
-  the browser (after ``admin.html`` or ``index.html`` have been loaded) the 
+* When an application on the client (Application builder or Project) is first run in 
+  the browser (after ``builder.html`` or ``index.html`` have been loaded) the 
   empty task object is built that sends to the server a request to initialize 
   itself.
 * If the project 
@@ -56,7 +57,7 @@ The the Jam.py workflow is the following:
   :doc:`ID </refs/client/abstr_item/at_id>`
   the item, the type of the request and its parameters.
   The server on receiving the request, based on passed IDs, finds the task 
-  (it can be Project task or Administrator task) and the item on the server, 
+  (it can be Project task or Application builder task) and the item on the server, 
   executes the corresponing method with passed parameters and returns the result 
   of the execution to the client. These server methods could trigger their own 
   events that can override the default behavior. See

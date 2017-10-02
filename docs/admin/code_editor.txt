@@ -4,7 +4,7 @@ Code editor
 
 For every item of the project :doc:`task tree </programming/task_tree>` there 
 are two buttons in the upper-right corner of the
-:doc:`Administrator <index>`
+:doc:`Application builder <index>`
 : **Client module** 
 and **Server module**.
 

@@ -1,0 +1,51 @@
+========================================
+How was Demo-Invoices view initialised?
+========================================
+
+**How can I initialise a default page? For example, how was Demo->Invoices 
+view initialised as a default page?**
+
+
+There is 
+:doc:`on_page_loaded </refs/client/task/on_page_loaded>`
+event handler in the task client module.  It is triggered immediately after 
+the index.html file is downloaded and the  
+:doc:`task tree </programming/task_tree>`
+is initialized.
+It creates dynamic menu and then imitates clicking on menu buttons:
+
+.. code-block:: js
+
+    $('#menu .item-menu:first').click(); 
+
+But there is a more simple way. You can use the 
+:doc:`view </refs/client/item/m_view>`
+method of an item. It create a view 
+:doc:`form </programming/interface/forms>`
+of an item based on its 
+:doc:`html template </programming/interface/form_templates>`.
+
+For example, execute the following in the browser console to view customers data 
+in the demo application:
+
+.. code-block:: js
+
+    task.customers.view($("#content"))
+
+or 
+
+.. code-block:: js
+
+    task.customers.view()
+
+to view it in a modal form.
+
+So replace the code imitating clicking on menu buttons in the 
+:doc:`default code </intro/default_code>`
+with
+
+.. code-block:: js
+
+    task.customer.view($("#content"))
+    
+to display Customers data when the application starts.

@@ -2,8 +2,8 @@
 Jam.py class reference
 ======================
 
-Server side is implemented in Python and uses Web.py library, the client side in 
-JavaScript and uses JQuery and Bootstrap 2 
+Server side is implemented in Python and uses Werkzeug library, the client side in 
+JavaScript and uses JQuery and Bootstrap
 
 .. toctree::
     :maxdepth: 2

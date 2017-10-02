@@ -15,7 +15,7 @@ setup(
     packages=['jam', 'jam.db', 'jam.third_party', 'jam.third_party.werkzeug',
         'jam.third_party.werkzeug.contrib', 'jam.third_party.werkzeug.debug',
         'jam.third_party.pyjsparser'],
-    package_data={'jam': ['admin.html', 'langs.sqlite', 'js/*.js',
+    package_data={'jam': ['builder.html', 'langs.sqlite', 'js/*.js',
         'js/ace/*.js', 'img/*.*', 'css/*.*', 'project/*.*', 'project/css/*.*',
         'third_party/werkzeug/debug/shared/*.*']},
     scripts=['jam/bin/jam-project.py'],

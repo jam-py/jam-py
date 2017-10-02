@@ -2,6 +2,9 @@
 Getting started
 ===============
 
+Here you can learn how to install the framework, create a new project, 
+develop a web application and deploy it.
+
 .. toctree::
    :maxdepth: 1
 

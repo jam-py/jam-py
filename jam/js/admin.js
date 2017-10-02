@@ -150,7 +150,7 @@ function Events0() { // admin
 			};
 	
 			$("#content").show();
-			$("#title").html(task.language.admin);
+			$("#title").html('Application builder');
 			if (task.safe_mode) {
 				$("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
 				$('#log-out').show().click(function(e) {
@@ -575,7 +575,9 @@ function Events0() { // admin
 	function set_project_params(task, caption) {
 		open_sys_params(task);
 		task.sys_params.params = true;
-		task.sys_params.edit_options.fields = ['f_language', 'f_safe_mode', 'f_debugging', 'f_con_pool_size',
+		task.sys_params.edit_options.fields = [
+	//		'f_language', 'f_safe_mode', 'f_debugging', 'f_con_pool_size',
+			'f_safe_mode', 'f_debugging', 'f_con_pool_size',
 	//		'f_mp_pool', 'f_persist_con', 'f_single_file_js', 'f_dynamic_js',
 			'f_mp_pool', 'f_persist_con', 'f_compressed_js', 'f_single_file_js', 'f_dynamic_js',
 	//	  'f_history_item', 'f_lock_item', 'f_timeout', 'f_ignore_change_ip', 'f_version'];
@@ -1223,7 +1225,7 @@ function Events3() { // admin.catalogs.sys_items
 	//				title_word_wrap: true,
 						row_callback: field_colors
 					});
-				item.sys_fields.open();
+				item.sys_fields.open(true);
 				item.edit_form.find("#new-btn").attr("tabindex", 92).on('click.task', function() {item.sys_fields.append_record()});
 				item.edit_form.find("#edit-btn").attr("tabindex", 91).on('click.task', function() {item.sys_fields.edit_record()});
 				item.edit_form.find("#delete-btn").attr("tabindex", 90).off('click.task')
@@ -1432,7 +1434,7 @@ function Events3() { // admin.catalogs.sys_items
 			names,
 			item = field.owner
 		if (item.is_new() && item.type_id.value != item.task.item_types.DETAIL_TYPE) {
-			if (field.field_name == 'f_item_name') {
+			if (field.field_name == 'f_item_name' && !item.f_virtual_table.value) {
 				names = item.task.server('get_new_table_name', field.value);
 				item.f_table_name.value = names[0];
 				if (item.task.db_options.NEED_GENERATOR) {
@@ -1463,6 +1465,7 @@ function Events3() { // admin.catalogs.sys_items
 		if (field.field_name === 'f_virtual_table') {
 			if (field.value) {
 				item.f_table_name.value = null;
+				item.f_gen_name.value = null;
 			}
 		}
 	}
@@ -3896,6 +3899,7 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 		}
 	
 		var fields;
+		item.edit_options.width = 620;
 		item.f_field_name.read_only = item.f_field_name.value === 'id' || item.f_field_name.value === 'deleted' ||
 			item.f_field_name.value === 'owner_id' || item.f_field_name.value === 'owner_rec_id';
 		item.f_data_type.read_only = false;

@@ -3,7 +3,7 @@ Item Editor Dialog
 ==================
 
 **Item Editor dialog** opens when a developer selects a Group node in the project 
-tree of the Administrator and click on the **New** or **Edit** button to create 
+tree of the Application builder and click on the **New** or **Edit** button to create 
 a new item or modify a selected one. See 
 :doc:`Items <index>`.
 

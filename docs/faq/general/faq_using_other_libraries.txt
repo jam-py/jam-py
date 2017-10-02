@@ -1,0 +1,26 @@
+===========================================
+Can I use other libraries in my application
+===========================================
+
+You can add javascript libraries to use them for programming on the client side.
+
+It is better to place them in the *js* folders of the *static* dicrectory of the 
+project. And refer to them using the src attribute in the <script> tag of the
+:doc:`Index.html </programming/interface/index_html>`
+file.
+
+For example, :doc:`Demo project </intro/demo_project>` uses Chart.js library to 
+create a dashboard:
+
+.. code-block:: html
+
+    <script src="/static/js/Chart.min.js"></script>
+
+On the server side you can import python libraries to your modules. 
+
+For exapmple the mail item server module import smtplib library to send emails:
+
+.. code-block:: py
+
+    import smtplib
+

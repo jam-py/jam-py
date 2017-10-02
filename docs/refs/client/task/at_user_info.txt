@@ -23,7 +23,7 @@ is set.
 * ``user_name`` - the user name
 * ``role_id`` - user role id
 * ``role_name`` - the role assigned to the user
-* ``admin`` - if true the user can work in Administrator
+* ``admin`` - if true the user can work in the Application builder
 
 If safe mode is false the ``user_info`` attribute is an empty
 object.

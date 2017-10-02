@@ -23,8 +23,8 @@ Use the ``view_options`` attribute to specify parameters of the modal view form.
   attribute,
 * ``fields`` - specify the list of field names that
   :doc:`create_table <m_create_table>`
-  method will use, if it is not specified, the field list, set in Administrator 
-  for viewing will be used (the default value),
+  method will use, if it is not specified, the field list, set in Application 
+  builder for viewing will be used (the default value),
 * ``close_button`` - if true, the close button will be created in the upper-right 
   corner of the form, the default value is true,
 * ``close_caption`` - if true and close_button is true, will display 'Close - [Esc]'

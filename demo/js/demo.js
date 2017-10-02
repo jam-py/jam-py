@@ -55,10 +55,17 @@ function Events1() { // demo
 			e.preventDefault();
 			task.dashboard.view($("#content"));
 		})));
+	
+		$("#menu").append($('li#themes'))
 		
+		$("#menu-right #admin a").click(function(e) {
+			var admin = [location.protocol, '//', location.host, location.pathname, 'builder.html'].join('');
+			e.preventDefault();
+			window.open(admin, '_blank');
+		});
 		set_theme(task, 'Bootrap');
 		// set_theme(task, 'Cerulean');
-		$('#menu-right #themes ul a').on('click', (function(e) {
+		$('#menu #themes ul a').on('click', (function(e) {
 			e.preventDefault();		
 			set_theme(task, $(this).text().substr(2));
 		}));
@@ -84,7 +91,8 @@ function Events1() { // demo
 			task.theme = theme;
 			task.small_font = true;
 			task.in_container = true;
-			$('#menu-right #themes ul a').each(function() {
+			task.small_font = false;
+			$('#taskmenu #themes ul a').each(function() {
 				var theme = $(this).text();
 				$(this).html('&nbsp;&nbsp;' + theme);
 			});
@@ -97,8 +105,30 @@ function Events1() { // demo
 			else {
 				$('body #container').removeClass('container');
 			}
-			$('#menu-right .item-menu:first').click();		 
+			$('#menu .item-menu:first').click();
 			$('window').resize();		
+		}
+		else if (theme === 'Small font') {	
+			task.small_font = !task.small_font;
+			if (task.small_font) {
+				new_css = 'jam12.css';
+				old_css = 'jam.css';
+			}
+			else {
+				new_css = 'jam.css';
+				old_css = 'jam12.css';
+			}
+			$("head").find("link").attr("href", function () {
+				if (this.href.split('/').pop() === old_css) {
+					this.href = this.href.replace(old_css, new_css);
+				}
+			});
+			setTimeout(
+				function() {
+					$('#menu .item-menu:first').click();
+				},
+				10
+			);
 		}
 		else {
 			new_css = get_theme(task, theme),
@@ -113,9 +143,12 @@ function Events1() { // demo
 				$('window').resize();			
 			}
 		}
-		$('#menu-right #themes ul a').each(function() {
+		$('#taskmenu #themes ul a').each(function() {
 			var theme = $(this).text().substr(2);
 			if (theme === 'Container' && task.in_container) {
+				$(this).html('&#x2714;&nbsp;' + theme);
+			}		
+			else if (theme === 'Small font' && task.small_font) {
 				$(this).html('&#x2714;&nbsp;' + theme);
 			}		
 			else if (theme === task.theme) {
@@ -390,7 +423,7 @@ function Events2() { // demo.catalogs
 			search = item.view_form.find("#search-input");
 			search.on('input', function() {
 				var input = $(this);
-				search.css('font-weight', 'normal');
+				input.css('font-weight', 'normal');
 				clearTimeout(timeOut);
 				timeOut = setTimeout(function() {
 						var field = item.field_by_name(search_field),
@@ -399,7 +432,7 @@ function Events2() { // demo.catalogs
 							search_type = 'eq';
 						}
 						item.search(search_field, input.val(), search_type, function() {
-							search.css('font-weight', 'bold');
+							input.css('font-weight', 'bold');
 						});
 					},
 					500
@@ -622,6 +655,7 @@ function Events16() { // demo.journals.invoices
 		input_options.col_count = 2;	
 		// input_options.col_count = 4;
 		// input_options.label_on_top = true;
+		// input_options.label_width = 100;
 	}
 	
 	function on_view_form_created(item) {

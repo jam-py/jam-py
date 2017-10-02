@@ -1,26 +1,26 @@
-=============
-Administrator
-=============
+============================
+Business application builder
+============================
 
-Administrator - is a jam.py web application intended for application development 
+Application builder - is a Jam.py web application intended for application development 
 and database administration.
 
-To run Administrator go to a Web browser and type in the browser address bar 
+To run the Application builder go to a Web browser and type in the browser address bar 
 
 .. code-block:: console
 
-    127.0.0.1:8080/admin.html
+    127.0.0.1:8080/builder.html
 
 .. note::
 
     Please note that *server.py* must be running
     
-On the left side of the Administrator page there is a panel that contains the 
+On the left side of the Application builder page there is a panel that contains the 
 project tree. When you select any node of the project tree, as a rule, its 
 content will be opend in the central part of the page, and the bottom and right 
 side of the page may have buttons that allow you to modify the content.
 
-To see the changes made in Administrator go to the Project page and reload it. 
+To see the changes made in Application builder go to the Project page and reload it. 
 
 .. toctree::
    :maxdepth: 1
@@ -34,7 +34,8 @@ To see the changes made in Administrator go to the Project page and reload it.
    items/index
    details
    lookup_lists
+   intergation_with_existing_database
 
 .. image:: _images/admin.png
 	:align: center
-	:alt: Admin
+	:alt: Business application builder

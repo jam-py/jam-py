@@ -1244,7 +1244,7 @@
                     } else {
                         if (data.result.status === consts.NO_PROJECT) {
                             $('body').empty();
-                            item.warning('Creating a project is not finished yet. Run the Administrator to finish.');
+                            item.warning('Creating a project is not finished yet. Run the Application builder to finish.');
                             return;
                         } else if (data.result.status === consts.UNDER_MAINTAINANCE) {
                             if (!self.task._under_maintainance) {
@@ -1691,19 +1691,25 @@
     /**********************************************************************/
 
     Group.prototype = new AbsrtactItem();
-    Group.prototype.constructor = Group;
 
     function Group(owner, ID, item_name, caption, visible, type, js_filename) {
         AbsrtactItem.call(this, owner, ID, item_name, caption, visible, type, js_filename);
     }
 
-    Group.prototype.getChildClass = function() {
-        if (this.item_type === "reports") {
-            return Report;
-        } else {
-            return Item;
+    $.extend(Group.prototype, {
+        constructor: Group,
+
+        getChildClass: function() {
+            if (this.item_type === "reports") {
+                return Report;
+            } else {
+                return Item;
+            }
+        },
+
+        add_item: function(item_name, item_caption, fields) { //addition of dynamic item
         }
-    };
+    });
 
     /**********************************************************************/
     /*                         ChangeLog class                            */
@@ -4935,6 +4941,42 @@
             }
         },
 
+        append_button: function(input, options) {
+            var result,
+                div,
+                default_options = {
+                    icon: 'icon-folder-open'
+                };
+            options = $.extend({}, default_options, options);
+            if (input.length) {
+                result = $('<button class="btn small-btn" type="button" tabindex="-1"></button>')
+                if (options && options.icon) {
+                    result.append('<i class="' + options.icon + '"></i>')
+                }
+                if (options && options.id) {
+                    result.attr('id', options.id)
+                }
+                //~ if (options && options.class) {
+                    //~ result.addClass(options.class)
+                //~ }
+                if (input.parent().hasClass('input-append')) {
+                    input.parent().append(result);
+                }
+                else if (input.parent().hasClass('input-prepend')) {
+                    input.parent().append(result);
+                    input.parent().addClass('input-append')
+                }
+                else {
+                    div = $('<div class="input-append">');
+                    input.parent().append(div);
+                    input.detach();
+                    div.append(input);
+                    div.append(result);
+                }
+            }
+            return result;
+        },
+
         create_filter_inputs: function(container, options) {
             var default_options,
                 i, len, col,
@@ -5117,7 +5159,10 @@
         },
 
         refresh_record: function(callback) {
-            var self = this,
+            var args = this._check_args(arguments),
+                callback = args['function'],
+                async = args['boolean'],
+                self = this,
                 fields = [],
                 primary_key = this._primary_key,
                 where = {},
@@ -5132,7 +5177,7 @@
                 })
                 where[primary_key] = this._primary_key_field.value;
 
-                if (callback) {
+                if (callback || async) {
                     copy.open({expanded: this.expanded, fields: fields, where: where}, function() {
                         self._do_on_refresh_record(copy, callback);
                     });
@@ -5379,7 +5424,6 @@
 
         process_report: function(callback) {
             var self = this,
-//                host = location.protocol + '//' + location.hostname + (location.port ? ':' + location.port : ''),
                 host = [location.protocol, '//', location.host, location.pathname].join(''),
                 i,
                 len,
@@ -8333,6 +8377,7 @@
 
         showEditor: function() {
             var width,
+                height,
                 editor,
                 $div,
                 $td,
@@ -8343,8 +8388,10 @@
                 }
                 this.editMode = true;
                 this.editor = new DBTableInput(this, this.selectedField);
-                this.editor.$controlGroup.find('.controls, .input-prepend, .input-append, input').css('margin-bottom', 0);
-                this.editor.$controlGroup.css('margin-bottom', 0);
+                this.editor.$controlGroup.find('.controls, .input-prepend, .input-append, input').css('margin', 0);
+                this.editor.$controlGroup.css('margin', 0);
+                //~ this.editor.$controlGroup.find('.controls, .input-prepend, .input-append, input').css('margin-bottom', 0);
+                //~ this.editor.$controlGroup.css('margin-bottom', 0);
 
                 $div = $row.find('div.' + this.editor.field.field_name);
                 $div.hide();
@@ -8352,6 +8399,7 @@
 
                 this.editor.$input.css('font-size', $td.css('font-size'));
 
+                height = $td.innerHeight()// - parseInt($td.css('border-top-height'), 10) - parseInt($td.css('border-bottom-height'), 10);
                 width = $td.outerWidth();
                 this.editor.paddingLeft = $td.css("padding-left");
                 this.editor.paddingTop = $td.css("padding-top");
@@ -8369,6 +8417,8 @@
                     width += $(this).outerWidth(true);
                 });
                 this.editor.$input.width(this.editor.$input.width() + this.editor.$controlGroup.width() - width);
+                this.editor.$controlGroup.find('.controls, .input-prepend, .input-append, input, btn')
+                    .outerHeight(height, true)
 
                 this.editor.update();
 
@@ -9392,7 +9442,8 @@
             }
 
             container.css("position", "absolute")
-                .css("top", -1000)
+                .css("top", 0)
+//                .css("top", -1000)
                 .width(this.getElementWidth(this.$element));
             $('body').append(container);
             this.$element.detach();
@@ -9542,6 +9593,9 @@
                 $label = $('<label class="control-label"></label>')
                     .attr("for", field.field_name).text(this.label).
                 addClass(field.field_name);
+                if (this.field.required) {
+                    $label.addClass('required');
+                }
                 if (this.label_width) {
                     $label.width(this.label_width);
                 }
@@ -9566,8 +9620,7 @@
                     .attr("tabindex", tabIndex + "");
             }
             $controls = $('<div class="controls"></div>');
-//            $controls.addClass(field.field_name)
-            if (this.label_width) {
+            if (this.label_width && !this.label_on_top) {
                 $controls.css('margin-left', this.label_width + 20 + 'px');
             }
             this.$input = $input;
@@ -9594,7 +9647,7 @@
             this.$input.keyup($.proxy(this.keyup, this));
             this.$input.keypress($.proxy(this.keypress, this));
             if (field.lookup_item && !field.master_field || field.lookup_values) {
-                $btnCtrls = $('<div class="input-prepend input-append"></div>').addClass("input-with-buttons");
+                $btnCtrls = $('<div class="input-prepend input-append"></div>');
                 $btn = $('<button class="btn' + inpit_btn_class + '"type="button"><i class="icon-remove-sign"></button>');
                 $btn.attr("tabindex", -1);
                 $btn.click(function() {
@@ -9617,11 +9670,13 @@
                 $btnCtrls.append($btn);
                 $controls.append($btnCtrls);
                 if (field.lookup_values) {
+                    $btnCtrls.addClass("lookupvalues-input-container");
                     $input.addClass("input-lookupvalues");
                     this.$lastBtn.find('i').addClass("icon-chevron-down");
                     this.dropdown = new DropdownList(this.field, $input);
                 }
                 else {
+                    $btnCtrls.addClass("lookupfield-input-container");
                     $input.addClass("input-lookupitem");
                     this.$lastBtn.find('i').addClass("icon-folder-open");
                     if (this.field.enable_typeahead) {
@@ -9650,7 +9705,7 @@
                         break;
                     case consts.DATE:
                     case consts.DATETIME:
-                        $btnCtrls = $('<div class="input-prepend input-append"></div>').addClass("input-with-buttons");
+                        $btnCtrls = $('<div class="input-prepend input-append"></div>');
                         $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i class="icon-remove-sign"></button>');
                         $btn.attr("tabindex", -1);
                         $btn.click(function() {
@@ -9658,9 +9713,13 @@
                         });
                         this.$firstBtn = $btn;
                         $btnCtrls.append($btn);
-                        $input.addClass("input-date");
                         if (field_type === consts.DATETIME) {
+                            $btnCtrls.addClass("datetime-input-container");
                             $input.addClass("input-datetime");
+                        }
+                        else {
+                            $btnCtrls.addClass("date-input-container");
+                            $input.addClass("input-date");
                         }
                         $btnCtrls.append($input);
                         $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i class="icon-calendar"></button>');
@@ -9676,7 +9735,7 @@
                         $controls.append($input);
                         break;
                     case consts.BLOB:
-                        $input.addClass("input-text");
+                        $input.addClass("input-blob");
                         $controls.append($input);
                         break;
                 }
@@ -10442,7 +10501,7 @@
 
         select: function() {
             var $li = this.$menu.find('.active');
-            if (this.field.owner && !this.field.owner.is_changing()) {
+            if (this.field.owner && this.field.owner.is_changing && !this.field.owner.is_changing()) {
                 this.field.owner.edit();
             }
             this.field.value = $li.data('id-value');

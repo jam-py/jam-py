@@ -32,7 +32,7 @@ The ``options`` parameter is an object that may have following attributes:
   default) then the fields attribute of an 
   :doc:`edit_options <at_edit_options>`
   will be used (by default it lists all edit fields, specified in the 
-  Administrator 
+  Application builder 
   :doc:`Edit Fields Dialog </admin/items/edit_fields_dialog>`
 
 * ``col_count`` - the number of columns that will be created for visual controls, 

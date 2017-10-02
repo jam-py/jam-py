@@ -10,7 +10,7 @@ You can specify the parameters of the report. For example, the
 	:alt: Report parameters
 
 To add or change a report parameter click **Report params** button in the left 
-panel of Administrator. A form will appear displaying the list of existing 
+panel of the Application builder. A form will appear displaying the list of existing 
 parameters. Then click New or Edit button of the form to add or change the
 parameter.
 

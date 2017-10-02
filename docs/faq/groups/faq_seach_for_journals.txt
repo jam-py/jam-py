@@ -1,0 +1,67 @@
+================================================
+How to add the search functionality for journals
+================================================
+
+You can add search functionality for journals the following way:
+
+1. Add a form containing a search input to the div with "form-header" class to 
+the view html template of the item:
+
+.. code-block:: html
+
+    <div class="form-header">
+        <h4 id="form-title" class="header-text"><a href="#"></a></h4>                    
+        <h5 id="filter-text" class="header-text"></h5>                
+        <form id="search-form" class="form-inline pull-right">
+            <label  class="control-label" for="search-input">Search by
+                <span class="label" id="search-fieldname"></span>
+            </label>
+            <input id="search-input" type="text" class="input-medium search-query" autocomplete="off">
+            <a id="search-field-info" href="#" tabindex="-1">
+                <span class="badge">?</span>
+            </a>                                
+        </form>
+    </div>
+
+2. Change the on_view_form_created event handler in the journals 
+client module:
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        if (item.view_form.find('input#input-find')) {
+            task.catalogs.on_view_form_created(item);
+        }
+        item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});    
+        if (!item.on_filters_applied) {
+            item.on_filters_applied = function() {
+                if (item.view_form) {
+                    item.view_form.find("#filter-text").text(item.get_filter_text());        
+                }
+            };
+        }
+        if (!item.on_filters_apply) {    
+            item.on_filters_apply = function() {
+                if (item.view_form) {
+                    item.view_form.find('input#input-find').val('');
+                }
+            };
+        }
+    }
+
+In this event handler the code
+
+.. code-block:: js
+
+    task.catalogs.on_view_form_created(item); 
+    
+is responsible for search and 
+
+.. code-block:: js
+
+    item.view_form.find('input#search-input').val('')
+
+clears the search input after filters have been applied.
+
+And you must set the "Default" field for journals. 
+

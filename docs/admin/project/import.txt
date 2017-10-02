@@ -5,12 +5,12 @@ Import
 Use this button to import project metadata from zip file.
 
 When Import button is pressed, 
-:doc:`Administrator </admin/index>`
+:doc:`Application builder </admin/index>`
 opens a Dialog to select the 
 file to be imported.
 
-After the file is selected, the Administrator uploads it to the server and sends 
-the server a request to import it.
+After the file is selected, the Application builder uploads it to the server and 
+sends the server a request to import it.
 
 The server while importing the metadata performs the following operations:
 
@@ -26,9 +26,9 @@ The server while importing the metadata performs the following operations:
 
 * if an error occurs while updating the project database, for databases, that 
   support DDL statment rollback (Postgress, Firebird), rollbacks changes, stops the 
-  import process and returns the import log to the Administrator. If the database 
-  do not support DDL statment rollback (MySql, Oracle) writes error to the 
-  import log and continues until all statments will be processed
+  import process and returns the import log to the Application builder. 
+  If the database do not support DDL statment rollback (MySql, Oracle) writes error 
+  to the import log and continues until all statments will be processed
   
 * Commits changes to the project database if it supports DDL statment rollback 
   and modifies the records of the *admin.sqlite*
@@ -37,7 +37,7 @@ The server while importing the metadata performs the following operations:
 
 * Rebuilds the task on the server
 
-* Send the import log to the Administrator
+* Send the import log to the Application builder
   
 .. note::
     It is strongly recommended that you make a backup of the project database 

@@ -2,7 +2,7 @@
 New catalog
 ===========
 
-Let's go back to the Administrator page and create a "Customers" catalog.
+Let's go back to the Application builder page and create a "Customers" catalog.
 
 Now we select the "Catalogs" group in the project tree and and click on the **New** 
 button at the bottom right corner of the page
@@ -35,8 +35,8 @@ Similarly, add the "Lastname" and "Phone" fields.
 	:align: center
 	:alt: Customers fields
 	
-Now, to save the changes, click the **OK** button. When saving, the Administrator 
-created the CRM_CUSTOMERS table in the ctm.sqlite database:
+Now, to save the changes, click the **OK** button. When saving, the Application 
+builder created the CRM_CUSTOMERS table in the ctm.sqlite database:
 
 .. image:: /intro/_images/customer_sql.png
 	:align: left
@@ -49,7 +49,7 @@ button
 	:align: center
 	:alt: Customers page
 
-Go back to the Administrator, double-click the "Clients" catalog, and then, 
+Go back to the Application builder, double-click the "Clients" catalog, and then, 
 the "Lastname" field and set the "Required" and "Default" attributes. For catalogs 
 whose "Default" attribute is set, the 
 :doc:`default code </intro/default_code>`

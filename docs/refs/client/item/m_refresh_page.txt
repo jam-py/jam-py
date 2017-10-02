@@ -1,0 +1,25 @@
+============
+refresh_page
+============
+
+.. js:function:: refresh_page(callback, async) 
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Call ``refresh_page`` to send to the server a request to get current data of 
+the current page and refresh existing visual controls.
+
+The ``refresh_page`` method can have the following parameters:
+
+* ``callback``: if the parameter is not present, the request is sent to the 
+  server synchronously, otherwise, the request is executed asynchronously and 
+  after that the callback is executed
+* ``async``: if its value is true, and callback parameter is missing, the request 
+  is executed asynchronously 

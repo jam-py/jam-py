@@ -3,7 +3,7 @@ Edit Fields Dialog
 ==================
 
 The **Edit Fields Dialog** opens when a developer selects the item in the 
-Administrator (see 
+Application builder (see 
 :doc:`Items <index>`
 ) and clicks on the **Edit** button to set the fields to be 
 displayed in edit forms on the client and their order. These fields are used by 

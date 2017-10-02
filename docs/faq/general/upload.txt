@@ -1,0 +1,25 @@
+=======================================================================================
+How to upload a file to the server, save its file name in a table and later download it
+=======================================================================================
+
+Let's suppose that you have two buttons - Upload (id "upload-btn") and Download 
+(id "download-btn") - declared in the edit form html template of an item, and that 
+the item has a text field with field_name document. 
+
+Then you can use the following code in the client module of the item:
+
+.. code-block:: js
+
+    function on_edit_form_created(item) {
+        item.edit_form.find('#upload-btn').click(function() {
+            item.task.upload('static/docs', {callback: function(file_name) {
+                item.document.value = file_name;        
+            }});
+        });
+        item.edit_form.find('#download-btn').click(function() {
+            if (item.document.value) {
+                window.open('static/docs/' + item.document.value, "_blank");
+            }
+        });
+        item.document.read_only = true;
+    }

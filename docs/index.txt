@@ -2,21 +2,31 @@
 Jam.py documentation
 ====================
 
+Jam.py is an object oriented, event driven framework with 
+hierarchical structure, modular design and very tight DB/GUI coupling. 
+The server side of Jam.py is written in Python_. 
+the client utilizes JavaScript_, jQuery_ and Bootstrap_
+
+.. _Python: https://www.python.org
+.. _JavaScript: https://developer.mozilla.org/en/docs/Web/JavaScript
+.. _jQuery: https://jquery.com/
+.. _Bootstrap: http://getbootstrap.com/2.3.2/
+
 How the documentation is organized
 ==================================
 
 Here is an overview of how the documentation is organized, that 
 will help you know where to look for certain things:
 
-:doc:`Getting started <intro/index>` topics take you through a series of steps 
-to create a Web application. 
+:doc:`Getting started <intro/index>` topics describe how to install the framework, create 
+a new project, take you through a series of steps to develop a Web application and explains how to deploy it. 
 
 :doc:`Programming guides<programming/index>`
 discuss key topics and concepts at a fairly high level and provide useful 
 background information and explanation.
 
-:doc:`Administrator reference <admin/index>` is a detailed description of 
-Administrator - a web application used for application development and database 
+:doc:`Business application builder <admin/index>` is a detailed description of 
+the Application Builder used for application development and database 
 administration.
 
 :doc:`Сlass reference guides <refs/index>` contain technical reference for 

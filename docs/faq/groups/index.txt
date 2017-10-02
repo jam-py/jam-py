@@ -1,0 +1,12 @@
+======
+Groups
+======
+
+.. toctree::
+   :maxdepth: 1
+
+   faq_catalogs_vs_journals
+   faq_new_group_with_searching_records
+   faq_seach_for_journals
+
+

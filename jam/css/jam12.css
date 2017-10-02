@@ -153,6 +153,11 @@ form {
     margin-top: 0;
 }
 
+.control-label.required:after {
+    content: " *";
+    color: red;
+}
+
 .typeahead,
 .popover {
     z-index: 3000;
@@ -238,61 +243,82 @@ h4 small {
   font-size: 12px;
 }
 
-.input-integer {
+input.input-integer {
   width: 26%;
 }
 
-.input-float {
+input.input-float {
   width: 35%;
 }
 
-.input-currency {
+input.input-currency {
   width: 35%;
 }
 
-.input-date {
-  width: 28%;
+.datetime-input-container {
+    width: 56%;
 }
 
-.input-datetime {
-  width: 36%;
+.date-input-container {
+    width: 42%;
 }
 
-.input-with-buttons {
+.lookupfield-input-container {
     width: 80%;
 }
 
-.input-lookupitem {
-    width: 78%;
+.lookupvalues-input-container {
+    width: 56%;
+}
+
+input.input-lookupitem,
+input.input-lookupvalues,
+input.input-date,
+input.input-datetime {
     width: calc(100% - 2 * 24px);
     width: -moz-calc(100% - 2 * 24px);
     width: -webkit-calc(100% - 2 * 24px);
     width: -o-calc(100% - 2 * 24px);
 }
 
-.input-lookupvalues {
-  width: 36%;
-}
-
-.input-text {
+input.input-text {
   width: 80%;
 }
 
 .input-blob {
-  width: 100%;
+  width: 80%;
+}
+
+@media (max-width: 767px) {
+    datetime-input-container {
+        width: 56%;
+    }
+
+    .date-input-container {
+        width: 42%;
+    }
+
+    .lookupfield-input-container {
+        width: 80%;
+    }
+
+    .lookupvalues-input-container {
+        width: 56%;
+    }
+
+    input.input-lookupitem,
+    input.input-lookupvalues,
+    input.input-date,
+    input.input-datetime {
+        width: calc(100% - 2 * 24px);
+        width: -moz-calc(100% - 2 * 24px);
+        width: -webkit-calc(100% - 2 * 24px);
+        width: -o-calc(100% - 2 * 24px);
+    }
 }
 
 .navbar, .nav {
     margin-bottom: 10px;
-}
-
-@media (max-width: 767px) {
-  .input-prepend input.input-lookupitem,
-  .input-append input.input-lookupitem,
-  .input-prepend input.input-lookupitem[class*="span"],
-  .input-append input.input-lookupitem[class*="span"] {
-    width: 75%;
-  }
 }
 
 .template {
@@ -311,8 +337,10 @@ h4 small {
     width: 600px;
 }
 
-.form-well {
+.form-body .well,
+.modal-body .well {
     min-height: 20px;
+/*
     background-color: #f5f5f5;
     border: 1px solid #e3e3e3;
     -webkit-border-radius: 4px;
@@ -321,6 +349,7 @@ h4 small {
     -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
      -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
           box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+*/
     width: auto;
     margin-top: 6px;
     margin-bottom: 6px;
@@ -500,12 +529,9 @@ h4 small {
 }
 
 .form-header {
-  padding: 0 0 6px;
+  padding: 6px 0 6px;
   margin-bottom: 0;
   *zoom: 1;
-  -webkit-box-shadow: inset 0 1px 0 #ffffff;
-     -moz-box-shadow: inset 0 1px 0 #ffffff;
-          box-shadow: inset 0 1px 0 #ffffff;
 }
 
 .form-header:before,
@@ -536,15 +562,10 @@ h4 small {
   padding: 14px 15px 15px;
   margin-bottom: 0;
   text-align: right;
-  background-color: #f5f5f5;
-  border-top: 1px solid #ddd;
   -webkit-border-radius: 0 0 6px 6px;
      -moz-border-radius: 0 0 6px 6px;
           border-radius: 0 0 6px 6px;
   *zoom: 1;
-  -webkit-box-shadow: inset 0 1px 0 #ffffff;
-     -moz-box-shadow: inset 0 1px 0 #ffffff;
-          box-shadow: inset 0 1px 0 #ffffff;
 }
 
 .form-footer:before,

@@ -44,7 +44,7 @@ class JamSecureCookie(SecureCookie):
     def unquote(cls, value):
         if cls.quote_base64:
             value = base64.b64decode(value)
-    ### Added line
+        ### Added line
         value = to_unicode(value, 'utf-8')
         if cls.serialization_method is not None:
             value = cls.serialization_method.loads(value)
@@ -170,7 +170,6 @@ class App():
         return response(environ, start_response)
 
     def check_modified(self, file_path, environ):
-        #~ return
         if environ.get('HTTP_IF_MODIFIED_SINCE'):
             date1 = parse_date(environ['HTTP_IF_MODIFIED_SINCE'])
             date2 = datetime.datetime.utcfromtimestamp(os.path.getmtime(file_path)).replace(microsecond=0)
@@ -185,6 +184,8 @@ class App():
             if not file_name:
                 file_name = 'index.html'
                 environ['PATH_INFO'] = environ['PATH_INFO'] + '/index.html'
+            elif file_name == 'admin.html':
+                file_name = 'builder.html'
             if file_name == 'index.html':
                 self.check_modified(file_name, environ)
                 if self.get_task():
@@ -192,7 +193,7 @@ class App():
                     self.check_task_server_modified()
                 else:
                     return Response(self.admin.lang['no_task'])(environ, start_response)
-            elif file_name == 'admin.html':
+            elif file_name == 'builder.html':
                 self.check_modified(os.path.join(self.jam_dir, file_name), environ)
                 environ['PATH_INFO'] = os.path.join('jam', file_name)
         if file_name:

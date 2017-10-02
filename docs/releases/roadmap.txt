@@ -1,0 +1,16 @@
+==============
+Jam.py roadmap
+==============
+
+We plan to add the following features to Jam.py:
+
+* Record locking when a user edits a record in DB table. Implementation of it in 
+  the Application Builder.
+* Saving the history of changes made by the user.
+* Language support stage 1: Support for other languages.
+* Language support stage 2: internalization, support for multiple languages in 
+  the project.
+* Support for Bootsrap 4.
+* Rework of import/export utility: visual interface, control over merging of changes.
+* Creation of tools for analyzing the number of different requests and the time 
+  of their execution.

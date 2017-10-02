@@ -13,7 +13,7 @@ admin
 Description
 ===========
 
-Returns a reference to the Administrator task tree
+Returns a reference to the Application builder task tree
 
 See also
 ========

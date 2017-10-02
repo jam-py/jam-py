@@ -19,8 +19,8 @@ select Users node, click New and fill in the form that appears:
 * **Password** - password
 * **Role** – user role
 * **Information** - some additional information
-* **Admin** - if this flag is set, the user has the right to work in Administrator.
+* **Admin** - if this flag is set, the user has the right to work in the Application builder.
 
 .. image:: _images/users.png
 	:align: center
-	:alt: Jam.py Administrator Users 
+	:alt: Jam.py Application builder Users 

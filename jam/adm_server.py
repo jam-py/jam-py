@@ -2419,7 +2419,7 @@ def create_system_item(task, field_name):
     except Exception(e):
         error = 'While creating an item the following error was raised: %s' % e
 
-    result = 'The %s item has been created in the %s group. The Administrator will be reloaded.' % (sys_item_name, sys_group_name)
+    result = 'The %s item has been created in the %s group. The Application builder will be reloaded.' % (sys_item_name, sys_group_name)
     return result, error
 
 ###############################################################################

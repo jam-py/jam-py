@@ -4,7 +4,7 @@ View Fields Dialog
 
 The 
 :doc:`View Fields Dialog <view_fields_dialog>` 
-opens when a developer selects the item in the Administrator and clicks on the
+opens when a developer selects the item in the Application builder and clicks on the
 **View** button to set the fields to be displayed in tables on the client and 
 their order. These fields are used by default by the
 :doc:`create_table </refs/client/item/m_create_table>` 

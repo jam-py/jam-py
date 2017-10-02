@@ -32,7 +32,7 @@ The ``options`` parameter is an object that may have following attributes:
 * ``params`` - a list of param names. If specified, a visual control will be 
   created for each param whose name is in this list, if not specified 
   (the default) then control will be created for all visible params specified in the 
-  Administrator
+  Application builder
 
 * ``col_count`` - the number of columns that will be created for visual controls, 
   the default value is 1

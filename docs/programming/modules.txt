@@ -3,7 +3,7 @@ Working with modules
 ====================
 
 For every item of the project :doc:`task tree <task_tree>` a developer can write 
-code that will be executed on the client or server. In Administrator for every 
+code that will be executed on the client or server. In Application builder for every 
 item there is two upper-right buttons **Client module** and **Server module**. 
 Clicking on these will open the
 :doc:`code editor </admin/code_editor>`.

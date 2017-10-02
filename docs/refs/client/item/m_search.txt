@@ -2,7 +2,7 @@
 search
 ======
 
-.. js:function:: search() 
+.. js:function:: search(field_name, value, search_type, callback) 
 
 **domain**: client 
 
@@ -13,18 +13,50 @@ search
 Description
 ===========
 
-Call ``search`` to get the total number of records ownered by the item's 
-dataset.
+Call ``search`` to send to the server a request to generate and execute 
+an sql query to get all records which satisfy the search condition for the field. 
+The query will also satisfy currently set filteres or where condition for an item. 
+The existing visual controls will be update with the returned dataset.
 
+Parameters:
+
+* ``field_name`` - name of the field
+
+* ``value`` - value of the condition
+
+* ``search_type`` - type of search as a string, see Filter symbol in 
+  :doc:`Filtering records </programming/data/filtering_records>`
+
+* ``callback`` - a callback function that will be executed after search is 
+  executed
+  
 Example
 =======
 
+The following code is used in the Catalogs client module of the 
+:doc:`default code </intro/default_code>`
+and
+:doc:`Demo project </intro/demo_project>`
+
 .. code-block:: js
 
-    item.open()
-    if (item.record_count()) {
-        // some code
-    }
+    search.on('input', function() {
+        var input = $(this);
+        input.css('font-weight', 'normal');
+        clearTimeout(timeOut);
+        timeOut = setTimeout(function() {
+                var field = item.field_by_name(search_field),
+                    search_type = 'contains_all';
+                if (field.lookup_type !== 'text') {
+                    search_type = 'eq';
+                }
+                item.search(search_field, input.val(), search_type, function() {
+                    input.css('font-weight', 'bold');
+                });
+            },
+            500
+        );
+    });
 
 
 See also
@@ -32,5 +64,5 @@ See also
 
 :doc:`Dataset </programming/data/dataset>`
 
-:doc:`open <m_open>`
+:doc:`Filtering records </programming/data/filtering_records>`
 

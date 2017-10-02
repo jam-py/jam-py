@@ -20,7 +20,7 @@ After that we run *server.py* script that *jam-project.py* have created:
     $ ./server.py
 
 Now, to complete the creation of the project, open the web browser and go to 
-127.0.0.1:8080/admin.html to open the Administrator. You should see the language 
+127.0.0.1:8080/builder.html to open the Application builder. You should see the language 
 selection dialog.
 
 .. image:: /intro/_images/lang.png
@@ -39,7 +39,7 @@ left panel.
 
 .. image:: /intro/_images/adm_new_project.png
 	:align: center
-	:alt: Project admin
+	:alt: Project Application builder
 
 Open a new page, type 127.0.0.1:8080 in the address bar and press Enter. 
 A new project appears with an empty menu.

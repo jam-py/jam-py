@@ -34,7 +34,7 @@ The ``options`` parameter is an object that may have following attributes:
   (the default) then the fields attribute of an 
   :doc:`filter_options <at_filter_options>`
   will be used (by default it lists all visible filters specified in the 
-  Administrator),
+  Application builder),
 
 * ``col_count`` - the number of columns that will be created for visual controls, 
   the default value is 1.

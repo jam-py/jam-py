@@ -5,7 +5,8 @@ Demo project
 The framework has a full fledged demo application that demonstrates programming 
 techniques used in the framework. 
 
-To see it you should go to the demo folder and run *server.py* script.
+To see it you should go to the demo folder of the Jam.py package and run 
+*server.py* script.
 
 .. code-block:: console
 
@@ -15,8 +16,8 @@ To see it you should go to the demo folder and run *server.py* script.
 Open a Web browser and enter 127.0.0.1:8080 in the address bar. 
 
 To see 
-:doc:`Administrator </admin/index>`
-open a new page in a browser and enter 127.0.0.1:8080/admin.html
+:doc:`Application builder </admin/index>`
+open a new page in a browser and enter 127.0.0.1:8080/builder.html
 
 
 .. image:: _images/demo.png
@@ -26,4 +27,4 @@ open a new page in a browser and enter 127.0.0.1:8080/admin.html
 
 .. image:: _images/demo_admin.png
 	:align: center
-	:alt: Administrator of demo project
+	:alt: Application builder of demo project

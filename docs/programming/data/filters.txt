@@ -6,7 +6,7 @@ For each item that have access to a database table a list of filter objects can
 be created.
 
 To create filters use 
-an :doc:`Filters Dialog </admin/items/filters_dialog>` of the Administrator
+an :doc:`Filters Dialog </admin/items/filters_dialog>` of the Application builder.
 
 Filters provide a convenient way for users to visually specify parameters of the
 request made by the application to the project database

@@ -2,8 +2,8 @@
 Project managment
 =================
 
-After the Administrator is first run or when the **Project** node is selected
-in the project tree, the Administrator page will look as follows:
+After the Application builder is first run or when the **Project** node is selected
+in the project tree, the Application builder page will look as follows:
 
 .. image:: /admin/_images/project_node.png
 	:align: center

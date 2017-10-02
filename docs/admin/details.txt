@@ -3,8 +3,8 @@ Details
 =======
 
 To work with a detail of an item, expand a group node that owns the item and 
-select that item in the tree. In the center of the Administrator all details
-of this item will be displayed.
+select that item in the tree. In the center of the Application builder all 
+details of this item will be displayed.
 
 The right panel of the page have following buttons:
 
@@ -43,4 +43,4 @@ Use **Edit** button at the bottom of the page to change ``item_name`` or
 
 .. image:: _images/details.png
 	:align: center
-	:alt: Jam.py Administrator Users 
+	:alt: Jam.py details

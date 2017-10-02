@@ -45,7 +45,7 @@ The ``options`` parameter is an object that may have the following attributes:
   default) then the ``fields`` attribute of an 
   :doc:`view_options <at_view_options>`
   will be used (by default it lists all view fields, specified in the 
-  Administrator (``View`` button for the item)).
+  Application builder (``View`` button for the item)).
 
 * ``striped`` — the grid is striped if this value is true.
 

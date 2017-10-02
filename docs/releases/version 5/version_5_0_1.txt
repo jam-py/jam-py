@@ -1,0 +1,57 @@
+=============
+Version 5.0.1
+=============
+
+Library:
+
+* Default font is 14px now
+  you can change it to 12px font by replacing
+  
+  .. code-block:: html
+  
+    <link href="jam/css/jam.css" rel="stylesheet"> 
+    
+  with  
+  
+  .. code-block:: html
+  
+    <link href="jam/css/jam12.css" rel="stylesheet"> 
+    
+  in index.html
+  
+* Administrator is renamed to Application builder
+  you can run it by typing 
+  127.0.0.1:8080/builder.html,
+  127.0.0.1:8080/admin.html is also supported
+  
+* Asterisk is added to required fields now
+
+  To cancel it add 
+  
+  .. code-block:: css
+  
+      .control-label.required:after {
+          content: "";
+      }
+      
+  to project.css file
+  
+* Selection of lookup list value in report parameters for fixed. 
+
+Documentation:
+
+* First version of Documentation completed
+
+* New topics added:
+
+  :doc:`refresh_record </refs/client/item/m_refresh_record>`
+  
+  :doc:`refresh_page </refs/client/item/m_refresh_page>`
+  
+  :doc:`search </refs/client/item/m_search>`
+  
+* Jam.py roadmap added  
+
+Demo:
+
+* Small font menu item is added to Themes menu

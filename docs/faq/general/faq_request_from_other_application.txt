@@ -1,0 +1,8 @@
+==============================================================================
+How I can process a request or get some data from other application or service
+==============================================================================
+
+You can send a post request to the server process it and return the result by
+using 
+:doc:`on_ext_request </refs/server/task/on_ext_request>`
+event

@@ -1,0 +1,50 @@
+====================================================
+What is the difference between catalogs and journals
+====================================================
+
+When a new project is created, its
+:doc:`task tree </programming/task_tree>`
+has the following groups: 
+**Catalogs**, **Journals**, **Details** and **Reports**.
+
+**Catalogs** group owns data items that contain information of catalog type such as 
+customers, organizations, tracks, etc. The 
+:doc:`default code </intro/default_code>` 
+supports search functionality for the catalogs (when default field is set in the
+Application builder).
+
+**Journals** group contains items that store information about events recorded in some 
+documents, such as invoices, purchase orders, etc. The 
+:doc:`default code </intro/default_code>`
+supports filters functionality for the catalogs. 
+
+Below is the code declared in the client module of the journals group of the Demo 
+application:
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        item.view_form.find("#filter-btn").click(function() {item.create_filter_form()});    
+        if (!item.on_filters_applied) {
+            item.on_filters_applied = function() {
+                item.view_form.find("#filter-text").text(item.get_filter_text());        
+            };
+        }
+    }
+    
+It finds the "Filter" button in the journal view 
+:doc:`form </programming/interface/forms>` 
+(if it was declared in the item's view 
+:doc:`form template </programming/interface/form_templates>`
+) and assigns JQuery onclick event to a function that will create a form
+to specify filter parameters. It also assigns the on_filters_applied event handler 
+(if it wasn't declared in the item's client module) to the function, that will 
+change the element with "filter-text" id to the current values of filters, 
+after the filters have been applied.
+
+**Details** are essentially similar to journals. But besides that they could be 
+embedded into data items (see :doc:`Details </programming/data/details>`). 
+For example, a list of tracks in the invoice.
+
+You can create your own groups and specify the common behavior of the items that
+they own in the group's client module.

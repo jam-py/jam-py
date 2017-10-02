@@ -638,11 +638,11 @@ class Report(AbstrReport):
                 if type(value) in string_types:
                     d[key] = escape(value)
             cell_start = 0
-            cell_start_tag = '<table:table-cell'
-            cell_type_tag = 'office:value-type="string"'
-            calcext_type_tag = 'calcext:value-type="string"'
-            start_tag = '<text:p>'
-            end_tag = '</text:p>'
+            cell_start_tag = to_bytes('<table:table-cell', 'utf-8')
+            cell_type_tag = to_bytes('office:value-type="string"', 'utf-8')
+            calcext_type_tag = to_bytes('calcext:value-type="string"', 'utf-8')
+            start_tag = to_bytes('<text:p>', 'utf-8')
+            end_tag = to_bytes('</text:p>', 'utf-8')
             while True:
                 cell_start = self.find(text, cell_start_tag, cell_start)
                 if cell_start == -1:
@@ -655,27 +655,28 @@ class Report(AbstrReport):
                             text_start = start + len(start_tag)
                             text_end = end
                             cell_text = text[text_start:text_end]
-                            cell_text_start = self.find(cell_text, '%(', 0)
+                            cell_text_start = self.find(cell_text, to_bytes('%(', 'utf-8'), 0)
                             if cell_text_start != -1:
-                                end = self.find(cell_text, ')s', cell_text_start + 2)
+                                end = self.find(cell_text, to_bytes(')s', 'utf-8'), cell_text_start + 2)
                                 if end != -1:
                                     end += 2
-                                    val = to_unicode(cell_text[cell_text_start:end], 'utf-8')
-                                    key = to_unicode(val[2:-2], 'utf-8')
-                                    value = d.get(key)
+                                    val = cell_text[cell_text_start:end]
+                                    key = val[2:-2]
+                                    value = d.get(to_unicode(key, 'utf-8'))
                                     if isinstance(value, DBField):
-                                        raise Exception('Report: "%s" band: "%s" key "%s" a field object is passed. Specify a value attribute.' % \
+                                        raise Exception('Report: "%s" band: "%s" key "%s" a field object is passed. Specify the value attribute.' % \
                                             (self.item_name, band, key))
                                     elif not value is None:
+                                        val = to_unicode(val, 'utf-8')
                                         val = val % d
+                                        val = to_bytes(val, 'utf-8')
                                         if type(value) == float:
                                             val = self.replace(val, '.', common.DECIMAL_POINT)
                                     else:
                                         if not key in iterkeys(d):
                                             print('Report: "%s" band: "%s" key "%s" not found in the dictionary' % \
                                                 (self.item_name, band, key))
-                                    cell_text = to_unicode(cell_text, 'utf-8')
-                                    cell_text = to_bytes('%s%s%s' % (cell_text[:cell_text_start], val, cell_text[end:]), 'utf-8')
+                                    cell_text = to_bytes('%s%s%s', 'utf-8') % (cell_text[:cell_text_start], val, cell_text[end:])
                                     text = to_bytes('', 'utf-8').join([text[:text_start], cell_text, text[text_end:]])
                                     if type(value) in (int, float):
                                         start_text = text[cell_start:start]

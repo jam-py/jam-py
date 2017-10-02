@@ -8,8 +8,8 @@ Database
 	:alt: Database dialog
 
 In this dialog project database pararameters are displayed. When they have been 
-changed and OK button is clicked, the Administrator will check connection to the 
-database and if it failed to connect an error will be displayed.
+changed and OK button is clicked, the Application builder will check connection 
+to the database and if it failed to connect an error will be displayed.
 
 .. note::
    When any **Database** parameter is changed, except **DB manual update**, 
