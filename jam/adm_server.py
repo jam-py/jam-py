@@ -1455,7 +1455,7 @@ def server_import_task(task, task_id, file_name, from_client=False):
             check_generator(task.sys_items, delta)
             for d in delta:
                 if d.rec_inserted():
-                    db_sql.append(items_insert_sql(task.sys_items, d))
+                    db_sql.append(items_insert_sql(task.sys_items, d, new_fields=get_new_fields(d.id.value)))
                 elif d.rec_modified():
                     db_sql.append(items_update_sql(task.sys_items, d))
                 elif d.rec_deleted():
@@ -2583,14 +2583,15 @@ def init_priviliges(item, item_id):
         priv.post()
     priv.apply()
 
-def items_insert_sql(item, delta, manual_update=False, foreign_fields=None):
+def items_insert_sql(item, delta, manual_update=False, new_fields=None, foreign_fields=None):
     if update_table(delta) and not manual_update:
         if delta.type_id.value in (common.ITEM_TYPE, common.TABLE_TYPE):
             db_type = get_db_type(item.task)
+            fields = new_fields
+            if not fields:
+                fields = get_table_fields(delta, delta.details.sys_fields)
             sql = delta.create_table_sql(db_type, delta.f_table_name.value, \
-                get_table_fields(delta, delta.details.sys_fields), \
-                delta.f_gen_name.value, \
-                foreign_fields=foreign_fields)
+                fields, delta.f_gen_name.value, foreign_fields=foreign_fields)
             return sql
 
 def items_execute_insert(item, delta, manual_update):

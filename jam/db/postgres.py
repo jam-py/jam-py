@@ -1,5 +1,5 @@
 import psycopg2
-from werkzeug._compat import iteritems
+from werkzeug._compat import PY2, iteritems, text_type, to_bytes, to_unicode
 
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 
@@ -53,8 +53,8 @@ def process_sql_params(params, cursor):
         if type(p) == tuple:
             value, data_type = p
             if data_type in [BLOB, KEYS]:
-                if type(value) == unicode:
-                    value = value.encode('utf-8')
+                if type(value) == text_type:
+                    value = to_bytes(value, 'utf-8')
                 value = psycopg2.Binary(value)
         else:
             value = p
@@ -66,8 +66,12 @@ def process_sql_result(rows):
     for row in rows:
         fields = []
         for field in row:
-            if type(field) == buffer:
-                field = str(field)
+            if PY2:
+                if type(field) == buffer:
+                    field = str(field)
+            else:
+                if type(field) == memoryview:
+                    field = to_unicode(to_bytes(field, 'utf-8'), 'utf-8')
             fields.append(field)
         result.append(fields)
     return result
@@ -172,7 +176,7 @@ def get_sequence_name(table_name):
     return '%s_ID_SEQ' % table_name
 
 def next_sequence_value_sql(gen_name):
-    return "SELECT NEXTVAL('%s')" % gen_name
+    return 'SELECT NEXTVAL(\'"%s"\')' % gen_name
 
 def restart_sequence_sql(gen_name, value):
     return 'ALTER SEQUENCE "%s" RESTART WITH %d' % (gen_name, value)

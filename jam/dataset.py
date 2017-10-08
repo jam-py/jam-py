@@ -694,7 +694,7 @@ class ChangeLog(object):
         modified = False
         old_rec = record_log['old_record']
         cur_rec = record_log['record']
-        for i in xrange(self.item._record_lookup_index):
+        for i in range(self.item._record_lookup_index):
             if old_rec[i] != cur_rec[i]:
                 modified = True
                 break

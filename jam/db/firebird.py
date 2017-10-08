@@ -1,5 +1,6 @@
 import sys
 import fdb
+from werkzeug._compat import text_type, to_bytes, to_unicode
 
 DATABASE = 'FIREBIRD'
 NEED_DATABASE_NAME = True
@@ -56,8 +57,9 @@ def process_sql_params(params, cursor):
     for p in params:
         if type(p) == tuple:
             value, data_type = p
-            if data_type in [BLOB, KEYS] and type(value) == unicode:
-                value = value.encode('utf-8')
+            if data_type in [BLOB, KEYS]:
+                if type(value) == text_type:
+                    value = to_bytes(value, 'utf-8')
         else:
             value = p
         result.append(value)

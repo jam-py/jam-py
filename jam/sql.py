@@ -57,7 +57,7 @@ class SQL(object):
             id_literal = "'%s'" % self._primary_key_field.value
         else:
             id_literal = "%s" % self._primary_key_field.value
-        where = " WHERE %s = %s" % (self._primary_key_db_field_name, id_literal)
+        where = ' WHERE "%s" = %s' % (self._primary_key_db_field_name, id_literal)
         return ''.join([command, fields, where]), row
 
     def delete_sql(self, db_module):
@@ -69,11 +69,11 @@ class SQL(object):
         else:
             id_literal = "%s" % self._primary_key_field.value
         if soft_delete:
-            sql = 'UPDATE %s SET %s = 1 WHERE %s = %s' % \
+            sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s' % \
                 (self.table_name, self._deleted_flag_db_field_name,
                 self._primary_key_db_field_name, id_literal)
         else:
-            sql = 'DELETE FROM %s WHERE %s = %s' % \
+            sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
                 (self.table_name, self._primary_key_db_field_name, id_literal)
         return sql
 
@@ -126,20 +126,20 @@ class SQL(object):
                 id_literal = "%s" % self._primary_key_field.value
             if detail._master_id:
                 if item.soft_delete:
-                    sql = 'UPDATE %s SET %s = 1 WHERE %s = %s AND %s = %s' % \
+                    sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s AND "%s" = %s' % \
                         (detail.table_name, detail._deleted_flag_db_field_name, detail._master_id_db_field_name, \
                         item.ID, detail._master_rec_id_db_field_name, id_literal)
                 else:
-                    sql = 'DELETE FROM %s WHERE %s = %s AND %s = %s' % \
+                    sql = 'DELETE FROM "%s" WHERE "%s" = %s AND "%s" = %s' % \
                         (detail.table_name, detail._master_id_db_field_name, item.ID, \
                         detail._master_rec_id_db_field_name, id_literal)
             else:
                 if item.soft_delete:
-                    sql = 'UPDATE %s SET %s = 1 WHERE %s = %s' % \
+                    sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s' % \
                         (detail.table_name, detail._deleted_flag_db_field_name, \
                         detail._master_rec_id_db_field_name, id_literal)
                 else:
-                    sql = 'DELETE FROM %s WHERE %s = %s' % \
+                    sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
                         (detail.table_name, detail._master_rec_id_db_field_name, id_literal)
             h_sql, h_params, h_gen_name = get_history_sql(item, db_module)
             return sql, None, None, h_sql, h_params, h_gen_name

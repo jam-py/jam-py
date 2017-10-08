@@ -1,5 +1,6 @@
 import sys
 import cx_Oracle
+from werkzeug._compat import text_type, to_bytes, to_unicode
 
 DATABASE = 'ORACLE'
 NEED_DATABASE_NAME = True
@@ -77,8 +78,8 @@ def process_sql_params(params, cursor):
         if type(p) == tuple:
             value, data_type = p
             if data_type in [BLOB, KEYS]:
-                if type(value) == unicode:
-                    value = value.encode('utf-8')
+                if type(value) == text_type:
+                    value = to_bytes(value, 'utf-8')
                 blob = cursor.var(cx_Oracle.BLOB)
                 blob.setvalue(0, value)
                 value = blob
@@ -94,6 +95,7 @@ def process_sql_result(rows):
         for field in row:
             if isinstance(field, cx_Oracle.LOB):
                 field = field.read()
+                field = to_unicode(field, 'utf-8')
             fields.append(field)
         result.append(fields)
     return result

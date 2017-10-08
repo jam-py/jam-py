@@ -604,7 +604,7 @@ class Report(AbstrReport):
             if p != -1:
                 r = self.find(col, str(repeated), p)
                 if r != -1:
-                    for i in xrange(r, 100):
+                    for i in range(r, 100):
                         if col[i] in ("'", '"'):
                             result = self.replace(col, col[p:i+1], '')
                             break
