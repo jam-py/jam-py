@@ -153,6 +153,10 @@ form {
     margin-top: 0;
 }
 
+.form-horizontal .control-group:first-child {
+    margin-top: 4px;
+}
+
 .control-label.required:after {
     content: " *";
     color: red;

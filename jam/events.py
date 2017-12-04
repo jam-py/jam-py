@@ -8,11 +8,11 @@ task_client_events = \
         'on_view_form_created': 'item',
         'on_edit_form_created': 'item',
         'on_filter_form_created': 'item',
-        'on_param_form_created': 'item',
+        'on_param_form_created': 'report',
         'on_view_form_shown': 'item',
         'on_edit_form_shown': 'item',
         'on_filter_form_shown': 'item',
-        'on_param_form_shown': 'item',
+        'on_param_form_shown': 'report',
         'on_view_form_close_query': 'item',
         'on_edit_form_close_query': 'item',
         'on_filter_form_close_query': 'item',
@@ -20,7 +20,7 @@ task_client_events = \
         'on_view_form_closed': 'item',
         'on_edit_form_closed': 'item',
         'on_filter_form_closed': 'item',
-        'on_param_form_closed': 'item',
+        'on_param_form_closed': 'report',
         'on_view_form_keyup': 'item, event',
         'on_view_form_keydown': 'item, event',
         'on_edit_form_keyup': 'item, event',
@@ -42,7 +42,7 @@ group_client_events = \
         'on_view_form_closed': 'item',
         'on_edit_form_closed': 'item',
         'on_filter_form_closed': 'item',
-        'on_param_form_closed': 'item',
+        'on_param_form_closed': 'report',
         'on_view_form_keyup': 'item, event',
         'on_view_form_keydown': 'item, event',
         'on_edit_form_keyup': 'item, event',
@@ -51,10 +51,10 @@ group_client_events = \
 
 reports_client_events = \
     {
-        'on_param_form_created': 'item',
-        'on_param_form_shown': 'item',
+        'on_param_form_created': 'report',
+        'on_param_form_shown': 'report',
         'on_param_form_close_query': 'report',
-        'on_param_form_closed': 'item',
+        'on_param_form_closed': 'report',
         'on_open_report': 'report, url',
         'on_before_print_report': 'report'
     }
@@ -109,8 +109,8 @@ item_client_events['on_after_apply'] = 'item'
 
 report_client_events = \
     {
-        'on_param_form_created': 'item',
-        'on_param_form_shown': 'item',
+        'on_param_form_created': 'report',
+        'on_param_form_shown': 'report',
         'on_param_form_close_query': 'report',
         'on_before_print_report': 'report',
         'on_open_report': 'report, url',

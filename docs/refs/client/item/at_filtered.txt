@@ -1,0 +1,27 @@
+========
+Filtered
+========
+
+.. js:attribute:: filtered
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Specifies whether or not filtering is active for a dataset.
+
+Check ``filtered`` to determine whether or not local dataset filtering is in 
+effect. If ``filtered`` is ``true``, then filtering is active. To apply filter 
+conditions specified in the 
+:doc:`on_filter_record <on_filter_record>`
+event handler, set ``filtered`` to ``true``. 
+
+See also
+========
+
+:doc:`on_filter_record <on_filter_record>`

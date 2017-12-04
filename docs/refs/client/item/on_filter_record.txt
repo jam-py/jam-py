@@ -1,0 +1,50 @@
+================
+on_filter_record
+================
+
+on_filter_record(item)
+
+The item parameter is the item that triggered the event.
+
+**domain**: client 
+
+**language**: javascript
+
+Description
+===========
+
+Use an ``on_filter_record`` event to filter dataset records locally. 
+It is triggered when the cursor moves to another record and 
+:doc:`Filtered <at_filtered>`
+property is set to ``true``
+
+Write an ``on_filter_record`` event handler to specify for each record in a 
+dataset whether it should be visible to the application. To indicate that a 
+record passes the filter condition, the ``on_filter_record`` event handler must 
+return true. 
+
+The ``item`` parameter is the item that triggered the event.
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_filter_record(item) {
+        if (item.type.value === 2) {
+            return true;
+        }
+    }
+    
+    function enable_filtering(item) {
+        item.filtered = true;
+    }
+
+    function disable_filtering(item) {
+        item.filtered = false;
+    }
+
+See also
+========
+
+:doc:`Filtered <at_filtered>`

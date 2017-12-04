@@ -26,8 +26,8 @@
         this.element = $(element);
         this.format = DPGlobal.parseFormat(options.format||this.element.data('date-format')||'mm/dd/yyyy');
         this.picker = $(DPGlobal.template)
-//                            .appendTo('body')
-                            .appendTo(this.element.offsetParent())
+                            .appendTo('body')
+//                            .appendTo(this.element.offsetParent())
                             .on({
                                 click: $.proxy(this.click, this)//,
                                 //mousedown: $.proxy(this.mousedown, this)
@@ -123,14 +123,13 @@
                     that.hide();
                 }
             });
-            this.picker.on("keyup.datepicker", function(e) {
+            this.element.on("keyup.datepicker", function(e) {
+                e.preventDefault();
+                e.stopPropagation();
                 if (e.keyCode === 27) {
-                    e.stopPropagation();
-                    e.preventDefault();
                     that.hide();
                 }
             });
-//            this.picker.find('.datepicker-days').focus();
             this.picker.focus();
         },
 
@@ -139,16 +138,11 @@
             $(window).off('resize', this.place);
             this.viewMode = this.startViewMode;
             this.showMode();
-//            if (!this.isInput) {
-                $(document).off('mousedown.datepicker');
-//            }
-            this.picker.off("keyup.datepicker");
-            //this.set();
-            //~ this.element.trigger({
-                //~ type: 'hide',
-                //~ date: this.date
-            //~ });
+            $(document).off('mousedown.datepicker');
+            this.element.off("keyup.datepicker");
             this.element.focus();
+            this.element.removeData('datepicker');
+            this.picker.detach();
         },
 
         set: function() {
@@ -175,7 +169,8 @@
         },
 
         place: function(){
-            var offset = this.component ? this.component.position() : this.element.position();
+//            var offset = this.component ? this.component.position() : this.element.position();
+            var offset = this.element.offset();
             this.picker.css({
                 top: offset.top + this.height,
                 left: offset.left

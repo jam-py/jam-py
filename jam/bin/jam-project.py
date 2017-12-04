@@ -19,7 +19,7 @@ for dir in dirs:
 
 con = sqlite3.connect(os.path.join(project_dir, 'admin.sqlite'))
 cursor = con.cursor()
-cursor.execute('UPDATE SYS_PARAMS SET F_LANGUAGE=NULL')
+#cursor.execute('UPDATE SYS_PARAMS SET F_LANGUAGE=NULL')
 cursor.execute('UPDATE SYS_TASKS SET F_NAME=NULL, F_ITEM_NAME=NULL, \
     F_MANUAL_UPDATE=NULL, F_DB_TYPE=NULL, F_ALIAS=NULL, F_LOGIN=NULL, \
     F_PASSWORD=NULL, F_HOST=NULL, F_PORT=NULL, F_ENCODING=NULL')

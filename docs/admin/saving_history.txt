@@ -1,0 +1,45 @@
+===========================================
+Saving the history of changes made by users
+===========================================
+
+To save history of changes made by users to must specify the item that will 
+store them. 
+
+To do so, open project parameters and click the button to the right of the
+History item input:
+
+.. image:: _images/history_item.png
+	:align: center
+	:alt: History item
+	
+In the dialog that will appear click on the Create history item button 
+
+.. image:: _images/new_hist_item.png
+	:align: center
+	:alt: New history item
+
+The following mesage will appear when the item will be created: 
+
+.. image:: _images/hist_item_created.png
+	:align: center
+	:alt: History item created
+	
+After that you have to set **Keep history** attribute of an item to save the history
+its changes:
+
+.. image:: _images/keep_history.png
+	:align: center
+	:alt: Keep history attribute
+	
+To see the history of changes of a record click the icon to the left of 
+the close button on the right part of the header of the edit form.
+
+
+.. image:: _images/invoices_hist.png
+	:align: center
+	:alt: Invoices history
+
+
+Or you can do it using the
+:doc:`show_history </refs/client/item/m_show_history>`
+method

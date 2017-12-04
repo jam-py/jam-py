@@ -91,23 +91,27 @@ def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
     result = []
     primary_key = ''
     sql = 'CREATE TABLE "%s"\n(\n' % table_name
+    lines = []
     for field in fields:
-        sql += '"%s" %s' % (field['field_name'], FIELD_TYPES[field['data_type']])
+        line = '"%s" %s' % (field['field_name'], FIELD_TYPES[field['data_type']])
         if field['size'] != 0 and field['data_type'] == TEXT:
-            sql += '(%d)' % field['size']
+            line += '(%d)' % field['size']
         if field['default_value'] and not field['primary_key']:
             if field['data_type'] == TEXT:
-                sql += " DEFAULT '%s'" % field['default_value']
+                line += " DEFAULT '%s'" % field['default_value']
             else:
-                sql += ' DEFAULT %s' % field['default_value']
+                line += ' DEFAULT %s' % field['default_value']
         if field['primary_key']:
-            sql += ' NOT NULL AUTO_INCREMENT'
+            line += ' NOT NULL AUTO_INCREMENT'
             primary_key = field['field_name']
-        sql +=  ',\n'
-    sql += 'PRIMARY KEY("%s")' % primary_key
+        lines.append(line)
+    if primary_key:
+        lines.append('PRIMARY KEY("%s")' % primary_key)
+    sql += ',\n'.join(lines)
     sql += ')\n'
     result.append(sql)
     return result
+
 
 def delete_table_sql(table_name, gen_name):
     result = []

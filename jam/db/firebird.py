@@ -87,29 +87,34 @@ def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
     result = []
     primary_key = ''
     sql = 'CREATE TABLE "%s"\n(\n' % table_name
+    lines = []
     for field in fields:
-        sql += '"%s" %s' % (field['field_name'], FIELD_TYPES[field['data_type']])
+        line = '"%s" %s' % (field['field_name'], FIELD_TYPES[field['data_type']])
         if field['size'] != 0 and field['data_type'] == TEXT:
-            sql += '(%d)' % field['size']
+            line += '(%d)' % field['size']
         if field['default_value'] and not field['primary_key']:
             if field['data_type'] == TEXT:
-                sql += " DEFAULT '%s'" % field['default_value']
+                line += " DEFAULT '%s'" % field['default_value']
             else:
-                sql += ' DEFAULT %s' % field['default_value']
-        sql +=  ',\n'
+                line += ' DEFAULT %s' % field['default_value']
+        lines.append(line)
         if field['primary_key']:
             primary_key = field['field_name']
-    sql += 'CONSTRAINT %s_PR_INDEX PRIMARY KEY ("%s")\n' % \
-        (table_name, primary_key)
+    if primary_key:
+        lines.append('CONSTRAINT %s_PR_INDEX PRIMARY KEY ("%s")\n' % \
+            (table_name, primary_key))
+    sql += ',\n'.join(lines)
     sql += ')\n'
     result.append(sql)
-    result.append('CREATE SEQUENCE "%s"' % gen_name)
+    if primary_key:
+        result.append('CREATE SEQUENCE "%s"' % gen_name)
     return result
 
 def delete_table_sql(table_name, gen_name):
     result = []
     result.append('DROP TABLE "%s"' % table_name)
-    result.append('DROP SEQUENCE "%s"' % gen_name)
+    if gen_name:
+        result.append('DROP SEQUENCE "%s"' % gen_name)
     return result
 
 def create_index_sql(index_name, table_name, unique, fields, desc):

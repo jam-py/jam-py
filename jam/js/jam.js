@@ -75,7 +75,43 @@
         filter_value = ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in',
             'range', 'isnull', 'exact', 'contains', 'startwith', 'endwith',
             'contains_all'
+        ],
+        field_attr = [
+            "ID",
+            "field_name",
+            "field_caption",
+            "data_type",
+            "required",
+            "lookup_item",
+            "master_field",
+            "lookup_field",
+            "lookup_field1",
+            "lookup_field2",
+            "view_visible",
+            "view_index",
+            "edit_visible",
+            "edit_index",
+            "_read_only",
+            "_expand",
+            "_word_wrap",
+            "field_size",
+            "default_value",
+            "is_default",
+            "calculated",
+            "editable",
+            "_alignment",
+            "lookup_values",
+            "multi_select",
+            "multi_select_all",
+            "enable_typeahead",
+            "field_help",
+            "field_placeholder",
+            "field_mask"
+        ],
+        field_type_names = ["", "text", "integer", "float", 'currency',
+            "date", "datetime", "boolean", "blob", "keys"
         ];
+
 
 
     /**********************************************************************/
@@ -217,7 +253,7 @@
                 child._deleted_flag = item_info.deleted_flag;
                 child._master_id = item_info.master_id;
                 child._master_rec_id = item_info.master_rec_id;
-                child.keep_history = item_info.keep_history;
+                child._keep_history = item_info.keep_history;
                 child.lock_on_edit = item_info.lock_on_edit;
                 child.select_all = item_info.select_all
                 child.prototype_ID = item_info.prototype_ID
@@ -1030,50 +1066,43 @@
                     content = '',
                     old_value,
                     new_value,
+                    val_index,
                     field,
                     field_name,
-                    changes = JSON.parse(h.changes.value),
-                    field_arr,
-                    details_arr;
-
+                    changes,
+                    field_arr;
+                changes = h.changes.value;
+                if (changes && changes[0] === '0') {
+                    changes = changes.substring(1);
+                    changes = JSON.parse(changes);
+                }
                 if (h.operation.value === consts.RECORD_DELETED) {
                     content = '<p>Record deleted</p>'
                 }
-                else if (h.operation.value === consts.RECORD_DETAILS_MODIFIED) {
-                    content = '<p>Details modified</p>'
-                }
                 else if (changes) {
-                    field_arr = changes[0];
-                    details_arr = changes[1];
+                    field_arr = changes;
                     if (field_arr) {
                         for (i = 0; i < field_arr.length; i++) {
                             field = item.field_by_ID(field_arr[i][0]);
+                            val_index = 1;
+                            if (field_arr[i].length === 3) {
+                                val_index = 2;
+                            }
                             if (field && !field.system_field()) {
                                 field_name = field.field_caption;
                                 if (field.lookup_item) {
                                     if (!lookups[field.lookup_item.ID]) {
                                         lookups[field.lookup_item.ID] = [];
                                     }
-                                    field.set_data(field_arr[i][1]);
-                                    old_value = field.value;
-                                    field.set_data(field_arr[i][2]);
+                                    field.set_data(field_arr[i][val_index]);
                                     new_value = field.value;
-                                    if (old_value) {
-                                        lookups[field.lookup_item.ID].push([field.lookup_field, old_value]);
-                                        old_value = '<span class="' + field.lookup_field + '_' + old_value + '">value is loading</span>';
-                                    }
                                     if (new_value) {
                                         lookups[field.lookup_item.ID].push([field.lookup_field, new_value]);
                                         new_value = '<span class="' + field.lookup_field + '_' + new_value + '">value is loading</span>'
                                     }
                                 }
                                 else {
-                                    field.set_data(field_arr[i][1]);
-                                    old_value = field.display_text;
-                                    if (field.raw_value === null) {
-                                        old_value = ' '
-                                    }
-                                    field.set_data(field_arr[i][2]);
+                                    field.set_data(field_arr[i][val_index]);
                                     new_value = field.display_text;
                                     if (field.raw_value === null) {
                                         new_value = ' '
@@ -1085,7 +1114,6 @@
                                 }
                                 else if (h.operation.value === consts.RECORD_MODIFIED) {
                                     content += '<p>' + self.task.language.field + ' <b>' + field_name + '</b>: ' +
-                                        self.task.language.old_value + ': <b>' + old_value + '</b> ' +
                                         self.task.language.new_value + ': <b>' + new_value + '</b></p>';
                                 }
                             }
@@ -1152,8 +1180,12 @@
 
         show_history: function() {
             var self = this,
+                item_id = this.ID,
                 hist = this.task.history_item.copy();
-            hist.set_where({item_id: this.ID, item_rec_id: this.field_by_name(this._primary_key).value})
+            if (this.master) {
+                item_id = this.prototype_ID;
+            }
+            hist.set_where({item_id: item_id, item_rec_id: this.field_by_name(this._primary_key).value})
             hist.set_order_by(['-date']);
             hist.open(function() {
                 self.display_history(hist);
@@ -1566,7 +1598,7 @@
             this.history_item = item;
             if (this.history_item) {
                 this.history_item.read_only = true;
-//                item.view_options.fields = ['item_id', 'item_rec_id', 'date', 'operation', 'user'];
+                item.view_options.fields = ['item_id', 'item_rec_id', 'date', 'operation', 'user'];
                 if (!item.on_field_get_text) {
                     item.on_field_get_text = function(field) {
                         var oper,
@@ -1586,13 +1618,19 @@
                             it = self.item_by_ID(field.value);
                             if (it) {
                                 doc_name = it.item_caption;
-                                if (it.master) {
-                                    doc_name = it.master.item_caption + ' - ' + doc_name;
-                                }
                                 return doc_name;
                             }
                         }
                     }
+                }
+                this.history_item.edit_record = function() {
+                    var it = item.task.item_by_ID(item.item_id.value),
+                        hist = item.task.history_item.copy();
+                    hist.set_where({item_id: item.item_id.value, item_rec_id: item.item_rec_id.value});
+                    hist.set_order_by(['-date']);
+                    hist.open(function() {
+                        it.display_history(hist);
+                    });
                 }
             }
         },
@@ -1707,7 +1745,60 @@
             }
         },
 
-        add_item: function(item_name, item_caption, fields) { //addition of dynamic item
+        add_item: function(item_name, item_caption, fields, filters, on_open, on_total_count) {
+            var result,
+                len,
+                attr,
+                val,
+                data_type,
+                field_type,
+                lookup_item,
+                field_def;
+            result = new Item(this, -1, item_name, item_caption, true, 10);
+            result.field_defs = [];
+            for (var i = 0; i < fields.length; i++) {
+                field_def = []
+                for (var j = 0; j < field_attr.length; j++) {
+                    attr = field_attr[j];
+                    if (attr.charAt(0) === '_') {
+                        attr = attr.substr(1);
+                    }
+                    val = fields[i][attr]
+                    switch (attr) {
+                        case 'ID':
+                            val = i + 1;
+                        case 'data_type':
+                            field_type = fields[i]['field_type']
+                            val = field_type_names.indexOf(field_type);
+                            if (val < 1) {
+                                val = 1;
+                            }
+                            data_type = val;
+                            break;
+                        case 'field_size':
+                            if (data_type === 1 && !val) {
+                                val = 9999999999;
+                            }
+                            break;
+                        case 'lookup_item':
+                            if (val) {
+                                lookup_item = val;
+                                val = val.ID
+                            }
+                            break;
+                        case 'lookup_field':
+                            break;
+                    }
+                    field_def.push(val);
+                }
+                result.field_defs.push(field_def);
+            }
+            len = result.field_defs.length;
+            for (i = 0; i < len; i++) {
+                new Field(result, result.field_defs[i]);
+            }
+            result.prepare_fields();
+            return result;
         }
     });
 
@@ -2359,6 +2450,11 @@
                 this.set_selections(new_value);
             }
         });
+        Object.defineProperty(this, "keep_history", {
+            get: function() {
+                return this.get_keep_history();
+            },
+        });
     }
 
     $.extend(Item.prototype, {
@@ -2686,6 +2782,15 @@
             this._dataset = value;
         },
 
+        get_keep_history: function() {
+            if (this.master) {
+                return this.master._keep_history;
+                            }
+            else {
+                return this._keep_history;
+            }
+        },
+
         get_selections: function() {
             return this._selections;
         },
@@ -2733,7 +2838,8 @@
             result._view_options = this._view_options;
             result.edit_options = $.extend({}, this._edit_options);
             result.view_options = $.extend({}, this._view_options);
-            result.keep_history = this.keep_history;
+            result.prototype_ID = this.prototype_ID;
+            result._keep_history = this._keep_history;
             result.select_all = this.select_all
 
 
@@ -5170,8 +5276,11 @@
             if (this.master) {
                 throw 'The refresh_record method can not be executed for a detail item';
             }
+            if (!this.rec_count) {
+                return
+            }
             copy = this.copy({filters: false, details: false, handlers: false});
-            if (this._primary_key_field.value !== null) {
+            if (this._primary_key_field.value) {
                 self.each_field(function(field) {
                     fields.push(field.field_name)
                 })
@@ -5188,6 +5297,15 @@
             }
         },
 
+
+        _do_on_refresh_page: function(rec_no, callback) {
+            this.rec_no = rec_no;
+            this.update_controls(consts.UPDATE_OPEN);
+            if (callback) {
+                callback.call(this);
+            }
+        },
+
         refresh_page: function(call_back) {
             var args = this._check_args(arguments),
                 callback = args['function'],
@@ -5195,26 +5313,13 @@
                 self = this,
                 rec_no = this.rec_no;
             if (callback || async) {
-                this.disable_controls();
                 this.open({params: this._open_params, offset: this._open_params.__offset}, function() {
-                    self.enable_controls();
-                    self.rec_no = rec_no;
-                    self.update_controls();
-                    if (callback) {
-                        callback.call(self);
-                    }
+                    this._do_on_refresh_page(rec_no, callback);
                 });
             }
             else {
-                this.disable_controls();
-                try {
-                    this.open({params: this._open_params, offset: this._open_params.__offset});
-                }
-                finally {
-                    this.enable_controls();
-                    this.rec_no = rec_no;
-                    this.update_controls();
-                }
+                this.open({params: this._open_params, offset: this._open_params.__offset});
+                this._do_on_refresh_page(rec_no, callback);
             }
         },
 
@@ -5595,7 +5700,7 @@
         this.controls = [];
         this.bind_index = null;
         this.lookup_index = null;
-        this.field_type = this.type_names[this.data_type];
+        this.field_type = field_type_names[this.data_type];
         this.field_kind = consts.ITEM_FIELD;
         if (owner) {
             owner._fields.push(this);
@@ -5646,7 +5751,7 @@
         });
         Object.defineProperty(this, "lookup_type", {
             get: function() {
-                return this.type_names[this.get_lookup_data_type()];
+                return field_type_names[this.get_lookup_data_type()];
             },
         });
         Object.defineProperty(this, "alignment", {
@@ -5670,42 +5775,6 @@
     Field.prototype = {
         constructor: Field,
 
-        attr: [
-            "ID",
-            "field_name",
-            "field_caption",
-            "data_type",
-            "required",
-            "lookup_item",
-            "master_field",
-            "lookup_field",
-            "lookup_field1",
-            "lookup_field2",
-            "view_visible",
-            "view_index",
-            "edit_visible",
-            "edit_index",
-            "_read_only",
-            "_expand",
-            "_word_wrap",
-            "field_size",
-            "default_value",
-            "is_default",
-            "calculated",
-            "editable",
-            "_alignment",
-            "lookup_values",
-            "multi_select",
-            "multi_select_all",
-            "enable_typeahead",
-            "field_help",
-            "field_placeholder"
-        ],
-
-        type_names: ["", "text", "integer", "float", 'currency',
-            "date", "datetime", "boolean", "blob", "keys"
-        ],
-
         copy: function(owner) {
             var result = new Field(owner, this.get_info());
             result.lookup_item = this.lookup_item;
@@ -5715,10 +5784,10 @@
 
         get_info: function() {
             var i,
-                len = this.attr.length,
+                len = field_attr.length,
                 result = [];
             for (i = 0; i < len; i++) {
-                result.push(this[this.attr[i]]);
+                result.push(this[field_attr[i]]);
             }
             return result;
         },
@@ -5726,15 +5795,15 @@
         set_info: function(info) {
             if (info) {
                 var i,
-                    len = this.attr.length;
+                    len = field_attr.length;
                 for (i = 0; i < len; i++) {
-                    this[this.attr[i]] = info[i];
+                    this[field_attr[i]] = info[i];
                 }
             }
         },
 
         get_row: function() {
-            if (this.owner._dataset) {
+            if (this.owner._dataset && this.owner._dataset.length) {
                 return this.owner._dataset[this.owner._get_rec_no()];
             } else {
                 throw language.value_in_empty_dataset.replace('%s', this.owner.item_name);
@@ -6254,7 +6323,12 @@
             else if (this.lookup_values) {
                 result = this.get_lookup_text();
             } else if (this.lookup_item) {
-                result = this.get_lookup_text();
+                if (this.field_kind === consts.ITEM_FIELD && !this.owner.expanded) {
+                    result = this.get_text();
+                }
+                else {
+                    result = this.get_lookup_text();
+                }
             } else {
                 if (this.data_type === consts.CURRENCY) {
                     if (this.raw_value !== null) {

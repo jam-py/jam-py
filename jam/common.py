@@ -42,7 +42,8 @@ DEFAULT_SETTINGS = {
     'DYNAMIC_JS': False,
     'COMPRESSED_JS': False,
     'TIMEOUT': 0,
-    'IGNORE_CHANGE_IP': True
+    'IGNORE_CHANGE_IP': True,
+    'DELETE_REPORTS_AFTER': 0
 }
 
 LOCALE_SETTINGS = (
@@ -109,7 +110,6 @@ TAB_FUNCS, TAB_EVENTS, TAB_TASK, TAB_FIELDS = range(4)
 editor_tabs = ("Module", "Events", "Task", "Fields")
 
 HISTORY_FIELDS = [
-    ['id', INTEGER, None],
     ['item_id', INTEGER, None],
     ['item_rec_id', INTEGER, None],
     ['operation', INTEGER, None],
@@ -268,8 +268,12 @@ def load_interface(item):
     item._edit_list = []
     item._order_list = []
     item._reports_list = []
-    if item.f_info.value:
-        lists = pickle.loads(to_bytes(item.f_info.value, 'utf-8'))
+    value = item.f_info.value
+    if value:
+        if len(value) >= 4 and value[0:4] == 'json':
+            lists = json.loads(value[4:])
+        else:
+            lists = pickle.loads(to_bytes(value, 'utf-8'))
         item._view_list = lists['view']
         item._edit_list = lists['edit']
         item._order_list = lists['order']
@@ -285,7 +289,8 @@ def store_interface(item):
                 'edit': item._edit_list,
                 'order': item._order_list,
                 'reports': item._reports_list}
-        item.f_info.value = to_unicode(pickle.dumps(dic, protocol=0), 'utf-8')
+        item.f_info.value = 'json' + json.dumps(dic, default=json_defaul_handler)
+        #~ item.f_info.value = to_unicode(pickle.dumps(dic, protocol=0), 'utf-8')
         item.post()
         item.apply()
     finally:

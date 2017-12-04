@@ -11,7 +11,7 @@ def execute_select(cursor, db_module, command):
     try:
         cursor.execute(command)
     except Exception as x:
-        print ('\nError: %s\n command: %s' % (str(x), command))
+        print('\nError: %s\n command: %s' % (str(x), command))
         raise
     return db_module.process_sql_result(cursor.fetchall())
 
@@ -25,7 +25,7 @@ def execute(cursor, command, params):
         else:
             cursor.execute(command)
     except Exception as x:
-        print ('\nError: %s\n command: %s\n params: %s' % (str(x), command, params))
+        print('\nError: %s\n command: %s\n params: %s' % (str(x), command, params))
         raise
 
 def execute_dll(cursor, db_module, command, params, messages):
@@ -65,13 +65,20 @@ def process_delta(cursor, db_module, delta, master_rec_id, result):
     changes = []
     result['changes'] = changes
     for sql in sqls:
-        (command, params, info, h_sql, h_params, h_gen_name), details = sql
+        (command, params, info, h_sql, h_params, h_del_details), details = sql
+        if h_del_details:
+            for d_select, d_sql, d_params in h_del_details:
+                ids = execute_select(cursor, db_module, d_select)
+                for i in ids:
+                    d_params[1] = i[0]
+                    d_params = db_module.process_sql_params(d_params, cursor)
+                    execute(cursor, d_sql, d_params)
         if info:
             rec_id = info['primary_key']
             if info['inserted']:
                 if info['master_rec_id_index']:
                     params[info['master_rec_id_index']] = master_rec_id
-                if not rec_id:
+                if not rec_id and info['primary_key_index'] >= 0:
                     next_sequence_value_sql = db_module.next_sequence_value_sql(info['gen_name'])
                     if next_sequence_value_sql:
                         cursor.execute(next_sequence_value_sql)
@@ -94,13 +101,8 @@ def process_delta(cursor, db_module, delta, master_rec_id, result):
         elif command:
                 execute(cursor, command, params)
         if h_sql:
-            next_sequence_value_sql = db_module.next_sequence_value_sql(h_gen_name)
-            if next_sequence_value_sql:
-                cursor.execute(next_sequence_value_sql)
-                rec = cursor.fetchone()
-                h_params[0] = rec[0]
-            if not h_params[2]:
-                h_params[2] = rec_id
+            if not h_params[1]:
+                h_params[1] = rec_id
             h_params = db_module.process_sql_params(h_params, cursor)
             execute(cursor, h_sql, h_params)
 

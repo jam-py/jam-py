@@ -35,6 +35,7 @@ To see the changes made in Application builder go to the Project page and reload
    details
    lookup_lists
    intergation_with_existing_database
+   saving_history
 
 .. image:: _images/admin.png
 	:align: center

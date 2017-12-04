@@ -19,6 +19,7 @@ FROM = '"%s" AS %s'
 LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" AS %s'
 FIELD_AS = 'AS'
 LIKE = 'ILIKE'
+DESC = 'DESC NULLS LAST'
 
 JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB, KEYS = range(1, 10)
 FIELD_TYPES = {
@@ -92,32 +93,36 @@ def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
     result = []
     primary_key = ''
     seq_name = gen_name
-    result.append('CREATE SEQUENCE "%s"' % seq_name)
     sql = 'CREATE TABLE "%s"\n(\n' % table_name
+    lines = []
     for field in fields:
+        line = ''
         if field['primary_key']:
             primary_key = field['field_name']
-            sql += '"%s" %s PRIMARY KEY DEFAULT NEXTVAL(\'"%s"\')' % \
+            line += '"%s" %s PRIMARY KEY DEFAULT NEXTVAL(\'"%s"\')' % \
                 (field['field_name'], FIELD_TYPES[field['data_type']], seq_name)
         else:
-            sql += '"%s" %s' % (field['field_name'], FIELD_TYPES[field['data_type']])
+            line += '"%s" %s' % (field['field_name'], FIELD_TYPES[field['data_type']])
         if field['size'] != 0 and field['data_type'] == TEXT:
-            sql += '(%d)' % field['size']
+            line += '(%d)' % field['size']
         if field['default_value'] and not field['primary_key']:
             if field['data_type'] == TEXT:
-                sql += " DEFAULT '%s'" % field['default_value']
+                line += " DEFAULT '%s'" % field['default_value']
             else:
-                sql += ' DEFAULT %s' % field['default_value']
-        sql +=  ',\n'
-    sql = sql[:-2]
+                line += ' DEFAULT %s' % field['default_value']
+        lines.append(line)
+    sql += ',\n'.join(lines)
     sql += ')\n'
     result.append(sql)
-    result.append('ALTER SEQUENCE "%s" OWNED BY "%s"."%s"' % (seq_name, table_name, primary_key))
+    if primary_key:
+        result.insert(0, 'CREATE SEQUENCE "%s"' % seq_name)
+        result.append('ALTER SEQUENCE "%s" OWNED BY "%s"."%s"' % (seq_name, table_name, primary_key))
     return result
 
 def delete_table_sql(table_name, gen_name):
     result = []
     result.append('DROP TABLE "%s"' % table_name)
+    result.append('DROP SEQUENCE IF EXISTS "%s"' % gen_name)
     return result
 
 def create_index_sql(index_name, table_name, unique, fields, desc):

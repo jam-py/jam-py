@@ -19,36 +19,7 @@
 }
 
 .modal {
-    width: 560px;
-}
-
-.modal.sys_items-sys_fields.edit-form {
     width: 600px;
-}
-
-modal-footer {
-    padding: 12px 15px 13px;
-}
-
-.modal-header {
-    padding: 7px 15px;
-    border-bottom: 1px solid #eee;
-}
-
-.form-horizontal .control-group {
-    margin-bottom: 2px;
-    margin-top: 0;
-}
-
-.modal-body {
-    padding: 6px 6px;
-}
-
-.form-well {
-    width: auto;
-    margin: 2px 0 4px;
-    padding-top: 4px;
-    padding-bottom: 2px;
 }
 
 .dbtree li.selected-focused > div span.tree-text {
@@ -118,7 +89,7 @@ modal-footer {
 
 .vert-btn {
     margin-top: 1px;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
     width: 160px;
 }
 
@@ -137,7 +108,7 @@ modal-footer {
 }
 
 .side-panel {
-    padding: 10px;
+    padding: 10px 2px;
     border: solid 1px #eee;
     display: none;
 }
@@ -153,6 +124,21 @@ modal-footer {
 
 #left-box, #right-box {
     border: solid 1px #eee;
+}
+
+#left-box .nav-tabs > li > a {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+/*
+#left-box .dbtree {
+    font-family: Monaco, Menlo, "Ubuntu Mono", Consolas, source-code-pro, monospace;
+}
+*/
+
+#left-box .dbtree li div span.tree-text {
+    padding: 1px 4px;
 }
 
 #right-box {

@@ -1,11 +1,13 @@
 import sys
 import json
 import traceback
+import zlib
+import base64
 
 import jam.common as common
 import jam.db.db_modules as db_modules
 from jam.dataset import *
-from werkzeug._compat import iteritems, text_type, string_types
+from werkzeug._compat import iteritems, text_type, string_types, to_bytes, to_unicode
 
 class SQL(object):
 
@@ -102,7 +104,14 @@ class SQL(object):
             else:
                 raise Exception('apply_sql - invalid %s record_status %s, record: %s' % \
                     (item.item_name, item.record_status, item._dataset[item.rec_no]))
-            primary_key_index = item.fields.index(item._primary_key_field)
+            if item._primary_key:
+                primary_key_value = item._primary_key_field.value
+                primary_key_data_type = item._primary_key_field.data_type
+                primary_key_index = item.fields.index(item._primary_key_field)
+            else:
+                primary_key_value = None
+                primary_key_data_type = None
+                primary_key_index = -1
             master_rec_id_index = None
             if item.master:
                 master_rec_id_index = item.fields.index(item._master_rec_id_field)
@@ -110,16 +119,19 @@ class SQL(object):
                 'ID': item.ID,
                 'gen_name': item.gen_name,
                 'inserted': item.record_status == common.RECORD_INSERTED,
-                'primary_key': item._primary_key_field.value,
-                'primary_key_type': item._primary_key_field.data_type,
+                'primary_key': primary_key_value,
+                'primary_key_type': primary_key_data_type,
                 'primary_key_index': primary_key_index,
                 'log_id': item.get_rec_info()[common.REC_CHANGE_ID],
                 'master_rec_id_index': master_rec_id_index
                 }
-            h_sql, h_params, h_gen_name = get_history_sql(item, db_module)
-            return sql, param, info, h_sql, h_params, h_gen_name
+            h_sql, h_params, h_del_details = get_history_sql(item, db_module)
+            return sql, param, info, h_sql, h_params, h_del_details
 
         def delete_detail_sql(item, detail, db_module):
+            h_sql = None
+            h_params = None
+            h_del_details = None
             if self._primary_key_field.data_type == common.TEXT:
                 id_literal = "'%s'" % self._primary_key_field.value
             else:
@@ -141,17 +153,14 @@ class SQL(object):
                 else:
                     sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
                         (detail.table_name, detail._master_rec_id_db_field_name, id_literal)
-            h_sql, h_params, h_gen_name = get_history_sql(item, db_module)
-            return sql, None, None, h_sql, h_params, h_gen_name
+                h_sql, h_params, h_del_details = get_history_sql(detail, db_module)
+            return sql, None, None, h_sql, h_params, h_del_details
 
         def get_history_sql(item, db_module):
             h_sql = None
             h_params = None
-            h_gen_name = None
-            h_gen_name = None
-            if item.keep_history and item.task.history_item:
-                deleted_flag = None
-                h_gen_name = item.task.history_item.gen_name
+            h_del_details = None
+            if item.task.history_item and item.keep_history and item.record_status != common.RECORD_DETAILS_MODIFIED:
                 deleted_flag = item.task.history_item._deleted_flag
                 user_info = None
                 if item.session:
@@ -159,9 +168,7 @@ class SQL(object):
                 try:
                     h_sql = item.task.__history_sql
                 except:
-                    h_fields = ['id', 'item_id', 'item_rec_id', 'operation', 'changes', 'user', 'date']
-                    if deleted_flag:
-                        h_fields.append('deleted')
+                    h_fields = ['item_id', 'item_rec_id', 'operation', 'changes', 'user', 'date']
                     table_name = item.task.history_item.table_name
                     fields = []
                     for f in h_fields:
@@ -180,9 +187,11 @@ class SQL(object):
                     h_sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
                         (table_name, fields, values)
                     item.task.__history_sql = h_sql
-
                 changes = None
                 user = None
+                item_id = item.ID
+                if item.master:
+                    item_id = item.prototype.ID
                 if user_info:
                     try:
                         user = user_info['user_name']
@@ -193,22 +202,28 @@ class SQL(object):
                     new_rec = item._dataset[item.rec_no]
                     f_list = []
                     for f in item.fields:
-                        old = None
-                        if old_rec:
-                            old = old_rec[f.bind_index]
-                        new = new_rec[f.bind_index]
-                        if old != new:
-                            f_list.append([f.ID, old, new])
-                    d_list = []
-                    if not item.master:
-                        for detail in item.details:
-                            for d in detail:
-                                d_list.append([d.ID, d._primary_key_field.value, d.record_status])
-                    changes = (json.dumps([f_list, d_list], default=common.json_defaul_handler), common.BLOB)
-                h_params = [None, item.ID, item._primary_key_field.value, item.record_status, changes, user, datetime.datetime.now()]
-                if deleted_flag:
-                    h_params.append(0)
-            return h_sql, h_params, h_gen_name
+                        if not f.system_field():
+                            new = new_rec[f.bind_index]
+                            old = None
+                            if old_rec:
+                                old = old_rec[f.bind_index]
+                            if old != new:
+                                f_list.append([f.ID, new])
+                    changes_str = json.dumps(f_list, separators=(',',':'), default=common.json_defaul_handler)
+                    changes = ('%s%s' % ('0', changes_str), common.BLOB)
+                elif not item.master and item.details:
+                    h_del_details = []
+                    for detail in item.details:
+                        if detail.keep_history:
+                            d_select = 'SELECT "%s" FROM "%s" WHERE "%s" = %s AND "%s" = %s' % \
+                                (detail._primary_key_db_field_name, detail.table_name,
+                                detail._master_id_db_field_name, item.ID,
+                                detail._master_rec_id_db_field_name, item._primary_key_field.value)
+                            d_sql = h_sql
+                            d_params = [detail.prototype.ID, None, common.RECORD_DELETED, None, user, datetime.datetime.now()]
+                            h_del_details.append([d_select, d_sql, d_params])
+                h_params = [item_id, item._primary_key_field.value, item.record_status, changes, user, datetime.datetime.now()]
+            return h_sql, h_params, h_del_details
 
         def generate_sql(item, safe, db_module, result):
             ID, sql = result
@@ -272,31 +287,15 @@ class SQL(object):
                     if field.lookup_field2:
                         field_sql = '%s."%s" %s %s_LOOKUP' % \
                         (self.lookup_table_alias2(field), field.lookup_db_field2, db_module.FIELD_AS, field.db_field_name)
-                        #~ if funcs:
-                            #~ func = functions.get(field.field_name.upper())
-                            #~ if func:
-                                #~ field_sql = '%s(%s."%s") %s %s_LOOKUP' % \
-                                #~ (func.upper(), self.lookup_table_alias2(field), field.lookup_db_field2, db_module.FIELD_AS, field.db_field_name)
                     elif field.lookup_field1:
                         field_sql = '%s."%s" %s %s_LOOKUP' % \
                         (self.lookup_table_alias1(field), field.lookup_db_field1, db_module.FIELD_AS, field.db_field_name)
-                        #~ if funcs:
-                            #~ func = functions.get(field.field_name.upper())
-                            #~ if func:
-                                #~ field_sql = '%s(%s."%s") %s %s_LOOKUP' % \
-                                #~ (func.upper(), self.lookup_table_alias1(field), field.lookup_db_field1, db_module.FIELD_AS, field.db_field_name)
                     else:
                         if field.data_type == common.KEYS:
                             field_sql = 'NULL'
-#                            field_sql = 'NULL %s %s_LOOKUP' % (db_module.FIELD_AS, field.db_field_name)
                         else:
                             field_sql = '%s."%s" %s %s_LOOKUP' % \
                             (self.lookup_table_alias(field), field.lookup_db_field, db_module.FIELD_AS, field.db_field_name)
-                        #~ if funcs:
-                            #~ func = functions.get(field.field_name.upper())
-                            #~ if func:
-                                #~ field_sql = '%s(%s."%s") %s %s_LOOKUP' % \
-                                #~ (func.upper(), self.lookup_table_alias(field), field.lookup_db_field, db_module.FIELD_AS, field.db_field_name)
                     sql.append(field_sql)
         sql = ', '.join(sql)
         return sql
@@ -504,7 +503,7 @@ class SQL(object):
                     if field.data_type == common.KEYS:
                         result += '%s."%s", ' % (self.table_alias(), field.db_field_name)
                     else:
-                        result += '%s_LOOKUP, ' % field.db_field_name
+                        result += '%s_LOOKUP, %s."%s", ' % (field.db_field_name, self.table_alias(), field.db_field_name)
                 else:
                     result += '%s."%s", ' % (self.table_alias(), field.db_field_name)
             if result:
@@ -540,11 +539,14 @@ class SQL(object):
                 else:
                     func = functions.get(field.field_name.upper())
                     if func:
-                        ord_str = '%s' % field.db_field_name
+                        ord_str = '"%s"' % field.db_field_name
                     else:
                         ord_str = '%s."%s"' % (self.table_alias(), field.db_field_name)
                 if order[1]:
-                    ord_str += ' DESC'
+                    if hasattr(db_module, 'DESC'):
+                        ord_str += ' ' + db_module.DESC
+                    else:
+                        ord_str += ' DESC'
                 orders.append(ord_str)
         if orders:
              result = ' ORDER BY %s' % ', '.join(orders)
@@ -661,7 +663,10 @@ class SQL(object):
 
     def delete_table_sql(self, db_type):
         db_module = db_modules.get_db_module(db_type)
-        result = db_module.delete_table_sql(self.f_table_name.value, self.f_gen_name.value)
+        gen_name = None
+        if self.f_primary_key.value:
+            gen_name = self.f_gen_name.value
+        result = db_module.delete_table_sql(self.f_table_name.value, gen_name)
         for i, s in enumerate(result):
             print(result[i])
         return result

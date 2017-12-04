@@ -65,7 +65,7 @@ class ServerDataset(Dataset, SQL):
         item = None, object_field = None, visible = True, index=0, edit_visible = True, edit_index = 0, read_only = False,
         expand = False, word_wrap = False, size = 0, default_value=None, default = False, calculated = False, editable = False,
         master_field = None, alignment=None, lookup_values=None, enable_typeahead=False, field_help=None,
-        field_placeholder=None, lookup_field1=None, lookup_field2=None, db_field_name=None):
+        field_placeholder=None, lookup_field1=None, lookup_field2=None, db_field_name=None, field_mask=None):
 
         if db_field_name == None:
             db_field_name = field_name.upper()
@@ -73,7 +73,7 @@ class ServerDataset(Dataset, SQL):
         field_def = self.add_field_def(field_id, field_name, field_caption, data_type, required, item, object_field,
             lookup_field1, lookup_field2, visible, index, edit_visible, edit_index, read_only, expand, word_wrap, size,
             default_value, default, calculated, editable, master_field, alignment, lookup_values, enable_typeahead,
-            field_help, field_placeholder, db_field_name)
+            field_help, field_placeholder, field_mask, db_field_name)
         field = DBField(self, field_def)
         self._fields.append(field)
         return field
@@ -453,10 +453,13 @@ class Report(AbstrReport):
                 self.content.write(self.template_content['footer'])
                 self.save()
             finally:
-                if not self.content.closed:
-                    self.content.close()
-                if os.path.exists(self.content_name):
-                    os.remove(self.content_name)
+                try:
+                    if not self.content.closed:
+                        self.content.close()
+                    if os.path.exists(self.content_name):
+                        os.remove(self.content_name)
+                except:
+                    pass
             if ext and (ext != 'ods'):
                 converted = False
                 if self.owner.on_convert_report:
@@ -1017,6 +1020,7 @@ class Task(AbstractServerTask):
             host, port, encoding, con_pool_size, mp_pool, persist_con)
         self.on_created = None
         self.on_ext_request = None
+        self.compress_history = True
         self.init_dict = {}
         for key, value in iteritems(self.__dict__):
             self.init_dict[key] = value

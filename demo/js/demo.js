@@ -4,7 +4,7 @@
 function Events1() { // demo 
 
 	function on_page_loaded(task) {
-		
+		task.invoices.apply();
 		$("title").text(task.item_caption);
 		$("#title").text(task.item_caption);
 		 
@@ -398,6 +398,17 @@ function Events2() { // demo.catalogs
 			search_field;
 		if (item.default_field) {
 			search_field = item.default_field.field_name;
+		}
+		else if (item.view_options.fields.length) {
+			for (i = 0; i < item.view_options.fields.length; i++) {
+				field = item.field_by_name(item.view_options.fields[i]);
+				if (field && can_sort_on_field(field)) {
+					search_field = item.view_options.fields[i];
+					break;
+				}
+			}
+		}
+		if (search_field) {
 			if (item.lookup_field && item.lookup_field.value && !item.lookup_field.multi_select) {
 				item.view_form.find("#selected-value")
 					.text(item.lookup_field.display_text)
@@ -466,9 +477,7 @@ function Events2() { // demo.catalogs
 					if (search_field !== $(this).data('field_name')) {
 						search_field = $(this).data('field_name');
 						field = item.field_by_name(search_field);
-						if (field && field.lookup_type !== "blob" && field.lookup_type !== "currency" &&
-							field.lookup_type !== "float" && field.lookup_type !== "boolean" && 
-							field.lookup_type !== "date" && field.lookup_type !== "datetime") {
+						if (can_sort_on_field(field)) {
 							item.view_form.find('#search-fieldname')
 								.text(item.field_by_name(search_field).field_caption);
 							item.view_form.find("#search-input").val('');
@@ -479,6 +488,14 @@ function Events2() { // demo.catalogs
 		}
 		else {
 			item.view_form.find("#search-form").hide();
+		}
+	}
+	
+	function can_sort_on_field(field) {
+		if (field && field.lookup_type !== "blob" && field.lookup_type !== "currency" &&
+			field.lookup_type !== "float" && field.lookup_type !== "boolean" && 
+			field.lookup_type !== "date" && field.lookup_type !== "datetime") {
+			return true;
 		}
 	}
 	
@@ -499,6 +516,7 @@ function Events2() { // demo.catalogs
 		}
 	}
 	this.on_view_form_created = on_view_form_created;
+	this.can_sort_on_field = can_sort_on_field;
 	this.isCharCode = isCharCode;
 	this.on_view_form_shown = on_view_form_shown;
 }

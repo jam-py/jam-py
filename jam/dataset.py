@@ -8,7 +8,7 @@ FIELD_DEF = FIELD_ID, FIELD_NAME, NAME, FIELD_DATA_TYPE, REQUIRED, LOOKUP_ITEM, 
     LOOKUP_FIELD2, FIELD_VISIBLE, FIELD_VIEW_INDEX, FIELD_EDIT_VISIBLE, FIELD_EDIT_INDEX, FIELD_READ_ONLY, FIELD_EXPAND, \
     FIELD_WORD_WRAP, FIELD_SIZE, FIELD_DEFAULT_VALUE, FIELD_DEFAULT, FIELD_CALCULATED, FIELD_EDITABLE, FIELD_ALIGNMENT, \
     FIELD_LOOKUP_VALUES, FIELD_MULTI_SELECT, FIELD_MULTI_SELECT_ALL, FIELD_ENABLE_TYPEAHEAD, FIELD_HELP, FIELD_PLACEHOLDER, \
-    DB_FIELD_NAME = range(30)
+    FIELD_MASK, DB_FIELD_NAME = range(31)
 
 FILTER_DEF = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, FILTER_TYPE, FILTER_MULTI_SELECT, FILTER_DATA_TYPE, \
     FILTER_VISIBLE, FILTER_HELP, FILTER_PLACEHOLDER = range(9)
@@ -55,8 +55,8 @@ class DBField(object):
         self.enable_typeahead = field_def[FIELD_ENABLE_TYPEAHEAD]
         self.field_help = field_def[FIELD_HELP]
         self.field_placeholder = field_def[FIELD_PLACEHOLDER]
+        self.field_mask = field_def[FIELD_MASK]
         self.db_field_name = field_def[DB_FIELD_NAME]
-
         self.field_type = common.FIELD_TYPE_NAMES[self.data_type]
         self.filter = None
         self.on_field_get_text_called = None
@@ -975,7 +975,7 @@ class AbstractDataSet(object):
         self._open_params = {}
         self._disabled_count = 0
         self._is_delta = False
-        self.keep_history = False
+        self._keep_history = False
         self.lock_on_edit = False
         self.select_all = False
         self.parent_read_only = True
@@ -1015,7 +1015,7 @@ class AbstractDataSet(object):
     def add_field_def(self, field_ID, field_name, field_caption, data_type, required, lookup_item, lookup_field,
             lookup_field1, lookup_field2, view_visible, view_index, edit_visible, edit_index, read_only, expand,
             word_wrap, field_size, default_value, is_default, calculated, editable, master_field, alignment,
-            lookup_values, enable_typeahead, field_help, field_placeholder, db_field_name):
+            lookup_values, enable_typeahead, field_help, field_placeholder, field_mask, db_field_name):
         field_def = [None for i in range(len(FIELD_DEF))]
         field_def[FIELD_ID] = field_ID
         field_def[FIELD_NAME] = field_name
@@ -1044,6 +1044,7 @@ class AbstractDataSet(object):
         field_def[FIELD_ENABLE_TYPEAHEAD] = enable_typeahead
         field_def[FIELD_HELP] = field_help
         field_def[FIELD_PLACEHOLDER] = field_placeholder
+        field_def[FIELD_MASK] = field_mask
         field_def[DB_FIELD_NAME] = db_field_name
         self.field_defs.append(field_def)
         return field_def
@@ -1075,6 +1076,14 @@ class AbstractDataSet(object):
 
     dataset = property (get_dataset, set_dataset)
 
+    def get_keep_history(self):
+        if self.master:
+            return self.prototype._keep_history
+        else:
+            return self._keep_history
+
+    keep_history = property (get_keep_history)
+
     def _copy(self, filters=True, details=True, handlers=True):
         result = self.__class__(self.owner, self.item_name, self.item_caption, self.visible)
         result.ID = self.ID
@@ -1082,7 +1091,7 @@ class AbstractDataSet(object):
         result.expanded = self.expanded
         result.field_defs = self.field_defs
         result.filter_defs = self.filter_defs
-        result.keep_history = self.keep_history
+        result._keep_history = self._keep_history
         result.select_all = self.select_all
 
         for field_def in result.field_defs:

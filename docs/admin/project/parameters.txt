@@ -51,6 +51,18 @@ After clicking on the Parameters button the following dialog will appear:
   *task_name.js* will be loaded when application is run. All other files must be 
   loaded dynamically. See :doc:`Working with modules </programming/modules>`.
   
+* **History item** - to specify item, that will store change history
+
+* **Session timeout (seconds)** - number of second of inactivity that is allowed 
+  before the session expires.
+
+* **Session ignore change ip** - if false, the session is only valid when 
+  it is accessed from the same ip address that created the session.
+  
+* **Delete reports after (hours)** - if a value is specified the generated 
+  reports that are located in the static/reports folder will be deleted 
+  specified number of hours have passed.
+
 * **Version** — specify the version of the project here.
 
 .. note::

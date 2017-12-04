@@ -1,0 +1,28 @@
+=============
+Version 5.1.1
+=============
+
+Library:
+
+* History of changes made by users can now be stored. 
+  See :doc:`Saving the history of changes made by users </admin/saving_history>`
+  
+* Local filtering of dataset records is reworked and published.
+  See 
+  :doc:`Filtered </refs/client/item/at_filtered>`,
+  :doc:`on_filter_record </refs/client/item/on_filter_record>`
+  
+* :doc:`clone </refs/client/item/m_clone>` method is published
+ 
+* Application is now throws an exception when an attempt is made to get or set
+  a value to a field when the dataset is empty.
+  
+Application Builder:
+
+* **Delete reports after** attribute is added to 
+  :doc:`Project parameters </admin/project/parameters>`
+
+* Some changes to interface are made.
+ 
+  
+  
