@@ -387,6 +387,11 @@ input.input-text {
     border-left: 0;
 }
 
+.dbtable.freezed thead,
+.dbtable.freezed tfoot {
+    background-color: white;
+}
+
 .inner-table thead:first-child tr:first-child > th:first-child,
 .inner-table tbody:first-child tr:first-child > td:first-child,
 .inner-table tbody:first-child tr:first-child > th:first-child {
@@ -395,8 +400,13 @@ input.input-text {
   -moz-border-radius-topleft: 0;
 }
 
-.table td,
-.table th {
+.dbtable.freezed thead,
+.dbtable.freezed tfoot {
+    background-color: white;
+}
+
+.dbtable td,
+.dbtable th {
     cursor: default;
     -webkit-user-select: none;
     -moz-user-select: none;

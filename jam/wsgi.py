@@ -53,7 +53,10 @@ class JamSecureCookie(SecureCookie):
 class JamRequest(Request):
 
     def session_key(self, task):
-        return '%s_session_%s' % (task.item_name, self.environ['SERVER_PORT'])
+        if task.app.admin == task:
+            return '%s_session_%s' % (task.item_name, self.environ['SERVER_PORT'])
+        else:
+            return '%s_session' % (task.item_name)
 
     def get_session(self, task):
         if not hasattr(self, '_cookie') and task:
@@ -223,7 +226,12 @@ class App():
                 accepts_gzip = 1
         except:
             pass
-        buff = json.dumps(result, default=common.json_defaul_handler)
+        try:
+            buff = json.dumps(result, default=common.json_defaul_handler)
+        except:
+            print('wsgi.py create_post_response error:')
+            print(result)
+            raise
         response.headers['Content-Type'] = 'application/json'
         if accepts_gzip:
             buff = common.compressBuf(buff)

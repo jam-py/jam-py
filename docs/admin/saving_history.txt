@@ -43,3 +43,15 @@ the close button on the right part of the header of the edit form.
 Or you can do it using the
 :doc:`show_history </refs/client/item/m_show_history>`
 method
+
+.. note::
+
+    Changes are saved when dataset changes are applied to the database using
+    apply method (:doc:`client </refs/client/item/m_apply>`/:doc:`server </refs/server/item/m_apply>`).
+    Changes to database made with custom SQL requests are not saved in the history. 
+    
+.. note::
+
+    These changes can significantly increase the size of the database.
+    Please be carefull.
+    

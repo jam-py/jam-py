@@ -663,14 +663,16 @@ def delete_reports(task):
     while True:
         if common.SETTINGS['DELETE_REPORTS_AFTER']:
             path = os.path.join(task.work_dir, 'static', 'reports')
-            for f in os.listdir(path):
-                file_name = os.path.join(path, f)
-                if os.path.isfile(file_name):
-                    delta = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(file_name))
-                    hours, sec = divmod(delta.total_seconds(), 3600)
-                    if hours > common.SETTINGS['DELETE_REPORTS_AFTER']:
-                        os.remove(file_name)
-        time.sleep(600)
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    file_name = os.path.join(path, f)
+                    if os.path.isfile(file_name):
+                        delta = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(file_name))
+                        hours, sec = divmod(delta.total_seconds(), 3600)
+                        if hours > common.SETTINGS['DELETE_REPORTS_AFTER']:
+                            os.remove(file_name)
+        time.sleep(1)
+        #~ time.sleep(600)
 
 def init_delete_reports(task):
     t = threading.Thread(target=delete_reports, args=(task,))
@@ -1055,27 +1057,6 @@ def load_task(target, app, first_build=True, after_import=False):
     def history_on_apply(item, delta, params):
         raise Exception('Changing of history is not allowed.')
 
-    #~ def history_on_open(item, params):
-        #~ error_mes = ''
-        #~ index = 0
-        #~ for i, f in enumerate(item._fields):
-            #~ if f.field_name == 'changes':
-                #~ index = i
-        #~ try:
-            #~ sqls = item.get_select_queries(params)
-            #~ rows = item.task.execute_select(sqls[0])
-            #~ for r in rows:
-                #~ changes = r[index]
-                #~ if changes:
-                    #~ if changes[0] == '0':
-                        #~ changes = changes[1:]
-                    #~ else:
-                        #~ pass
-                #~ r[index] = changes
-        #~ except Exception as e:
-            #~ error_mes = error_message(e)
-        #~ return rows, error_mes
-
     task = app.admin
     remove_attr(target)
     target.items = []
@@ -1108,9 +1089,6 @@ def load_task(target, app, first_build=True, after_import=False):
     if params.f_history_item.value:
         target.history_item = target.item_by_ID(params.f_history_item.value)
         target.history_item.on_apply = history_on_apply
-        #~ target.history_item.on_open = history_on_open
-        #~ if target.history_item and target.history_item._sys_id != 1:
-            #~ target.history_item = None
 
     target.first_build = first_build
     target.after_import = after_import
@@ -2076,7 +2054,7 @@ def server_save_edit(task, item_id, text, is_server):
             else:
                 error = e.args[0]
         except:
-            error = error_message(e)
+            error = 'Error'
             traceback.print_exc()
     if not error:
         try:

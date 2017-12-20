@@ -443,6 +443,7 @@
                             date.setFullYear(2000 + val);
                             break;
                         case 'yyyy':
+                        case 'Y':
                             year = val;
                             date.setFullYear(val);
                             break;

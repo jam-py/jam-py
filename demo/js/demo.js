@@ -198,7 +198,8 @@ function Events1() { // demo
 	function on_view_form_created(item) {
 		var table_options = {
 				height: 620,
-				sortable: true
+				sortable: true,
+				freeze_count: 2
 			};
 	  
 		if (!item.master) {
@@ -231,13 +232,15 @@ function Events1() { // demo
 		
 		item.view_form.find("#edit-btn").on('click.task', function(e) { 
 			e.preventDefault();
-			item.edit_record() 
+			item.edit_record() ;
 		});
 		
 		if (item.can_delete()) {
 			item.view_form.find("#delete-btn").on('click.task', function(e) { 
-				item.delete_record() 
-				e.preventDefault();	
+				e.preventDefault();
+				item.delete_record(function() {
+					item.refresh_page(true);
+				}) 
 			});
 		}
 		else {
@@ -671,9 +674,6 @@ function Events16() { // demo.journals.invoices
 	
 	function init_inputs(item, input_options) {
 		input_options.col_count = 2;	
-		// input_options.col_count = 4;
-		// input_options.label_on_top = true;
-		// input_options.label_width = 100;
 	}
 	
 	function on_view_form_created(item) {
@@ -689,6 +689,8 @@ function Events16() { // demo.journals.invoices
 			height: height,
 			sortable: true,
 			show_footer: true,	
+			summary_fields: ['date', 'subtotal', 'tax', 'total'],
+			freeze_count: 2,
 			row_callback: function(row, it) {
 				var font_weight = 'normal';
 				if (it.total.value > 10) {
@@ -705,29 +707,6 @@ function Events16() { // demo.journals.invoices
 		});
 		
 		item.open(true);
-	}
-	
-	function on_filters_applied(item) {
-		if (item.view_form) {
-			item.view_form.find("#filter-text").text(item.get_filter_text());
-			calc_footer(item);
-		}
-	}
-	
-	function calc_footer(item) {
-		var copy = item.copy({handlers: false, details: false});
-		copy.assign_filters(item);
-		copy.open(
-			{fields: ['subtotal', 'tax', 'total'], 
-			funcs: {subtotal: 'sum', tax: 'sum', total: 'sum'}}, 
-			function() {
-				var footer = item.view_form.find('.dbtable.' + item.item_name + ' tfoot');
-				copy.each_field(function(f) {
-					footer.find('div.' + f.field_name)
-						.text(f.display_text);
-				});
-			}
-		);
 	}
 	
 	function on_edit_form_created(item) {
@@ -828,10 +807,6 @@ function Events16() { // demo.journals.invoices
 		}
 	}
 	
-	function on_after_apply(item) {
-		calc_footer(item);
-	}
-	
 	var ScrollTimeOut;
 	
 	function on_after_scroll(item) {
@@ -846,8 +821,6 @@ function Events16() { // demo.journals.invoices
 	this.on_after_append = on_after_append;
 	this.init_inputs = init_inputs;
 	this.on_view_form_created = on_view_form_created;
-	this.on_filters_applied = on_filters_applied;
-	this.calc_footer = calc_footer;
 	this.on_edit_form_created = on_edit_form_created;
 	this.select_records = select_records;
 	this.on_field_get_text = on_field_get_text;
@@ -855,7 +828,6 @@ function Events16() { // demo.journals.invoices
 	this.calc_total = calc_total;
 	this.calculate = calculate;
 	this.on_edit_form_keyup = on_edit_form_keyup;
-	this.on_after_apply = on_after_apply;
 	this.on_after_scroll = on_after_scroll;
 }
 

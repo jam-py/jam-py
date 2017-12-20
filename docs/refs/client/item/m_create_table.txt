@@ -84,6 +84,15 @@ The ``options`` parameter is an object that may have the following attributes:
 
 * ``sort_fields`` - if an ``sortable`` option is set, the option limits the 
   sortable fields
+  
+* ``summary_fields`` - a list of field names. When it is specified and item 
+  paginate attribute is true, the table calculates sums for numeric fields and 
+  displays them in the table footer, for not numeric fields it displays the 
+  number of records.
+
+* ``freeze_count`` - an integer value. If it is greater than 0, it specifies 
+  number of first columns that become frozen - they will not scroll when the table
+  is scrolled.
  
 * ``on_click`` - specifies the function, that will be executed when a user click
   on a table row. The item will be passed as a parameter to the function. 

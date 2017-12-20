@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 def run(app):
-    import sys, os
+    import sys
     from werkzeug.serving import run_simple
 
     host = '0.0.0.0'

@@ -67,9 +67,9 @@
             "UPDATE_INSERT": 4,
             "UPDATE_SCROLLED": 5,
             "UPDATE_CONTROLS": 6,
-            "UPDATE_REFRESH": 7,
-            "UPDATE_CLOSE": 8,
-            "UPDATE_STATE": 9
+            "UPDATE_CLOSE": 7,
+            "UPDATE_STATE": 8,
+            "UPDATE_APPLIED": 9
         },
         align_value = ['', 'left', 'center', 'right'],
         filter_value = ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in',
@@ -3783,10 +3783,7 @@
         cancel: function() {
             var i,
                 len,
-                rec,
                 prev_state;
-            rec = this._get_rec_no();
-
             this._do_before_cancel();
             if (this._get_item_state() === consts.STATE_EDIT) {
                 this.change_log.restore_record_log(this._buffer)
@@ -3797,7 +3794,7 @@
             } else if (this._get_item_state() === consts.STATE_INSERT) {
                 this.change_log.remove_record_log();
                 this.update_controls(consts.UPDATE_DELETE);
-                this._dataset.splice(rec, 1);
+                this._dataset.splice(this.rec_no, 1);
             } else {
                 throw language.cancel_invalid_state.replace('%s', this.item_name);
             }
@@ -4003,6 +4000,7 @@
                     if (callback) {
                         callback.call(this);
                     }
+                    this.update_controls(consts.UPDATE_APPLIED);
                 }
             }
         },
@@ -4557,9 +4555,9 @@
                                 self.change_log.remove_record_log();
                                 self.update_controls();
                                 self._do_after_scroll();
-                                if (callback) {
-                                    callback.call(this, this);
-                                }
+                            }
+                            if (callback) {
+                                callback.call(this, this);
                             }
                         });
                     });
@@ -6523,6 +6521,15 @@
             return def;
         },
 
+        numeric_field: function() {
+            if (!this.lookup_item && (
+                this.data_type === consts.INTEGER ||
+                this.data_type === consts.FLOAT ||
+                this.data_type === consts.CURRENCY)) {
+                return true;
+            }
+        },
+
         system_field: function() {
             if (this.field_name === this.owner._primary_key ||
                 this.field_name === this.owner._deleted_flag ||
@@ -7222,6 +7229,7 @@
                     this.changed();
                     break;
                 case consts.UPDATE_DELETE:
+                case consts.UPDATE_DELETE:
                     this.changed();
                     break;
                 case consts.UPDATE_SCROLLED:
@@ -7232,9 +7240,6 @@
                     break;
                 case consts.UPDATE_CLOSE:
                     this.$element.empty();
-                    break;
-                case consts.UPDATE_REFRESH:
-//                    this.build();
                     break;
             }
         },
@@ -7393,7 +7398,7 @@
                 this.item._cur_row = rec;
                 $li.data("record", clone._dataset[rec]);
                 info = clone.rec_controls_info();
-                info[this.id] = $li.get();
+                info[this.id] = $li.get(0);
                 if (this.options.node_callback) {
                     this.options.node_callback($li, this.item);
                 }
@@ -7521,14 +7526,14 @@
     /*                            DBTable class                           */
     /**********************************************************************/
 
-    function DBTable(item, container, options) {
-        this.init(item, container, options);
+    function DBTable(item, container, options, master_table) {
+        this.init(item, container, options, master_table);
     }
 
     DBTable.prototype = {
         constructor: DBTable,
 
-        init: function(item, container, options) {
+        init: function(item, container, options, master_table) {
             var self = this,
                 default_options = {
                     table_class: undefined,
@@ -7559,9 +7564,12 @@
                     sort_add_primary: false,
                     row_callback: undefined,
                     title_callback: undefined,
+                    summary_fields: undefined,
                     show_footer: undefined,
                     show_paginator: true,
-                    paginator_container: undefined
+                    paginator_container: undefined,
+                    freeze_count: 0,
+                    hide_y_scroll: true
                 };
 
             if (!container.length) {
@@ -7574,6 +7582,8 @@
             }
             this.id = item.task.gridId++;
             this.$container = container;
+            this.$container.css('position', 'relative');
+            this.master_table = master_table;
             this.options = $.extend({}, default_options, options);
             if (!this.options.height && !this.options.row_count) {
                 this.options.height = 480;
@@ -7584,6 +7594,9 @@
             if (this.item.master) {
                 this.options.select_all = false;
             }
+            if (this.options.summary_fields && this.item.paginate) {
+                this.options.show_footer = true
+            }
             this.editMode = false;
             this._sorted_fields = [];
             this._multiple_sort = false;
@@ -7593,11 +7606,17 @@
             this.recordCount = 0;
             this.cellWidths = {};
             this.autoFieldWidth = true;
+            this.scrollLeft = 0;
             this.fieldWidthUpdated = false;
 
             this.initFields();
 
-            this.$element = $('<div class="dbtable ' + item.item_name + '" style="overflow-x:auto;"></div>');
+            this.$element = $('<div class="dbtable">');
+
+            this.$element.addClass(item.item_name);
+            this.$element.append($('<div class="table-container" style="overflow-x:auto;">'));
+            this.$element.append($('<div class="paginator text-center">'));
+
             if (this.options.table_class) {
                 this.$element.addClass(this.options.table_class);
             }
@@ -7605,11 +7624,19 @@
             this.item.controls.push(this);
 
             this.resize_id = 'resize.dbtable-' + this.item.item_name + this.id;
+            if (this.master_table) {
+                this.$element.addClass('freezed');
+                this.resize_id = 'resize.dbtable.freezed-' + this.item.item_name + this.id;
+            }
             $(window).on(this.resize_id, function() {
                 clearTimeout(self.timeOut);
                 self.timeOut = setTimeout(
                     function() {
+                        if (self.master_table && !self.master_table.freezed_table) {
+                            return;
+                        }
                         self.build();
+                        self.sync_freezed();
                     },
                     100
                 );
@@ -7622,12 +7649,128 @@
             this.$container.empty();
             this.$element.appendTo(this.$container);
             this.createTable();
+            this.create_pager();
+
+            this.sync_freezed();
+
             if (item._get_active()) {
                 setTimeout(function() {
                         self.init_table();
+                        self.sync_freezed();
                     },
                     0
                 );
+            }
+        },
+
+        get_freezed_fields: function(len) {
+            var i,
+                result = [];
+            if (!len) {
+                len = this.options.freeze_count;
+            }
+            for (i = 0; i < len; i++) {
+                result.push(this.fields[i].field_name);
+            }
+            return result;
+        },
+
+        create_freezed_table: function() {
+            var i,
+                options,
+                container;
+            options = $.extend({}, this.options)
+            options.show_paginator = false;
+            options.fields = [];
+            options.freeze_count = 0;
+            options.fields = this.get_freezed_fields();
+            container = $('<div>')
+            this.freezed_table = new DBTable(this.item, container, options, this)
+            this.freezed_table.$element.detach()
+            this.freezed_table.$element.css('position', 'absolute');
+            this.freezed_table.$element.css('left', '0');
+            this.freezed_table.$element.css('top', '0');
+            this.freezed_table.$element.css('overflow', 'hidden');
+            this.freezed_table.$table_container.css('overflow', 'hidden');
+            this.freezed_table.$outer_table.css('overflow', 'hidden');
+            this.freezed_table.$scroll_div.css('overflow', 'hidden');
+
+            this.freezed_table.$container = this.$container;
+            this.$container.append(this.freezed_table.$element);
+        },
+
+        delete_freezed_table: function() {
+            this.freezed_table.$element.remove();
+            delete this.freezed_table
+            this.freezed_table = undefined;
+        },
+
+        sync_freezed: function() {
+            var i,
+                col,
+                $th,
+                $td,
+                $tf,
+                cell_width,
+                field_name,
+                fields1,
+                fields2,
+                valid_fields,
+                scroll_left,
+                width;
+            if (this.options.freeze_count) {
+                if (this.freezed_table) {
+                    fields1 = this.get_freezed_fields();
+                    fields2 = this.freezed_table.get_freezed_fields(this.options.freeze_count);
+                    valid_fields = fields1.length === fields2.length;
+                    if (valid_fields) {
+                        for (i = 0; i < fields1.length; i++) {
+                            if (fields1[i] !== fields2[i]) {
+                                valid_fields = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (!valid_fields) {
+                        this.delete_freezed_table();
+                    }
+                }
+                if (this.$scroll_div.get(0).scrollWidth > this.$element.innerWidth()) {
+                    if (!this.freezed_table) {
+                        this.create_freezed_table();
+                    }
+                    col = this.options.freeze_count - 1;
+                    if (this.item.selections) {
+                        col += 1;
+                    }
+                    $th = this.$head.find('th').eq(col);
+                    scroll_left = this.$element.find('.table-container')[0].scrollLeft;
+                    width = scroll_left + ($th.position().left + $th.outerWidth(true) + 1);
+
+                    this.freezed_table.$element.width(width);
+                }
+                else if (this.freezed_table) {
+                    this.delete_freezed_table();
+                }
+            }
+            else {
+                if (this.master_table) {
+                    for (i = 0; i < this.fields.length - 1; i++) {
+                        field_name = this.fields[i].field_name;
+                        cell_width = this.master_table.getCellWidth(field_name);
+                        this.setCellWidth(field_name, cell_width);
+                        $td = this.$table.find('td.' + field_name);
+                        $th = this.$element.find("thead tr:first th." + field_name);
+                        $tf = this.$element.find("tfoot tr:first th." + field_name);
+                        $td.width(cell_width);
+                        $td.find('div').width(cell_width);
+                        $th.width(cell_width);
+                        $th.find('div').width(cell_width);
+                        $tf.width(cell_width);
+                        $tf.find('div').width(cell_width);
+                    }
+                    this.syncColWidth();
+                }
             }
         },
 
@@ -7897,14 +8040,11 @@
             if (this.item.selections) {
                 this.colspan += 1;
             }
-            this.$element.append($(
+            this.$element.find('.table-container').append($(
                 '<table class="outer-table" style="width: 100%;">' +
                 '   <thead>' +
                 '       <tr><th>&nbsp</th></tr>' +
                 '   </thead>' +
-                '   <tfoot>' +
-                '       <tr><th>&nbsp</th></tr>' +
-                '   </tfoot>' +
                 '   <tr>' +
                 '       <td id="top-td" style="padding: 0;" colspan=' + this.colspan + '>' +
                 '           <div class="overlay-div" style="height: 100px; width: 100%; overflow-y: auto; overflow-x: hidden;">' +
@@ -7912,13 +8052,21 @@
                 '           </div>' +
                 '       </td>' +
                 '   </tr>' +
+                '   <tfoot class="outer-table">' +
+                '       <tr><th>&nbsp</th></tr>' +
+                '   </tfoot>' +
                 '</table>'));
 
+            this.$table_container = this.$element.find(".table-container")
             this.$outer_table = this.$element.find("table.outer-table")
             this.$scroll_div = this.$element.find('div.overlay-div');
             this.$table = this.$element.find("table.inner-table");
             this.$head = this.$element.find("table.outer-table thead tr:first");
             this.$foot = this.$element.find("table.outer-table tfoot tr:first");
+
+            if (this.item.paginate && this.options.hide_y_scroll) {
+                this.$scroll_div.css('overflow-y', 'hidden');
+            }
 
             this.$scroll_div.keydown(function(e) {
                 var code = (e.keyCode ? e.keyCode : e.which);
@@ -8027,7 +8175,7 @@
                 var $this = $(this),
                     field_name = $this.data('field_name'),
                     lastCell = self.$element.find("thead tr:first th:last").get(0);
-                if ($this.outerWidth() - e.offsetX < 8 && !mouseX && this !== lastCell) {
+                if ($this.outerWidth() - e.offsetX < 8 && !mouseX && (this !== lastCell || self.master_table)) {
                     $this.css('cursor', 'col-resize');
                 } else if (self.options.sortable && //!self.item.master &&
                     (!self.options.sort_fields || self.options.sort_fields.indexOf(field_name) !== -1)) {
@@ -8051,12 +8199,16 @@
             }
 
             function changeFieldWidth($title, delta) {
-                var field_name,
+                var i,
+                    field_name,
+                    fields,
                     $td,
+                    $th,
                     $tf,
+                    lastCell = self.$element.find("thead tr:first th:last").get(0),
+                    width,
                     oldCellWidth,
                     cellWidth;
-
                 field_name = $title.data('field_name');
                 $td = self.$table.find('td.' + field_name);
                 $tf = self.$element.find("tfoot tr:first th." + field_name);
@@ -8065,16 +8217,31 @@
 
                 self.setCellWidth(field_name, cellWidth);
 
-                $td.width(cellWidth);
-                $td.find('div').width(cellWidth);
-                $title.width(cellWidth);
-                $title.find('div').width(cellWidth);
-                $tf.width(cellWidth);
-                $tf.find('div').width(cellWidth);
-
-                self.syncColWidth();
-//                cellWidth = $title.width();
-                //~ self.setCellWidth(field_name, cellWidth);
+                if (self.master_table) {
+                    self.$element.width(self.$element.width() + delta)
+                    self.master_table.setCellWidth(field_name, cellWidth);
+                    $td = self.master_table.$table.find('td.' + field_name);
+                    $th = self.master_table.$element.find("thead tr:first th." + field_name);
+                    $tf = self.master_table.$element.find("tfoot tr:first th." + field_name);
+                    $td.width(cellWidth);
+                    $td.find('div').width(cellWidth);
+                    $th.width(cellWidth);
+                    $th.find('div').width(cellWidth);
+                    $tf.width(cellWidth);
+                    $tf.find('div').width(cellWidth);
+                    self.master_table.syncColWidth();
+                    self.master_table.sync_freezed();
+                }
+                else {
+                    $td.width(cellWidth);
+                    $td.find('div').width(cellWidth);
+                    $title.width(cellWidth);
+                    $title.find('div').width(cellWidth);
+                    $tf.width(cellWidth);
+                    $tf.find('div').width(cellWidth);
+                    self.syncColWidth();
+                }
+                self.sync_freezed();
             }
 
             function releaseMouseMove(e) {
@@ -8103,27 +8270,39 @@
                     desc = false,
                     next_field_name,
                     field,
+                    parent,
+                    top,
+                    left,
                     sorted_fields;
                 lastCell = self.$element.find("thead tr:first th:last").get(0);
-                if ($this.outerWidth() - e.offsetX < 8 && this !== lastCell) {
+                if ($this.outerWidth() - e.offsetX < 8 && (this !== lastCell || self.master_table)) {
                     $this.css('cursor', 'default');
                     mouseX = e.screenX;
                     $th = $this;
                     index = self.fields.indexOf(self.item.field_by_name(field_name))
-                    next_field_name = self.fields[index + 1].field_name
-                    $thNext = self.$element.find("thead tr:first th." + next_field_name);
                     delta = 0;
                     $doc.on("mousemove.grid-title", captureMouseMove);
                     $doc.on("mouseup.grid-title", releaseMouseMove);
+                    parent = self.$container.closest('.modal');
+                    if (parent.length) {
+                        left = $this.offset().left - parent.offset().left;
+                        top = self.$element.offset().top - parent.offset().top;
+                    }
+                    else {
+                        parent = $('body');
+                        left = $this.offset().left;
+                        top = self.$element.offset().top;
+                    }
                     $selection = $('<div>')
                         .addClass('selection-box')
                         .css({
                             'width': 0,
                             'height': self.$outer_table.find('thead').innerHeight() + self.$scroll_div.innerHeight(),
-                            'left': $this.position().left + $this.outerWidth(),
-                            'top': self.$element.position().top
+                            'left': left + $this.outerWidth(),
+                            'top': top
                         });
-                    $selection.appendTo(self.$element);
+
+                    $selection.appendTo(parent);
                 } else if (field_name && self.options.sortable &&
                     (!self.options.sort_fields || self.options.sort_fields.indexOf(field_name) !== -1)) {
 
@@ -8194,7 +8373,6 @@
                 self.syncronize();
             });
 
-            this.createPager();
             this.fill_footer();
             this.calculate();
         },
@@ -8210,13 +8388,28 @@
                 row_height,
                 elementHeight,
                 scrollDivHeight;
+            if (this.master_table) {
+                this.row_count = this.master_table.row_count;
+                this.textHeight = this.master_table.textHeight;
+                this.row_height = this.master_table.row_height;
+                this.selected_row_height = this.master_table.selected_row_height;
+
+                this.height(this.master_table.height());
+                this.$scroll_div.height(this.master_table.$scroll_div.height());
+                return;
+            }
             $element = this.$element.clone()
                 .css("float", "left")
                 .css("position", "absolute")
-                .css("top", -1000),
+                .css("top", 0);
+                //.css("top", -1000),
             $element.width(this.$container.width());
+            if (!$element.width()) {
+                $element.width($('body').width());
+            }
             this.fill_title($element);
             this.fill_footer($element);
+            this.create_pager($element)
             $table = $element.find("table.inner-table");
             if (this.item.selections && !this.item.master) {
                 row = '<tr><td><div><input type="checkbox"></div></td><td><div>W</div></td></tr>';
@@ -8242,7 +8435,7 @@
             scrollDivHeight = $element.find('div.overlay-div').innerHeight();
             $element.remove();
 
-            this.$scroll_div.height(this.options.height - (elementHeight - scrollDivHeight));
+            this.$scroll_div.height(this.options.height - (elementHeight - scrollDivHeight) - $element.find('.paginator').outerHeight(true));
             if (this.item.paginate) {
                 if (this.options.row_count) {
                     this.row_count = this.options.row_count;
@@ -8268,7 +8461,7 @@
             }
         },
 
-        createPager: function($element) {
+        create_pager: function($element) {
             var self = this,
                 $pagination,
                 $pager,
@@ -8277,19 +8470,18 @@
             if (this.item.paginate && this.options.show_paginator) {
                 tabindex = -1;
                 $pagination = $(
-                    '<td class="pager" style="line-height: 0" colspan=' + this.colspan + '>' +
                     '   <div id="pager" style="margin: 0 auto">' +
                     '       <form class="form-inline" style="margin: 0">' +
                     '           <a class="btn btn-small" tabindex="-1" href="first"><i class="icon-backward"></i></a>' +
                     '           <a class="btn btn-small" tabindex="-1" href="prior"><i class="icon-chevron-left"></i></a>' +
-                    '           <label  class="control-label" for="input-page" style="margin: 0px 4px">' + language.page + '</label>' +
+                    '           <label  class="control-label" for="input-page">' + language.page + '</label>' +
                     '           <input class="pager-input input-mini" id="input-page" tabindex="' + tabindex + '" type="text">' +
-                    '           <label id="page-count" class="control-label" for="input-page" style="margin: 0px 4px">' + language.of + '1000000 </label>' +
+                    '           <label id="page-count" class="control-label" for="input-page">' + language.of + '1000000 </label>' +
                     '           <a class="btn btn-small" tabindex="-1" href="next"><i class="icon-chevron-right"></i></a>' +
                     '           <a class="btn btn-small" tabindex="-1" href="last"><i class="icon-forward"></i></a>' +
                     '       </form>' +
-                    '   </div>' +
-                    '</td>');
+                    '   </div>'
+                    );
 
 
                 this.$fistPageBtn = $pagination.find('[href="first"]');
@@ -8345,9 +8537,9 @@
                     this.options.paginator_container.append($pagination);
                 } else {
                     if ($element) {
-                        $element.find('tfoot').append($pagination);
+                        $element.find('.paginator').append($pagination);
                     } else {
-                        this.$element.find('tfoot').append($pagination);
+                        this.$element.find('.paginator').append($pagination);
                     }
                 }
                 this.$page_count.text(language.of + ' ');
@@ -8449,6 +8641,19 @@
             }
         },
 
+        selected_field_visible: function() {
+            var field_name,
+                $td;
+            if (this.selectedField && this.freezed_table) {
+                field_name = this.selectedField.field_name;
+                $td = this.$table.find('tr:first td.' + field_name);
+                if ($td.position().left < this.freezed_table.$element.width()) {
+                    return false;
+                }
+            }
+            return true;
+        },
+
         showEditor: function() {
             var width,
                 height,
@@ -8456,7 +8661,8 @@
                 $div,
                 $td,
                 $row = this.itemRow();
-            if ($row && !this.editing && this.selectedField && this.item.record_count()) {
+            if ($row && !this.editing && this.selectedField &&
+                this.selected_field_visible() && this.item.record_count()) {
                 if (!this.item.is_changing()) {
                     this.item.edit();
                 }
@@ -8751,6 +8957,8 @@
             switch (state) {
                 case consts.UPDATE_OPEN:
                     this.init_table();
+                    this.sync_freezed();
+                    this.calc_summary();
                     break;
                 case consts.UPDATE_CANCEL:
                     this.refreshRow();
@@ -8773,6 +8981,9 @@
                 case consts.UPDATE_DELETE:
                     this.deleteRow();
                     break;
+                case consts.UPDATE_DELETE:
+                    this.deleteRow();
+                    break;
                 case consts.UPDATE_SCROLLED:
                     this.syncronize();
                     break;
@@ -8782,9 +8993,54 @@
                 case consts.UPDATE_CLOSE:
                     this.$table.empty();
                     break;
-                case consts.UPDATE_REFRESH:
-//                    this.build();
+                case consts.UPDATE_APPLIED:
+                    this.calc_summary();
                     break;
+            }
+        },
+
+        calc_summary: function() {
+            var self = this,
+                i,
+                copy,
+                field_name,
+                field,
+                fields,
+                funcs;
+            if (this.options.summary_fields && this.item.paginate && this.page === 0) {
+                copy = this.item.copy({handlers: false, details: false});
+                fields = [];
+                funcs = {};
+                for (i = 0; i < this.options.summary_fields.length; i++) {
+                    field_name = this.options.summary_fields[i];
+                    field = this.item.field_by_name(field_name);
+                    if (field && this.fields.indexOf(field) !== -1) {
+                        fields.push(field_name);
+                        if (field.numeric_field()) {
+                            funcs[field_name] = 'sum';
+                        }
+                        else {
+                            funcs[field_name] = 'count';
+                        }
+                    }
+                }
+                if (fields.length) {
+                    copy._where_list = self.item._open_params.__filters;
+                    copy.open({expanded: false, fields: fields, funcs: funcs},
+                        function() {
+                            var text;
+                            copy.each_field(function(f) {
+                                if (f.numeric_field()) {
+                                    text = f.display_text;
+                                }
+                                else {
+                                    text = f.data;
+                                }
+                                self.$foot.find('div.' + f.field_name).text(text);
+                            });
+                        }
+                    );
+                }
             }
         },
 
@@ -8917,6 +9173,16 @@
         },
 
         hide_selection: function() {
+            this.remove_selection();
+            //~ if (this.master_table) {
+                //~ this.master_table.remove_selection();
+            //~ }
+            //~ if (this.freezed_table) {
+                //~ this.freezed_table.remove_selection();
+            //~ }
+        },
+
+        remove_selection: function() {
             if (this.selected_row) {
                 if (this.options.editable && this.selectedField) {
                     this.selected_row.removeClass("selected-focused selected");
@@ -8928,10 +9194,26 @@
             }
         },
 
+
         show_selection: function() {
+            this.highlight_selection(this.is_focused());
+            //~ var focused;
+            //~ focused = this.is_focused() ||
+                //~ (this.master_table && this.master_table.is_focused()) ||
+                //~ (this.freezed_table && this.freezed_table.is_focused());
+            //~ this.highlight_selection(focused);
+            //~ if (this.master_table) {
+                //~ this.master_table.highlight_selection(focused);
+            //~ }
+            //~ if (this.freezed_table) {
+                //~ this.freezed_table.highlight_selection(focused);
+            //~ }
+        },
+
+        highlight_selection: function(focused) {
             var selClassName = 'selected',
                 selFieldClassName = 'field-selected';
-            if (this.is_focused()) {
+            if (focused) {
                 selClassName = 'selected-focused';
                 selFieldClassName = 'field-selected-focused';
             }
@@ -8949,12 +9231,8 @@
 
         select_row: function($row) {
             var divs,
-                textHeight = this.textHeight,
-                selClassName = 'selected';
+                textHeight = this.textHeight;
             this.update_selected_row($row);
-            if (this.is_focused()) {
-                selClassName = 'selected-focused';
-            }
             this.hide_selection();
             if (this.selected_row && this.options.expand_selected_row) {
                 this.selected_row.find('tr, div').css('height', this.options.row_line_count * textHeight);
@@ -9140,18 +9418,24 @@
             }
             if (value < this.page_count || value === 0) {
                 this.page = value;
+                this.scrollLeft = this.$element.find('.table-container').get(0).scrollLeft;
+                if (this.master_table) {
+                    this.master_table.scrollLeft = this.master_table.$element.find('.table-container').get(0).scrollLeft;
+                }
                 this.loading = true;
                 if (this.item.record_count()) {
                     this.item._do_before_scroll();
                 }
-                this.item.open({
-                    offset: this.page * this.item._limit
-                }, function() {
+                this.item.open({offset: this.page * this.item._limit}, function() {
                     if (callback) {
                         callback.call(self);
                     }
                     self.loading = false;
                     self.updatePageInfo();
+                    self.$element.find('.table-container').get(0).scrollLeft = self.scrollLeft;
+                    if (self.master_table) {
+                        self.master_table.$element.find('.table-container').get(0).scrollLeft = self.master_table.scrollLeft;
+                    }
                 });
             }
         },
@@ -9295,7 +9579,7 @@
                 info;
             $row.data("record", this.item._dataset[rec]);
             info = this.item.rec_controls_info();
-            info[this.id] = $row.get();
+            info[this.id] = $row.get(0);
             if (this.options.row_callback) {
                 this.options.row_callback($row, this.item);
             }
@@ -9471,7 +9755,7 @@
                     this.item._cur_row = rec;
                     row.data("record", clone._dataset[rec]);
                     info = clone.rec_controls_info();
-                    info[this.id] = row.get();
+                    info[this.id] = row.get(0);
                     if (this.options.row_callback) {
                         this.options.row_callback(row, this.item);
                     }
@@ -10169,7 +10453,7 @@
             }
             if (this.field.data_type === consts.BOOLEAN) {
                 result = true;
-            } else if (this.change_field_text()) {
+            } else if (!this.$input.is(':disabled') && this.change_field_text()) {
                 if (this.$input.is(':visible')) {
                     this.$input.val(this.field.get_display_text());
                 }

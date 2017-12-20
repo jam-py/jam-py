@@ -85,6 +85,10 @@ form {
     background: #fff;
 }
 
+#pager form {
+    padding: 4px;
+}
+
 .pager-input {
     text-align: center;
 }
@@ -216,8 +220,13 @@ input.input-text {
     border-left: 0;
 }
 
-.table td,
-.table th {
+.dbtable.freezed thead,
+.dbtable.freezed tfoot {
+    background-color: white;
+}
+
+.dbtable td,
+.dbtable th {
     cursor: default;
     -webkit-user-select: none;
     -moz-user-select: none;

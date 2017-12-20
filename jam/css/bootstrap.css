@@ -6171,7 +6171,7 @@ jam.py css
 */
 
 .table tbody tr.selected > td:not(.field-selected) {
-    background-color: #e6e6e6;
+    background-color: #edf6fb;
 }
 
 .table tbody tr.selected-focused > td:not(.field-selected-focused) {
@@ -6179,7 +6179,7 @@ jam.py css
 }
 
 .table tbody td.field-selected {
-    background-color: #cacaca;
+    background-color: #d9edf7;
 }
 
 .table tbody td.field-selected-focused {
