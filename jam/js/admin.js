@@ -93,6 +93,7 @@ function Events0() { // admin
 		task.init_project = true;
 		task.item_types = item_types;
 		task.db_types = db_types;
+		task.add_form_borders = false;
 	
 		open_sys_params(task)
 		if (!task.sys_params.f_language.value) {
@@ -1614,9 +1615,22 @@ function Events3() { // admin.catalogs.sys_items
 		});
 	}
 	
+	function get_templates(doc) {
+		var temp = $('<output>').append($.parseHTML(doc)),
+			result = {}
+		temp.find('.templates > div').each(function() {
+			result[this.className] = null;
+		});
+		return result;
+	}
+	
 	function edit_file(item, file_name) {
 		item.task.server('server_file_info', [file_name], function(info) {
-		item.task.sys_code_editor.show_editor(item.task, info)
+			var temp;
+			if (file_name === 'index.html') {
+				info.templates = get_templates(info.doc);
+			}
+			item.task.sys_code_editor.show_editor(item.task, info)
 		});
 	}
 	
@@ -2113,6 +2127,7 @@ function Events3() { // admin.catalogs.sys_items
 	this.view_setup = view_setup;
 	this.edit_setup = edit_setup;
 	this.edit_code = edit_code;
+	this.get_templates = get_templates;
 	this.edit_file = edit_file;
 	this.edit_client = edit_client;
 	this.edit_server = edit_server;
@@ -2656,10 +2671,11 @@ function Events14() { // admin.catalogs.sys_code_editor
 	}
 	
 	function save_file(task, info) {
-		var result =  task.server('server_save_file', [info.name, task.editor.getValue()]),
+		var text = task.editor.getValue(),
+			result =  task.server('server_save_file', [info.name, text]),
 			error = result.error;
-		if (result.templates) {
-			info.templates = result.templates;
+		if (info.name === 'index.html') {
+			info.templates = task.sys_items.get_templates(text);
 			add_tree(task, info.templates, "templates");
 			update_tab_height(task);
 		}

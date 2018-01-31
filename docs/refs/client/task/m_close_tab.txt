@@ -1,0 +1,25 @@
+=========
+close_tab
+=========
+
+.. js:function:: close_tab(container, tab_id)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Task </refs/client/task_api>`
+
+Description
+===========
+
+Use the ``close_tab`` method to close tab in the ``container`` identified by 
+``tab_id``.
+
+See also
+========
+
+:doc:`init_tabs <m_init_tabs>`
+
+:doc:`add_tab <m_add_tab>`
+

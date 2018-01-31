@@ -60,19 +60,14 @@ server function:
 
 .. code-block:: js
 
-    try {
-        task.invoices.server('get_total', [17], function(total, err) {
-            if (err) {
-                throw err;
-            }
-            else {
-                console.log(total);
-            }
-        });
-    }
-    catch (e) {
-        console.log(e);    
-    }
+    task.invoices.server('get_total', [17], function(total, err) {
+        if (err) {
+            throw err;
+        }
+        else {
+            console.log(total);
+        }
+    });
 
 
 

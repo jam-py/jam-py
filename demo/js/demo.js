@@ -4,6 +4,10 @@
 function Events1() { // demo 
 
 	function on_page_loaded(task) {
+		
+		task.init_tabs($("#content"));
+		// task.add_form_borders = false;
+	
 		task.invoices.apply();
 		$("title").text(task.item_caption);
 		$("#title").text(task.item_caption);
@@ -56,7 +60,7 @@ function Events1() { // demo
 			task.dashboard.view($("#content"));
 		})));
 	
-		$("#menu").append($('li#themes'))
+		$("#menu").append($('li#themes'));
 		
 		$("#menu-right #admin a").click(function(e) {
 			var admin = [location.protocol, '//', location.host, location.pathname, 'builder.html'].join('');
@@ -84,6 +88,7 @@ function Events1() { // demo
 		// $(document).ajaxStop(function() { $("html").removeClass("wait"); });
 	} 
 	
+	
 	function set_theme(task, theme) {
 		var new_css,
 			old_css;
@@ -100,10 +105,12 @@ function Events1() { // demo
 		if (theme === 'Container') {
 			task.in_container = !task.in_container;
 			if (task.in_container) {
+				$('body #container').removeClass('container-fluid');
 				$('body #container').addClass('container');
 			}
 			else {
 				$('body #container').removeClass('container');
+				$('body #container').addClass('container-fluid');
 			}
 			$('#menu .item-menu:first').click();
 			$('window').resize();		
@@ -199,7 +206,10 @@ function Events1() { // demo
 		var table_options = {
 				height: 620,
 				sortable: true,
-				freeze_count: 2
+				freeze_count: 2,
+				on_dblclick: function() {
+					item.edit_record($("#content"));
+				}
 			};
 	  
 		if (!item.master) {
@@ -213,17 +223,17 @@ function Events1() { // demo
 			item.view_form.find("#form-title").hide();
 		}
 		else {
-			item.view_form.find("#form-title a").text(item.item_caption)
-				.click(function(e) {
-					e.preventDefault();
-					item.view(item.view_form.parent());
-				});
+			// item.view_form.find("#form-title a").text(item.item_caption)
+			//	 .click(function(e) {
+			//		 e.preventDefault();
+			//		 item.view(item.view_form.parent());
+			//	 });
 			table_options.height = $(window).height() - $('body').height() - 20;
 		}
 		if (item.can_create()) {
 			item.view_form.find("#new-btn").on('click.task', function(e) { 
 				e.preventDefault();
-				item.insert_record(); 
+				item.insert_record($("#content"));
 			});
 		}
 		else {
@@ -232,7 +242,7 @@ function Events1() { // demo
 		
 		item.view_form.find("#edit-btn").on('click.task', function(e) { 
 			e.preventDefault();
-			item.edit_record() ;
+			item.edit_record($("#content"));
 		});
 		
 		if (item.can_delete()) {
@@ -267,6 +277,8 @@ function Events1() { // demo
 				col_count: 1
 			};
 			
+		// item.edit_options.print = true
+		item.edit_options.width = 600;
 		if (item.init_inputs) {
 			item.init_inputs(item, options);
 		}
@@ -328,7 +340,7 @@ function Events1() { // demo
 	
 	function on_view_form_keyup(item, event) {
 		if (event.keyCode === 45 && event.ctrlKey === true){
-			item.insert_record();
+			item.insert_record($("#content"));
 		}
 		else if (event.keyCode === 46 && event.ctrlKey === true){
 			item.delete_record();
@@ -412,6 +424,7 @@ function Events2() { // demo.catalogs
 			}
 		}
 		if (search_field) {
+			item.view_form.find('.header-search').show();
 			if (item.lookup_field && item.lookup_field.value && !item.lookup_field.multi_select) {
 				item.view_form.find("#selected-value")
 					.text(item.lookup_field.display_text)
@@ -509,19 +522,9 @@ function Events2() { // demo.catalogs
 			return true;
 		}
 	}
-	
-	function on_view_form_shown(item) {
-		if (item.default_field) {
-			item.view_form.find("#search-input").focus();
-		}
-		else {
-			item.view_form.find('.dbtable.' + item.item_name + ' .inner-table').focus();
-		}
-	}
 	this.on_view_form_created = on_view_form_created;
 	this.can_sort_on_field = can_sort_on_field;
 	this.isCharCode = isCharCode;
-	this.on_view_form_shown = on_view_form_shown;
 }
 
 task.events.events2 = new Events2();
@@ -533,7 +536,7 @@ function Events3() { // demo.journals
 		if (!item.on_filters_applied) {
 			item.on_filters_applied = function() {
 				if (item.view_form) {
-					item.view_form.find("#filter-text").text(item.get_filter_text());		
+					item.view_form.find(".filter-text").text(item.get_filter_text());		
 				}
 			};
 		}
@@ -576,20 +579,19 @@ function Events10() { // demo.catalogs.customers
 				})
 				.show();
 		}
+		
 	}  
 	
 	function on_edit_form_created(item) {
-		item.edit_form.find('#customer-tabs a').click(function (e) {
-		  e.preventDefault();
-		  $(this).tab('show');
-		});
-		item.create_inputs(item.edit_form.find("#cust-name"), 
+		var container = item.edit_form.find('.tabs'); 
+		task.init_tabs(container);
+		item.create_inputs(task.add_tab(container, 'Customer'),
 			{fields: ['firstname', 'lastname', 'company', 'support_rep_id']}
 		);
-		item.create_inputs(item.edit_form.find("#cust-address"), 
+		item.create_inputs(task.add_tab(container, 'Address'),
 			{fields: ['country', 'state', 'address', 'postalcode']}
 		);
-		item.create_inputs(item.edit_form.find("#cust-contact"), 
+		item.create_inputs(task.add_tab(container, 'Contact'),
 			{fields: ['phone', 'fax', 'email']}
 		);
 	}
@@ -633,26 +635,26 @@ function Events15() { // demo.catalogs.tracks
 				copy = item.copy();
 				copy.set_where({id__in: item.selections});
 				copy.open(function() {
-					var rec_no = task.invoices.invoice_table.record_count();
-					task.invoices.invoice_table.disable_controls();
+					var rec_no = item.invoices.invoice_table.record_count();
+					item.invoices.invoice_table.disable_controls();
 					try {
 						copy.each(function(c){
-							if (!task.invoices.invoice_table.locate('track', c.id.value)) {
-								task.invoices.invoice_table.append();
-								task.invoices.invoice_table.track.value = c.id.value;
-								task.invoices.invoice_table.track.lookup_value = c.name.value;
-								task.invoices.invoice_table.album.lookup_value = c.album.display_text;
-								task.invoices.invoice_table.artist.lookup_value = c.artist.display_text;
-								task.invoices.invoice_table.unitprice.value = c.unitprice.value;
-								task.invoices.invoice_table.quantity.value = 1;
-								task.invoices.invoice_table.post();
+							if (!item.invoices.invoice_table.locate('track', c.id.value)) {
+								item.invoices.invoice_table.append();
+								item.invoices.invoice_table.track.value = c.id.value;
+								item.invoices.invoice_table.track.lookup_value = c.name.value;
+								item.invoices.invoice_table.album.lookup_value = c.album.display_text;
+								item.invoices.invoice_table.artist.lookup_value = c.artist.display_text;
+								item.invoices.invoice_table.unitprice.value = c.unitprice.value;
+								item.invoices.invoice_table.quantity.value = 1;
+								item.invoices.invoice_table.post();
 							}
 						});
 					}
 					finally {
-						task.invoices.invoice_table.rec_no = rec_no;
-						task.invoices.invoice_table.enable_controls();
-						task.invoices.invoice_table.update_controls();
+						item.invoices.invoice_table.rec_no = rec_no;
+						item.invoices.invoice_table.enable_controls();
+						item.invoices.invoice_table.update_controls();
 					}
 				});
 			}
@@ -675,7 +677,7 @@ function Events16() { // demo.journals.invoices
 	function init_inputs(item, input_options) {
 		input_options.col_count = 2;	
 	}
-	
+	 
 	function on_view_form_created(item) {
 		var height = $(window).height() - $('body').height() - 200 - 10;
 		
@@ -687,7 +689,7 @@ function Events16() { // demo.journals.invoices
 		
 		item.create_table(item.view_form.find(".view-master"), {
 			height: height,
-			sortable: true,
+			sortable: true, 
 			show_footer: true,	
 			summary_fields: ['date', 'subtotal', 'tax', 'total'],
 			freeze_count: 2,
@@ -697,6 +699,9 @@ function Events16() { // demo.journals.invoices
 					font_weight = 'bold';
 				}
 				row.find('td.total').css('font-weight', font_weight);
+			},
+			on_dblclick: function() {
+				item.edit_record($("#content"));
 			}
 		});	
 	
@@ -710,11 +715,10 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_edit_form_created(item) {
-		item.edit_options.width = 1170;
+		item.edit_options.width = 1100;
 		item.invoice_table.create_table(item.edit_form.find(".edit-detail"),
 			{
-				height: 450,
-				tabindex: 90,
+				height: 300,
 				editable: true,
 				editable_fields: ['track', 'quantity'],
 				selected_field: 'quantity',
@@ -733,6 +737,7 @@ function Events16() { // demo.journals.invoices
 	
 	function select_records(item) {
 		var tracks = task.tracks.copy();
+		tracks.invoices = item;
 		tracks.select_records = true;
 		tracks.selections = [];
 		tracks.view();

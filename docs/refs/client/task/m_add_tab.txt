@@ -1,0 +1,82 @@
+=======
+add_tab
+=======
+
+.. js:function:: add_tab(container, tab_name, options)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Task </refs/client/task_api>`
+
+Description
+===========
+
+The ``add_tab`` method creates a tab for a container. 
+
+The ``container`` is JQuery object for a container element.
+
+The ``tab_name`` is the name of the tab.
+
+Use can use the ``options`` to specify optional parameters. It is the object that
+can have the following attributes:
+
+* ``tab_id`` - a unique string identifing the tab
+* ``show_close_btn`` - if it is set to ``true`` the close tab button will appear 
+  that can be used to close the tab
+* ``set_active`` - if it is set to ``true`` the new tab will became active
+* ``on_close`` - a callback function that will be called when the close tab button
+  is clicked
+
+The function returns the JQuery object of the div with ``tab-pane`` class that 
+will be displayed when tab became active.
+
+Example
+=======
+
+The following code will create tabs for editing Customers catalog. It uses 
+:doc:`create_inputs </refs/client/item/m_create_inputs>`
+method:
+
+.. code-block:: js
+
+    function on_edit_form_created(item) {
+        var container = item.edit_form.find('.tabs'); 
+        task.init_tabs(container);
+    	item.create_inputs(task.add_tab(container, 'Customer'),
+    	    {fields: ['firstname', 'lastname', 'company', 'support_rep_id']}
+    	);
+    	item.create_inputs(task.add_tab(container, 'Address'),
+    	    {fields: ['country', 'state', 'address', 'postalcode']}
+    	);
+    	item.create_inputs(task.add_tab(container, 'Contact'),
+    	    {fields: ['phone', 'fax', 'email']}
+    	);
+    }
+
+Below is the edit html template for Customers catalog:
+
+.. code-block:: html
+
+    <div class="customers-edit">
+        <div class="form-body">
+            <div class="tabs">
+            </div>
+        </div>
+        <div class="form-footer">
+            <button type="button" id="ok-btn" class="btn btn-ary expanded-btn">
+                <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
+            </button>
+            <button type="button" id="cancel-btn" class="btn expanded-btn">
+                <i class="icon-remove"></i> Cancel
+            </button>
+        </div>
+    </div>
+
+See also
+========
+
+:doc:`init_tabs <m_init_tabs>`
+
+:doc:`close_tab <m_close_tab>`

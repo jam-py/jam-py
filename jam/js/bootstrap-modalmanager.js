@@ -109,7 +109,7 @@
                             .attr('aria-hidden', false);
 
                         var complete = function () {
-                            that.setFocus();
+                            //~ that.setFocus();
                             modal.$element.trigger('shown');
                         };
 

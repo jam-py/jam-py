@@ -29,22 +29,26 @@ application
 .. code-block:: py
 
     #!/usr/bin/env python
-    # -*- coding: utf-8 -*-
     
-    import urllib2
+    try:
+        # For Python 3.0 and later
+        from urllib.request import urlopen
+    except ImportError:
+        # Fall back to Python 2's urllib2
+        from urllib2 import urlopen
     import json
     import time
     
     def send(url, request, params):
-        a = urllib2.urlopen(url + '/' + request, data=json.dumps(params))
-        r = json.loads(a.read())
+        a = urlopen(url + '/' + request, data=str.encode(json.dumps(params)))
+        r = json.loads(a.read().decode())
         return r['result']['data']
     
     if __name__ == '__main__':
         url = 'http://127.0.0.1:8080/ext'
         while True:
             result = send(url, 'get_sum', [1, 2, 3])
-            print result
+            print(result)
             time.sleep(60)
 
 

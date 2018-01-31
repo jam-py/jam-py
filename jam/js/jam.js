@@ -108,6 +108,17 @@
             "field_placeholder",
             "field_mask"
         ],
+        filter_attr = [
+            "filter_name",
+            "filter_caption",
+            "field_name",
+            "filter_type",
+            "multi_select_all",
+            "data_type",
+            "visible",
+            "filter_help",
+            "filter_placeholder"
+        ],
         field_type_names = ["", "text", "integer", "float", 'currency',
             "date", "datetime", "boolean", "blob", "keys"
         ];
@@ -135,7 +146,7 @@
         if (js_filename) {
             this.js_filename = 'js/' + js_filename;
         }
-        this.modal_options = {
+        this.from_options = {
             left: undefined,
             top: undefined,
             close_focusout: false,
@@ -147,6 +158,8 @@
             close_on_escape: true,
             show_history: false,
             print: false,
+            refresh_button: false,
+            tab_id: ''
         };
         this.items = [];
         if (owner) {
@@ -547,7 +560,16 @@
             }
         },
 
-        make_form_modal: function(form, options, suffix) {
+        _focus_form: function(form) {
+            form.find(':input:enabled:visible').each(function(el) {
+                if (this.tabIndex !== -1) {
+                    this.focus();
+                    return false;
+                }
+            })
+        },
+
+        _create_form_header: function(form, options, suffix, container) {
             var $doc,
                 $form,
                 $title,
@@ -559,10 +581,11 @@
                     close_button: true,
                     print: false
                 },
+                form_header = this.task.templates.find('.modal-header').clone(),
                 item_class = '';
 
             function captureMouseMove(e) {
-                var $title = $form.find('.modal-title');
+                var $title = $form.find('.modal-header');
                 if (mouseX) {
                     e.preventDefault();
                     $title.css('cursor', 'auto');
@@ -580,81 +603,125 @@
                 $doc.off("mouseup.modalform");
             }
 
+            if (!form_header.length) {
+                form_header = $(
+                    '<div class="modal-header">' +
+                        '<div class="header-title"></div>' +
+                        '<div class="header-refresh-btn"></div>' +
+                        '<div class="header-history-btn"></div>' +
+                        '<div class="header-search">' +
+                        '</div>' +
+                        '<div class="header-print-btn"></div>' +
+                        '<div class="header-close-btn"></div>' +
+                    '</div>'
+                );
+                form_header.find('.header-search').show();
+            }
             if (suffix) {
                 if (this.master) {
-                    item_class = ' ' + this.master.item_name + '-' + this.item_name + ' ' + suffix + '-form';
+                    item_class = this.master.item_name + '-' + this.item_name + ' ' + suffix + '-form';
                 }
                 else {
-                    item_class = ' ' + this.item_name + ' ' + suffix + '-form';
+                    item_class = this.item_name + ' ' + suffix + '-form';
                 }
             }
             options = $.extend({}, defaultOptions, options);
             if (!options.title) {
                 options.title = '&nbsp';
             }
-            $form = $(
-                '<div class="modal hide normal-modal-border' + item_class + '" tabindex="-1" data-backdrop="static">' +
-                '<div class="modal-header">' +
-                '</div>' +
-                '</div>'
-            );
-            $doc = $(document);
+            if (container) {
+                if (this.task.add_form_borders) {
+                    $form = $(
+                        '<div class="form-frame ' + item_class + '" tabindex="-1">' +
+                        '</div>'
+                    );
+                    $form.append(form_header);
+                }
+                else {
+                    form.addClass('jam-form')
+                    return form
+                }
+            }
+            else {
+                $form = $(
+                    '<div class="modal form-frame hide normal-modal-border ' + item_class + '" tabindex="-1" data-backdrop="static">' +
+                    '</div>'
+                );
+                $form.append(form_header);
+                $doc = $(document);
+                //~ this._set_form_options($form, options);
+                $form.on("mousedown", ".modal-header", function(e) {
+                    mouseX = e.screenX;
+                    mouseY = e.screenY;
+                    $doc.on("mousemove.modalform", captureMouseMove);
+                    $doc.on("mouseup.modalform", releaseMouseMove);
+                });
+
+                $form.on("mousemove", ".modal-header", function(e) {
+                    $(this).css('cursor', 'move');
+                });
+            }
             this._set_form_options($form, options);
-            $form.on("mousedown", ".modal-title", function(e) {
-                mouseX = e.screenX;
-                mouseY = e.screenY;
-                $doc.on("mousemove.modalform", captureMouseMove);
-                $doc.on("mouseup.modalform", releaseMouseMove);
-            });
-
-            $form.on("mousemove", ".modal-title", function(e) {
-                $(this).css('cursor', 'move');
-            });
-
             $form.append(form);
+            $form.addClass('jam-form');
             return $form;
         },
 
         _set_form_options: function(form, options, form_name) {
             var self = this,
                 header = form.find('.modal-header'),
-                title = header.find('.modal-title'),
                 closeCaption = '',
                 close_button = '',
                 printCaption = '',
                 print_button = '',
-                history_button = '';
+                refresh_button = '',
+                history_button = '',
+                body;
             if (options.close_button) {
                 if (language && options.close_caption) {
                     closeCaption = '&nbsp;' + language.close + ' - [Esc]</small>';
                 }
                 close_button = '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' +
                     closeCaption + ' ×</button>';
+                header.find('.header-close-btn').html(close_button);
             }
+
             if (language && options.print) {
                 printCaption = '&nbsp;' + language.print + ' - [Ctrl-P]</small>',
                     print_button = '<button type="button" id="print-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' +
                     printCaption + '</button>';
-            }
-            if (options.show_history && this.keep_history && task.history_item) {
-                history_button = '<i id="history-btn" class="icon-film" style="float: right; margin: 5px;"></i>';
+                header.find('.header-print-btn').html(print_button);
             }
 
-            if (!title.text().length) {
-                title = ('<h4 class="modal-title">' + options.title + '</h4>');
-            } else {
-                title.html(options.title);
+            if (options.show_history && this.keep_history && task.history_item) {
+                history_button = '<i id="history-btn" class="icon-film"></i>';
+                header.find('.header-history-btn').html(history_button);
             }
-            header.empty();
-            header.append(close_button + history_button + print_button);
-            header.append(title);
+
+            if (options.refresh_button) {
+                refresh_button = '<i id="refresh-btn" class="icon-refresh"></i>';
+                header.find('.header-refresh-btn').html(refresh_button);
+            }
+
+            header.find('.header-title').html('<h4 class="form-title">' + options.title + '</h4>')
+
             header.find("#close-btn").css('cursor', 'default').click(function(e) {
                 if (form_name) {
                     self._close_form(form_name);
                 }
             });
             header.find('#print-btn').css('cursor', 'default').click(function(e) {
-                self.print_message(form.find(".modal-body").clone());
+                if (form.find(".form-body").length) {
+                    body = form.find(".form-body");
+                }
+                else if (form.find(".modal-body").length) {
+                    body = form.find(".modal-body");
+                }
+                self.print_html(body);
+            });
+            header.find("#refresh-btn").css('cursor', 'default').click(function(e) {
+                //~ self.refresh_page(true);
+                self.open(true);
             });
             header.find('#history-btn').css('cursor', 'default').click(function(e) {
                 self.show_history();
@@ -674,27 +741,43 @@
             }
         },
 
-        _process_key_event: function(form, handler, event) {
-            if (form._form_disabled) {
-                event.preventDefault();
-                event.stopPropagation();
-                event.stopImmediatePropagation();
+        _active_form: function(form) {
+            var cur_form = $(document.activeElement).closest('.jam-form')
+            if (form.get(0) === cur_form.get(0)) {
+                return true;
             }
-            else {
-                if (event.which !== 116) { //F5
+        },
+
+        _process_key_event: function(form, handler, event) {
+            if (this._active_form(form)) {
+                if (form._form_disabled) {
+                    event.preventDefault();
                     event.stopPropagation();
+                    event.stopImmediatePropagation();
                 }
-                if (handler) {
-                    handler.call(this, event);
+                else {
+                    if (event.which !== 116) { //F5
+                        event.stopPropagation();
+                    }
+                    if (handler) {
+                        handler.call(this, event);
+                    }
                 }
             }
         },
 
         _create_form: function(suffix, options) {
             var self = this,
+                form,
                 formName = suffix + '_form',
-                keySuffix = formName + '.' + this.item_name,
-                item_options = this[suffix + '_options'];
+                item_options = this[suffix + '_options'],
+                keySuffix;
+
+            options.item_options = item_options;
+            keySuffix = formName + '.' + this.item_name;
+            if (item_options.tab_id) {
+                keySuffix += '.' + item_options.tab_id;
+            }
 
             if (this[formName] && options.container) {
                 this._close_modeless_form(formName);
@@ -702,33 +785,42 @@
             if (options.container) {
                 options.container.empty();
             }
-            this[formName] = $("<div></div>").append(this.find_template(suffix, item_options));
-            if (!options.container) {
-                this[formName] = this.make_form_modal(this[formName], item_options, suffix);
-            }
-            if (this[formName]) {
-                this[formName]._options = options;
-                this[formName].tabindex = 1;
+            form = $("<div></div>").append(this.find_template(suffix, item_options));
+            form = this._create_form_header(form, item_options, suffix, options.container);
+            this[formName] = form
+            if (form) {
+                //~ form._options = options;
+                form.data('options', options);
+                form.tabindex = 1;
                 if (options.container) {
                     $(window).on("keyup." + keySuffix, function(e) {
-                        self._process_key_event(self[formName], options.onKeyUp, e);
+                        if (e.which === 27 && item_options.close_caption) {
+                            if (self._active_form(self[formName])) {
+                                self._close_form(formName);
+                            }
+                        }
+                        else {
+                            self._process_key_event(self[formName], options.onKeyUp, e);
+                        }
                     });
                     $(window).on("keydown." + keySuffix, function(e) {
                         self._process_key_event(self[formName], options.onKeyDown, e);
                     });
-                    options.container.append(this[formName]);
+                    options.container.append(form);
                     this[formName].bind('destroyed', function() {
                         self._close_modeless_form(formName);
                     });
                     if (options.beforeShow) {
                         options.beforeShow.call(this);
                     }
+                    this._set_form_options(form, item_options, formName);
+                    this._focus_form(form);
                     if (options.onShown) {
                         options.onShown.call(this);
                     }
                 } else {
-                    if (this[formName].hasClass("modal")) {
-                        this[formName].on("show", function(e) {
+                    if (form.hasClass("modal")) {
+                        form.on("show", function(e) {
                             if (e.target === self[formName].get(0)) {
                                 e.stopPropagation();
                                 if (options.beforeShow) {
@@ -744,22 +836,17 @@
                             }
                         });
 
-                        this[formName].on("shown", function(e) {
+                        form.on("shown", function(e) {
                             if (e.target === self[formName].get(0)) {
+                                self._focus_form(self[formName]);
                                 e.stopPropagation();
                                 if (options.onShown) {
                                     options.onShown.call(self, e);
-                                    //~ setTimeout(
-                                        //~ function() {
-                                            //~ options.onShown.call(self, e);
-                                        //~ },
-                                        //~ 0
-                                    //~ )
                                 }
                             }
                         });
 
-                        this[formName].on("hide", function(e) {
+                        form.on("hide", function(e) {
                             if (e.target === self[formName].get(0)) {
                                 var canClose = true;
                                 e.stopPropagation();
@@ -773,7 +860,7 @@
                             }
                         });
 
-                        this[formName].on("hidden", function(e) {
+                        form.on("hidden", function(e) {
                             if (e.target === self[formName].get(0)) {
                                 e.stopPropagation();
                                 if (options.onHidden) {
@@ -784,15 +871,15 @@
                             }
                         });
 
-                        this[formName].on("keydown." + keySuffix, function(e) {
+                        form.on("keydown." + keySuffix, function(e) {
                             self._process_key_event(self[formName], options.onKeyDown, e);
                         });
 
-                        this[formName].on("keyup." + keySuffix, function(e) {
+                        form.on("keyup." + keySuffix, function(e) {
                             self._process_key_event(self[formName], options.onKeyUp, e);
                         });
 
-                        this[formName].modal({
+                        form.modal({
                             item: this,
                             form_name: formName,
                             item_options: item_options
@@ -805,9 +892,16 @@
         _close_form: function(formName) {
             var self = this,
                 form = this[formName],
+                options,
                 canClose,
-                keySuffix = formName + '.' + this.item_name;
+                keySuffix;
+
             if (form) {
+                options = form.data('options'),
+                keySuffix = formName + '.' + this.item_name;
+                if (options.item_options.tab_id) {
+                    keySuffix += '.' + options.item_options.tab_id;
+                }
                 form.data('_closing', true);
                 if (form.hasClass('modal')) {
                     setTimeout(
@@ -817,14 +911,14 @@
                         100
                     );
                 } else {
-                    if (form._options && form._options.onHide) {
-                        canClose = form._options.onHide.call(self);
+                    if (options && options.onHide) {
+                        canClose = options.onHide.call(self);
                     }
                     if (canClose !== false) {
-                        form._options.onHidden.call(self);
                         $(window).off("keydown." + keySuffix);
                         $(window).off("keyup." + keySuffix);
                         this[formName] = undefined;
+                        options.onHidden.call(self);
                         form.remove();
                     }
                 }
@@ -845,16 +939,17 @@
             }
         },
 
-        print_message: function(html) {
+        print_html: function(html) {
             var win = window.frames["dummy"],
                 css = $("link[rel='stylesheet']"),
+                body,
                 head = '<head>';
             css.each(function(i, e) {
                 head += '<link href="' + e.href + '" rel="stylesheet">';
             });
             head += '</head>';
-            win.document.write(head + '<body onload="window.print()">' + html.html() + '</body>');
-            $("link[rel='stylesheet']").clone().appendTo($("dummy").contents().find("head"));
+            body = html.clone();
+            win.document.write(head + '<body onload="window.print()">' + body.html() + '</body>');
             win.document.close();
         },
 
@@ -894,7 +989,7 @@
                 el += '<div class="modal-footer"></div>';
             }
 
-            $element = this.make_form_modal($(el), options);
+            $element = this._create_form_header($(el), options);
 
             $modal_body = $element.find('.modal-body');
 
@@ -947,8 +1042,15 @@
                 }
             }
 
-            $element.on("show shown hide hidden", function(e) {
+            $element.on("show hide hidden", function(e) {
                 if (e.target === $element.get(0)) {
+                    e.stopPropagation();
+                }
+            });
+
+            $element.on("shown", function(e) {
+                if (e.target === $element.get(0)) {
+                    self._focus_form($element);
                     e.stopPropagation();
                 }
             });
@@ -963,7 +1065,7 @@
                 }
                 else if (e.which === 80 && e.ctrlKey) {
                     e.preventDefault();
-                    self.print_message($element.find(".modal-body").clone());
+                    self.print_html($element.find(".modal-body"));
                 }
             });
 
@@ -1229,6 +1331,7 @@
         this._script_cache = {};
         this.gridId = 0;
         this.events = {};
+        this.add_form_borders = true;
         this.constructors = {
             task: Task,
             group: Group,
@@ -1328,6 +1431,9 @@
                             self.warning(language.server_request_error, function() {
                                 self.task._server_request_error = undefined;
                             });
+                        }
+                        if (callback) {
+                            callback.call(item, [null, 'Server request error']);
                         }
                     }
                 },
@@ -1479,7 +1585,7 @@
                 $form = $("#login-form").clone();
             }
 
-            $form = this.make_form_modal($form, {
+            $form = this._create_form_header($form, {
                 title: $form.data('caption'),
                 transition: false
             });
@@ -1720,6 +1826,154 @@
 
         erase_cookie: function(name) {
             this.create_cookie(name, "", -1);
+        },
+
+        _tab_content: function(tab) {
+            var item_name = tab.find('a').attr('href').substr(1);
+            return tab.parent().parent().find('> div.tab-content > div.' + item_name)
+        },
+
+        _show_tab: function(tab) {
+            var item_name = tab.find('a').attr('href').substr(1),
+                el,
+                tab_content = this._tab_content(tab),
+                tab_div = tab.parent().parent().parent();
+            tab_div.find('> .tabbable > div.tab-content > div.tab-pane').removeClass('active');
+            tab_content.addClass('active');
+            tab_div.find('> .tabbable > ul.nav-tabs > li').removeClass('active');
+            tab.addClass('active');
+            el = tab_content.data('active_el');
+            if (el) {
+                el.focus();
+            }
+        },
+
+        show_tab: function(container, tab_id) {
+            var tab = container.find('> .tabbable > ul.nav-tabs > li a[href="#' + tab_id + '"]');
+            if (tab.length) {
+                this._show_tab(tab.parent());
+            }
+        },
+
+        _close_tab: function(tab) {
+            var tabs = tab.parent(),
+                tab_content = this._tab_content(tab),
+                new_tab;
+            this._show_tab(tab);
+            if (tab.next().length) {
+                new_tab = tab.next()
+            }
+            else {
+                new_tab = tab.prev()
+            }
+            this._tab_content(tab).remove()
+            tab.remove();
+            if (new_tab.length) {
+                this._show_tab(new_tab);
+            }
+        },
+
+        close_tab: function(container, tab_id) {
+            var tab = container.find('> .tabbable > ul.nav-tabs > li a[href="#' + tab_id + '"]');
+            if (tab.length) {
+                this._close_tab(tab.parent());
+            }
+        },
+
+        init_tabs: function(container, tabs_position) {
+            var self = this,
+                div;
+            if (!tabs_position) {
+                tabs_position = 'tabs-top'
+            }
+            div = $('<div class="tabbable ' + tabs_position + '">');
+            container.empty();
+            container.append(div);
+            if (tabs_position === 'tabs-below') {
+                div.append('<div class="tab-content">');
+                div.append('<ul class="nav nav-tabs">');
+            }
+            else {
+                div.append('<ul class="nav nav-tabs">');
+                div.append('<div class="tab-content">');
+            }
+        },
+
+        can_add_tab: function(container) {
+            return container.find('> .tabbable  > ul.nav-tabs').length > 0
+        },
+
+        add_tab: function(container, tab_name, options) {
+            var self = this,
+                div,
+                tabs,
+                active_tab,
+                tab_content,
+                tab_text,
+                cur_tab,
+                cur_tab_content;
+            if (!container.length) {
+                this.warning('Container must be specified.')
+            }
+            if (!tab_name) {
+                this.warning('Tab name must be specified.')
+            }
+            if (!options) {
+                options = {};
+            }
+            if (this.can_add_tab(container)) {
+                tabs = container.find('> .tabbable > ul.nav-tabs');
+                if (!options.tab_id) {
+                    options.tab_id = 'tab' + tabs.find('> li').length + 1;
+                }
+                active_tab = tabs.find('> li.active');
+                //~ tabs.find('> li').removeClass('active');
+                cur_tab = tabs.find('> li a[href="#' + options.tab_id + '"]');
+                if (cur_tab.length) {
+                    cur_tab = cur_tab.parent();
+                }
+                else {
+                    tab_content = container.find('> .tabbable > div.tab-content');
+                    if (options.show_close_btn) {
+                        tab_name = '<span> ' + tab_name + ' </span><i class="icon-remove close-tab-btn"></i>';
+                    }
+                    cur_tab = $('<li><a href="#' + options.tab_id + '">' +
+                        tab_name + '</a></li>');
+                    tabs.append(cur_tab);
+                    cur_tab_content = $('<div class="tab-pane ' + options.tab_id + '"></div>');
+                    tab_content.append(cur_tab_content);
+                    cur_tab.on('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        self._show_tab($(this));
+                    });
+                    cur_tab_content.on('focusout', function(e) {
+                        var found;
+                        $(e.target).parents().each(function() {
+                            if (this === cur_tab_content.get(0)) {
+                                cur_tab_content.data('active_el', e.target);
+                                return false;
+                            }
+                        })
+                    });
+                    if (options.show_close_btn) {
+                        cur_tab.on('click', '.close-tab-btn', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (options.on_close) {
+                                options.on_close.call();
+                            }
+                            else {
+                                self.close_tab(container, options.tab_id);
+                            }
+                        });
+                    }
+                }
+                if (options.set_active || !active_tab.length) {
+                    this.show_tab(container, options.tab_id);
+                }
+                return cur_tab_content
+            }
         }
     });
 
@@ -1745,9 +1999,8 @@
             }
         },
 
-        add_item: function(item_name, item_caption, fields, filters, on_open, on_total_count) {
+        add_item: function(item_name, item_caption, fields, filters, on_open, on_count) {
             var result,
-                len,
                 attr,
                 val,
                 data_type,
@@ -1777,7 +2030,7 @@
                             break;
                         case 'field_size':
                             if (data_type === 1 && !val) {
-                                val = 9999999999;
+                                val = 99999;
                             }
                             break;
                         case 'lookup_item':
@@ -1793,11 +2046,32 @@
                 }
                 result.field_defs.push(field_def);
             }
-            len = result.field_defs.length;
-            for (i = 0; i < len; i++) {
+            for (i = 0; i < result.field_defs.length; i++) {
                 new Field(result, result.field_defs[i]);
             }
             result.prepare_fields();
+
+            result.filter_defs = [];
+            for (i = 0; i < filters.length; i++) {
+                filter_def = []
+                for (var j = 0; j < filter_attr.length; j++) {
+                    attr = filter_attr[j];
+                    val = filters[i][attr]
+                    switch (attr) {
+                        case 'filter_type':
+                            val = filter_value.indexOf(val);
+                            break;
+                    }
+                    filter_def.push(val);
+                }
+                result.filter_defs.push(filter_def);
+            }
+            for (i = 0; i < result.filter_defs.length; i++) {
+                new Filter(this, result.filter_defs[i]);
+            }
+            result.prepare_filters();
+            result.on_open = on_open;
+            result.on_count = on_count;
             return result;
         }
     });
@@ -2367,10 +2641,11 @@
         this.show_selected = false;
         this.selection_limit = 1500;
         this.is_loaded = false;
-        this.view_options = $.extend({}, this.modal_options);
+        this.view_options = $.extend({}, this.from_options);
         this.view_options.width = 960;
-        this.edit_options = $.extend({}, this.modal_options);
-        this.filter_options = $.extend({}, this.modal_options);
+        this.view_options.refresh_button = true;
+        this.edit_options = $.extend({}, this.from_options);
+        this.filter_options = $.extend({}, this.from_options);
         Object.defineProperty(this, "rec_no", {
             get: function() {
                 return this._get_rec_no();
@@ -3157,12 +3432,14 @@
             } else {
                 this.fields = this._fields.slice(0);
             }
+            fields = []
             len = this.fields.length;
             for (i = 0; i < len; i++) {
                 field = this.fields[i]
                 if (this[field.field_name] === undefined) {
                     this[field.field_name] = field;
                 }
+                fields.push(field.field_name);
             }
             this.update_system_fields();
             return fields
@@ -3421,7 +3698,14 @@
         do_open: function(offset, async, params, open_empty, callback) {
             var self = this,
                 data;
-            if (async && !open_empty) {
+            if (this.on_open && !open_empty) {
+                if (this.on_open) {
+                    this.on_open.call(this, this, params, function(data) {
+                        self._do_after_load(data, offset, callback);
+                    });
+                }
+            }
+            else if (async && !open_empty) {
                 this.send_request('open', params, function(data) {
                     self._do_after_load(data, offset, callback);
                 });
@@ -3637,11 +3921,20 @@
             if (this._open_params.__open_empty && callback) {
                 return 0;
             } else {
-                this.send_request('total_records', this._open_params, function(data) {
-                    if (data && callback) {
-                        callback.call(self, data[0]);
-                    }
-                });
+                if (this.on_count) {
+                    this.on_count.call(this, this, this._open_params, function(data) {
+                        if (data && callback) {
+                            callback.call(self, data[0]);
+                        }
+                    });
+                }
+                else {
+                    this.send_request('total_records', this._open_params, function(data) {
+                        if (data && callback) {
+                            callback.call(self, data[0]);
+                        }
+                    });
+                }
             }
         },
 
@@ -3969,12 +4262,12 @@
                 }
             }
             else if (callback) {
-                if (this.on_before_apply) {
-                    this.on_before_apply.call(this, this);
-                }
-                if (this.on_after_apply) {
-                    this.on_after_apply.call(this, this);
-                }
+                //~ if (this.on_before_apply) {
+                    //~ this.on_before_apply.call(this, this);
+                //~ }
+                //~ if (this.on_after_apply) {
+                    //~ this.on_after_apply.call(this, this);
+                //~ }
                 if (callback) {
                     callback.call(this);
                 }
@@ -4498,38 +4791,151 @@
 
     // Item interface methods
 
-        insert_record: function(args) {
+        insert_record: function(container, tab_name) {
+            if (container && this.task.can_add_tab(container) && $('.modal').length === 0) {
+                this._append_record_in_tab(container, tab_name);
+            }
+            else {
+                this._insert_record();
+            }
+        },
+
+        _insert_record: function(container) {
             if (this.can_create()) {
                 if (!this.is_changing()) {
                     this.insert();
                 }
-                this.create_edit_form(args);
+                this.create_edit_form(container);
             }
         },
 
-        append_record: function(args) {
+        append_record: function(container, tab_name) {
+            if (container && this.task.can_add_tab(container) && $('.modal').length === 0) {
+                this._append_record_in_tab(container, tab_name);
+            }
+            else {
+                this._append_record();
+            }
+        },
+
+        _append_record: function(container) {
             if (this.can_create()) {
                 if (!this.is_changing()) {
                     this.append();
                 }
-                this.create_edit_form(args);
+                this.create_edit_form(container);
             }
         },
 
-        edit_record: function(args) {
+        _append_record_in_tab: function(container, tab_name) {
+            var tab_id = this.item_name + 0,
+                tab,
+                self = this,
+                copy = this.copy(),
+                content;
+            if (this.can_create()) {
+                if (!tab_name) {
+                    tab_name = '<i class="icon-plus-sign"></i> ' + this.item_caption;
+                }
+                content = task.add_tab(container, tab_name,
+                    {
+                        tab_id: tab_id,
+                        show_close_btn: true,
+                        set_active: true,
+                        on_close: function() {
+                            task.show_tab(container, tab_id);
+                            copy.close_edit_form();
+                        }
+                    });
+                if (content) {
+                    copy.open({open_empty: true}, function() {
+                        copy.edit_options.tab_id = tab_id;
+                        copy._append_record(content);
+                        self._update_tab_copy(copy, container, tab_id);
+                    });
+                }
+            }
+        },
+
+        edit_record: function(container, tab_name) {
+            if (container && this.task.can_add_tab(container) && $('.modal').length === 0) {
+                this._edit_record_in_tab(container, tab_name)
+            }
+            else {
+                this._edit_record()
+            }
+        },
+
+        _edit_record: function(container) {
             if (this.can_edit()) {
                 if (!this.is_changing()) {
                     this.edit();
                 }
             }
-            this.create_edit_form(args);
+            this.create_edit_form(container);
+        },
+
+        _edit_record_in_tab: function(container, tab_name) {
+            var pk = this._primary_key,
+                pk_value = this.field_by_name(pk).value,
+                where = {},
+                tab_id = this.item_name + pk_value,
+                tab,
+                self = this,
+                copy = this.copy(),
+                content;
+            if (this.can_edit()) {
+                if (!tab_name) {
+                    tab_name = '<i class="icon-edit"></i> ' + this.item_caption;
+                }
+                content = task.add_tab(container, tab_name,
+                {
+                    tab_id: tab_id,
+                    show_close_btn: true,
+                    set_active: true,
+                    on_close: function() {
+                        task.show_tab(container, tab_id);
+                        copy.close_edit_form();
+                    }
+                });
+                if (content) {
+                    where[pk] = pk_value;
+                    copy.set_where(where);
+                    copy.open(function() {
+                        copy.edit_options.tab_id = tab_id;
+                        copy._edit_record(content);
+                        self._update_tab_copy(copy, container, tab_id);
+                    });
+                }
+            }
+        },
+
+        _update_tab_copy: function(copy, container, tab_id) {
+            var self = this,
+                on_closed = copy.on_edit_form_closed,
+                on_after_apply = copy.on_after_apply;
+            if (copy.edit_options.width) {
+                copy.edit_form.css('max-width', copy.edit_options.width + 'px')
+            }
+            copy.on_edit_form_closed = function(item) {
+                task.close_tab(container, tab_id);
+                if (on_closed) {
+                    on_closed.call(copy, copy);
+                }
+            };
+            copy.on_after_apply = function(item) {
+                if (on_after_apply) {
+                    on_after_apply(copy, copy);
+                }
+                self.refresh_page(true);
+            }
         },
 
         cancel_edit: function() {
-            this.close_edit_form();
             if (this.is_changing()) {
                 this.cancel();
             }
+            this.close_edit_form();
         },
 
         delete_record: function(callback) {
@@ -4676,6 +5082,16 @@
         },
 
         view: function(container) {
+            if (container && this.task.can_add_tab(container)) {
+                this._view_in_tab(container);
+            }
+            else {
+                this.view_options.close_caption = true;
+                this._view(container);
+            }
+        },
+
+        _view: function(container) {
             var self = this;
             self.show_selected = false;
             this.load_modules([this, this.owner], function() {
@@ -4683,8 +5099,35 @@
             })
         },
 
+        _view_in_tab: function(container) {
+            var self = this,
+                on_closed,
+                tab_id = this.item_name,
+                content = this.task.add_tab(container, this.item_caption,
+                {
+                    tab_id: this.item_name,
+                    show_close_btn: true,
+                    set_active: true,
+                    on_close: function() {
+                        task.show_tab(container, tab_id);
+                        self.close_view_form();
+                    }
+                });
+            if (content) {
+                this._view(content);
+                on_closed = this.on_view_form_closed,
+                this.on_view_form_closed = function(item) {
+                    self.task.close_tab(container, tab_id);
+                    if (on_closed) {
+                        on_closed.call(self, self);
+                    }
+                };
+            }
+        },
+
         create_view_form: function(container) {
             var self = this;
+            this.view_options.show_history = true;
             this._create_form('view', {
                 container: container,
                 beforeShow: function() {
@@ -5032,10 +5475,10 @@
                 cols.push($("<div></div>").addClass("span" + 12 / options.col_count).appendTo(form));
             }
             tabindex = options.tabindex;
-            if (!tabindex && this.edit_form) {
-                tabindex = this.edit_form.tabindex;
-                this.edit_form.tabindex += len;
-            }
+            //~ if (!tabindex && this.edit_form) {
+                //~ tabindex = this.edit_form.tabindex;
+                //~ this.edit_form.tabindex += len;
+            //~ }
             if (!options.row_count) {
                 options.row_count = Math.ceil(len / options.col_count);
             }
@@ -5352,7 +5795,7 @@
         this._fields = [];
         this.params = this._fields;
         this._state = consts.STATE_EDIT;
-        this.param_options = $.extend({}, this.modal_options);
+        this.param_options = $.extend({}, this.from_options);
     }
 
     $.extend(Report.prototype, {
@@ -5804,6 +6247,9 @@
             if (this.owner._dataset && this.owner._dataset.length) {
                 return this.owner._dataset[this.owner._get_rec_no()];
             } else {
+                if (this.owner) {
+                    this.owner.warning('Ошибка при чтении или записи в пустой набор данных. Обратитесь в тех.поддержку.');
+                }
                 throw language.value_in_empty_dataset.replace('%s', this.owner.item_name);
             }
         },
@@ -6982,18 +7428,6 @@
     Filter.prototype = {
         constructor: Filter,
 
-        attr: [
-            "filter_name",
-            "filter_caption",
-            "field_name",
-            "filter_type",
-            "multi_select_all",
-            "data_type",
-            "visible",
-            "filter_help",
-            "filter_placeholder"
-        ],
-
         create_field: function(field) {
             var result = new Field();
             result.set_info(field.get_info());
@@ -7012,10 +7446,10 @@
 
         get_info: function() {
             var i,
-                len = this.attr.length,
+                len = filter_attr.length,
                 result = [];
             for (i = 0; i < len; i++) {
-                result.push(this[this.attr[i]]);
+                result.push(this[filter_attr[i]]);
             }
             return result;
         },
@@ -7023,9 +7457,9 @@
         set_info: function(info) {
             if (info) {
                 var i,
-                    len = this.attr.length;
+                    len = filter_attr.length;
                 for (i = 0; i < len; i++) {
-                    this[this.attr[i]] = info[i];
+                    this[filter_attr[i]] = info[i];
                 }
             }
         },
@@ -8114,26 +8548,15 @@
                 }
             });
 
-            if (this.options.expand_selected_row && this.options.row_line_count !== this.options.expand_selected_row) {
-                this.$table.on('mouseleave mousedown', 'td div', function() {
-                    var $this = $(this),
-                        tt = $this.data('tooltip');
-                    if (tt && tt.$tip) {
-                        tt.$tip.remove();
-                    }
-                });
-            }
-
             this.$table.on('mouseenter mouseup', 'td div', function() {
                 var $this = $(this),
                     tt = $this.data('tooltip');
-                if (tt && tt.$tip) {
-                    tt.$tip.remove();
-                }
                 if (Math.abs(this.offsetHeight - this.scrollHeight) > 1 ||
                     Math.abs(this.offsetWidth - this.scrollWidth) > 1) {
+                    self._remove_tooltip()
                     $this.tooltip({
                             'placement': 'right',
+                            'container': 'body',
                             'title': $this.text()
                         })
                         .on('hide hidden show shown', function(e) {
@@ -8142,6 +8565,10 @@
                             }
                         })
                         .eq(0).tooltip('show');
+                    try {
+                        $this.data('tooltip').$tip.addClass('table-tooltip');
+                    }
+                    catch (e) {}
                 }
             });
 
@@ -8375,6 +8802,13 @@
 
             this.fill_footer();
             this.calculate();
+        },
+
+        _remove_tooltip: function() {
+            try {
+                $('body > div.tooltip.table-tooltip').remove();
+            }
+            catch (e) {}
         },
 
         calculate: function() {
@@ -9417,6 +9851,7 @@
                 return;
             }
             if (value < this.page_count || value === 0) {
+                this._remove_tooltip();
                 this.page = value;
                 this.scrollLeft = this.$element.find('.table-container').get(0).scrollLeft;
                 if (this.master_table) {
@@ -9962,20 +10397,23 @@
                 $input = $('<input>')
                     .attr("id", field.field_name)
                     .attr("type", "checkbox")
-                    .attr("tabindex", tabIndex + "")
+                    //~ .attr("tabindex", tabIndex + "")
                     .click(function(e) {
                         self.field.value = !self.field.value;
                     });
             } else if (field.get_lookup_data_type() === consts.BLOB) {
                 $input = $('<textarea>')
                     .attr("id", field.field_name)
-                    .attr("tabindex", tabIndex + "")
+                    //~ .attr("tabindex", tabIndex + "")
                     .innerHeight(70);
             } else {
                 $input = $('<input>')
                     .attr("id", field.field_name)
                     .attr("type", "text")
-                    .attr("tabindex", tabIndex + "");
+                    //~ .attr("tabindex", tabIndex + "");
+            }
+            if (tabIndex) {
+                $input.attr("tabindex", tabIndex + "");
             }
             $controls = $('<div class="controls"></div>');
             if (this.label_width && !this.label_on_top) {

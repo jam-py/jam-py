@@ -52,9 +52,6 @@
 
         <div class="default-view">
             <div class="form-body">
-                <div class="form-header">
-                    <h4 id="form-title" class="header-text"><a href="#"></a></h4>
-                </div>
                 <div class="view-table">
                 </div>
             </div>
@@ -132,21 +129,6 @@
 
         <div class="catalogs-view">
             <div class="form-body">
-                <div class="form-header">
-                    <h4 id="form-title" class="header-text"><a href="#"></a></h4>
-                    <h5 id="selected-div" class="header-text" style="display: none">
-                        <a id="selected-value" href="#"></a>
-                    </h5>
-                    <form id="search-form" class="form-inline pull-right">
-                        <label  class="control-label" for="search-input">Search by
-                            <span class="label" id="search-fieldname"></span>
-                        </label>
-                        <input id="search-input" type="text" class="input-medium search-query" autocomplete="off">
-                        <a id="search-field-info" href="#" tabindex="-1">
-                            <span class="badge">?</span>
-                        </a>
-                    </form>
-                </div>
                 <div class="view-table">
                 </div>
             </div>
@@ -173,10 +155,6 @@
 
         <div class="journals-view">
             <div class="form-body">
-                <div class="form-header">
-                    <h4 id="form-title" class="header-text"><a href="#"></a></h4>
-                    <h5 id="filter-text" class="header-text pull-right"></h5>
-                </div>
                 <div class="view-table">
                 </div>
             </div>
@@ -202,6 +180,31 @@
                     <i class="icon-plus"></i> __$_new_$__<small class="muted">&nbsp;[Ctrl+Ins]</small>
                 </button>
             </div>
+        </div>
+
+        <div class="modal-header">
+            <div class="header-title"></div>
+            <div class="header-refresh-btn"></div>
+            <div class="header-history-btn"></div>
+            <div class="header-selected">
+                <a id="selected-value" href="#"></a>
+            </div>            
+            <div class="header-filter">
+                <h5 class='filter-text'></h5>
+            </div>
+            <div class="header-search">
+                <form id="search-form" class="form-inline pull-right">
+                    <label  class="control-label" for="search-input">Search by 
+                        <span class="label" id="search-fieldname"></span>
+                    </label>
+                    <input id="search-input" type="text" class="input-medium search-query" autocomplete="off">
+                    <a id="search-field-info" href="#" tabindex="-1">
+                        <span class="badge">?</span>
+                    </a>
+                </form>
+            </div>
+            <div class="header-print-btn"></div>
+            <div class="header-close-btn"></div>
         </div>
 
         <form id="login-form" target="dummy" class="form-horizontal" data-caption="__$_log_in_$__" style="margin: 10px 0 0; padding: 0px">

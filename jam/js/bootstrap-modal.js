@@ -96,7 +96,7 @@
         },
 
         elementIsActive: function (el) {
-            return !(el.disabled || el.hidden || el.readOnly || el.type === 'hidden');
+            return !(el.disabled || el.hidden || el.readOnly || el.type === 'hidden' || el.offsetParent === null);
         },
 
         toggle: function () {

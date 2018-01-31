@@ -9,7 +9,7 @@ We plan to add the following features to Jam.py:
 * Language support stage 1: Support for other languages.
 * Language support stage 2: internalization, support for multiple languages in 
   the project.
-* Support for mobile applications.  
+* Support for mobile devices.  
 * Support for Bootstrap 4.
 * Rework of import/export utility: visual interface, control over merging of changes.
 * Creation of tools for analyzing the number of different requests and the time 

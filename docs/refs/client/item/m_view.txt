@@ -20,6 +20,12 @@ and if not (the **Dynamic JS modules loading**
 :doc:`parameter of the project </admin/project/parameters>`
 is set) then loads them.
 
+If ``container`` parameter (Jquery object of the DOM element) is specified the
+view form html template is inserted in the container.
+
+If the :doc:`init_tabs </refs/client/task/m_init_tabs>` method of the task is 
+called for this conainer the tab is created for this form.
+
 After that it calls the
 :doc:`create_view_form <m_create_view_form>`
 method
@@ -45,6 +51,7 @@ on_page_loaded event handler:
             });
         }
     
+        task.init_tabs($("#content"));
         task.tasks.view($("#content"));
         
         $(window).on('resize', function() {

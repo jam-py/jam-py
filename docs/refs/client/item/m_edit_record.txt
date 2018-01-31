@@ -2,7 +2,7 @@
 edit_record
 =============
 
-.. js:function:: edit_record() 
+.. js:function:: edit_record(container) 
 
 **domain**: client 
 
@@ -16,6 +16,12 @@ Description
 Puts the current record in edit state and creates an 
 :doc:`edit_form <at_edit_form>`
 for visuall editing of the record.
+
+If ``container`` parameter (Jquery object of the DOM element) is specified the
+edit form html template is inserted in the container.
+
+If the :doc:`init_tabs </refs/client/task/m_init_tabs>` method of the task is 
+called for this conainer the tab is created for this form.
 
 The ``edit_record`` method 
 

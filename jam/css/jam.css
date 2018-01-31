@@ -17,6 +17,10 @@ div.dropdown input:focus {
 }
 
 .nav {
+  margin-bottom: 8px;
+}
+
+.navbar {
   margin-bottom: 10px;
 }
 
@@ -352,11 +356,8 @@ input.input-text {
   overflow-y: auto;
 }
 
-.modal .form-body {
-  padding: 8px 15px
-/*
-  padding: 15px;
-*/
+.form-frame .form-body {
+  padding: 14px 15px
 }
 
 .form-header {
@@ -430,15 +431,83 @@ input.input-text {
     *zoom: 1;
 }
 
-.header-text {
-    display: inline;
-    vertical-align: middle;
-    margin: 0;
-    padding-left: 10px;
-    padding-right: 10px;
-}
-
 .logging-info {
     margin-top: 20px;
     text-align: right;
+}
+
+.close-tab-btn:hover,
+#refresh-btn:hover,
+#history-btn:hover  {
+    background-color: #d9edf7;
+}
+
+.form-frame {
+  border: 1px solid #ddd;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  *border: 1px solid #ddd;
+  -webkit-border-radius: 4px;
+     -moz-border-radius: 4px;
+          border-radius: 4px;
+  outline: none;
+  -webkit-box-shadow: 0 3px 7px rgba(0, 0, 0, 0.1);
+     -moz-box-shadow: 0 3px 7px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 3px 7px rgba(0, 0, 0, 0.1);
+  -webkit-background-clip: padding-box;
+     -moz-background-clip: padding-box;
+          background-clip: padding-box;
+}
+
+.modal-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 15px;
+}
+
+.modal .modal-header {
+    padding: 14px 15px;
+}
+
+.header-close-btn,
+.header-print-btn {
+    align-self: flex-start
+}
+
+.header-history-btn,
+.header-refresh-btn,
+.header-selected {
+    margin-left: 10px;
+}
+
+.header-filter {
+    text-align: right;
+    flex-grow: 5;
+}
+
+.header-filter {
+    flex-grow: 5;
+}
+
+.header-search {
+    display: none;
+    flex-grow: 5;
+}
+
+#search-form {
+    margin-bottom: 0;
+    padding: 0;
+}
+
+.form-title {
+    margin: 10px 0;
+}
+
+.filter-text {
+    margin: 0;
+}
+
+.header-selected {
+    font-weight: bold;
 }

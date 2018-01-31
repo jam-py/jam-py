@@ -75,12 +75,9 @@
     </div>
 
     <div class="templates" style="display: none">
-
+        
         <div class="default-view">
             <div class="form-body">
-                <div class="form-header">
-                    <h4 id="form-title" class="header-text"><a href="#"></a></h4>                    
-                </div>
                 <div class="view-table">
                 </div>
             </div>
@@ -158,21 +155,6 @@
 
         <div class="catalogs-view">
             <div class="form-body">
-                <div class="form-header">
-                    <h4 id="form-title" class="header-text"><a href="#"></a></h4>                    
-                    <h5 id="selected-div" class="header-text" style="display: none">
-                        <a id="selected-value" href="#"></a>
-                    </h5>
-                    <form id="search-form" class="form-inline pull-right">
-                        <label  class="control-label" for="search-input">Search by
-                            <span class="label" id="search-fieldname"></span>
-                        </label>
-                        <input id="search-input" type="text" class="input-medium search-query" autocomplete="off">
-                        <a id="search-field-info" href="#" tabindex="-1">
-                            <span class="badge">?</span>
-                        </a>                                
-                    </form>
-                </div>
                 <div class="view-table">
                 </div>
             </div>
@@ -200,10 +182,6 @@
         <div class="customers-view">
             <div class="form-body">
                 <div class="form-header">
-                    <h4 id="form-title" class="header-text"><a href="#"></a></h4>                    
-                    <h5 id="selected-div" class="header-text" style="display: none">
-                        <a id="selected-value" href="#"></a>
-                    </h5>
                     <div class="btn-group">
                         <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
                             Action
@@ -236,15 +214,6 @@
                     <button style="display: none" id="print-btn" class="btn expanded-btn" type="button">
                         <i class="icon-print"></i> Print
                     </button>                
-                    <form id="search-form" class="form-inline pull-right">
-                        <label  class="control-label" for="search-input">Search by
-                            <span class="label" id="search-fieldname"></span>
-                        </label>
-                        <input id="search-input" type="text" class="input-medium search-query" autocomplete="off">
-                        <a id="search-field-info" href="#" tabindex="-1">
-                            <span class="badge">?</span>
-                        </a>                                
-                    </form>
                 </div>
                 <div class="view-table">
                 </div>
@@ -253,18 +222,7 @@
 
         <div class="customers-edit">
             <div class="form-body">
-                <ul class="nav nav-tabs" id="customer-tabs">
-                    <li class="active"><a href="#cust-name">Customer</a></li>
-                    <li><a href="#cust-address">Address</a></li>
-                    <li><a href="#cust-contact">Contact</a></li>
-                </ul>
-                <div class="tab-content">
-                    <div class="tab-pane active" id="cust-name">
-                    </div>
-                    <div class="tab-pane" id="cust-address">
-                    </div>
-                    <div class="tab-pane" id="cust-contact">
-                    </div>
+                <div class="tabs">
                 </div>
             </div>
             <div class="form-footer">
@@ -299,10 +257,6 @@
 
         <div class="journals-view">
             <div class="form-body">
-                <div class="form-header">
-                    <h4 id="form-title" class="header-text"><a href="#"></a></h4>                    
-                    <h5 id="filter-text" class="header-text pull-right"></h5>                
-                </div>
                 <div class="view-master">
                 </div>
                 <div class="view-detail" style="margin-top: 4px; margin-bottom: 4px">
@@ -382,7 +336,31 @@
             with <a href="http://chinookdatabase.codeplex.com/" target="_blank">Chinook Database</a>
             <p>by Andrew Yushev</p>
             <p>2015-2017</p>
-            
+        </div>
+
+        <div class="modal-header">
+            <div class="header-title"></div>
+            <div class="header-refresh-btn"></div>
+            <div class="header-history-btn"></div>
+            <div class="header-selected">
+                <a id="selected-value" href="#"></a>
+            </div>            
+            <div class="header-filter">
+                <h5 class='filter-text'></h5>
+            </div>
+            <div class="header-search">
+                <form id="search-form" class="form-inline pull-right">
+                    <label  class="control-label" for="search-input">Search by 
+                        <span class="label" id="search-fieldname"></span>
+                    </label>
+                    <input id="search-input" type="text" class="input-medium search-query" autocomplete="off">
+                    <a id="search-field-info" href="#" tabindex="-1">
+                        <span class="badge">?</span>
+                    </a>
+                </form>
+            </div>
+            <div class="header-print-btn"></div>
+            <div class="header-close-btn"></div>
         </div>
 
         <form id="login-form" target="dummy" class="form-horizontal" data-caption="Log in" style="margin: 10px 0 0; padding: 0px">

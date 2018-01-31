@@ -2082,42 +2082,42 @@ def server_save_edit(task, item_id, text, is_server):
             task.app.task_client_modified = True
     return {'error': error, 'line': line, 'module_info': module_info}
 
-def get_templates(text):
-    text = to_unicode(text, 'utf-8')
-    result = {}
-    all = []
-    views = []
-    edits = []
-    filters = []
-    params = []
-    start = 0
-    while True:
-        index = text.find('class=', start)
-        if index == -1:
-            break
-        else:
-            start_char = text[index + 6: index + 7]
-            sub_str = text[index + 7:]
-            class_str = ''
-            for ch in sub_str:
-                if ch == start_char:
-                    break
-                else:
-                    class_str += ch
-            if class_str.find('-view') > 0:
-                views.append(class_str)
-            elif class_str.find('-edit') > 0:
-                edits.append(class_str)
-            elif class_str.find('-filter') > 0:
-                filters.append(class_str)
-            elif class_str.find('-param') > 0:
-                params.append(class_str)
-            start = index + 6 + len(class_str)
-    all = views + edits + filters + params
-    for one in all:
-        if not one in ['icon-edit', 'icon-filter']:
-            result[one] = None
-    return result
+#~ def get_templates(text):
+    #~ text = to_unicode(text, 'utf-8')
+    #~ result = {}
+    #~ all = []
+    #~ views = []
+    #~ edits = []
+    #~ filters = []
+    #~ params = []
+    #~ start = 0
+    #~ while True:
+        #~ index = text.find('class=', start)
+        #~ if index == -1:
+            #~ break
+        #~ else:
+            #~ start_char = text[index + 6: index + 7]
+            #~ sub_str = text[index + 7:]
+            #~ class_str = ''
+            #~ for ch in sub_str:
+                #~ if ch == start_char:
+                    #~ break
+                #~ else:
+                    #~ class_str += ch
+            #~ if class_str.find('-view') > 0:
+                #~ views.append(class_str)
+            #~ elif class_str.find('-edit') > 0:
+                #~ edits.append(class_str)
+            #~ elif class_str.find('-filter') > 0:
+                #~ filters.append(class_str)
+            #~ elif class_str.find('-param') > 0:
+                #~ params.append(class_str)
+            #~ start = index + 6 + len(class_str)
+    #~ all = views + edits + filters + params
+    #~ for one in all:
+        #~ if not one in ['icon-edit', 'icon-filter']:
+            #~ result[one] = None
+    #~ return result
 
 def server_file_info(task, file_name):
     result = {}
@@ -2129,8 +2129,8 @@ def server_file_info(task, file_name):
     if os.path.exists(file_path):
         with open(file_path, 'r') as f:
             result['doc'] = f.read()
-        if file_name == 'index.html':
-            result['templates'] = get_templates(result['doc'])
+        #~ if file_name == 'index.html':
+            #~ result['templates'] = get_templates(result['doc'])
     result['name'] = file_name
     result['ext'] = ext
     result['type'] = ''
@@ -2147,8 +2147,8 @@ def server_save_file(task, file_name, code):
     try:
         with open(file_name, 'wb') as f:
             f.write(to_bytes(code, 'utf-8'))
-        if file_name == 'index.html':
-            result['Templates'] = get_templates(code)
+        #~ if file_name == 'index.html':
+            #~ result['Templates'] = get_templates(code)
     except Exception as e:
         traceback.print_exc()
         error = error_message(e)
