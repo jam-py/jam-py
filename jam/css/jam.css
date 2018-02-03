@@ -52,12 +52,6 @@ form {
     margin-top: 10px;
 }
 
-.btn-bar {
-/*
-    margin-top: 14px;
-*/
-}
-
 .modal {
     width: 680px;
 }
@@ -70,9 +64,6 @@ form {
     margin-top: 6px;
     margin-bottom: 6px;
     padding: 6px;
-/*
-    padding-bottom: 0;
-*/
 }
 
 .modal.fade {
@@ -510,4 +501,8 @@ input.input-text {
 
 .header-selected {
     font-weight: bold;
+}
+
+.flex-container {
+    display: flex;
 }

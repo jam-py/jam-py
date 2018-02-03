@@ -1246,7 +1246,8 @@ function Events3() { // admin.catalogs.sys_items
 					.on('click', function() {
 						if (!item.task._manual_update && item.task.db_options.DATABASE === 'SQLITE' &&
 							!item.f_virtual_table.value && !item.sys_fields.new_field(item.sys_fields) &&
-							!item.sys_fields.f_master_field.value) {
+							!item.sys_fields.f_master_field.value &&
+							item.task.item_tree.type_id.value !== types.TASK_TYPE) {
 							item.question(item.task.language.delete_sqlite_record, function() {
 								delete_field(item);
 							})
@@ -1840,7 +1841,7 @@ function Events3() { // admin.catalogs.sys_items
 	function on_after_apply(item) {
 		item.refresh_record();
 		on_after_scroll(item);
-		if (item.cur_record_count && item.cur_record_count !== item.record_count()) {
+		if (item.record_count() && item.cur_record_count && item.cur_record_count !== item.record_count()) {
 			if (item.type_id.value === item.task.item_types.ITEMS_TYPE ||
 				item.type_id.value === item.task.item_types.TABLES_TYPE ||
 				item.type_id.value === item.task.item_types.REPORTS_TYPE) {
@@ -1970,6 +1971,20 @@ function Events3() { // admin.catalogs.sys_items
 		}
 	}
 	
+	function convert_field_type(field, types) {
+		var data_type = field.data_type.toUpperCase(),
+			size;
+		if (data_type.indexOf('CHAR') !== -1) {
+			field.data_type = 'TEXT';
+			size = data_type.replace('VARCHAR', '').replace('(', '').replace(')', '')
+			size = parseInt(size, 10);
+			if (size > 0) {
+				field.size = size;
+			}
+		}
+		return field;
+	}
+	
 	function import_table(item, imp) {
 		var table_name = imp.f_table_name.value,
 			res = item.task.server('server_import_table', table_name),
@@ -1983,6 +1998,12 @@ function Events3() { // admin.catalogs.sys_items
 					if (types[ind] === type_str) {
 						return ind;
 					}
+				}
+				if (type_str === 'DATE' && types[task.consts.DATE] !== 'DATE') {
+					return task.consts.DATE;
+				}
+				if (type_str === 'NUMBER' && types[task.consts.FLOAT] !== 'NUMBER') {
+					return task.consts.FLOAT;
 				}
 				return 0;
 			};
@@ -2003,6 +2024,7 @@ function Events3() { // admin.catalogs.sys_items
 				item.f_soft_delete.value = false;
 				cur_id = item.task.server('get_fields_next_id', fields.length);
 				for (var i = 0; i < fields.length; i++) {
+					fields[i] = convert_field_type(fields[i], types)
 					field_name = fields[i].field_name;
 					item.sys_fields.append();
 					item.sys_fields.id.value = cur_id;
@@ -2012,13 +2034,14 @@ function Events3() { // admin.catalogs.sys_items
 					item.sys_fields.f_db_field_name.value = field_name;
 					item.sys_fields.f_data_type.value = get_data_type(fields[i].data_type, types);
 					item.sys_fields.f_size.value = fields[i].size;
+					item.sys_fields.f_alignment.value = item.sys_fields.get_alignment(item.sys_fields);
 					if (fields[i].pk) {
 						item.f_primary_key.value = item.sys_fields.id.value;
 						item.f_primary_key.lookup_value = item.sys_fields.f_field_name.value;
 					}
-	//				if (fields[i].default_value) {
-	//					item.sys_fields.f_default_value.value = fields[i].default_value;
-	//				}
+	//			  if (fields[i].default_value) {
+	//				  item.sys_fields.f_default_value.value = fields[i].default_value;
+	//			  }
 					item.sys_fields.post();
 				}
 				item.sys_fields.first();
@@ -2081,20 +2104,24 @@ function Events3() { // admin.catalogs.sys_items
 			error = false;
 		if (item._import_info) {
 			clone.each(function(c) {
-				if (!c.f_data_type.value ||
-					(c.f_data_type.value === c.task.consts.TEXT && !c.f_size.value)) {
-					error = true;
+				if (!c.f_data_type.value) {
+					error = c.f_field_name.value + ': the field type must be specified.';
+				}
+				else if (c.f_data_type.value === c.task.consts.TEXT && !c.f_size.value) {
+					error = c.f_field_name.value + ': the field size must be specified.';
+				}
+				if (error) {
 					return false;
 				}
 			});
 			if (error) {
-				item.warning(item.task.language.fields_not_defined);
-				throw item.task.language.fields_not_defined;
+				item.warning(error);
+				throw error;
 			}
 			if (!item.f_primary_key.value) {
 				if (!item.f_virtual_table.value && !item.sys_id.value &&
 					(item.type_id.value === types.ITEM_TYPE || item.type_id.value === types.TABLE_TYPE)) {
-					item.warning('You must specify primary field to use this item as a lookup item')
+					item.warning('You must specify primary field to use this item as a lookup item.')
 				}
 			}
 		}
@@ -2152,6 +2179,7 @@ function Events3() { // admin.catalogs.sys_items
 	this.on_before_delete = on_before_delete;
 	this.on_before_apply = on_before_apply;
 	this.add_import_indexes = add_import_indexes;
+	this.convert_field_type = convert_field_type;
 	this.import_table = import_table;
 	this.can_import_tables = can_import_tables;
 	this.import_tables = import_tables;

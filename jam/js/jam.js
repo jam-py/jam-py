@@ -2020,6 +2020,7 @@
                     switch (attr) {
                         case 'ID':
                             val = i + 1;
+                            break;
                         case 'data_type':
                             field_type = fields[i]['field_type']
                             val = field_type_names.indexOf(field_type);
@@ -2859,6 +2860,62 @@
             }
         },
 
+        dyn_fields: function(fields) {
+            var i,
+                j,
+                attr,
+                val,
+                field_type,
+                data_type,
+                field_def;
+            this._fields = [];
+            this.fields = [];
+            this.field_defs = [];
+            for (var i = 0; i < fields.length; i++) {
+                field_def = []
+                for (var j = 0; j < field_attr.length; j++) {
+                    attr = field_attr[j];
+                    if (attr.charAt(0) === '_') {
+                        attr = attr.substr(1);
+                    }
+                    if (attr === 'data_type') {
+                        attr = 'field_type'
+                    }
+                    val = fields[i][attr]
+                    switch (attr) {
+                        case 'ID':
+                            val = i + 1;
+                            break;
+                        case 'field_type':
+                            field_type = fields[i]['field_type']
+                            val = field_type_names.indexOf(field_type);
+                            if (val < 1) {
+                                val = 1;
+                            }
+                            data_type = val;
+                            break;
+                        case 'field_size':
+                            if (data_type === 1 && !val) {
+                                val = 99999;
+                            }
+                            break;
+                        case 'lookup_item':
+                            if (val) {
+                                lookup_item = val;
+                                val = val.ID
+                            }
+                            break;
+                    }
+                    field_def.push(val);
+                }
+                this.field_defs.push(field_def);
+            }
+            for (i = 0; i < this.field_defs.length; i++) {
+                new Field(this, this.field_defs[i]);
+            }
+            this.prepare_fields();
+        },
+
         prepare_filters: function() {
             var i = 0,
                 len,
@@ -3669,7 +3726,9 @@
                     this.on_before_open.call(this, this, params);
                 }
             } else {
-                offset = 0
+                if (offset === undefined) {
+                    offset = 0;
+                }
                 this._do_before_open(expanded, fields,
                     where, order_by, open_empty, params, offset, limit, funcs, group_by);
                 this._bind_fields(expanded);
@@ -6248,7 +6307,8 @@
                 return this.owner._dataset[this.owner._get_rec_no()];
             } else {
                 if (this.owner) {
-                    this.owner.warning('Ошибка при чтении или записи в пустой набор данных. Обратитесь в тех.поддержку.');
+                    this.owner.warning('An error occurred while reading or writing to an empty dataset.');
+                    //~ this.owner.warning('Ошибка при чтении или записи в пустой набор данных. Обратитесь в тех.поддержку.');
                 }
                 throw language.value_in_empty_dataset.replace('%s', this.owner.item_name);
             }
@@ -6399,17 +6459,23 @@
         },
 
         _convert_date_time: function(value) {
-            if (value.search('.') !== -1) {
-                value = value.split('.')[0];
+            if (value) {
+                if (value.search('.') !== -1) {
+                    value = value.split('.')[0];
+                }
+                return this.format_string_to_date(value, '%Y-%m-%d %H:%M:%S');
             }
-            return this.format_string_to_date(value, '%Y-%m-%d %H:%M:%S');
+            else return value;
         },
 
         _convert_date: function(value) {
-            if (value.search(' ') !== -1) {
-                value = value.split(' ')[0];
+            if (value) {
+                if (value.search(' ') !== -1) {
+                    value = value.split(' ')[0];
+                }
+                return this.format_string_to_date(value, '%Y-%m-%d');
             }
-            return this.format_string_to_date(value, '%Y-%m-%d');
+            else return value;
         },
 
         _convert_keys: function(value) {
@@ -10648,10 +10714,11 @@
 
             if (this.field.field_kind === consts.ITEM_FIELD) {
                 is_changing = this.field.owner.is_changing();
-                if (this.field.owner.record_count() === 0) {
+                if (!this.field.owner.active || this.field.owner.record_count() === 0) {
                     this.read_only = true;
                     this.is_changing = false;
                     this.set_read_only(true);
+                    this.$input.val('');
                     return
                 }
             }

@@ -697,3 +697,7 @@ input.input-text {
 .header-selected {
     font-weight: bold;
 }
+
+.flex-container {
+    display: flex;
+}
