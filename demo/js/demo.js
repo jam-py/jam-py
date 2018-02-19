@@ -5,10 +5,9 @@ function Events1() { // demo
 
 	function on_page_loaded(task) {
 		
-		task.init_tabs($("#content"));
-		// task.add_form_borders = false;
+		task.init_tabs($("#content")); // comment this line if you do not want forms in tabs
+		task.edit_form_container = $("#content"); // comment this line to have modal edit forms
 	
-		task.invoices.apply();
 		$("title").text(task.item_caption);
 		$("#title").text(task.item_caption);
 		 
@@ -208,7 +207,7 @@ function Events1() { // demo
 				sortable: true,
 				freeze_count: 2,
 				on_dblclick: function() {
-					item.edit_record($("#content"));
+					item.edit_record(task.edit_form_container);
 				}
 			};
 	  
@@ -223,17 +222,12 @@ function Events1() { // demo
 			item.view_form.find("#form-title").hide();
 		}
 		else {
-			// item.view_form.find("#form-title a").text(item.item_caption)
-			//	 .click(function(e) {
-			//		 e.preventDefault();
-			//		 item.view(item.view_form.parent());
-			//	 });
 			table_options.height = $(window).height() - $('body').height() - 20;
 		}
 		if (item.can_create()) {
 			item.view_form.find("#new-btn").on('click.task', function(e) { 
 				e.preventDefault();
-				item.insert_record($("#content"));
+				item.insert_record(task.edit_form_container);
 			});
 		}
 		else {
@@ -242,7 +236,7 @@ function Events1() { // demo
 		
 		item.view_form.find("#edit-btn").on('click.task', function(e) { 
 			e.preventDefault();
-			item.edit_record($("#content"));
+			item.edit_record(task.edit_form_container);
 		});
 		
 		if (item.can_delete()) {
@@ -340,7 +334,7 @@ function Events1() { // demo
 	
 	function on_view_form_keyup(item, event) {
 		if (event.keyCode === 45 && event.ctrlKey === true){
-			item.insert_record($("#content"));
+			item.insert_record(task.edit_form_container);
 		}
 		else if (event.keyCode === 46 && event.ctrlKey === true){
 			item.delete_record();
@@ -701,7 +695,7 @@ function Events16() { // demo.journals.invoices
 				row.find('td.total').css('font-weight', font_weight);
 			},
 			on_dblclick: function() {
-				item.edit_record($("#content"));
+				item.edit_record(task.edit_form_container);
 			}
 		});	
 	

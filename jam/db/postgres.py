@@ -255,8 +255,11 @@ def get_table_info(connection, table_name, db_name):
             AND ct.relname = '%s' and ci.relname = '%s'
             ORDER BY ORDINAL_POSITION
         """
-        cursor.execute(sql % (str(table_name), str(indexname)))
-        result = cursor.fetchall()
+        try:
+            cursor.execute(sql % (str(table_name), str(indexname)))
+            result = cursor.fetchall()
+        except:
+            continue
         for is_unique, is_primary, index_name, ordinal_position, column_name, desc in result:
             if not is_primary:
                 column_name = column_name.strip('"').strip("'")

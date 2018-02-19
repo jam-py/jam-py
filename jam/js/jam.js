@@ -581,7 +581,7 @@
                     close_button: true,
                     print: false
                 },
-                form_header = this.task.templates.find('.modal-header').clone(),
+                form_header,
                 item_class = '';
 
             function captureMouseMove(e) {
@@ -603,7 +603,10 @@
                 $doc.off("mouseup.modalform");
             }
 
-            if (!form_header.length) {
+            if (this.task.templates) {
+                form_header = this.task.templates.find('.modal-header').clone();
+            }
+            if (!form_header || !form_header.length) {
                 form_header = $(
                     '<div class="modal-header">' +
                         '<div class="header-title"></div>' +
@@ -10102,7 +10105,7 @@
             tdStyleStr +=  '""';
             divStyleStr += '"';
             return '<td ' + classStr + ' ' + dataStr + ' ' + tdStyleStr + '>' +
-                '<div ' + classStr + ' ' + divStyleStr + '>' + text
+                '<div ' + classStr + ' ' + divStyleStr + '>' + text +
                 '</div>' +
                 '</td>';
         },

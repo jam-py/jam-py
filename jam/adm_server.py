@@ -2982,7 +2982,8 @@ def server_load_index_fields(item, value):
 def users_on_apply(item, delta, params):
     for d in delta:
         d.edit()
-        d.f_psw_hash.value = hashlib.md5(d.f_password.value).hexdigest()
+        d.f_psw_hash.value = hashlib.md5(d.f_password.value.encode("utf8")).hexdigest()
+        #~ d.f_psw_hash.value = hashlib.md5(d.f_password.value).hexdigest()
         d.post()
 
 def privileges_table_get_select(item, query):
