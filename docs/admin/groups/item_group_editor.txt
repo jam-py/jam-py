@@ -51,7 +51,7 @@ In the bottom-right corner of the Dialog form there are two buttons:
 .. note::
     You can create new or modify existing fields and set **Primary key field** 
     and **Deleted flag field** attributes only when creating a new group or 
-    editing an ampty one.
+    editing an empty one.
     
     For existing item groups, that already own items you can only change 
     **Caption**, **Name** and  **Visible** attributes.
