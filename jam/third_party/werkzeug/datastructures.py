@@ -518,9 +518,9 @@ class MultiDict(TypeConversionDict):
         [1, 2, 3]
 
         :param key: The key to be looked up.
-        :param default: An iterable of default values.  It is either copied
-                        (in case it was a list) or converted into a list
-                        before returned.
+        :param default_list: An iterable of default values.  It is either copied
+                             (in case it was a list) or converted into a list
+                             before returned.
         :return: a :class:`list`
         """
         if key not in self:
@@ -1218,7 +1218,7 @@ class Headers(object):
             return
         self._list[idx + 1:] = [t for t in listiter if t[0].lower() != ikey]
 
-    def setdefault(self, key, value):
+    def setdefault(self, key, default):
         """Returns the value for the key if it is in the dict, otherwise it
         returns `default` and sets that value for `key`.
 
@@ -1228,8 +1228,8 @@ class Headers(object):
         """
         if key in self:
             return self[key]
-        self.set(key, value)
-        return value
+        self.set(key, default)
+        return default
 
     def __setitem__(self, key, value):
         """Like :meth:`set` but also supports index/slice based setting."""
@@ -1346,6 +1346,8 @@ class EnvironHeaders(ImmutableHeadersMixin, Headers):
     def __getitem__(self, key, _get_mode=False):
         # _get_mode is a no-op for this class as there is no index but
         # used because get() calls it.
+        if not isinstance(key, string_types):
+            raise KeyError(key)
         key = key.upper().replace('-', '_')
         if key in ('CONTENT_TYPE', 'CONTENT_LENGTH'):
             return _unicodify_header_value(self.environ[key])
@@ -1362,7 +1364,7 @@ class EnvironHeaders(ImmutableHeadersMixin, Headers):
                ('HTTP_CONTENT_TYPE', 'HTTP_CONTENT_LENGTH'):
                 yield (key[5:].replace('_', '-').title(),
                        _unicodify_header_value(value))
-            elif key in ('CONTENT_TYPE', 'CONTENT_LENGTH'):
+            elif key in ('CONTENT_TYPE', 'CONTENT_LENGTH') and value:
                 yield (key.replace('_', '-').title(),
                        _unicodify_header_value(value))
 
@@ -1604,7 +1606,8 @@ class ImmutableOrderedMultiDict(ImmutableMultiDictMixin, OrderedMultiDict):
 class Accept(ImmutableList):
 
     """An :class:`Accept` object is just a list subclass for lists of
-    ``(value, quality)`` tuples.  It is automatically sorted by quality.
+    ``(value, quality)`` tuples.  It is automatically sorted by specificity
+    and quality.
 
     All :class:`Accept` objects work similar to a list but provide extra
     functionality for working with the data.  Containment checks are
@@ -1640,8 +1643,13 @@ class Accept(ImmutableList):
             list.__init__(self, values)
         else:
             self.provided = True
-            values = sorted(values, key=lambda x: (x[1], x[0]), reverse=True)
+            values = sorted(values, key=lambda x: (self._specificity(x[0]), x[1], x[0]),
+                            reverse=True)
             list.__init__(self, values)
+
+    def _specificity(self, value):
+        """Returns a tuple describing the value's specificity."""
+        return value != '*',
 
     def _value_matches(self, value, item):
         """Check if a value matches a given accept item."""
@@ -1723,24 +1731,36 @@ class Accept(ImmutableList):
     def __str__(self):
         return self.to_header()
 
+    def _best_single_match(self, match):
+        for client_item, quality in self:
+            if self._value_matches(match, client_item):
+                # self is sorted by specificity descending, we can exit
+                return client_item, quality
+
     def best_match(self, matches, default=None):
         """Returns the best match from a list of possible matches based
-        on the quality of the client.  If two items have the same quality,
-        the one is returned that comes first.
+        on the specificity and quality of the client. If two items have the
+        same quality and specificity, the one is returned that comes first.
 
         :param matches: a list of matches to check for
         :param default: the value that is returned if none match
         """
-        best_quality = -1
         result = default
+        best_quality = -1
+        best_specificity = (-1,)
         for server_item in matches:
-            for client_item, quality in self:
-                if quality <= best_quality:
-                    break
-                if self._value_matches(server_item, client_item) \
-                   and quality > 0:
-                    best_quality = quality
-                    result = server_item
+            match = self._best_single_match(server_item)
+            if not match:
+                continue
+            client_item, quality = match
+            specificity = self._specificity(client_item)
+            if quality <= 0 or quality < best_quality:
+                continue
+            # better quality or same quality but more specific => better match
+            if quality > best_quality or specificity > best_specificity:
+                result = server_item
+                best_quality = quality
+                best_specificity = specificity
         return result
 
     @property
@@ -1755,6 +1775,9 @@ class MIMEAccept(Accept):
     """Like :class:`Accept` but with special methods and behavior for
     mimetypes.
     """
+
+    def _specificity(self, value):
+        return tuple(x != '*' for x in value.split('/', 1))
 
     def _value_matches(self, value, item):
         def _normalize(x):
@@ -2174,6 +2197,10 @@ class ETags(Container, Iterable):
         """Check if an etag is weak."""
         return etag in self._weak
 
+    def is_strong(self, etag):
+        """Check if an etag is strong."""
+        return etag in self._strong
+
     def contains_weak(self, etag):
         """Check if an etag is part of the set including weak and strong tags."""
         return self.is_weak(etag) or self.contains(etag)
@@ -2181,11 +2208,10 @@ class ETags(Container, Iterable):
     def contains(self, etag):
         """Check if an etag is part of the set ignoring weak tags.
         It is also possible to use the ``in`` operator.
-
         """
         if self.star_tag:
             return True
-        return etag in self._strong
+        return self.is_strong(etag)
 
     def contains_raw(self, etag):
         """When passed a quoted tag it will check if this tag is part of the

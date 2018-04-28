@@ -1,0 +1,20 @@
+================
+Language support
+================
+
+The language information is stored in the langs.sqlite database in the 
+"jam" folder of the package. 
+
+Therefore, if you have made some changes to the language database and installed 
+a new version of the package, you will use the appropriate languages database 
+where there will be no changes you made.
+
+If you want your language translation to be included to Jam.py package,
+export it to a file and send it me, Andrew Yushev. You must sign a 
+`Jam.py contributors agreement`_ and send me its scan or photo with the file.
+If you don't mind you will be added to the Jam.py contributors list.
+
+Please note that Jam.py is constantly evolving and by submitting your translation 
+you agree to make the necessary changes in the future.
+
+.. _Jam.py contributors agreement: http://jam-py.com/jam_py_contributor_agreement.pdf

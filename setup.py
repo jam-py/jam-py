@@ -2,8 +2,6 @@ import os
 from setuptools import setup
 from jam import version
 
-cur_dir = os.getcwd()
-
 setup(
     name='jam.py',
     version=version(),

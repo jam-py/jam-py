@@ -20,6 +20,22 @@ DEFAULT_SETTINGS = {
     'SAFE_MODE': False,
     'DEBUGGING': False,
     'VERSION': '',
+    'CON_POOL_SIZE': 4,
+    'MP_POOL': False,
+    'PERSIST_CON': False,
+    'SINGLE_FILE_JS': False,
+    'DYNAMIC_JS': False,
+    'COMPRESSED_JS': False,
+    'TIMEOUT': 0,
+    'IGNORE_CHANGE_IP': True,
+    'DELETE_REPORTS_AFTER': 0,
+    'THEME': 1,
+    'SMALL_FONT': False,
+    'FULL_WIDTH': False,
+    'FORMS_IN_TABS': True
+}
+
+DEFAULT_LOCALE = {
     'DECIMAL_POINT': '.',
     'MON_DECIMAL_POINT': '.',
     'MON_THOUSANDS_SEP': '',
@@ -33,38 +49,20 @@ DEFAULT_SETTINGS = {
     'NEGATIVE_SIGN': '-',
     'P_SIGN_POSN': 1,
     'N_SIGN_POSN': 1,
-    'D_FMT': '%x',
-    'D_T_FMT': '%X',
-    'CON_POOL_SIZE': 4,
-    'MP_POOL': False,
-    'PERSIST_CON': False,
-    'SINGLE_FILE_JS': False,
-    'DYNAMIC_JS': False,
-    'COMPRESSED_JS': False,
-    'TIMEOUT': 0,
-    'IGNORE_CHANGE_IP': True,
-    'DELETE_REPORTS_AFTER': 0
+    'D_FMT': '%Y-%m-%d',
+    'D_T_FMT': '%Y-%m-%d %H:%M'
 }
 
-LOCALE_SETTINGS = (
-    'DECIMAL_POINT',
-    'MON_DECIMAL_POINT',
-    'MON_THOUSANDS_SEP',
-    'CURRENCY_SYMBOL',
-    'FRAC_DIGITS',
-    'P_CS_PRECEDES',
-    'N_CS_PRECEDES',
-    'P_SEP_BY_SPACE',
-    'N_SEP_BY_SPACE',
-    'POSITIVE_SIGN',
-    'NEGATIVE_SIGN',
-    'P_SIGN_POSN',
-    'N_SIGN_POSN',
-    'D_FMT',
-    'D_T_FMT'
-)
-
 SETTINGS = {}
+LOCALE = {}
+
+THEMES = ('Bootstrap', 'Cerulean', 'Amelia', 'Flatly', 'Journal',
+    'Slate', 'United', 'Cosmo', 'Readable', 'Spacelab')
+THEME_FILE = ('', 'bootstrap.css', 'bootstrap-cerulean.css',
+    'bootstrap-amelia.css', 'bootstrap-flatly.css', 'bootstrap-journal.css',
+    'bootstrap-slate.css', 'bootstrap-united.css', 'bootstrap-cosmo.css',
+    'bootstrap-readable.css', 'bootstrap-spacelab.css')
+
 
 RESPONSE, NOT_LOGGED, UNDER_MAINTAINANCE, NO_PROJECT = range(1, 5)
 

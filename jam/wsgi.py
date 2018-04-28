@@ -103,6 +103,7 @@ class App():
         self.work_dir = work_dir
         self._loading = False
         self._load_lock = Lock()
+        self._updating_task = False
         self.admin = None
         self.task = None
         self.privileges = None
@@ -113,6 +114,7 @@ class App():
         self.under_maintenance = False
         self.jam_dir = os.path.dirname(jam.__file__)
         self.jam_version = jam.version()
+        self.__task_locked = False
         self.application_files = {
             '/': self.work_dir,
             '/jam/': self.jam_dir
@@ -150,7 +152,12 @@ class App():
                     raise
                 finally:
                     self._loading = False
+            if self.task:
+                self.__task_locked = True
             return self.task
+
+    def task_locked(self):
+        return self.__task_locked
 
     def __call__(self, environ, start_response):
         return self.wsgi_app(environ, start_response)
@@ -192,8 +199,7 @@ class App():
             if file_name == 'index.html':
                 self.check_modified(file_name, environ)
                 if self.get_task():
-                    self.check_task_client_modified()
-                    self.check_task_server_modified()
+                    self.check_project_modified()
                 else:
                     return Response(self.admin.lang['no_task'])(environ, start_response)
             elif file_name == 'builder.html':
@@ -305,15 +311,28 @@ class App():
         cookie['info'] = None
         jam.context.session = None
 
-    def check_task_server_modified(self):
-        if self.task_server_modified:
-            self.admin.reload_task()
-            self.task_server_modified = False
+    def check_project_modified(self):
+        if self.task_server_modified or self.task_client_modified:
+            if not self._updating_task:
+                self._updating_task = True
+                self.__task_locked = False
+                try:
+                    if self.task_server_modified:
+                        self.admin.reload_task()
+                        self.task_server_modified = False
+                    if self.task_client_modified:
+                        self.admin.update_events_code()
+                        self.task_client_modified = False
+                finally:
+                    self._updating_task = False
+                    self.__task_locked = True
 
-    def check_task_client_modified(self):
-        if self.task_client_modified:
-            self.admin.update_events_code()
-            self.task_client_modified = False
+    def import_metadata(self, task, task_id, file_name, from_client):
+        self.__task_locked = False
+        try:
+            return adm_server.import_metadata(task, task_id, file_name, from_client)
+        finally:
+            self.__task_locked = True
 
     def get_privileges(self, role_id):
         if self.privileges is None:
@@ -333,6 +352,7 @@ class App():
         result = {
             'task': task.get_info(),
             'settings': self.admin.get_settings(),
+            'locale': self.admin.locale,
             'language': self.admin.lang,
             'user_info': user_info,
             'privileges': priv

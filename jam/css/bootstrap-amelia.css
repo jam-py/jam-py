@@ -2280,7 +2280,7 @@ table th[class*="span"],
   display: inline-block;
   width: 14px;
   height: 14px;
-  margin-top: 1px;
+  margin-top: 2px;
   *margin-right: .3em;
   line-height: 14px;
   vertical-align: text-top;
@@ -7376,8 +7376,8 @@ body {
     background-color: #0a3e44;
 }
 
-.input-append .btn.small-btn,
-.input-prepend .btn.small-btn {
+.input-append .btn.btn12,
+.input-prepend .btn.btn12 {
     padding: 1px 4px;
     line-height: 22px;
 }

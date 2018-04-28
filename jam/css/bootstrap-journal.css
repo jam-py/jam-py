@@ -6419,7 +6419,9 @@ div.subnav li.dropdown.open .dropdown-toggle:hover {
 
 [class^="icon-"],
 [class*=" icon-"] {
+/*
   vertical-align: baseline;
+*/
 }
 
 .btn-inverse {
@@ -6651,8 +6653,8 @@ textarea[readonly] {
     filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffe6e6e6', endColorstr='#ffcccccc', GradientType=0);
 }
 
-.input-append .btn.small-btn,
-.input-prepend .btn.small-btn {
+.input-append .btn.btn12,
+.input-prepend .btn.btn12 {
     padding: 2px 4px;
     line-height: 18px;
 }

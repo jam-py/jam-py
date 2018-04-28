@@ -7,26 +7,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/static/img/j.png" type="image/png">
 
-    <link href="jam/css/bootstrap.css" rel="stylesheet">
-    <!--<link href="jam/css/bootstrap-cerulean.css" rel="stylesheet"> -->
-    <!--<link href="jam/css/bootstrap-amelia.css" rel="stylesheet">-->    
-    <!--<link href="jam/css/bootstrap-flatly.css" rel="stylesheet"> -->
-    <!--<link href="jam/css/bootstrap-journal.css" rel="stylesheet">-->    
-    <!--<link href="jam/css/bootstrap-slate.css" rel="stylesheet">-->
-    <!--<link href="jam/css/bootstrap-united.css" rel="stylesheet">-->
-    <!--<link href="jam/css/bootstrap-cosmo.css" rel="stylesheet">-->    
-    <!--<link href="jam/css/bootstrap-readable.css" rel="stylesheet">-->
-    <!--<link href="jam/css/bootstrap-spacelab.css" rel="stylesheet">-->
-    
+    <link href="jam/css/bootstrap-cerulean.css" rel="stylesheet">            <!--do not modify-->
     <link href="jam/css/bootstrap-responsive.css" rel="stylesheet">
     <link href="jam/css/bootstrap-modal.css" rel="stylesheet">
     <link href="jam/css/datepicker.css" rel="stylesheet">
-    <link href="jam/css/jam.css" rel="stylesheet">    
-    <!--<link href="jam/css/jam12.css" rel="stylesheet">    -->
+    <link href="jam/css/jam.css" rel="stylesheet">                  <!--do not modify-->   
     <link href="css/project.css" rel="stylesheet">
-    
+ 
   <body>
-    <div id="container" class="container">      
+    <div id="container" class="container">
         <div class="row-fluid">
             <div class="span6">
                 <h3 id="title" class="muted"></h3>
@@ -42,27 +31,6 @@
                     <ul id="menu" class="nav">
                     </ul>
                     <ul id="menu-right" class="nav pull-right">
-                        <li id="themes" class="dropdown">
-                            <a class="dropdown-toggle" data-toggle="dropdown" href="#">
-                                Themes 
-                            <b class="caret"></b></a>
-                            <ul class="dropdown-menu">
-                                <li><a href="#">Bootrap</a></li>
-                                <li><a href="#">Cerulean</a></li>                
-                                <li><a href="#">Amelia</a></li>                
-                                <li><a href="#">Flatly</a></li>
-                                <li><a href="#">Journal</a></li>                
-                                <li><a href="#">Slate</a></li>
-                                <li><a href="#">United</a></li>                
-                                <li><a href="#">Cosmo</a></li>
-                                <!--<li><a href="#">Readable</a></li>-->
-                                <li><a href="#">Spacelab</a></li>                
-                                <li class="divider"></li>
-                                <li><a href="#">Small font</a></li>                                
-                                <li class="divider"></li>
-                                <li><a href="#">Container</a></li>
-                            </ul>
-                        </li>
                         <!--<li id="admin"><a href="#">Application builder</a></li>-->
                         <li id="about"><a href="#">About</a></li>                        
                         <li id="jam"><a href="http://jam-py.com/" target="_blank">Jam.py</a></li>                        
@@ -76,10 +44,10 @@
 
     <div class="templates" style="display: none">
         
-        <div class="default-view">
+        <div class="default-view default-details-view">
             <div class="form-body">
-                <div class="view-table">
-                </div>
+                <div class="view-table"></div>
+                <div class="view-detail"></div>
             </div>
             <div class="form-footer">
                 <button id="delete-btn" class="btn expanded-btn pull-left" type="button">
@@ -104,8 +72,8 @@
 
         <div class="default-edit default-details-edit">
             <div class="form-body">
-                <div class="edit-body">
-                </div>
+                <div class="edit-body"></div>
+                <div class="edit-detail"></div>
             </div>
             <div class="form-footer">
                 <button type="button" id="ok-btn" class="btn btn-ary expanded-btn">
@@ -153,119 +121,39 @@
             </div>
         </div>
 
-        <div class="catalogs-view">
+        <div class="invoices-edit">
             <div class="form-body">
-                <div class="view-table">
-                </div>
+                <div class="edit-body"></div>
+                <div class="edit-detail"></div>
             </div>
             <div class="form-footer">
-                <button id="delete-btn" class="btn expanded-btn pull-left" type="button">
-                    <i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small>
+                <button id="select-btn" class="btn expanded-btn pull-left" type="button">
+                    <i class="icon-edit"></i> Select
+                </button>                    
+                <button type="button" id="ok-btn" class="btn btn-ary expanded-btn">
+                    <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
                 </button>
-                <div id="report-btn" class="btn-group dropup">
-                    <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
-                        <i class="icon-print"></i> Reports
-                        <span class="caret"></span>
-                    </a>
-                    <ul class="dropdown-menu bottom-up">
-                    </ul>
-                </div>
-                <button id="edit-btn" class="btn expanded-btn" type="button">
-                    <i class="icon-edit"></i> Edit
-                </button>
-                <button id="new-btn" class="btn expanded-btn" type="button">
-                    <i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small>
+                <button type="button" id="cancel-btn" class="btn expanded-btn">
+                    <i class="icon-remove"></i> Cancel
                 </button>
             </div>
         </div>
 
         <div class="customers-view">
             <div class="form-body">
-                <div class="form-header">
-                    <div class="btn-group">
-                        <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
-                            Action
-                            <span class="caret"></span>
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a id="new-btn" href="#">
-                                <i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small>
-                            </a></li>
-                            <li><a id="edit-btn" href="#">
-                                <i class="icon-edit"></i> Edit
-                            </a></li>
-                            <li class="divider"></li>
-                            <li><a id="delete-btn" href="#">
-                                <i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small>
-                            </a></li>                                    
-                        </ul>
-                    </div>                            
-                    <div id="report-btn" class="btn-group dropup">
-                        <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
-                            <i class="icon-print"></i> Reports
-                            <span class="caret"></span>
-                        </a>
-                        <ul class="dropdown-menu bottom-up">
-                        </ul>
-                    </div>
-                    <button style="display: none" id="email-btn" class="btn expanded-btn" type="button">
-                        <i class="icon-pencil"></i> Send email
-                    </button>                
-                    <button style="display: none" id="print-btn" class="btn expanded-btn" type="button">
-                        <i class="icon-print"></i> Print
-                    </button>                
-                </div>
-                <div class="view-table">
-                </div>
-            </div>
-        </div>
-
-        <div class="customers-edit">
-            <div class="form-body">
-                <div class="tabs">
-                </div>
-            </div>
-            <div class="form-footer">
-                <button type="button" id="ok-btn" class="btn btn-ary expanded-btn">
-                    <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
-                </button>
-                <button type="button" id="cancel-btn" class="btn expanded-btn">
-                    <i class="icon-remove"></i> Cancel
-                </button>
-            </div>
-        </div>
-
-        <div class="tracks-edit">
-            <div class="form-body">
-                <div class="row-fluid">
-                    <div id="edit-top" class="span12 edit-border"></div>
-                </div>
-                <div class="row-fluid">
-                    <div id="edit-left" class="span6 edit-border"></div>
-                    <div id="edit-right" class="span6 edit-border"></div>
-                </div>
-            </div>
-            <div class="form-footer">
-                <button type="button" id="ok-btn" class="btn btn-ary expanded-btn">
-                    <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
-                </button>
-                <button type="button" id="cancel-btn" class="btn expanded-btn">
-                    <i class="icon-remove"></i> Cancel
-                </button>
-            </div>
-        </div>
-
-        <div class="journals-view">
-            <div class="form-body">
-                <div class="view-master">
-                </div>
-                <div class="view-detail" style="margin-top: 4px; margin-bottom: 4px">
-                </div>
+                <div class="view-table"></div>
+                <div class="view-detail"></div>
             </div>
             <div class="form-footer">
                 <button id="delete-btn" class="btn expanded-btn pull-left" type="button">
                     <i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small>
                 </button>
+                <button style="display: none" id="email-btn" class="btn expanded-btn" type="button">
+                    <i class="icon-pencil"></i> Send email
+                </button>                
+                <button style="display: none" id="print-btn" class="btn expanded-btn" type="button">
+                    <i class="icon-print"></i> Print
+                </button>                
                 <div id="report-btn" class="btn-group dropup">
                     <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
                         <i class="icon-print"></i> Reports
@@ -274,45 +162,11 @@
                     <ul class="dropdown-menu bottom-up">
                     </ul>
                 </div>
-                <button id="filter-btn" class="btn expanded-btn" type="button">
-                    <i class="icon-filter"></i> Filter
-                </button>
                 <button id="edit-btn" class="btn expanded-btn" type="button">
                     <i class="icon-edit"></i> Edit
                 </button>
                 <button id="new-btn" class="btn expanded-btn" type="button">
                     <i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small>
-                </button>
-            </div>
-        </div>
-
-        <div class="invoices-edit">
-            <div class="form-body">
-                <div class="edit-body">
-                </div>
-                <div class="edit-detail">                    
-                </div>
-                <div id="edit-detail-footer" class="form-footer">
-                    <button id="delete-btn" class="btn expanded-btn pull-left" type="button">
-                        <i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small>
-                    </button>
-                    <button id="select-btn" class="btn expanded-btn" type="button">
-                        <i class="icon-edit"></i> Select
-                    </button>                    
-                    <button id="edit-btn" class="btn expanded-btn" type="button">
-                        <i class="icon-edit"></i> Edit
-                    </button>
-                    <button id="new-btn" class="btn expanded-btn" type="button">
-                        <i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small>
-                    </button>
-                </div>
-            </div>
-            <div class="form-footer">
-                <button type="button" id="ok-btn" class="btn btn-ary expanded-btn">
-                    <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
-                </button>
-                <button type="button" id="cancel-btn" class="btn expanded-btn">
-                    <i class="icon-remove"></i> Cancel
                 </button>
             </div>
         </div>
@@ -338,31 +192,6 @@
             <p>2015-2017</p>
         </div>
 
-        <div class="modal-header">
-            <div class="header-title"></div>
-            <div class="header-refresh-btn"></div>
-            <div class="header-history-btn"></div>
-            <div class="header-selected">
-                <a id="selected-value" href="#"></a>
-            </div>            
-            <div class="header-filter">
-                <h5 class='filter-text'></h5>
-            </div>
-            <div class="header-search">
-                <form id="search-form" class="form-inline pull-right">
-                    <label  class="control-label" for="search-input">Search by 
-                        <span class="label" id="search-fieldname"></span>
-                    </label>
-                    <input id="search-input" type="text" class="input-medium search-query" autocomplete="off">
-                    <a id="search-field-info" href="#" tabindex="-1">
-                        <span class="badge">?</span>
-                    </a>
-                </form>
-            </div>
-            <div class="header-print-btn"></div>
-            <div class="header-close-btn"></div>
-        </div>
-
         <form id="login-form" target="dummy" class="form-horizontal" data-caption="Log in" style="margin: 10px 0 0; padding: 0px">
             <div class="control-group">
                 <label class="control-label" for="inputLoging">Login</label>
@@ -373,7 +202,7 @@
             <div class="control-group">
                 <label class="control-label" for="inputPassword">Password</label>
                 <div class="controls">
-                    <input type="password" id="inputPassword" name="password" tabindex="2" placeholder="password">
+                    <input type="password" id="inputPassword" name="password" tabindex="2" placeholder="password" autocomplete="on">
                 </div>
             </div>
             <div class="form-footer">

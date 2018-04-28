@@ -2280,7 +2280,7 @@ table th[class*="span"],
   display: inline-block;
   width: 14px;
   height: 14px;
-  margin-top: 1px;
+  margin-top: 3px;
   *margin-right: .3em;
   line-height: 14px;
   vertical-align: text-top;
@@ -6919,10 +6919,14 @@ textarea[readonly] {
     background-color: #8ef0dd;
 }
 
-.input-append .btn.small-btn,
-.input-prepend .btn.small-btn {
-    padding: 3px 4px;
-    line-height: 22px;
+.input-append .btn.btn12,
+.input-prepend .btn.btn12 {
+    padding: 5px 5px;
+}
+
+.input-append .btn.btn14,
+.input-prepend .btn.btn14 {
+    padding: 9px 13px;
 }
 
 .badge {

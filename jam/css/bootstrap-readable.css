@@ -2280,7 +2280,7 @@ table th[class*="span"],
   display: inline-block;
   width: 14px;
   height: 14px;
-  margin-top: 1px;
+  margin-top: 4px;
   *margin-right: .3em;
   line-height: 14px;
   vertical-align: text-top;
@@ -6241,10 +6241,17 @@ jam.py css
     color: #7F7F7F;
 }
 
-.input-append .btn.small-btn,
-.input-prepend .btn.small-btn {
+.input-append .btn.btn12,
+.input-prepend .btn.btn12 {
     padding: 1px 4px;
     line-height: 22px;
+}
+
+.input-append .btn.btn14,
+.input-prepend .btn.btn14 {
+    padding: 0px 12px;
+    padding-top: 6px;
+    padding-bottom: 2px;
 }
 
 .form-footer {

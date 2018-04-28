@@ -6384,8 +6384,8 @@ jam.py css
     background-color: #8d2f0c;
 }
 
-.input-append .btn.small-btn,
-.input-prepend .btn.small-btn {
+.input-append .btn.btn12,
+.input-prepend .btn.btn12 {
     padding: 1px 4px;
     line-height: 22px;
 }

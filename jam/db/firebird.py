@@ -68,7 +68,12 @@ def process_sql_params(params, cursor):
 def process_sql_result(rows):
     result = []
     for row in rows:
-        result.append(list(row))
+        new_row = []
+        for r in row:
+            if isinstance(r, fdb.fbcore.BlobReader):
+                r = to_unicode(r.read(), 'utf-8')
+            new_row.append(r)
+        result.append(new_row)
     return result
 
 def cast_date(date_str):

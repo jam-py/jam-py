@@ -109,7 +109,7 @@
                             .attr('aria-hidden', false);
 
                         var complete = function () {
-                            //~ that.setFocus();
+                            that.setFocus(modal.$element);
                             modal.$element.trigger('shown');
                         };
 
@@ -185,24 +185,16 @@
             }
         },
 
-        setFocus: function () {
-            var topModal,
-                tag;
-
-            for (var i = 0; i < this.stack.length; i++){
-                if (this.stack[i].isShown) topModal = this.stack[i];
-            }
-
-            if (topModal) {
-                tag = $(topModal.tabList()).eq(0);
-                topModal.focus();
-                if (tag.length) {
-                    setTimeout(function()
-                        {tag.focus()},
-                        100
-                    );
-                }
-            }
+        setFocus: function(element) {
+            setTimeout(
+                function() {
+                    var el = $(document.activeElement);
+                    if (el.closest('.modal').get(0) !== element.get(0)) {
+                        element.focus();
+                    }
+                },
+                0
+            );
         },
 
         removeModal: function (modal) {

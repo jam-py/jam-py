@@ -56,8 +56,8 @@ function Events0() { // admin
 	function refresh_tree(task, item_id) {
 		task.server('server_update_has_children', []);
 		task.item_tree.set_where({has_children: true});
-		task.item_tree.set_order_by(['type_id', 'f_index']);
-		task.item_tree.open({fields: ['id', 'parent', 'f_name', 'type_id', 'task_id', 'f_index']});
+		task.item_tree.set_order_by(['f_index']);
+		task.item_tree.open({fields: ['id', 'parent', 'f_name', 'f_item_name', 'type_id', 'task_id', 'f_index']});
 		task.item_tree.locate('type_id', item_types.TASK_TYPE);
 		task.tree.expand(task.tree.selected_node);
 		task.item_tree.on_after_scroll = tree_changed;
@@ -93,11 +93,10 @@ function Events0() { // admin
 		task.init_project = true;
 		task.item_types = item_types;
 		task.db_types = db_types;
-		task.add_form_borders = false;
+		task.old_forms = true;
 	
 		open_sys_params(task)
 		if (!task.sys_params.f_language.value) {
-			task.sys_params.set_edit_fields(['f_language']);
 			task.sys_params.edit_options.title = 'Project language';
 			task.sys_params.edit_record();
 			return;
@@ -128,7 +127,6 @@ function Events0() { // admin
 			task.buttons_info = {
 				divider: {},
 				project_params: {handler: set_project_params, short_cut: 'F2', key_code: 113, editor: true},
-				project_locale: {handler: set_locale_params, short_cut: 'F3', key_code: 114, editor: true},
 				db:			 {handler: edit_database, short_cut: 'F4', key_code: 115, editor: true},
 				'export':		 {handler: export_task, short_cut: 'Ctrl-E', key_code: 69, key_ctrl: true},
 				'import':		 {handler: import_task, short_cut: 'Ctrl-I', key_code: 73, key_ctrl: true},
@@ -172,12 +170,20 @@ function Events0() { // admin
 			task.sys_code_editor.init_tabs(task);
 	
 			task.item_tree = task.sys_items.copy({handlers: false, details: false});
-			task.item_tree.on_after_open = function(t) {
-				t.locate('type_id', item_types.TASK_TYPE);
-				t.edit();
-				t.f_name.value = task.language.groups;
-				t.post();
+	
+			task.item_tree.on_field_get_text = function(f) {
+				if (f.field_name === 'f_name') {
+					if (f.owner.type_id.value === item_types.TASK_TYPE) {
+						return task.language.groups;
+					}
+				}
 			};
+	//		task.item_tree.on_after_open = function(t) {
+	//			t.locate('type_id', item_types.TASK_TYPE);
+	//			t.edit();
+	//			t.f_name.value = task.language.groups;
+	//			t.post();
+	//		};
 			task.tree = task.item_tree.create_tree(task.tree_panel,
 				{
 					id_field: 'id',
@@ -340,7 +346,6 @@ function Events0() { // admin
 		add_buttons(task,
 			[
 				'project_params',
-				'project_locale',
 				'divider',
 				'db',
 				'divider',
@@ -414,6 +419,8 @@ function Events0() { // admin
 			column_width,
 			table_height,
 			options;
+	
+		item.view_options.refresh_button = false;
 	
 		if (item.item_name === 'sys_fields_editor' || item.item_name === 'sys_code_editor' ||
 			item.item_name === 'sys_lang') {
@@ -505,6 +512,23 @@ function Events0() { // admin
 		else {
 			item.open();
 		}
+		if (item.active) {
+			item.view_table.focus();
+		}
+	}
+	
+	function set_btn_lang(form) {
+		var changes = ['Cancel', 'OK', 'Delete', 'Edit', 'New']
+		form.find('button.btn').each(function() {
+			var $this = $(this),
+				text = $this.text(),
+				i;
+			for (i = 0; i < changes.length; i++) {
+				if (text.indexOf(changes[i]) !== -1) {
+					$this.text($this.text().replace(changes[i], task.language[changes[i].toLowerCase()]))
+				}
+			}
+		});
 	}
 	
 	function on_edit_form_created(item) {
@@ -524,14 +548,7 @@ function Events0() { // admin
 				.text(item.task.language.ok)
 				.on('click.task', function() {item.apply_record()});
 		}
-	//	if (item.details_active) {
-	//		item.each_detail(function(d) {
-	//			d.update_controls();
-	//		});
-	//	}
-	//	else {
-	//		item.open_details();
-	//	}
+		set_btn_lang(item.edit_form);
 	}
 	
 	function on_edit_form_shown(item) {
@@ -578,25 +595,10 @@ function Events0() { // admin
 		open_sys_params(task);
 		task.sys_params.params = true;
 		task.sys_params.edit_options.fields = [
-	//		'f_language', 'f_safe_mode', 'f_debugging', 'f_con_pool_size',
-			'f_safe_mode', 'f_debugging', 'f_con_pool_size',
-	//		'f_mp_pool', 'f_persist_con', 'f_single_file_js', 'f_dynamic_js',
+			'f_language', 'f_safe_mode', 'f_debugging', 'f_theme', 'f_con_pool_size',
 			'f_mp_pool', 'f_persist_con', 'f_compressed_js', 'f_single_file_js', 'f_dynamic_js',
-	//	  'f_history_item', 'f_lock_item', 'f_timeout', 'f_ignore_change_ip', 'f_version'];
 			'f_history_item', 'f_timeout', 'f_ignore_change_ip', 'f_delete_reports_after', 'f_version'];
 		task.sys_params.edit_options.title = caption;
-		task.sys_params.edit_record();
-	}
-	
-	function set_locale_params(task, caption) {
-		open_sys_params(task);
-		task.sys_params.params = false;
-		task.sys_params.edit_options.fields = ['f_decimal_point', 'f_mon_decimal_point', 'f_mon_thousands_sep',
-			'f_currency_symbol', 'f_frac_digits', 'f_p_cs_precedes', 'f_n_cs_precedes', 'f_p_sep_by_space',
-			'f_n_sep_by_space', 'f_positive_sign', 'f_negative_sign',
-			'f_p_sign_posn', 'f_n_sign_posn', 'f_d_fmt', 'f_d_t_fmt'];
-		task.sys_params.edit_options.title = caption;
-		task.sys_params.edit_options.width = 900;
 		task.sys_params.edit_record();
 	}
 	
@@ -682,7 +684,7 @@ function Events0() { // admin
 		var mess;
 	
 		mess = task.show_message(
-			$('<h5>Please wait while import is under way.</h5>'),
+			$('<h5>' + task.language.import_under_way + '</h5>'),
 			{
 				margin: "20px 20px",
 				text_center: true,
@@ -698,23 +700,21 @@ function Events0() { // admin
 						if (success) { location.reload()
 					}},
 				options = {text_center: false, width: 720, height: 400, title: 'Import result',
-					close_button: false, print: true, margin: 0};
+					close_button: false, margin: 0};
+	//				close_button: false, print: true, margin: 0};
 			task.hide_message(mess);
 			if (success) {
-				message = 'The metadata have been successfully imported';
+				message = task.language.import_success;
 				if (error) {
-					message = 'The metadata have been imported with errors.';
+					message = task.language.import_errors;
 				}
 				message = '<h3 class="text-center">' + message + '</h3>'
 			}
 			else {
-				message = '<h3 class="text-center text-error">The metadata have not been imported.</h3>'
+				message = '<h3 class="text-center text-error">' + task.language.import_failed + '</h3>'
 			}
-	//	  if (error) {
-	//		  message += '<h4 class="text-error">Errors</h4><div>' + error + '</div>'
-	//	  }
 			if (info) {
-				message += '<h4 class="text-info">Import log</h4><div>' + info + '</div>'
+				message += '<h4 class="text-info">' + task.language.import_log + '</h4><div>' + info + '</div>'
 			}
 			task.warning(message, callback, options);
 			task._importing = false;
@@ -813,13 +813,13 @@ function Events0() { // admin
 	this.read_task_name = read_task_name;
 	this.on_view_form_created = on_view_form_created;
 	this.on_view_form_shown = on_view_form_shown;
+	this.set_btn_lang = set_btn_lang;
 	this.on_edit_form_created = on_edit_form_created;
 	this.on_edit_form_shown = on_edit_form_shown;
 	this.on_edit_form_close_query = on_edit_form_close_query;
 	this.on_filter_form_created = on_filter_form_created;
 	this.on_param_form_created = on_param_form_created;
 	this.set_project_params = set_project_params;
-	this.set_locale_params = set_locale_params;
 	this.edit_database = edit_database;
 	this.show_lookup_lists = show_lookup_lists;
 	this.find_in_task = find_in_task;
@@ -868,7 +868,7 @@ function Events3() { // admin.catalogs.sys_items
 			task.item_tree.type_id.value === task.item_types.TABLES_TYPE) {
 			item.fields_editor = true;
 			item.view_options.fields = ['id', 'f_name', 'f_item_name', 'f_table_name',
-				'f_visible', 'f_soft_delete']
+				'f_visible', 'f_soft_delete', 'f_keep_history']
 			item.edit_options.fields = ['f_name', 'f_item_name', 'f_table_name']
 			if (item.task._manual_update || item.task.db_options.DATABASE === 'SQLITE') {
 				item.sys_fields.view_options.fields = ['f_name', 'f_field_name',  'f_db_field_name',
@@ -1069,11 +1069,19 @@ function Events3() { // admin.catalogs.sys_items
 	
 		item.cur_record_count = undefined;
 	
-		if (parent_type_id === types.TASKS_TYPE || get_type_id(item) === types.DETAIL_TYPE) {
+		item.set_order_by(['f_index']);
+	
+		if (parent_type_id === types.TASKS_TYPE) {
 			item.view_form.find('#new-btn').hide();
 			item.view_form.find('#delete-btn').hide();
 			item.view_form.find('#up-btn').hide();
 			item.view_form.find('#down-btn').hide();
+		}
+		if (get_type_id(item) === types.DETAIL_TYPE) {
+			item.view_form.find('#new-btn').hide();
+			item.view_form.find('#delete-btn').hide();
+	//		item.view_form.find('#up-btn').hide();
+	//		item.view_form.find('#down-btn').hide();
 		}
 		item.view_form.find('#import-btn').hide();
 		if ((parent_type_id === types.ITEMS_TYPE || parent_type_id === types.TABLES_TYPE) &&
@@ -1239,7 +1247,7 @@ function Events3() { // admin.catalogs.sys_items
 	//				title_word_wrap: true,
 						row_callback: field_colors
 					});
-				item.sys_fields.open(true);
+				item.sys_fields.open({order_by: ['f_field_name']}, true);
 				item.edit_form.find("#new-btn").attr("tabindex", 92).on('click.task', function() {item.sys_fields.append_record()});
 				item.edit_form.find("#edit-btn").attr("tabindex", 91).on('click.task', function() {item.sys_fields.edit_record()});
 				item.edit_form.find("#delete-btn").attr("tabindex", 90).off('click.task')
@@ -1557,11 +1565,66 @@ function Events3() { // admin.catalogs.sys_items
 		return list
 	}
 	
+	function view_options_list(item) {
+		var result = [
+			['multiselect', false],
+			['dblclick_edit', true],
+			['row_count', 0],
+			['row_line_count', 1],
+			['expand_selected_row', 0],
+			['freeze_count', 0],
+			['sort_fields', []],
+			['edit_fields', []],
+			['summary_fields', []]
+		];
+		if (item.table_id.value) {
+			result.splice(result.length - 1, 1);
+		}
+		else {
+			result.splice(result.length - 2, 1);
+		}
+		for (var i = 0; i < result.length; i++) {
+			if (item.task.table_options[result[i][0]]) {
+				result[i][1] = item.task.table_options[result[i][0]]
+			}
+		}
+		return result;
+	}
+	
+	function view_form_options_list(item) {
+		var result = [
+			['form_border', true],
+			['form_header', true],
+			['history_button', true],
+			['refresh_button', true],
+			['enable_search', true],
+			['enable_filters', true],
+			['close_button', true],
+			['close_on_escape', true],
+			['width', 0],
+			['view_detail', []]
+		];
+		if (item.table_id.value) {
+			return [];
+		}
+		//~ else {
+			//~ return task.view_options_list;
+		//~ }
+		for (var i = 0; i < result.length; i++) {
+			if (item.task.view_options[result[i][0]]) {
+				result[i][1] = item.task.view_options[result[i][0]];
+			}
+		}
+		return result;
+	}
+	
 	function view_setup(item) {
 		var info,
 			source_def = [],
 			dest_def = [],
 			dest_list,
+			list,
+			view_object,
 			title;
 	
 		function save_view(item, dest_list) {
@@ -1572,17 +1635,54 @@ function Events3() { // admin.catalogs.sys_items
 		info = item.server('server_load_interface', [item.id.value]);
 		source_def = [
 			['id', '', false],
-			['name', item.task.language.caption_name, true]
+			['name', 'Field', true]
 		];
 		dest_def = [
 			['id', '', false],
-			['name', item.task.language.caption_name, true, '60%'],
-			['param1', 'Word wrap', false],
-			['param2', 'Expand', false],
-			['param3', 'Edit', false]
+			['name', 'Field', true, '70%'],
+			['param3', 'Width', true]
 		];
+	
+		//~ info.view_list = [] //!!!!!!!
+	
+		view_object = info.view_list;
+	
+		if (view_object instanceof Array) {
+			list = [];
+			for (var i = 0; i < view_object.length; i++) {
+				list.push([view_object[i][0], ''])
+			}
+			view_object = { 0: ['', {}, [], {}, list, []] };
+		}
 		title = item.task.language.viewing + ' <span class="editor-title">' + item.f_item_name.value + '</span>';
-		item.task.sys_fields_editor.fields_editor('view', item, title, source_def, get_fields_list(item.task), dest_def, info.view_list, save_view);
+		item.task.sys_fields_editor.fields_editor('view', item, title, source_def, get_fields_list(item.task), dest_def, view_object, save_view);
+	}
+	
+	function edit_options_list(item) {
+		return [
+			['col_count', 1],
+			['label_size', 3],
+			['in_well', true]
+		]
+	}
+	
+	function edit_form_options_list(item) {
+		var result = [
+			['form_border', true],
+			['form_header', true],
+			['history_button', true],
+			['close_button', true],
+			['close_on_escape', true],
+			['width', 0],
+			['edit_details', []],
+			['modeless', false]
+		];
+		for (var i = 0; i < result.length; i++) {
+			if (item.task.edit_options[result[i][0]]) {
+				result[i][1] = item.task.edit_options[result[i][0]];
+			}
+		}
+		return result
 	}
 	
 	function edit_setup(item) {
@@ -1590,6 +1690,8 @@ function Events3() { // admin.catalogs.sys_items
 			source_def = [],
 			dest_def = [],
 			dest_list,
+			list,
+			edit_object,
 			title;
 	
 		function save_edit(item, dest_list) {
@@ -1604,10 +1706,23 @@ function Events3() { // admin.catalogs.sys_items
 		];
 		dest_def = [
 			['id', '', false],
-			['name', item.task.language.caption_name, true]
+			['name', 'Field', true, '70%'],
+			['param3', 'Width', true]
 		];
+	
+		//~ info.edit_list = [] //!!!!!!!
+	
+		edit_object = info.edit_list;
+		if (edit_object instanceof Array) {
+			list = [];
+			for (var i = 0; i < edit_object.length; i++) {
+				list.push([edit_object[i][0], ''])
+			}
+			edit_object = { 0: ['', {}, [], [['', [[{}, list, '']]]]] };
+		}
+	
 		title = item.task.language.editing + ' <span class="editor-title">' + item.f_item_name.value + '</span>';;
-		item.task.sys_fields_editor.fields_editor('edit', item, title, source_def, get_fields_list(item.task), dest_def, info.edit_list, save_edit);
+		item.task.sys_fields_editor.fields_editor('edit', item, title, source_def, get_fields_list(item.task), dest_def, edit_object, save_edit);
 	}
 	
 	function edit_code(item, is_server) {
@@ -2151,7 +2266,11 @@ function Events3() { // admin.catalogs.sys_items
 	this.valid_identifier = valid_identifier;
 	this.on_after_scroll = on_after_scroll;
 	this.get_fields_list = get_fields_list;
+	this.view_options_list = view_options_list;
+	this.view_form_options_list = view_form_options_list;
 	this.view_setup = view_setup;
+	this.edit_options_list = edit_options_list;
+	this.edit_form_options_list = edit_form_options_list;
 	this.edit_setup = edit_setup;
 	this.edit_code = edit_code;
 	this.get_templates = get_templates;
@@ -2573,9 +2692,12 @@ function Events14() { // admin.catalogs.sys_code_editor
 		task.code_editor.find('#ok-btn').click(function() {
 			save_edit(task, $('ul#task-tabs li.active').attr('id'));
 		});
-		task.code_editor.find('#find-btn').click(function() {
-			task.sys_search.find_in_task(task);
-		});
+		task.code_editor.find('#find-btn')
+			.text(task.code_editor.find('#find-btn').text().replace('find_in_task', task.language.find_in_task))
+			.click(function() {
+				task.sys_search.find_in_task(task);
+			}
+		);
 	
 		task.code_editor.on('click', '#editor-tabs > .nav > li', function() {
 			info_tab_clicked(task, $(this))
@@ -2641,6 +2763,7 @@ function Events14() { // admin.catalogs.sys_code_editor
 			session = info.session;
 		}
 		task.editor.setSession(session);
+		task.editor.$blockScrolling = Infinity;
 		show_info_tabs(task, info);
 		update_buttons(task);
 		task.resize_elements(task);
@@ -2681,9 +2804,9 @@ function Events14() { // admin.catalogs.sys_code_editor
 			line,
 			module_info;
 	
-		if (task.is_server && text.indexOf('\t') !== -1) {
-			text = text.split('\t').join(' ' + '   ');
-			task.editor.setValue(text);
+		if (info.doc_type === "server" && text.indexOf('\t') !== -1) {
+			text = text.split('\t').join('	');
+			//task.editor.setValue(text);
 		}
 		result = task.task.server('server_save_edit', [info.rec_id, text, info.ext === 'py']);
 	
@@ -2941,7 +3064,20 @@ task.events.events14 = new Events14();
 
 function Events15() { // admin.catalogs.sys_fields_editor 
 
-	function fields_editor(type, item, title, source_def, source_list, dest_def, dest_list, save_func, cancel_func, can_move, read_only) {
+	var FORM_TEMPLATES = 0,
+		FORM_OPTIONS = 1,
+		FORM_ACTIONS = 2,
+		TABLE_OPTIONS = 3,
+		TABLE_FIELDS = 4,
+		TABS = 3,
+	
+		TAB_NAME = 0,
+		BANDS = 1,
+		BAND_NAME = 2,
+		BAND_OPTIONS = 0,
+		BAND_FIELDS = 1;
+	
+	function fields_editor(type, item, title, source_def, source_list, dest_def, dest_object, save_func, cancel_func, can_move, read_only) {
 		var editor = this.copy();
 		editor.item = item;
 		editor.type = type;
@@ -2949,7 +3085,7 @@ function Events15() { // admin.catalogs.sys_fields_editor
 		editor.source_def = source_def;
 		editor.source_list = source_list;
 		editor.dest_def = dest_def;
-		editor.dest_list = dest_list;
+		editor.dest_object = dest_object;
 		editor.save_func = save_func;
 		editor.cancel_func = cancel_func;
 		if (can_move === undefined) {
@@ -2964,18 +3100,470 @@ function Events15() { // admin.catalogs.sys_fields_editor
 		return editor;
 	}
 	
+	function set_cur_media(item, media) {
+		var i,
+			$tab,
+			tabs;
+		save_layout(item);
+		//~ save_actions(item);
+		if (item.dest_object.media = undefined) {
+			if (item.type === 'view') {
+				item.dest_object[media] = ['', {}, [], {}, []];
+			} else if (item.type === 'edit') {
+				item.dest_object[media] = { 0: ['', {}, [], [['', [[{}, [], '']]]]] };
+			}
+		}
+		item.cur_media = item.dest_object[media];
+		item.cur_media[FORM_OPTIONS] = set_form_options(item, item.cur_media[FORM_OPTIONS])
+		if (item.type === 'view') {
+			item.cur_media[TABLE_OPTIONS] = set_options(item, item.cur_media[TABLE_OPTIONS])
+			item.dest_list = item.cur_media[TABLE_FIELDS];
+		}
+		else {
+			tabs = item.cur_media[TABS];
+			item.view_form.find('#field-tabs > li').remove();
+			for (i = 0; i < tabs.length; i++) {
+				$tab = $('<li><a href="#tab' + (i + 1) + '">' + item.cur_media[TABS][i][TAB_NAME] +  '</a></li>');
+				$tab.data('tab', i);
+				item.view_form.find('#field-tabs').append($tab);
+			}
+			if (tabs.length === 1 && tabs[0][TAB_NAME] === '') {
+				item.view_form.find('#field-tabs > li').hide();
+			}
+			else {
+				item.view_form.find('#field-tabs > li').show();
+				item.view_form.find('#field-tabs > li').eq(0).addClass('active');
+			}
+			item.set_cur_tab(item, 0);
+		}
+		update_lists(item);
+		//~ update_actions(item);
+	}
+	
+	function set_cur_tab(item, tab) {
+		var i,
+			tabs = item.cur_media[TABS],
+			band;
+		item.cur_tab = tabs[tab];
+		set_cur_band(item, item.cur_tab[BANDS][0]);
+		item.view_form.find('#field-bands').empty();
+		for (i = 0; i < item.cur_tab[BANDS].length; i++) {
+			band = $('<li><a href="#band' + (i + 1) + '">' + item.cur_tab[BANDS][i][BAND_NAME] +  '</a></li>');
+			band.data('band', item.cur_tab[BANDS][i])
+			item.view_form.find('#field-bands').append(band);
+		}
+		if (item.cur_tab[BANDS].length === 1 && item.cur_tab[BANDS][0][BAND_NAME] === '') {
+			item.view_form.find('#field-bands > li').hide();
+		}
+		else {
+			item.view_form.find('#field-bands > li').show();
+			item.view_form.find('#field-bands > li').eq(0).addClass('active');
+		}
+	}
+	
+	function set_cur_band(item, band) {
+		save_layout(item)
+		item.cur_band = band;
+		band[BAND_OPTIONS] = set_options(item, band[BAND_OPTIONS])
+		item.dest_list = item.cur_band[BAND_FIELDS];
+		update_lists(item);
+	}
+	
+	function set_editor_type(item) {
+		var i,
+			tab;
+		if (item.type === 'edit' || item.type === 'view') {
+			item.view_form.find('#section-tabs').show();
+			item.view_form.find('#buttons').hide();
+			item.view_form.find('#form').hide();
+			item.view_form.on('click', '#section-tabs > li > a',
+				function(e) {
+					e.preventDefault();
+					$('#section-tabs > li').removeClass('active');
+					$(this).parent().addClass('active');
+					if ($(this).attr("href") === '#layout') {
+						item.view_form.find('#layout').show();
+						item.view_form.find('#buttons').hide();
+						item.view_form.find('#form').hide();
+					}
+					else if ($(this).attr("href") === '#buttons') {
+						item.view_form.find('#layout').hide();
+						item.view_form.find('#buttons').show();
+						item.view_form.find('#form').hide();
+						//~ refresh_actions(item);
+					}
+					else {
+						item.view_form.find('#layout').hide();
+						item.view_form.find('#buttons').hide();
+						item.view_form.find('#form').show();
+					}
+				}
+			);
+			set_cur_media(item, 0)
+			item.view_form.find('#media-tabs').show();
+			item.view_form.on('click', '#media-tabs > li > a',
+				function(e) {
+					e.preventDefault();
+					$('#media-tabs > li').removeClass('active');
+					$(this).parent().addClass('active');
+					set_cur_media(item, $(this).parent().data('media'))
+				}
+			);
+			if (item.type === 'edit') {
+				item.view_form.find('#media-tabs').show();
+				item.view_form.find('#field-tabs').show();
+				item.view_form.find('#bands-box').show();
+				item.view_form.on('click', '#field-tabs > li > a',
+					function(e) {
+						e.preventDefault();
+						$('#field-tabs > li').removeClass('active');
+						$(this).parent().addClass('active');
+						set_cur_tab(item, $(this).parent().data('tab'))
+					}
+				);
+				item.view_form.on('click', '#field-bands > li > a',
+					function(e) {
+						e.preventDefault();
+						$('#field-bands > li').removeClass('active');
+						$(this).parent().addClass('active');
+						set_cur_band(item, $(this).parent().data('band'));
+					}
+				);
+				item.view_form.find('#add-tab-btn')
+					.tooltip({placement: 'bottom', title: 'New tab', trigger: 'hover'})
+					.click(function() {
+						change_ed(item, 'new_tab');
+					});
+				item.view_form.find('#edit-tab-btn')
+					.tooltip({placement: 'bottom', title: 'Edit tab', trigger: 'hover'})
+					.click(function() {
+						change_ed(item, 'edit_tab');
+					});
+				item.view_form.find('#delete-tab-btn')
+					.tooltip({placement: 'bottom', title: 'Delete tab', trigger: 'hover'})
+					.click(function() {
+						change_ed(item, 'del_tab');
+					});
+				item.view_form.find('#add-band-btn')
+					.tooltip({placement: 'top', title: 'New band', trigger: 'hover'})
+					.click(function() {
+						change_ed(item, 'new_band');
+					});
+				item.view_form.find('#delete-band-btn')
+					.tooltip({placement: 'top', title: 'Delete band', trigger: 'hover'})
+					.click(function() {
+						change_ed(item, 'del_band');
+					});
+			}
+		}
+		else {
+			item.dest_list = item.dest_object;
+			update_lists(item);
+		}
+	}
+	
+	function change_ed(item, op) {
+		var index,
+			band,
+			$band;
+		if (op === 'del_tab') {
+			if (item.cur_media[TABS].length === 1) {
+				item.cur_media[TABS][0][TAB_NAME] = '';
+				item.view_form.find('#field-tabs > li.active').hide();
+			}
+			else {
+				index = item.cur_media[TABS].indexOf(item.cur_tab);
+				item.cur_media[TABS].splice(index, 1);
+				if (index === item.cur_media[TABS].length) {
+					index -= 1;
+				}
+				item.view_form.find('#field-tabs > li.active').remove()
+				item.view_form.find('#field-tabs > li').eq(index).addClass('active');
+				set_cur_tab(item, index);
+			}
+		}
+		else if (op === 'new_band') {
+			if (item.cur_tab[BANDS].length === 1 && item.cur_tab[BANDS][0][BAND_NAME] === '') {
+				item.cur_tab[BANDS][0][BAND_NAME] = 'Band 1';
+				item.view_form.find('#field-bands > li > a').text('Band 1');
+				item.view_form.find('#field-bands > li').show();
+			}
+			else {
+				band = [{}, [], 'Band ' + (item.cur_tab[BANDS].length + 1)];
+				$('#field-bands > li').removeClass('active');
+				item.cur_tab[BANDS].push(band)
+				$band = $('<li class="active"><a href="#band"' + (item.cur_tab[BANDS].length + 1) + '>' + band[BAND_NAME] +  '</a></li>');
+				$band.data('band', band)
+				item.view_form.find('#field-bands').append($band);
+				set_cur_band(item, band);
+			}
+		}
+		else if (op === 'del_band') {
+			if (item.cur_tab[BANDS].length === 1) {
+				item.cur_tab[BANDS][0][BAND_NAME] = '';
+				item.view_form.find('#field-bands > li.active').hide();
+			}
+			else {
+				index = item.cur_tab[BANDS].indexOf(item.cur_band);
+				item.cur_tab[BANDS].splice(index, 1);
+				if (index === item.cur_tab[BANDS].length) {
+					index -= 1;
+				}
+				item.view_form.find('#field-bands > li.active').remove()
+				item.view_form.find('#field-bands > li').eq(index).addClass('active');
+				set_cur_band(item, item.cur_tab[BANDS][index]);
+			}
+		}
+		else {
+			var it = item.copy({handlers: false});
+			it.open({open_empty: true});
+			it.on_edit_form_created = function(item1) {
+				item1.edit_form.find('#ok-btn')
+					.off('click.task')
+					.on('click', function() {
+						var tab,
+							$tab,
+							band;
+						if (it.name.value) {
+							if (op === 'new_tab') {
+								if (item.cur_media[TABS].length === 1 && item.cur_media[TABS][0][TAB_NAME] === '') {
+									item.cur_media[TABS][0][TAB_NAME] = it.name.value;
+									item.view_form.find('#field-tabs > li > a').text(it.name.value);
+									item.view_form.find('#field-tabs > li').addClass('active').show();
+								}
+								else {
+									tab = [it.name.value, [[{}, [], '']]];
+									item.view_form.find('#field-tabs > li').removeClass('active');
+									item.cur_media[TABS].push(tab)
+									$tab = $('<li class="active"><a href="#tab' + (item.cur_media[TABS].length + 1) + '">' + tab[TAB_NAME] +  '</a></li>');
+									$tab.data('tab', item.cur_media[TABS].length - 1);
+									item.view_form.find('#field-tabs').append($tab);
+									set_cur_tab(item, item.cur_media[TABS].length - 1);
+								}
+							}
+							else if (op === 'edit_tab') {
+								item.cur_tab[TAB_NAME] = it.name.value;
+								item.view_form.find('#field-tabs > li.active a').text(it.name.value);
+							}
+							it.cancel_edit();
+						}
+					})
+			};
+			it.edit_options.fields = ['name'];
+			it.edit_options.width = 400;
+			it.append();
+			if (op === 'new_tab') {
+				it.edit_options.title = 'New tab';
+			}
+			else if (op === 'edit_tab') {
+				if (item.cur_media[TABS].length === 1 && item.cur_media[TABS][0][TAB_NAME] === '') {
+					return
+				}
+				else {
+					it.edit_options.title = 'Edit tab';
+					it.name.value = item.cur_tab.name;
+				}
+			}
+			it.edit_record();
+		}
+	}
+	
+	function set_form_options(item, options) {
+		return set_options(item, options, true);
+	}
+	
+	function set_options(item, options, is_form) {
+		var i,
+			container,
+			option_value,
+			new_options,
+			options_list,
+			options_default,
+			opt_fields = [];
+		//~ if (options && !item._options_changing) {
+		item._options_changing = true;
+		try {
+			item.on_field_get_text = function(field) {
+				if (field.value === 0) {
+					return ''
+				}
+			};
+			if (is_form) {
+				if (item.type === 'edit') {
+					options_list = item.item.edit_form_options_list(item.item);
+				}
+				if (item.type === 'view') {
+					options_list = item.item.view_form_options_list(item.item);
+				}
+				container = item.view_form.find('#form-options-div');
+				item.view_form.find('#form-options-box').show();
+			}
+			else {
+				if (item.type === 'edit') {
+					options_list = item.item.edit_options_list(item.item);
+				}
+				if (item.type === 'view') {
+					options_list = item.item.view_options_list(item.item);
+				}
+				container = item.view_form.find('#options-div');
+				item.view_form.find('#options-box').show();
+			}
+	
+			if (!options_list.length) {
+				return {};
+			}
+			if (!item.is_changing()) {
+				item.open({open_empty: true});
+				item.append();
+			}
+			new_options = {}
+			for (i = 0; i < options_list.length; i++) {
+				option_value = options_list[i][1];
+				if (options[options_list[i][0]] !== undefined ) {
+					option_value = options[options_list[i][0]]
+					new_options[options_list[i][0]] = option_value;
+				}
+				item[options_list[i][0]].value = option_value;
+				opt_fields.push(options_list[i][0]);
+			}
+			options = new_options;
+			item.create_inputs(container,
+				{fields: opt_fields, in_well: false, label_width: 140});
+			item.on_field_changed = update_option;
+			item.on_field_select_value = function(field, lookup_item) {
+				if (field.field_name === 'edit_details' || field.field_name === 'view_detail') {
+					lookup_item.set_where({parent: item.item.id.value});
+					lookup_item.view_options.fields = ['f_item_name'];
+					lookup_item.set_order_by(['f_item_name']);
+					lookup_item.on_after_scroll = undefined;
+					if (field.field_name === 'view_detail') {
+						lookup_item.view_options.title = 'Select detail to view';
+						lookup_item.on_selection_changed = function(it, added, deleted) {
+							if (!lookup_item.sel_changing) {
+								lookup_item.sel_changing = true;
+								try {
+									if (it.selections.length > 1) {
+										it.selections = added;
+									}
+								}
+								finally {
+									lookup_item.sel_changing = false;
+								}
+							}
+						}
+					}
+					else {
+						lookup_item.view_options.title = 'Select details to edit';
+					}
+				}
+				else {
+					var ids = [],
+						clone = item.dest.clone(),
+						where = {id__in: ids};
+					clone.each(function(c) {
+						ids.push(c.id.value);
+					})
+					if (field.field_name === 'summary_fields') {
+						lookup_item.view_options.title = 'Select summary fields';
+					}
+					else if (field.field_name === 'sort_fields') {
+						lookup_item.view_options.title = 'Select fields to sort by';
+					}
+					else {
+						lookup_item.view_options.title = 'Select fields to edit';
+						where['f_read_only'] = false;
+					}
+					lookup_item.set_where(where);
+					lookup_item.view_options.fields = ['f_field_name'];
+					lookup_item.set_order_by(['f_field_name']);
+				}
+				lookup_item.view_options.width = 300;
+			}
+		}
+		finally {
+			item._options_changing = false;
+		}
+		return options;
+	}
+	
+	function update_option(field) {
+		var i,
+			index,
+			item = field.owner,
+			form_options,
+			options_list,
+			options;
+		if (!item._options_changing) {
+			options = item.cur_media[FORM_OPTIONS];
+			if (item.type === 'edit') {
+				options_list = item.item.edit_form_options_list(item.item);
+			}
+			if (item.type === 'view') {
+				options_list = item.item.view_form_options_list(item.item);
+			}
+			for (i = 0; i < options_list.length; i++) {
+				if (options_list[i][0] === field.field_name) {
+					form_options = true;
+					break;
+				}
+			}
+			if (!form_options) {
+				if (item.type === 'edit') {
+					options = item.cur_band[BAND_OPTIONS];
+					options_list = item.item.edit_options_list(item.item);
+				}
+				if (item.type === 'view') {
+					options = item.cur_media[TABLE_OPTIONS];
+					options_list = item.item.view_options_list(item.item);
+				}
+			}
+			delete options[field.field_name];
+			if (field.value instanceof Array) {
+				if (field.value.length !== 0) {
+					options[field.field_name] = field.value;
+				}
+			}
+			else {
+				for (i = 0; i < options_list.length; i++) {
+					if (options_list[i][0] === field.field_name) {
+						if (options_list[i][1] !== field.value) {
+							options[field.field_name] = field.value;
+						}
+					}
+				}
+			}
+		}
+	}
+	
 	function on_view_form_created(item) {
+		if (item.type === 'edit') {
+			item.view_options.width = 1080;
+		}
+		else if (item.type === 'view') {
+			item.view_options.width = 960;
+		}
+		else {
+			item.view_options.width = 660;
+		}
+		set_layout(item);
+		//~ set_actions(item);
+	}
+	
+	function on_view_form_shown(item) {
+		set_editor_type(item);
+	}
+	
+	function set_layout(item) {
 		var name_width = {},
 			i,
 			view_fields;
+	
+		item.fields = item.copy()
 	
 		if (item.dest_def[1].length === 4) {
 			name_width = {'name': item.dest_def[1][3]};
 		}
 		item.source = item.copy(),
-		item.dest = item.copy();
-		item.view_options.width = 662;
-	
 		view_fields = [];
 		for (i = 0; i < item.source_def.length; i++) {
 			if (item.source_def[i][2]) {
@@ -2983,7 +3571,14 @@ function Events15() { // admin.catalogs.sys_fields_editor
 			}
 		}
 		item.source.set_view_fields(view_fields);
+		item.source.open({open_empty: true});
+		for (i = 0; i < item.source_def.length; i++) {
+			if (item.source_def[i][2]) {
+				item.source.field_by_name(item.source_def[i][0]).field_caption = item.source_def[i][1];
+			}
+		}
 	
+		item.dest = item.copy();
 		view_fields = []
 		for (i = 0; i < item.dest_def.length; i++) {
 			if (item.dest_def[i][2]) {
@@ -2991,17 +3586,28 @@ function Events15() { // admin.catalogs.sys_fields_editor
 			}
 		}
 		item.dest.set_view_fields(view_fields);
+		item.dest.open({open_empty: true});
+		for (i = 0; i < item.dest_def.length; i++) {
+			if (item.dest_def[i][2]) {
+				item.dest.field_by_name(item.dest_def[i][0]).field_caption = item.dest_def[i][1];
+			}
+		}
 	
 		item.left_grid = item.dest.create_table(item.view_form.find("#left-grid"), {
 			height: 360,
+			pagination: false,
 			column_width: name_width,
-			dblclick_edit: false
+			editable: true,
+			editable_fields: ['param3'],
+			dblclick_edit: false,
+			striped: false
 		});
 		item.right_grid = item.source.create_table(item.view_form.find("#right-grid"), {
 			height: 360,
-			dblclick_edit: false
+			pagination: false,
+			dblclick_edit: false,
+			striped: false
 		});
-	//	prepare_grids(item);
 		item.left_grid.$table.keydown(function(e) {
 			var code = (e.keyCode ? e.keyCode : e.which);
 			if (code === 32) {
@@ -3052,26 +3658,47 @@ function Events15() { // admin.catalogs.sys_fields_editor
 		})
 	}
 	
-	function on_view_form_shown(item) {
-		prepare_grids(item);
-	//	item.right_grid.focus();
-	}
-	
-	function prepare_grids(item) {
+	function get_source_list(item) {
 		var i,
 			j,
 			k,
+			m,
 			s,
 			d,
-			found;
-		item.source.disable_controls();
-		try {
-			item.source.open({open_empty: true});
-			for (i = 0; i < item.source_def.length; i++) {
-				if (item.source_def[i][2]) {
-					item.source.field_by_name(item.source_def[i][0]).field_caption = item.source_def[i][1];
+			found,
+			tab,
+			band,
+			result = [];
+		if (item.type === 'edit') {
+			for (i = 0; i < item.source_list.length; i++) {
+				s = item.source_list[i];
+				found = false;
+				for (j = 0; j < item.cur_media[TABS].length; j++) {
+					tab = item.cur_media[TABS][j]
+					for (k = 0; k < tab[BANDS].length; k++) {
+						band = tab[BANDS][k];
+						for (m = 0; m < band[BAND_FIELDS].length; m++) {
+							d = band[BAND_FIELDS][m];
+							if (s[0] === d[0]) {
+								found = true;
+								break;
+							}
+						}
+						if (found) {
+							break;
+						}
+					}
+					if (found) {
+						break;
+					}
+				}
+				if (!found) {
+					result.push(s.slice());
 				}
 			}
+			return result;
+		}
+		else {
 			for (i = 0; i < item.source_list.length; i++) {
 				s = item.source_list[i];
 				found = false;
@@ -3083,12 +3710,52 @@ function Events15() { // admin.catalogs.sys_fields_editor
 					}
 				}
 				if (!found) {
-					item.source.append();
-					for (k = 0; k < item.source_def.length; k++) {
-						item.source.field_by_name(item.source_def[k][0]).value = s[k];
-					}
-					item.source.post();
+					result.push(s.slice());
 				}
+			}
+		}
+		return result;
+	}
+	
+	function update_lists(item) {
+		var i,
+			j,
+			k,
+			found,
+			f_names,
+			s,
+			d;
+		item.s_list = get_source_list(item);
+		item.d_list = []
+		f_names = []
+		for (i = 0; i < item.dest_list.length; i++) {
+			d = item.dest_list[i];
+			found = false;
+			for (j = 0; j < item.source_list.length; j++) {
+				s = item.source_list[j];
+				if (s[0] === d[0]) {
+					found = true;
+					break;
+				}
+			}
+			if (found) {
+				f_names.push(s[1]);
+				item.d_list.push(d.slice());
+			}
+		}
+		item.source.disable_controls();
+		try {
+			item.source.first();
+			while (!item.source.eof()) {
+				item.source.delete();
+			}
+			for (i = 0; i < item.s_list.length; i++) {
+				s = item.s_list[i];
+				item.source.append();
+				for (k = 0; k < item.source_def.length; k++) {
+					item.source.field_by_name(item.source_def[k][0]).value = s[k];
+				}
+				item.source.post();
 			}
 			item.source.first();
 		}
@@ -3099,31 +3766,19 @@ function Events15() { // admin.catalogs.sys_fields_editor
 	
 		item.dest.disable_controls();
 		try {
-			item.dest.open({open_empty: true});
-			for (i = 0; i < item.dest_def.length; i++) {
-				if (item.dest_def[i][2]) {
-					item.dest.field_by_name(item.dest_def[i][0]).field_caption = item.dest_def[i][1];
-				}
+			item.dest.first();
+			while (!item.dest.eof()) {
+				item.dest.delete();
 			}
-			for (i = 0; i < item.dest_list.length; i++) {
-				d = item.dest_list[i];
-				found = false;
-				for (j = 0; j < item.source_list.length; j++) {
-					s = item.source_list[j];
-					if (s[0] === d[0]) {
-						found = true;
-						break;
-					}
+			for (i = 0; i < item.d_list.length; i++) {
+				d = item.d_list[i];
+				item.dest.append();
+				item.dest.id.value = d[0];
+				item.dest.name.value = f_names[i];
+				for (k = 2; k < item.dest_def.length; k++) {
+					item.dest.field_by_name(item.dest_def[k][0]).value = d[k - 1];
 				}
-				if (found) {
-					item.dest.append();
-					item.dest.id.value = s[0];
-					item.dest.name.value = s[1];
-					for (k = 2; k < item.dest_def.length; k++) {
-						item.dest.field_by_name(item.dest_def[k][0]).value = d[k - 1];
-					}
-					item.dest.post();
-				}
+				item.dest.post();
 			}
 			item.dest.first();
 		}
@@ -3133,45 +3788,88 @@ function Events15() { // admin.catalogs.sys_fields_editor
 		item.dest.update_controls();
 	}
 	
-	function move_hor(source, dest) {
+	function move_hor(item, source, dest) {
 		if (source.record_count()) {
 			dest.append();
 			dest.id.value = source.id.value;
 			dest.name.value = source.name.value;
 			dest.post();
 			source.delete();
+			update_selected_fields(item);
+		}
+	}
+	
+	function update_selected_fields(item) {
+		var i,
+			field_names = ['sort_fields', 'edit_fields', 'summary_fields'],
+			field,
+			clone = item.dest.clone(),
+			values,
+			new_values;
+		if (!item._options_changing) {
+			for (i = 0; i < field_names.length; i++) {
+				field = item.field_by_name(field_names[i]);
+				if (field && field.value.length && field.field_type === 'keys') {
+					values = field.value;
+					new_values = []
+					clone.each(function(c) {
+						if (values.indexOf(c.id.value) !== -1) {
+							new_values.push(c.id.value)
+						}
+					});
+					if (!item.is_changing()) {
+						item.edit();
+					}
+					field.value = new_values;
+				}
+			}
 		}
 	}
 	
 	function move_left(item) {
-		move_hor(item.source, item.dest);
+		move_hor(item, item.source, item.dest);
 	}
 	
 	function move_right(item) {
-		move_hor(item.dest, item.source);
+		move_hor(item, item.dest, item.source);
+	}
+	
+	function save_layout(item) {
+		var dest_list = [],
+			rec = item.dest.rec_no;
+		if (item.dest_list) {
+			item.dest.disable_controls();
+			try {
+				item.dest.each(function(d) {
+					var k,
+						rec = []
+					rec.push(d.id.value);
+					for (k = 2; k < item.dest_def.length; k++) {
+						rec.push(item.dest.field_by_name(item.dest_def[k][0]).value);
+					}
+					dest_list.push(rec);
+				});
+			}
+			finally {
+				item.dest.rec_no = rec;
+				item.dest.enable_controls();
+			}
+			if (item.type === 'edit') {
+				item.cur_band[BAND_FIELDS] = dest_list;
+			}
+			else if (item.type === 'view') {
+				item.cur_media[TABLE_FIELDS] = dest_list;
+			}
+			else {
+				item.dest_object = dest_list;
+			}
+		}
 	}
 	
 	function save_result(item) {
-		var dest_list = [],
-			rec = item.dest.rec_no;
-		item.dest.disable_controls();
-		try {
-			item.dest.each(function(d) {
-				var k,
-					rec = []
-				rec.push(d.id.value);
-				for (k = 2; k < item.dest_def.length; k++) {
-					rec.push(item.dest.field_by_name(item.dest_def[k][0]).value);
-				}
-				dest_list.push(rec);
-			});
-		}
-		finally {
-			item.dest.rec_no = rec;
-			item.dest.enable_controls();
-		}
-	
-		item.save_func(item.item, dest_list)
+		save_layout(item);
+		//~ save_actions(item);
+		item.save_func(item.item, item.dest_object);
 		item.close_view_form();
 	}
 	
@@ -3186,24 +3884,28 @@ function Events15() { // admin.catalogs.sys_fields_editor
 	function item_cancel(item) {
 		item.close_view_form();
 	}
-	
-	function on_view_form_keydown(item, event) {
-		if (event.keyCode === 13){
-			event.preventDefault();
-			save_result(item);
-		}
-	}
 	this.fields_editor = fields_editor;
+	this.set_cur_media = set_cur_media;
+	this.set_cur_tab = set_cur_tab;
+	this.set_cur_band = set_cur_band;
+	this.set_editor_type = set_editor_type;
+	this.change_ed = change_ed;
+	this.set_form_options = set_form_options;
+	this.set_options = set_options;
+	this.update_option = update_option;
 	this.on_view_form_created = on_view_form_created;
 	this.on_view_form_shown = on_view_form_shown;
-	this.prepare_grids = prepare_grids;
+	this.set_layout = set_layout;
+	this.get_source_list = get_source_list;
+	this.update_lists = update_lists;
 	this.move_hor = move_hor;
+	this.update_selected_fields = update_selected_fields;
 	this.move_left = move_left;
 	this.move_right = move_right;
+	this.save_layout = save_layout;
 	this.save_result = save_result;
 	this.on_view_form_close_query = on_view_form_close_query;
 	this.item_cancel = item_cancel;
-	this.on_view_form_keydown = on_view_form_keydown;
 }
 
 task.events.events15 = new Events15();
@@ -3216,7 +3918,8 @@ function Events11() { // admin.catalogs.sys_params
 			location.reload();
 		}
 		else {
-			if (item._safe_mode !== item.f_safe_mode.value) {
+			if (item._safe_mode !== item.f_safe_mode.value ||
+				item._language !== item.f_language.value) {
 				item.task.logout();
 				location.reload();
 			}
@@ -3226,25 +3929,52 @@ function Events11() { // admin.catalogs.sys_params
 		}
 	}
 	
-	function init_edit_options(item, options) {
-		if (item.params === true) {
+	function on_edit_form_created(item) {
+		var edit_body = item.edit_form.find('.edit-body'),
+			general,
+			intface;
+		if (item.task.init_project) {
+			item.create_inputs(edit_body, {fields: ['f_language'], in_well: false});
+		}
+		else {
+			item._safe_mode = item.f_safe_mode.value;
+			item._language = item.f_language.value;
+			item._theme = item.f_theme.value;
+	
 			item.edit_options.width = 620;
-		  options.label_width = 240;
-		}
-		else if (item.params === false) {
-			item.edit_options.width = 680;
-			options.label_width = 380;
+	
+			task.init_tabs(edit_body);
+			general = task.add_tab(edit_body, task.language.general);
+			intface = task.add_tab(edit_body, task.language.interface);
+	
+			item.create_inputs(general, {
+				fields: ['f_language', 'f_safe_mode', 'f_debugging',
+				'f_con_pool_size', 'f_mp_pool', 'f_persist_con', 'f_compressed_js',
+				'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_timeout',
+				'f_ignore_change_ip', 'f_delete_reports_after', 'f_version'
+				],
+				in_well: false,
+				label_width: 240
+			});
+			item.create_inputs(intface, {
+				fields: ['f_theme', 'f_small_font', 'f_full_width', 'f_forms_in_tabs'],
+				in_well: false,
+				label_width: 240
+			});
 		}
 	}
 	
-	function on_field_validate(field) {
+	function on_edit_form_shown(item) {
+		var edit_body = item.edit_form.find('.edit-body');
+		if (!item.task.init_project) {
+			edit_body.css('min-height', edit_body.height());
+		}
+	}
+	
+	function on_field_changed(field) {
 		if (field.field_name === 'f_con_pool_size' && field.value < 1) {
-			return 'The Connection pool size value must be greater than zero';
+			field.value = 1;
 		}
-	}
-	
-	function on_after_edit(item) {
-		item._safe_mode = item.f_safe_mode.value;
 	}
 	
 	function on_field_select_value(field, lookup_item) {
@@ -3263,7 +3993,7 @@ function Events11() { // admin.catalogs.sys_params
 	function init_lookup_form(lookup_item) {
 		var btn_caption;
 		if (lookup_item.lookup_field.field_name === 'f_history_item') {
-			btn_caption = 'Create history item';
+			btn_caption = task.language.create_history_item;
 		}
 		else if (lookup_item.lookup_field.field_name === 'f_lock_item') {
 			btn_caption = 'Create lock item';
@@ -3286,17 +4016,13 @@ function Events11() { // admin.catalogs.sys_params
 			});
 		}
 	}
-	
-	function on_edit_form_created(item) {
-	}
 	this.on_after_apply = on_after_apply;
-	this.init_edit_options = init_edit_options;
-	this.on_field_validate = on_field_validate;
-	this.on_after_edit = on_after_edit;
+	this.on_edit_form_created = on_edit_form_created;
+	this.on_edit_form_shown = on_edit_form_shown;
+	this.on_field_changed = on_field_changed;
 	this.on_field_select_value = on_field_select_value;
 	this.init_lookup_form = init_lookup_form;
 	this.create_system_item = create_system_item;
-	this.on_edit_form_created = on_edit_form_created;
 }
 
 task.events.events11 = new Events11();
@@ -3447,37 +4173,312 @@ function Events18() { // admin.catalogs.sys_lookup_lists
 
 task.events.events18 = new Events18();
 
+function Events20() { // admin.catalogs.sys_languages 
+
+	function on_view_form_created(item) {
+		item.view_options.width = 400;
+		item.view_form.find("#select-btn").click(function() {
+			item.lookup_field.value = item.id.value;
+		});
+	}
+	this.on_view_form_created = on_view_form_created;
+}
+
+task.events.events20 = new Events20();
+
+function Events21() { // admin.catalogs.sys_countries 
+
+	function on_view_form_created(item) {
+		item.view_options.width = 400;
+		item.view_form.find("#select-btn").click(function() {
+			item.lookup_field.value = item.id.value;
+		});
+	}
+	this.on_view_form_created = on_view_form_created;
+}
+
+task.events.events21 = new Events21();
+
 function Events22() { // admin.catalogs.sys_langs 
 
-	function init_view_table(item, options) {
-		options.editable = true;
+	function save_file(filename, text) {
+		var el = document.createElement('a');
+		el.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+		el.setAttribute('download', filename);
+		el.style.display = 'none';
+		document.body.appendChild(el);
+		el.click();
+		document.body.removeChild(el);
 	}
 	
 	function on_view_form_created(item) {
 		item.view_options.width = 500;
+		item.set_order_by(['f_name']);
+		item.view_form.find('#import-btn').click(function() {
+			task.upload('static/reports', {multiple: false, callback: function(file_name) {
+				item.server('import_lang', ['static/reports/' + file_name], function(error) {
+					if (error) {
+						item.warning(error);
+					}
+					else {
+						item.open(true);
+					}
+				})
+			}})
+		});
+		item.view_form.find('#export-btn').click(function() {
+			var host = location.protocol + '//' + location.hostname + (location.port ? ':' + location.port: '');
+			item.server('export_lang', [item.id.value, host], function(res){
+				save_file(res.file_name, res.content)
+			});
+		})
+	}
+	
+	function on_view_form_shown(item) {
+		item.locate('id', task.sys_params.f_language.value)
 	}
 	
 	function on_edit_form_created(item) {
+		var edit_body = item.edit_form.find('.edit-body'),
+			locale,
+			translation,
+			lang_defined = item.f_language.value && item.f_country.value;
 	
-			item.edit_options.width = 900;
-			item.edit_form.find('#langs-edit a').click(function (e) {
-			  e.preventDefault();
-			  $(this).tab('show');
-			})
-	//		item.edit_form.find('#langs-language')
-			item.create_inputs(item.edit_form.find('#langs-locale'),
-				{
-					fields: ['f_decimal_point', 'f_mon_decimal_point', 'f_mon_thousands_sep',
-						'f_currency_symbol', 'f_frac_digits', 'f_p_cs_precedes', 'f_n_cs_precedes', 'f_p_sep_by_space',
-						'f_n_sep_by_space', 'f_positive_sign', 'f_negative_sign',
-						'f_p_sign_posn', 'f_n_sign_posn', 'f_d_fmt', 'f_d_t_fmt'],
-					label_width: 360
+		item.f_language.read_only = lang_defined;
+		item.f_country.read_only = lang_defined;
+	
+		item.transl_table = task.sys_lang_keys_values.copy();
+	
+		item.edit_options.width = 1000;
+	
+		item.create_inputs(item.edit_form.find('.edit-title'), {fields: ['f_language', 'f_country'], col_count: 2});
+	
+		task.init_tabs(edit_body);
+		locale = task.add_tab(edit_body, 'Locale');
+		translation = task.add_tab(edit_body, 'Translation');
+	
+		item.create_inputs(locale, {
+			fields: ['f_decimal_point', 'f_mon_decimal_point', 'f_mon_thousands_sep',
+				'f_currency_symbol', 'f_frac_digits', 'f_p_cs_precedes', 'f_n_cs_precedes', 'f_p_sep_by_space',
+				'f_n_sep_by_space', 'f_positive_sign', 'f_negative_sign',
+				'f_p_sign_posn', 'f_n_sign_posn', 'f_d_fmt', 'f_d_t_fmt'],
+			label_width: 500
+		});
+		locale.find('input.input-text').width(120);
+		locale.find('input.input-integer').width(20);
+	
+		translation.append('<div id="table-div">');
+		item.transl_table.open({open_empty: true});
+		fill_table(item);
+		item.transl_table.create_table(translation.find("#table-div"), {
+			pagination: false,
+			fields: ['f_key_str', 'f_eng_str', 'f_value'],
+			height: 520,
+			row_line_count: 0,
+			sortable: true,
+			editable: true,
+			editable_fields: ['f_value'],
+			dblclick_edit: false,
+			column_width: {f_key_str: '5%', f_eng_str: '50%', f_value: '50%'}
+		});
+		item.transl_table.create_inputs(translation.find("#inputs-div"), {
+			fields: ['f_eng_str', 'f_value'],
+		});
+	
+		item.edit_form.find('.modal-footer #new-btn').click(function() {
+			var tr = item.transl_table.copy({handlers: false});
+			tr.init_edit_options = function(tr, options) {
+				options.fields = ['f_key_str'];
+			}
+			tr.on_edit_form_created = function(t) {
+				t.edit_form.find('#ok-btn').off('click.task').on('click', function() {
+					var key = t.f_key_str.value;
+					t.cancel();
+					item.server('add_key', key, function(res) {
+						if (res) {
+							item.warning(res)
+						}
+						else {
+							t.close_edit_form();
+							item.transl_table.on_field_changed = null;
+							item.transl_table.open({open_empty: true});
+							fill_table(item);
+						}
+					});
+				})
+			}
+			tr.open({open_empty: true})
+			tr.append_record();
+		});
+		item.edit_form.find('.modal-footer #delete-btn').click(function() {
+			item.question('Delete the record?',
+				function() {
+					item.server('del_key', item.transl_table.f_key.value, function(res) {
+						if (res) {
+							item.transl_table.on_field_changed = null;
+							item.transl_table.open({open_empty: true});
+							fill_table(item);
+						}
+					});
 				}
 			)
+		});
 	}
-	this.init_view_table = init_view_table;
+	
+	function on_edit_form_keyup(item, event) {
+		if (event.keyCode === 77 && event.ctrlKey === true){
+			item.edit_form.find('.modal-footer #new-btn').show();
+			item.edit_form.find('.modal-footer #delete-btn').show();
+		}
+	}
+	
+	function get_lang_name(item) {
+		var c = task.sys_countries.copy(),
+			l = task.sys_languages.copy();
+		c.open({where: {id: item.f_country.value}})
+		l.open({where: {id: item.f_language.value}})
+		return item.f_language.display_text + ' ' + l.f_abr.value + '-' + c.f_abr.value;
+	}
+	
+	function get_lang_info(item) {
+		var c = task.sys_countries.copy(),
+			l = task.sys_languages.copy(),
+			result = {};
+		c.open({where: {id: item.f_country.value}})
+		l.open({where: {id: item.f_language.value}})
+		result.abr = l.f_abr.value + '-' + c.f_abr.value;
+		result.name = l.f_name.value + ' ' + result.abr;
+		result.rlt = l.f_rtl.value;
+		return result
+	}
+	
+	function lang_exists(item) {
+		var result = false,
+			clone = item.clone();
+		clone.each(function(c) {
+			if (c.id.value &&
+				c.f_language.value === item.f_language.value &&
+				c.f_country.value === item.f_country.value) {
+				result = true;
+				return false;
+			}
+		})
+		return result;
+	}
+	
+	function find_lang(item) {
+		var result = null,
+			clone = item.clone();
+		clone.each(function(c) {
+			if (c.id.value && c.f_language.value === item.f_language.value) {
+				result = c.id.value;
+				return false;
+			}
+		})
+		return result;
+	}
+	
+	function on_field_changed(field, lookup_item) {
+		var lang_info,
+			item = field.owner;
+		if (!item._field_changed) {
+			item._field_changed = true;
+			try {
+				if (item.f_language.value && item.f_country.value) {
+					if (!item.id.value) {
+						if (lang_exists(item)) {
+							item.warning('There is a language with this parameters.')
+							field.value = null;
+							return;
+						}
+						else {
+							lang_info = get_lang_info(item);
+							item.f_name.value = lang_info.name;
+							item.f_abr.value = lang_info.abr;
+							item.f_rtl.value = lang_info.rtl;
+							item.apply();
+							item.server('add_lang', [item.id.value, item.f_language.value,
+								item.f_country.value, lang_info.name, lang_info.abr,
+								lang_info.rtl, find_lang(item)]);
+							item.refresh_record();
+							item.edit();
+							fill_table(item);
+						}
+					}
+					//~ if (field.field_name === 'f_language' || field.field_name === 'f_country') {
+						//~ item.f_name.value = get_lang_name(item);
+						//~ item.server('save_lang_field', [item.id.value, 'f_name', item.f_name.value], true);
+					//~ }
+					item.apply();
+					item.edit();
+					item.server('save_lang_field', [item.id.value, field.field_name, field.value], true);
+				}
+			}
+			finally {
+				item._field_changed = false;
+			}
+		}
+	}
+	
+	function fill_table(item) {
+		var langs_info;
+		if (item.f_language.value && item.f_country.value) {
+			item.transl_table.open({open_empty: true});
+			item.server('get_lang_translation', [1, item.id.value], function(langs_info) {
+				item.transl_table.disable_controls();
+				try {
+					for (var i = 0; i < langs_info.length; i++) {
+						item.transl_table.append();
+						item.transl_table.f_key.value = langs_info[i][0];
+						item.transl_table.f_key_str.value = langs_info[i][1];
+						item.transl_table.f_eng_str.value = langs_info[i][2];
+						item.transl_table.f_value.value = langs_info[i][3];
+						item.transl_table.post();
+					}
+				}
+				finally {
+					item.transl_table.enable_controls();
+					item.transl_table.update_controls();
+				}
+				item.transl_table.on_after_scroll = function(t) {
+					if (t.rec_count && !t.is_changing()) {
+						t.edit();
+					}
+				}
+				item.transl_table.first();
+				item.transl_table.f_eng_str.read_only = true;
+				item.transl_table.on_field_changed = function(field) {
+					item.server('save_lang_translation',
+						[item.id.value, item.transl_table.f_key.value, item.transl_table.f_value.value],
+						function(res, err) {
+							if (err) {
+								item.warning(err);
+							}
+						}
+					);
+				}
+			});
+		}
+	}
+	
+	function on_edit_form_close_query(item) {
+		if (item.is_changing()) {
+			item.cancel();
+		}
+		return true;
+	}
+	this.save_file = save_file;
 	this.on_view_form_created = on_view_form_created;
+	this.on_view_form_shown = on_view_form_shown;
 	this.on_edit_form_created = on_edit_form_created;
+	this.on_edit_form_keyup = on_edit_form_keyup;
+	this.get_lang_name = get_lang_name;
+	this.get_lang_info = get_lang_info;
+	this.lang_exists = lang_exists;
+	this.find_lang = find_lang;
+	this.on_field_changed = on_field_changed;
+	this.fill_table = fill_table;
+	this.on_edit_form_close_query = on_edit_form_close_query;
 }
 
 task.events.events22 = new Events22();

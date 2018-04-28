@@ -3,6 +3,7 @@
     "use strict";
 
     var settings,
+        locale,
         language,
         consts = {
             "RESPONSE": 1,
@@ -146,21 +147,6 @@
         if (js_filename) {
             this.js_filename = 'js/' + js_filename;
         }
-        this.from_options = {
-            left: undefined,
-            top: undefined,
-            close_focusout: false,
-            transition: false,
-            title: '',
-            fields: [],
-            close_button: true,
-            close_caption: true,
-            close_on_escape: true,
-            show_history: false,
-            print: false,
-            refresh_button: false,
-            tab_id: ''
-        };
         this.items = [];
         if (owner) {
             if (!owner.find(item_name)) {
@@ -267,8 +253,11 @@
                 child._master_id = item_info.master_id;
                 child._master_rec_id = item_info.master_rec_id;
                 child._keep_history = item_info.keep_history;
-                child.lock_on_edit = item_info.lock_on_edit;
-                child.select_all = item_info.select_all
+                child._lock_on_edit = item_info.lock_on_edit;
+                //~ child.select_all = item_info.select_all
+                child._view_params = item_info.view_params;
+                child._edit_params = item_info.edit_params;
+
                 child.prototype_ID = item_info.prototype_ID
                 if (child.initAttr) {
                     child.initAttr(item_info);
@@ -280,8 +269,8 @@
         bind_items: function() {
             var i = 0,
                 len = this.items.length;
-            if (this.bind_item) {
-                this.bind_item();
+            if (this._bind_item) {
+                this._bind_item();
             }
             for (; i < len; i++) {
                 this.items[i].bind_items();
@@ -569,7 +558,7 @@
             })
         },
 
-        _create_form_header: function(form, options, suffix, container) {
+        _create_form_header: function(form, options, form_type, container) {
             var $doc,
                 $form,
                 $title,
@@ -577,7 +566,6 @@
                 mouseY,
                 defaultOptions = {
                     title: this.item_caption,
-                    close_caption: true,
                     close_button: true,
                     print: false
                 },
@@ -602,57 +590,69 @@
                 $doc.off("mousemove.modalform");
                 $doc.off("mouseup.modalform");
             }
-
-            if (this.task.templates) {
-                form_header = this.task.templates.find('.modal-header').clone();
+            if (task.old_forms) {
+                form_header = $('<div class="modal-header">');
+                form_header.css('display', 'block');
             }
-            if (!form_header || !form_header.length) {
-                form_header = $(
-                    '<div class="modal-header">' +
-                        '<div class="header-title"></div>' +
-                        '<div class="header-refresh-btn"></div>' +
-                        '<div class="header-history-btn"></div>' +
-                        '<div class="header-search">' +
-                        '</div>' +
-                        '<div class="header-print-btn"></div>' +
-                        '<div class="header-close-btn"></div>' +
-                    '</div>'
-                );
-                form_header.find('.header-search').show();
+            else {
+                //~ if (this.task.templates) {
+                    //~ form_header = this.task.templates.find('.modal-header').clone();
+                //~ }
+                if (!form_header || !form_header.length) {
+                    form_header = $(
+                        '<div class="modal-header">' +
+                            '<div class="header-title"></div>' +
+                            '<div class="header-refresh-btn"></div>' +
+                            '<div class="header-history-btn"></div>' +
+                            '<div class="header-filters"></div>' +
+                            '<div class="header-search"></div>' +
+                            '<div class="header-print-btn"></div>' +
+                            '<div class="header-close-btn"></div>' +
+                        '</div>'
+                    );
+                    form_header.find('.header-search').show();
+                }
             }
-            if (suffix) {
+            if (form_type) {
                 if (this.master) {
-                    item_class = this.master.item_name + '-' + this.item_name + ' ' + suffix + '-form';
+                    item_class = this.master.item_name + '-' + this.item_name + ' ' + form_type + '-form';
                 }
                 else {
-                    item_class = this.item_name + ' ' + suffix + '-form';
+                    item_class = this.item_name + ' ' + form_type + '-form';
                 }
             }
             options = $.extend({}, defaultOptions, options);
             if (!options.title) {
                 options.title = '&nbsp';
             }
+
             if (container) {
-                if (this.task.add_form_borders) {
+                if (task.old_forms) {
+                    form.addClass('jam-form')
+                    return form
+                }
+                else {
                     $form = $(
                         '<div class="form-frame ' + item_class + '" tabindex="-1">' +
                         '</div>'
                     );
-                    $form.append(form_header);
-                }
-                else {
-                    form.addClass('jam-form')
-                    return form
+                    if (options.form_header) {
+                        $form.append(form_header);
+                    }
+                    if (!options.form_border) {
+                        $form.addClass('no-border');
+                    }
                 }
             }
             else {
                 $form = $(
-                    '<div class="modal form-frame hide normal-modal-border ' + item_class + '" tabindex="-1" data-backdrop="static">' +
+                    '<div class="modal hide normal-modal-border ' + item_class + '" tabindex="-1" data-backdrop="static">' +
                     '</div>'
                 );
-                $form.append(form_header);
+                if (options.form_header) {
+                    $form.append(form_header);
+                }
                 $doc = $(document);
-                //~ this._set_form_options($form, options);
                 $form.on("mousedown", ".modal-header", function(e) {
                     mouseX = e.screenX;
                     mouseY = e.screenY;
@@ -670,47 +670,44 @@
             return $form;
         },
 
-        _set_form_options: function(form, options, form_name) {
+        _set_old_form_options: function(form, options, form_type) {
             var self = this,
+                form_name = form_type + '_form',
+                body,
                 header = form.find('.modal-header'),
+                title = header.find('.modal-title'),
                 closeCaption = '',
                 close_button = '',
                 printCaption = '',
                 print_button = '',
-                refresh_button = '',
-                history_button = '',
-                body;
+                history_button = '';
             if (options.close_button) {
-                if (language && options.close_caption) {
+                if (language && options.close_on_escape) {
                     closeCaption = '&nbsp;' + language.close + ' - [Esc]</small>';
                 }
                 close_button = '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' +
                     closeCaption + ' ×</button>';
-                header.find('.header-close-btn').html(close_button);
             }
-
             if (language && options.print) {
                 printCaption = '&nbsp;' + language.print + ' - [Ctrl-P]</small>',
                     print_button = '<button type="button" id="print-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' +
                     printCaption + '</button>';
-                header.find('.header-print-btn').html(print_button);
+            }
+            if (options.history_button && this.keep_history && task.history_item) {
+                history_button = '<i id="history-btn" class="icon-film" style="float: right; margin: 5px;"></i>';
             }
 
-            if (options.show_history && this.keep_history && task.history_item) {
-                history_button = '<i id="history-btn" class="icon-film"></i>';
-                header.find('.header-history-btn').html(history_button);
+            if (!title.text().length) {
+                title = ('<h4 class="modal-title">' + options.title + '</h4>');
+            } else {
+                title.html(options.title);
             }
-
-            if (options.refresh_button) {
-                refresh_button = '<i id="refresh-btn" class="icon-refresh"></i>';
-                header.find('.header-refresh-btn').html(refresh_button);
-            }
-
-            header.find('.header-title').html('<h4 class="form-title">' + options.title + '</h4>')
-
+            header.empty();
+            header.append(close_button + history_button + print_button);
+            header.append(title);
             header.find("#close-btn").css('cursor', 'default').click(function(e) {
                 if (form_name) {
-                    self._close_form(form_name);
+                    self._close_form(form_type);
                 }
             });
             header.find('#print-btn').css('cursor', 'default').click(function(e) {
@@ -722,23 +719,128 @@
                 }
                 self.print_html(body);
             });
-            header.find("#refresh-btn").css('cursor', 'default').click(function(e) {
-                //~ self.refresh_page(true);
-                self.open(true);
-            });
             header.find('#history-btn').css('cursor', 'default').click(function(e) {
                 self.show_history();
             });
         },
 
-        _close_modeless_form: function(formName) {
-            var self = this;
-            if (this[formName]) {
-                this._close_form(formName);
+        _set_form_options: function(form, options, form_type) {
+            var self = this,
+                form_name = form_type + '_form',
+                header = form.find('.modal-header'),
+                close_caption = '',
+                close_button = '',
+                print_caption = '',
+                print_button = '',
+                filter_count = 0,
+                body;
+            if (task.old_forms) {
+                this._set_old_form_options(form, options, form_type);
+                return;
             }
-            if (this[formName]) {
-                this[formName].bind('destroyed', function() {
-                    self._close_modeless_form(formName);
+            if (!options.title) {
+                options.title = this.item_caption;
+            }
+            if (options.close_button) {
+                if (language && options.close_on_escape) {
+                    close_caption = '&nbsp;' + language.close + ' - [Esc]</small>';
+                }
+                close_button = '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' +
+                    close_caption + ' ×</button>';
+                header.find('.header-close-btn').html(close_button);
+            }
+            else {
+                header.find('.header-close-btn').hide();
+            }
+
+            if (language && options.print) {
+                print_caption = '&nbsp;' + language.print + ' - [Ctrl-P]</small>',
+                    print_button = '<button type="button" id="print-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' +
+                    print_caption + '</button>';
+                header.find('.header-print-btn').html(print_button);
+            }
+            else {
+                header.find('.header-print-btn').hide();
+            }
+
+            if (options.history_button && this.keep_history && task.history_item) {
+                header.find('.header-history-btn')
+                    .html('<a class="btn header-btn history-btn" href="#"><i class="icon-film"></i></a>')
+                    .tooltip({placement: 'bottom', title: language.view_rec_history, trigger: 'hover'});
+                header.find('.history-btn').css('cursor', 'default').click(function(e) {
+                    e.preventDefault();
+                    self.show_history();
+                });
+            }
+            else {
+                header.find('.header-history-btn').hide();
+            }
+
+            if (options.refresh_button) {
+                header.find('.header-refresh-btn')
+                    .html('<a class="btn header-btn refresh-btn" href="#"><i class="icon-refresh"></i></a>')
+                    .tooltip({placement: 'bottom', title: language.refresh_page, trigger: 'hover'});
+                header.find(".refresh-btn").css('cursor', 'default').click(function(e) {
+                    e.preventDefault();
+                    self.refresh_page(true);
+                });
+            }
+            else {
+                header.find('.header-refresh-btn').hide();
+            }
+
+
+            if (this.each_filter) {
+                this.each_filter(function(f) {
+                    if (f.visible) {
+                        filter_count += 1;
+                    }
+                })
+            }
+            if (options.enable_filters && filter_count) {
+                header.find('.header-filters')
+                    .html('<div class="filters-text-div"><a class="btn header-btn header-filters-btn" href="#"><i class="icon-filter"></i> ' +
+                        language.filters + '</a><span class="filters-text"></span></div>')
+                header.find('.header-filters-btn')
+                    .tooltip({placement: 'bottom', title: language.set_filters, trigger: 'hover'})
+                    .css('cursor', 'default')
+                    .click(function(e) {
+                        e.preventDefault();
+                        self.create_filter_form();
+                    });
+            }
+
+            if (!options.enable_search) {
+                header.find('.header-search').hide();
+            }
+
+            header.find('.header-title').html('<h4 class="modal-title">' + options.title + '</h4>')
+
+            header.find("#close-btn").css('cursor', 'default').click(function(e) {
+                if (form_name) {
+                    self._close_form(form_type);
+                }
+            });
+            header.find('#print-btn').css('cursor', 'default').click(function(e) {
+                if (form.find(".form-body").length) {
+                    body = form.find(".form-body");
+                }
+                else if (form.find(".modal-body").length) {
+                    body = form.find(".modal-body");
+                }
+                self.print_html(body);
+            });
+        },
+
+        _close_modeless_form: function(form_type) {
+            var self = this,
+                form_name = form_type + '_form';
+            if (this[form_name]) {
+                this._close_form(form_type);
+            }
+            if (this[form_name]) {
+                this[form_name].bind('destroyed', function() {
+                    self._close_modeless_form(form_type);
                 });
                 throw this.item_name + " - can't close form";
             }
@@ -751,140 +853,170 @@
             }
         },
 
-        _process_key_event: function(form, handler, event) {
+        _process_key_event: function(form_type, event_type, e) {
+            var i,
+                form = this[form_type + '_form'],
+                forms;
             if (this._active_form(form)) {
                 if (form._form_disabled) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    event.stopImmediatePropagation();
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                 }
                 else {
-                    if (event.which !== 116) { //F5
-                        event.stopPropagation();
+                    if (e.which !== 116) { //F5
+                        e.stopPropagation();
                     }
-                    if (handler) {
-                        handler.call(this, event);
-                    }
+                    this._process_event(form_type, event_type, e);
+                    forms = form.find('.jam-form');
+                    forms.each(function() {
+                        var form = $(this),
+                            options = form.data('options');
+                        options.item._process_event(options.form_type, event_type, e);
+                    });
                 }
             }
         },
 
-        _create_form: function(suffix, options) {
+        _process_event: function(form_type, event_type, e) {
+            var event = 'on_' + form_type + '_form_' + event_type,
+                can_close;
+            if (event_type === 'close_query') {
+                if (this[event]) {
+                    can_close = this[event].call(this, this);
+                }
+                if (!this.master && can_close === undefined && this.owner[event]) {
+                    can_close = this.owner[event].call(this, this);
+                }
+                if (can_close === undefined && this.task[event]) {
+                    can_close = this.task[event].call(this, this);
+                }
+                return can_close;
+            }
+            else if (event_type === 'keyup' || event_type === 'keydown') {
+                if (this[event]) {
+                    if (this[event].call(this, this, e)) return;
+                }
+                if (!this.master && this.owner[event]) {
+                    if (this.owner[event].call(this, this, e)) return;
+                }
+                if (this.task[event]) {
+                    if (this.task[event].call(this, this, e)) return;
+                }
+            }
+            else {
+                if (this.task[event]) {
+                    if (this.task[event].call(this, this)) return;
+                }
+                if (!this.master && this.owner[event]) {
+                    if (this.owner[event].call(this, this)) return;
+                }
+                if (this[event]) {
+                    if (this[event].call(this, this)) return;
+                }
+            }
+        },
+
+        _create_form: function(form_type, container) {
             var self = this,
                 form,
-                formName = suffix + '_form',
-                item_options = this[suffix + '_options'],
-                keySuffix;
+                form_name = form_type + '_form',
+                options = {},
+                item_options = this[form_type + '_options'],
+                key_suffix,
+                width;
 
+            options.item = this;
+            options.form_type = form_type;
             options.item_options = item_options;
-            keySuffix = formName + '.' + this.item_name;
+            key_suffix = form_name + '.' + this.item_name;
             if (item_options.tab_id) {
-                keySuffix += '.' + item_options.tab_id;
+                key_suffix += '.' + item_options.tab_id;
             }
 
-            if (this[formName] && options.container) {
-                this._close_modeless_form(formName);
+            if (this[form_name] && options.container) {
+                this._close_modeless_form(form_name);
             }
-            if (options.container) {
-                options.container.empty();
+            if (container) {
+                container.empty();
             }
-            form = $("<div></div>").append(this.find_template(suffix, item_options));
-            form = this._create_form_header(form, item_options, suffix, options.container);
-            this[formName] = form
+            form = $("<div></div>").append(this.find_template(form_type, item_options));
+            form = this._create_form_header(form, item_options, form_type, container);
+            this[form_name] = form
             if (form) {
-                //~ form._options = options;
+                options.form = form;
                 form.data('options', options);
                 form.tabindex = 1;
-                if (options.container) {
-                    $(window).on("keyup." + keySuffix, function(e) {
-                        if (e.which === 27 && item_options.close_caption) {
-                            if (self._active_form(self[formName])) {
-                                self._close_form(formName);
+                if (container) {
+                    $(window).on("keyup." + key_suffix, function(e) {
+                        if (e.which === 27 && item_options.close_on_escape) {
+                            if (self._active_form(self[form_name])) {
+                                self._close_form(form_type);
                             }
                         }
                         else {
-                            self._process_key_event(self[formName], options.onKeyUp, e);
+                            self._process_key_event(form_type, 'keyup', e);
                         }
                     });
-                    $(window).on("keydown." + keySuffix, function(e) {
-                        self._process_key_event(self[formName], options.onKeyDown, e);
+                    $(window).on("keydown." + key_suffix, function(e) {
+                        self._process_key_event(form_type, 'keydown', e)
                     });
-                    options.container.append(form);
-                    this[formName].bind('destroyed', function() {
-                        self._close_modeless_form(formName);
+                    container.append(form);
+                    this[form_name].bind('destroyed', function() {
+                        self._close_modeless_form(form_name);
                     });
-                    if (options.beforeShow) {
-                        options.beforeShow.call(this);
-                    }
-                    this._set_form_options(form, item_options, formName);
+                    this._process_event(form_type, 'created');
+                    this._set_form_options(form, item_options, form_type);
                     this._focus_form(form);
-                    if (options.onShown) {
-                        options.onShown.call(this);
+                    this._process_event(form_type, 'shown');
+                    if (item_options.width && form_type !== 'view') {
+                        form.width(item_options.width);
                     }
                 } else {
                     if (form.hasClass("modal")) {
                         form.on("show", function(e) {
-                            if (e.target === self[formName].get(0)) {
+                            if (e.target === self[form_name].get(0)) {
                                 e.stopPropagation();
-                                if (options.beforeShow) {
-                                    options.beforeShow.call(self, e);
-                                }
-                                if (self[formName].title) {
-                                    item_options.title = self[formName].title;
-                                }
-                                if (self[formName].modal_width) {
-                                    item_options.width = self[formName].modal_width;
-                                }
-                                self._set_form_options(self[formName], item_options, formName);
+                                self._process_event(form_type, 'created');
+                                self._set_form_options(self[form_name], item_options, form_type);
                             }
                         });
-
                         form.on("shown", function(e) {
-                            if (e.target === self[formName].get(0)) {
-                                self._focus_form(self[formName]);
+                            if (e.target === self[form_name].get(0)) {
+                                self._focus_form(self[form_name]);
                                 e.stopPropagation();
-                                if (options.onShown) {
-                                    options.onShown.call(self, e);
-                                }
+                                self._process_event(form_type, 'shown');
                             }
                         });
-
                         form.on("hide", function(e) {
-                            if (e.target === self[formName].get(0)) {
+                            if (e.target === self[form_name].get(0)) {
                                 var canClose = true;
                                 e.stopPropagation();
-                                if (options.onHide) {
-                                    canClose = options.onHide.call(self, e);
-                                }
+                                canClose = self._process_event(form_type, 'close_query');
                                 if (canClose === false) {
                                     e.preventDefault();
-                                    self[formName].data('_closing', false);
+                                    self[form_name].data('_closing', false);
                                 }
                             }
                         });
-
                         form.on("hidden", function(e) {
-                            if (e.target === self[formName].get(0)) {
+                            if (e.target === self[form_name].get(0)) {
                                 e.stopPropagation();
-                                if (options.onHidden) {
-                                    options.onHidden.call(self, e);
-                                }
-                                self[formName].remove();
-                                self[formName] = undefined;
+                                self._process_event(form_type, 'closed');
+                                self[form_name].remove();
+                                self[form_name] = undefined;
                             }
                         });
-
-                        form.on("keydown." + keySuffix, function(e) {
-                            self._process_key_event(self[formName], options.onKeyDown, e);
+                        form.on("keydown." + key_suffix, function(e) {
+                            self._process_key_event(form_type, 'keydown', e)
                         });
-
-                        form.on("keyup." + keySuffix, function(e) {
-                            self._process_key_event(self[formName], options.onKeyUp, e);
+                        form.on("keyup." + key_suffix, function(e) {
+                            self._process_key_event(form_type, 'keyup', e)
                         });
 
                         form.modal({
                             item: this,
-                            form_name: formName,
+                            form_name: form_name,
                             item_options: item_options
                         });
                     }
@@ -892,18 +1024,19 @@
             }
         },
 
-        _close_form: function(formName) {
+        _close_form: function(form_type) {
             var self = this,
-                form = this[formName],
+                form_name = form_type + '_form',
+                form = this[form_name],
                 options,
                 canClose,
-                keySuffix;
+                key_suffix;
 
             if (form) {
                 options = form.data('options'),
-                keySuffix = formName + '.' + this.item_name;
+                key_suffix = form_name + '.' + this.item_name;
                 if (options.item_options.tab_id) {
-                    keySuffix += '.' + options.item_options.tab_id;
+                    key_suffix += '.' + options.item_options.tab_id;
                 }
                 form.data('_closing', true);
                 if (form.hasClass('modal')) {
@@ -914,14 +1047,12 @@
                         100
                     );
                 } else {
-                    if (options && options.onHide) {
-                        canClose = options.onHide.call(self);
-                    }
+                    canClose = self._process_event(options.form_type, 'close_query');
                     if (canClose !== false) {
-                        $(window).off("keydown." + keySuffix);
-                        $(window).off("keyup." + keySuffix);
-                        this[formName] = undefined;
-                        options.onHidden.call(self);
+                        $(window).off("keydown." + key_suffix);
+                        $(window).off("keyup." + key_suffix);
+                        this[form_name] = undefined;
+                        self._process_event(options.form_type, 'closed');
                         form.remove();
                     }
                 }
@@ -962,6 +1093,7 @@
                 default_options = {
                     title: '',
                     width: 400,
+                    form_header: true,
                     height: undefined,
                     margin: undefined,
                     buttons: undefined,
@@ -1203,7 +1335,7 @@
                                     new_value = field.value;
                                     if (new_value) {
                                         lookups[field.lookup_item.ID].push([field.lookup_field, new_value]);
-                                        new_value = '<span class="' + field.lookup_field + '_' + new_value + '">value is loading</span>'
+                                        new_value = '<span class="' + field.lookup_field + '_' + new_value + '">' + language.value_loading + '</span>'
                                     }
                                 }
                                 else {
@@ -1287,6 +1419,10 @@
             var self = this,
                 item_id = this.ID,
                 hist = this.task.history_item.copy();
+            if (!this.rec_count) {
+                this.warning(language.no_record);
+                return;
+            }
             if (this.master) {
                 item_id = this.prototype_ID;
             }
@@ -1334,7 +1470,46 @@
         this._script_cache = {};
         this.gridId = 0;
         this.events = {};
-        this.add_form_borders = true;
+        this.form_options = {
+            left: undefined,
+            top: undefined,
+            title: '',
+            fields: [],
+            form_header: true,
+            form_border: true,
+            close_button: true,
+            close_on_escape: true,
+            close_focusout: false,
+            print: false,
+            width: 0,
+            tab_id: ''
+        };
+        this.edit_options = $.extend({}, this.form_options, {
+            history_button: true,
+            edit_details: [],
+            modeless: false
+        });
+        this.view_options = $.extend({}, this.form_options, {
+            history_button: true,
+            history_button: true,
+            refresh_button: true,
+            enable_search: true,
+            enable_filters: true,
+            view_detail: []
+        });
+        this.table_options = {
+            pagination: false,
+            multiselect: false,
+            dblclick_edit: true,
+            height: 0,
+            row_count: 0,
+            row_line_count: 1,
+            expand_selected_row: 0,
+            freeze_count: 0,
+            sort_fields: [],
+            edit_fields: [],
+            summary_fields: []
+        };
         this.constructors = {
             task: Task,
             group: Group,
@@ -1382,7 +1557,7 @@
                     } else {
                         if (data.result.status === consts.NO_PROJECT) {
                             $('body').empty();
-                            item.warning('Creating a project is not finished yet. Run the Application builder to finish.');
+                            item.warning(language.no_task);
                             return;
                         } else if (data.result.status === consts.UNDER_MAINTAINANCE) {
                             if (!self.task._under_maintainance) {
@@ -1436,7 +1611,7 @@
                             });
                         }
                         if (callback) {
-                            callback.call(item, [null, 'Server request error']);
+                            callback.call(item, [null, language.server_request_error]);
                         }
                     }
                 },
@@ -1590,7 +1765,7 @@
 
             $form = this._create_form_header($form, {
                 title: $form.data('caption'),
-                transition: false
+                form_header: true
             });
 
             $form.find("#login-btn").click(function(e) {
@@ -1654,13 +1829,17 @@
                 }
                 self.logged_in = true;
                 settings = info.settings;
+                locale = info.locale;
                 language = info.language;
-                self.settings = info.settings;
-                self.language = info.language;
+                self.settings = settings;
+                self.language = language;
+                self.locale = locale;
                 self.user_info = info.user_info;
                 self.user_privileges = info.privileges;
                 self.consts = consts;
                 self.safe_mode = self.settings.SAFE_MODE;
+                self.forms_in_tabs = self.settings.FORMS_IN_TABS;
+                self.full_width = self.settings.FULL_WIDTH;
                 self.version = self.settings.VERSION;
                 self.ID = info.task.id;
                 self.item_name = info.task.name;
@@ -1688,9 +1867,7 @@
                 }
                 if (self.static_js_modules) {
                     self.bind_events();
-                    if (self.on_page_loaded) {
-                        self.on_page_loaded.call(self, self);
-                    }
+                    self._page_loaded();
                 }
                 else {
                     self.init_modules();
@@ -1699,6 +1876,15 @@
                     self._set_history_item(self.item_by_ID(self.history_item))
                 }
             });
+        },
+
+        _page_loaded: function() {
+            if (locale.RTL) {
+                $('html').attr('dir', 'rtl')
+            }
+            if (this.on_page_loaded) {
+                this.on_page_loaded.call(this, this);
+            }
         },
 
         _set_history_item: function(item) {
@@ -1760,9 +1946,9 @@
                             function() {
                                 if (--mutex === 0) {
                                     self.bind_events();
-                                    if (self.on_page_loaded && !calcback_executing) {
+                                    if (!calcback_executing) {
                                         calcback_executing = true;
-                                        self.on_page_loaded.call(self, self);
+                                        self._page_loaded();
                                     }
                                 }
                             }
@@ -2053,7 +2239,7 @@
             for (i = 0; i < result.field_defs.length; i++) {
                 new Field(result, result.field_defs[i]);
             }
-            result.prepare_fields();
+            result._prepare_fields();
 
             result.filter_defs = [];
             for (i = 0; i < filters.length; i++) {
@@ -2073,7 +2259,7 @@
             for (i = 0; i < result.filter_defs.length; i++) {
                 new Filter(this, result.filter_defs[i]);
             }
-            result.prepare_filters();
+            result._prepare_filters();
             result.on_open = on_open;
             result.on_count = on_count;
             return result;
@@ -2615,7 +2801,7 @@
         this.details = [];
         this.controls = [];
         this.change_log = new ChangeLog(this);
-        this.paginate = false;
+        this._paginate = false;
         this.disabled = false;
         this.expanded = true;
         this._log_changes = true;
@@ -2645,11 +2831,12 @@
         this.show_selected = false;
         this.selection_limit = 1500;
         this.is_loaded = false;
-        this.view_options = $.extend({}, this.from_options);
-        this.view_options.width = 960;
-        this.view_options.refresh_button = true;
-        this.edit_options = $.extend({}, this.from_options);
-        this.filter_options = $.extend({}, this.from_options);
+        if (this.task) {
+            this.view_options = $.extend({}, this.task.view_options);
+            this.table_options = $.extend({}, this.task.table_options);
+            this.edit_options = $.extend({}, this.task.edit_options);
+            this.filter_options = $.extend({}, this.task.form_options);
+        }
         Object.defineProperty(this, "rec_no", {
             get: function() {
                 return this._get_rec_no();
@@ -2734,6 +2921,14 @@
                 return this.get_keep_history();
             },
         });
+        Object.defineProperty(this, "paginate", { //depricated
+            get: function() {
+                return this.table_options.pagination;
+            },
+            set: function(new_value) {
+                this.table_options.pagination = new_value;
+            }
+        });
     }
 
     $.extend(Item.prototype, {
@@ -2766,15 +2961,13 @@
             this.reports = info.reports;
         },
 
-        bind_item: function() {
+        _bind_item: function() {
             var i = 0,
                 len,
                 reports;
 
-            this.prepare_fields();
-            this.init_options();
-
-            this.prepare_filters();
+            this._prepare_fields();
+            this._prepare_filters();
 
             len = this.reports.length;
             reports = this.reports;
@@ -2782,6 +2975,7 @@
             for (i = 0; i < len; i++) {
                 this.reports.push(this.task.item_by_ID(reports[i]));
             }
+            this.init_params();
         },
 
         can_create: function() {
@@ -2811,7 +3005,7 @@
             }
         },
 
-        prepare_fields: function() {
+        _prepare_fields: function() {
             var i = 0,
                 len = this._fields.length,
                 field,
@@ -2916,10 +3110,10 @@
             for (i = 0; i < this.field_defs.length; i++) {
                 new Field(this, this.field_defs[i]);
             }
-            this.prepare_fields();
+            this._prepare_fields();
         },
 
-        prepare_filters: function() {
+        _prepare_filters: function() {
             var i = 0,
                 len,
                 field;
@@ -2935,52 +3129,190 @@
             }
         },
 
-        init_options: function() {
+        ids_to_field_names: function(ids) {
             var i,
-                view_fields = [],
-                edit_fields = [],
-                len = this._fields.length;
-            for (i = 0; i < len; i++) {
-                if (this._fields[i].view_visible && this._fields[i].view_index !== -1) {
-                    view_fields.push(this._fields[i]);
-                }
-                if (this._fields[i].edit_visible && this._fields[i].edit_index !== -1) {
-                    edit_fields.push(this._fields[i]);
+                field,
+                result = [];
+            if (ids && ids.length) {
+                for (i = 0; i < ids.length; i++) {
+                    field = this._field_by_ID(ids[i]);
+                    if (field) {
+                        result.push(field.field_name);
+                    }
                 }
             }
-            view_fields.sort(function(field1, field2) {
-                if (field1.view_index > field2.view_index === 0) {
-                    return 0;
-                }
-                if (field1.view_index > field2.view_index) {
-                    return 1;
-                } else {
-                    return -1;
-                }
-            });
-            edit_fields.sort(function(field1, field2) {
-                if (field1.edit_index > field2.edit_index === 0) {
-                    return 0;
-                }
-                if (field1.edit_index > field2.edit_index) {
-                    return 1;
-                } else {
-                    return -1;
-                }
-            });
+            return result;
+        },
 
-            this.view_options.fields = [];
-            for (i = 0; i < view_fields.length; i++) {
-                this.view_options.fields.push(view_fields[i].field_name);
+        ids_to_item_names: function(ids) {
+            var i,
+                item,
+                result = [];
+            if (ids && ids.length) {
+                for (i = 0; i < ids.length; i++) {
+                    item = this.item_by_ID(ids[i]);
+                    if (item) {
+                        result.push(item.item_name);
+                    }
+                }
             }
-            this.edit_options.fields = [];
-            for (i = 0; i < edit_fields.length; i++) {
-                this.edit_options.fields.push(edit_fields[i].field_name);
+            return result;
+        },
+
+        _process_view_params: function() {
+            var i,
+                field_name,
+                field,
+                fields = [],
+                order,
+                table_options,
+                table_fields,
+                actions,
+                form_template,
+                form_options,
+                column_width = {};
+            if (this._view_params instanceof Array) { // for compatibility with previous versions
+                for (i = 0; i < this._view_params.length; i++) {
+                    field = this._field_by_ID(this._view_params[i][0]);
+                    if (field) {
+                        fields.push([field.ID, '']);
+                    }
+                }
+                this._view_params = {0: ['', {}, [], {}, fields]};
             }
-            this.edit_options.title = this.item_caption;
+
+            form_template = this._view_params[0][0];
+            form_options = this._view_params[0][1];
+            actions = this._view_params[0][2];
+            table_options = this._view_params[0][3];
+            table_fields = this._view_params[0][4];
+
+            fields = []
+            for (i = 0; i < table_fields.length; i++) {
+                field = this._field_by_ID(table_fields[i][0]);
+                if (field) {
+                    field_name = field.field_name;
+                    fields.push(field_name);
+                    if (table_fields[i][1]) {
+                        column_width[field_name] = table_fields[i][1];
+                    }
+                }
+            }
+            this.view_options.fields = fields;
+
+            form_options.default_order = [];
+            if (this._default_order) {
+                for (i = 0; i < this._default_order.length; i++) {
+                    field = this._field_by_ID(this._default_order[i][0]);
+                    if (field) {
+                        order = field.field_name;
+                        if (this._default_order[i][1]) {
+                            order = '-' + order
+                        }
+                        form_options.default_order.push(order);
+                    }
+                    else {
+                        form_options.default_order = [];
+                        break;
+                    }
+                }
+            }
+            this._default_order = undefined;
+
+            form_options.view_detail = this.ids_to_item_names(form_options.view_detail);
+            if (form_options.view_detail.length) {
+                form_options.view_detail = form_options.view_detail[0];
+            }
+            table_options.column_width = column_width;
+            table_options.summary_fields = this.ids_to_field_names(table_options.summary_fields);
+            table_options.editable_fields = this.ids_to_field_names(table_options.edit_fields);
+            delete table_options.edit_fields;
+            if (table_options.editable_fields && table_options.editable_fields.length) {
+                table_options.editable = true;
+            }
+            table_options.sort_fields = this.ids_to_field_names(table_options.sort_fields);
+            if (table_options.sort_fields && table_options.sort_fields.length) {
+                table_options.sortable = true;
+            }
+
             this.view_options.title = this.item_caption;
-            this._edit_options = $.extend({}, this.edit_options);
+            this.view_options = $.extend(this.view_options, form_options);
             this._view_options = $.extend({}, this.view_options);
+            this.table_options = $.extend(this.table_options, table_options);
+            this._table_options = $.extend({}, this.table_options);
+        },
+
+        _process_edit_params: function() {
+            var i,
+                j,
+                k,
+                field_name,
+                field,
+                fields = [],
+                tab,
+                tabs,
+                band,
+                bands,
+                form_tabs,
+                actions,
+                form_template,
+                form_options,
+                input_width;
+            if (this._edit_params instanceof Array) { // for compatibility with previous versions
+                for (i = 0; i < this._edit_params.length; i++) {
+                    field = this._field_by_ID(this._edit_params[i][0]);
+                    if (field) {
+                        fields.push([field.ID, '']);
+                    }
+                }
+                this._edit_params = { 0: ['', {}, [], [['', [[{}, fields, '']]]]] };
+            }
+
+            this.edit_options.fields = [];
+            form_template = this._edit_params[0][0];
+            form_options = this._edit_params[0][1];
+            actions = this._edit_params[0][2];
+            form_tabs = this._edit_params[0][3];
+
+            tabs = []
+            fields = []
+            for (i = 0; i < form_tabs.length; i++) {
+                tab = {}
+                tab.name = form_tabs[i][0];
+                tab.bands = [];
+                bands = form_tabs[i][1];
+                for (j = 0; j < bands.length; j++) {
+                    band = {}
+                    band.fields = [];
+                    input_width = {}
+                    band.options = bands[j][0]
+                    band.options.input_width = input_width;
+                    fields = bands[j][1]
+                    band.name = bands[j][2]
+                    for (k = 0; k < fields.length; k++) {
+                        field = this._field_by_ID(fields[k][0]);
+                        if (field) {
+                            field_name = field.field_name;
+                            band.fields.push(field_name);
+                            if (fields[k][1]) {
+                                input_width[field_name] = fields[k][1];
+                            }
+                        }
+                    }
+                    tab.bands.push(band);
+                }
+                tabs.push(tab)
+            }
+            form_options.edit_details = this.ids_to_item_names(form_options.edit_details);
+            this.edit_options.title = this.item_caption;
+            this.edit_options = $.extend(this.edit_options, form_options);
+            this.edit_options.tabs = tabs;
+            this._edit_options = $.extend(true, {}, this.edit_options);
+        },
+
+        init_params: function() {
+            this._process_view_params();
+            this._process_edit_params();
         },
 
         each: function(callback) {
@@ -3130,14 +3462,74 @@
             return this._selections;
         },
 
+        process_selection_changed: function(value) {
+            var added = value[0],
+                deleted = value[1];
+            if (added && !added.length) {
+                added = undefined;
+            }
+            if (deleted && !deleted.length) {
+                deleted = undefined;
+            }
+            if (this.on_selection_changed && (added || deleted)) {
+                this.on_selection_changed.call(this, this, added, deleted)
+            }
+        },
+
         set_selections: function(value) {
+            var self = this;
+
+            if (!value || !(value instanceof Array)) {
+                value = [];
+            }
+            if (this._selections) {
+                this.process_selection_changed([undefined, this._selections.slice(0)]);
+            }
             this._selections = value;
+
+            this._selections.add = function() {
+                var index = self._selections.indexOf(arguments[0]);
+                if (index === -1) {
+                    Array.prototype.push.apply(this, arguments);
+                    self.process_selection_changed([[arguments[0]], undefined]);
+                }
+            }
+            this._selections.push = function() {
+                Array.prototype.push.apply(this, arguments);
+                self.process_selection_changed([[arguments[0]], undefined]);
+            };
+            this._selections.remove = function() {
+                var index = self._selections.indexOf(arguments[0]),
+                    val,
+                    removed = [];
+                if (index !== -1) {
+                    val = [self._selections[index]];
+                    Array.prototype.splice.call(this, index, 1);
+                    self.process_selection_changed([undefined, val]);
+                }
+            };
+            this._selections.splice = function() {
+                var deleted = self._selections.slice(arguments[0], arguments[0] + arguments[1]);
+                Array.prototype.splice.apply(this, arguments);
+                self.process_selection_changed([undefined, deleted]);
+            };
+            this._selections.pop = function() {
+                throw 'Item selections do not support pop method';
+            };
+            this._selections.shift = function() {
+                throw 'Item selections do not support shift method';
+            }
+            this._selections.unshift = function() {
+                throw 'Item selections do not support unshift method';
+            }
+
+            this.process_selection_changed([this._selections.slice(0), undefined]);
             this.update_controls();
         },
 
         copy: function(options) {
             if (this.master) {
-                throw 'A detail item can not be copied.';
+                throw 'A detail can not be copied.';
             }
             return this._copy(options);
         },
@@ -3168,27 +3560,26 @@
             result._deleted_flag = this._deleted_flag
             result._master_id = this._master_id
             result._master_rec_id = this._master_rec_id
-            result._default_order = this._default_order;
             result._edit_options = this._edit_options;
             result._view_options = this._view_options;
-            result.edit_options = $.extend({}, this._edit_options);
-            result.view_options = $.extend({}, this._view_options);
+            result._table_options = this._table_options;
             result.prototype_ID = this.prototype_ID;
             result._keep_history = this._keep_history;
-            result.select_all = this.select_all
+            result._view_params = this._view_params;
+            result._edit_params = this._edit_params;
 
 
             len = result.field_defs.length;
             for (i = 0; i < len; i++) {
                 new Field(result, result.field_defs[i]);
             }
-            result.prepare_fields();
+            result._prepare_fields();
             if (options.filters) {
                 len = result.filter_defs.length;
                 for (i = 0; i < len; i++) {
                     new Filter(result, result.filter_defs[i]);
                 }
-                result.prepare_filters();
+                result._prepare_filters();
             }
             result._events = this._events;
             if (options.handlers) {
@@ -3198,6 +3589,9 @@
                 }
             }
             if (options.handlers) {
+                result.edit_options = $.extend(true, {}, this._edit_options);
+                result.view_options = $.extend({}, this._view_options);
+                result.table_options = $.extend({}, this._table_options);
                 for (var name in this) {
                     if (this.hasOwnProperty(name)) {
                         if ((name.substring(0, 3) === "on_") && (typeof this[name] === "function")) {
@@ -3205,6 +3599,11 @@
                         }
                     }
                 }
+            }
+            else {
+                result.edit_options = $.extend({}, this.task.edit_options);
+                result.view_options = $.extend({}, this.task.view_options);
+                result.table_options = {};
             }
             if (options.details) {
                 this.each_detail(function(detail, i) {
@@ -3254,7 +3653,7 @@
             for (i = 0; i < len; i++) {
                 field = new Field(result, result.field_defs[i]);
             }
-            result.prepare_fields();
+            result._prepare_fields();
 
             len = result.fields.length;
             for (i = 0; i < len; i++) {
@@ -3524,7 +3923,9 @@
             }
 
             params.__open_empty = open_empty;
-            params.__order = []
+            if (!params.__order) {
+                params.__order = []
+            }
             if (!open_empty) {
                 params.__limit = 0;
                 params.__offset = 0;
@@ -3559,14 +3960,6 @@
                     params.__order = this.get_order_by_list(order_by);
                 } else if (this._order_by_list.length) {
                     params.__order = this._order_by_list.slice(0);
-                } else if (this._default_order) {
-                    params.__order = this._default_order.slice();
-                    for (var i = 0; i < params.__order.length; i++) {
-                        if (!this.field_by_ID(params.__order[i][0])) {
-                            params.__order = [];
-                            break;
-                        }
-                    }
                 }
                 this._where_list = [];
                 this._order_by_list = [];
@@ -3586,34 +3979,43 @@
             }
         },
 
-        open_details: function(callback) {
-            var self = this,
-                details = 0;
+        open_details: function() {
+            var i,
+                self = this,
+                args = this._check_args(arguments),
+                callback = args['function'],
+                options = args['object'],
+                async = args['boolean'],
+                details = this.details,
+                detail_count = 0,
+                after_open = function() {
+                    detail_count -= 1;
+                    if (detail_count === 0 && callback) {
+                        callback.call(self, self);
+                    }
+                };
 
-            function afterOpen() {
-                details -= 1;
-                if (details === 0) {
-                    callback.call(self);
-                }
+            if (options && options.details) {
+                details = options.details;
             }
 
-            if (callback) {
-                this.each_detail(function(detail, i) {
-                    if (!detail.disabled) {
-                        details += 1;
+            if (callback || async) {
+                for (i = 0; i < details.length; i++) {
+                    if (!details[i].disabled) {
+                        detail_count += 1;
                     }
-                });
-                this.each_detail(function(detail, i) {
-                    if (!detail.disabled) {
-                        detail.open(afterOpen);
+                }
+                for (i = 0; i < details.length; i++) {
+                    if (!details[i].disabled) {
+                        details[i].open(after_open);
                     }
-                });
+                }
             } else {
-                this.each_detail(function(detail, i) {
-                    if (!detail.disabled) {
-                        detail.open();
+                for (i = 0; i < details.length; i++) {
+                    if (!details[i].disabled) {
+                        details[i].open();
                     }
-                });
+                }
             }
         },
 
@@ -3722,7 +4124,7 @@
                     return;
                 }
             }
-            if (this.paginate && offset !== undefined) {
+            if (this._paginate && offset !== undefined) {
                 params = this._open_params;
                 params.__offset = offset;
                 if (this.on_before_open) {
@@ -3736,7 +4138,7 @@
                     where, order_by, open_empty, params, offset, limit, funcs, group_by);
                 this._bind_fields(expanded);
             }
-            if (this.paginate) {
+            if (this._paginate) {
                 params.__limit = this._limit;
             }
             this.change_log.prepare();
@@ -3747,7 +4149,7 @@
                 self._cur_row = null;
                 self.first();
                 self._do_after_open();
-                if ((!self.paginate || self.paginate && offset === 0) && self.on_filters_applied) {
+                if ((!self._paginate || self._paginate && offset === 0) && self.on_filters_applied) {
                     self.on_filters_applied.call(self, self);
                 }
                 self.update_controls(consts.UPDATE_OPEN);
@@ -3768,8 +4170,10 @@
                 }
             }
             else if (async && !open_empty) {
+                this._is_opening = true;
                 this.send_request('open', params, function(data) {
                     self._do_after_load(data, offset, callback);
+                    this._is_opening = false;
                 });
             } else {
                 if (open_empty) {
@@ -3798,7 +4202,7 @@
 
                         len = rows.length;
                         this._dataset = rows;
-                        if (this._limit && this.paginate && rows) {
+                        if (this._limit && this._paginate && rows) {
                             this._offset = offset;
                             this.is_loaded = false;
                         }
@@ -3919,6 +4323,7 @@
                 callback = args['function'],
                 field_name = arguments[0],
                 text = arguments[1].trim(),
+                field,
                 filter,
                 filter_type,
                 i, j,
@@ -3942,39 +4347,54 @@
             else {
                 filter_type = consts.FILTER_CONTAINS_ALL;
             }
-
-            if (this.field_by_name(field_name).lookup_values) {
-                lookup_values = this.field_by_name(field_name).lookup_values;
-                ids = [];
-                for (i = 0; i < lookup_values.length; i++) {
-                    str = lookup_values[i][1].toLowerCase();
-                    substr = text.toLowerCase().split(' ');
-                    found = true;
-                    for (j = 0; j < substr.length; j++) {
-                        if (substr[j]) {
-                            if (str.indexOf(substr[j]) === -1) {
-                                found = false;
-                                break;
+            field = this.field_by_name(field_name);
+            if (field) {
+                if (field.lookup_values) {
+                    lookup_values = this.field_by_name(field_name).lookup_values;
+                    ids = [];
+                    if (text.length) {
+                        for (i = 0; i < lookup_values.length; i++) {
+                            str = lookup_values[i][1].toLowerCase();
+                            substr = text.toLowerCase().split(' ');
+                            found = true;
+                            for (j = 0; j < substr.length; j++) {
+                                if (substr[j]) {
+                                    if (str.indexOf(substr[j]) === -1) {
+                                        found = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (found) {
+                                ids.push(lookup_values[i][0])
                             }
                         }
                     }
-                    if (found) {
-                        ids.push(lookup_values[i][0])
+                    if (!ids.length) {
+                        ids.push(-1);
                     }
+                    text = ids;
+                    filter_type = consts.FILTER_IN;
                 }
-                text = ids;
-                filter_type = consts.FILTER_IN;
-            }
-
-            if (text.length) {
-                params.__search = [field_name, text, filter_type];
-                this.open({params: params}, callback);
-            } else {
-                this.open(function() {;
-                    if (callback) {
-                        callback.call(this, this);
-                    }
-                });
+                else if (field.numeric_field() && (
+                    filter_type === consts.FILTER_CONTAINS ||
+                    filter_type === consts.FILTER_STARTWITH ||
+                    filter_type === consts.FILTER_ENDWITH ||
+                    filter_type === consts.FILTER_CONTAINS_ALL)) {
+                    text = text.replace(locale.DECIMAL_POINT, ".");
+                    text = text.replace(locale.MON_DECIMAL_POINT, ".");
+                }
+                if (text.length) {
+                    params.__search = [field_name, text, filter_type];
+                    this.open({params: params}, callback);
+                } else {
+                    this.open(function() {;
+                        if (callback) {
+                            callback.call(this, this);
+                        }
+                    });
+                }
+                return [field_name, text, filter_value[filter_type - 1]];
             }
         },
 
@@ -4537,7 +4957,8 @@
         },
 
         _do_after_scroll: function() {
-            var len = this.details.length;
+            var len = this.details.length,
+                detail;
             for (var i = 0; i < len; i++) {
                 this.details[i]._do_close();
             }
@@ -4854,6 +5275,7 @@
     // Item interface methods
 
         insert_record: function(container, tab_name) {
+            container = this._check_container(container);
             if (container && this.task.can_add_tab(container) && $('.modal').length === 0) {
                 this._append_record_in_tab(container, tab_name);
             }
@@ -4895,6 +5317,7 @@
                 self = this,
                 copy = this.copy(),
                 content;
+            container = this._check_container(container);
             if (this.can_create()) {
                 if (!tab_name) {
                     tab_name = '<i class="icon-plus-sign"></i> ' + this.item_caption;
@@ -4919,20 +5342,31 @@
             }
         },
 
-        edit_record: function(container, tab_name) {
-            if (container && this.task.can_add_tab(container) && $('.modal').length === 0) {
-                this._edit_record_in_tab(container, tab_name)
+        _check_container: function(container) {
+            if (!container && this.edit_options.modeless &&
+                this.task.forms_in_tabs && this.task.forms_container) {
+                container = this.task.forms_container;
             }
-            else {
-                this._edit_record()
+            if (container && container.length) {
+                return container;
+            }
+        },
+
+        edit_record: function(container, tab_name) {
+            container = this._check_container(container);
+            if (this.rec_count && this.can_edit()) {
+                if ($('.modal').length === 0 && container && this.task.can_add_tab(container)) {
+                    this._edit_record_in_tab(container, tab_name)
+                }
+                else {
+                    this._edit_record()
+                }
             }
         },
 
         _edit_record: function(container) {
-            if (this.can_edit()) {
-                if (!this.is_changing()) {
-                    this.edit();
-                }
+            if (!this.is_changing()) {
+                this.edit();
             }
             this.create_edit_form(container);
         },
@@ -4976,9 +5410,9 @@
             var self = this,
                 on_closed = copy.on_edit_form_closed,
                 on_after_apply = copy.on_after_apply;
-            if (copy.edit_options.width) {
-                copy.edit_form.css('max-width', copy.edit_options.width + 'px')
-            }
+            //~ if (copy.edit_options.width) {
+                //~ copy.edit_form.css('width', copy.edit_options.width + 'px')
+            //~ }
             copy.on_edit_form_closed = function(item) {
                 task.close_tab(container, tab_id);
                 if (on_closed) {
@@ -5113,7 +5547,7 @@
             }
         },
 
-        do_on_view_keyup: function(e) {
+        _do_on_view_keyup: function(e) {
             if (this.task.on_view_form_keyup) {
                 this.task.on_view_form_keyup.call(this, this, e);
             }
@@ -5125,7 +5559,7 @@
             }
         },
 
-        do_on_view_keydown: function(e) {
+        _do_on_view_keydown: function(e) {
             if (this.task.on_view_form_keydown) {
                 this.task.on_view_form_keydown.call(this, this, e);
             }
@@ -5143,38 +5577,41 @@
             this.view(container);
         },
 
-        view: function(container) {
+        view: function(container, view_id) {
+            this.show_selected = false;
             if (container && this.task.can_add_tab(container)) {
-                this._view_in_tab(container);
+                this._view_in_tab(container, view_id);
             }
             else {
-                this.view_options.close_caption = true;
                 this._view(container);
             }
         },
 
         _view: function(container) {
             var self = this;
-            self.show_selected = false;
             this.load_modules([this, this.owner], function() {
                 self.create_view_form(container);
             })
         },
 
-        _view_in_tab: function(container) {
+        _view_in_tab: function(container, view_id) {
             var self = this,
                 on_closed,
                 tab_id = this.item_name,
-                content = this.task.add_tab(container, this.item_caption,
-                {
-                    tab_id: this.item_name,
-                    show_close_btn: true,
-                    set_active: true,
-                    on_close: function() {
-                        task.show_tab(container, tab_id);
-                        self.close_view_form();
-                    }
-                });
+                content;
+            if (view_id) {
+                tab_id = tab_id + '_' + view_id;
+            }
+            content = this.task.add_tab(container, this.item_caption,
+            {
+                tab_id: tab_id,
+                show_close_btn: true,
+                set_active: true,
+                on_close: function() {
+                    task.show_tab(container, tab_id);
+                    self.close_view_form();
+                }
+            });
             if (content) {
                 this._view(content);
                 on_closed = this.on_view_form_closed,
@@ -5188,224 +5625,54 @@
         },
 
         create_view_form: function(container) {
-            var self = this;
-            this.view_options.show_history = true;
-            this._create_form('view', {
-                container: container,
-                beforeShow: function() {
-                    if (this.task.on_view_form_created) {
-                        this.task.on_view_form_created.call(this, this);
-                    }
-                    if (!this.master && this.owner.on_view_form_created) {
-                        this.owner.on_view_form_created.call(this, this);
-                    }
-                    if (this.on_view_form_created) {
-                        this.on_view_form_created.call(this, this);
-                    }
-                },
-                onShown: function() {
-                    if (self.task.on_view_form_shown) {
-                        self.task.on_view_form_shown.call(self, self);
-                    }
-                    if (!this.master && self.owner.on_view_form_shown) {
-                        self.owner.on_view_form_shown.call(self, self);
-                    }
-                    if (self.on_view_form_shown) {
-                        self.on_view_form_shown.call(self, self);
-                    }
-                },
-                onHide: function(e) {
-                    var mess,
-                        canClose;
-                    if (self.on_view_form_close_query) {
-                        canClose = self.on_view_form_close_query.call(self, self);
-                    }
-                    if (!this.master && canClose === undefined && self.owner.on_view_form_close_query && !self.master) {
-                        canClose = self.owner.on_view_form_close_query.call(self, self);
-                    }
-                    if (canClose === undefined && self.task.on_view_form_close_query) {
-                        canClose = self.task.on_view_form_close_query.call(self, self);
-                    }
-                    return canClose;
-                },
-                onHidden: function() {
-                    if (self.task.on_view_form_closed) {
-                        self.task.on_view_form_closed.call(self, self);
-                    }
-                    if (!this.master && self.owner.on_view_form_closed) {
-                        self.owner.on_view_form_closed.call(self, self);
-                    }
-                    if (self.on_view_form_closed) {
-                        self.on_view_form_closed.call(self, self);
-                    }
-                },
-                onKeyUp: this.do_on_view_keyup,
-                onKeyDown: this.do_on_view_keydown
-            })
+            this._create_form('view', container);
         },
 
         close_view_form: function() {
-            this._close_form('view_form');
+            this._close_form('view');
         },
 
-        do_on_edit_keyup: function(e) {
-            if (this.task.on_edit_form_keyup) {
-                this.task.on_edit_form_keyup.call(this, this, e);
-            }
-            if (this.owner.on_edit_form_keyup) {
-                this.owner.on_edit_form_keyup.call(this, this, e);
-            }
-            if (this.on_edit_form_keyup) {
-                this.on_edit_form_keyup.call(this, this, e);
-            }
-        },
-
-        do_on_edit_keydown: function(e) {
-            if (this.task.on_edit_form_keydown) {
-                this.task.on_edit_form_keydown.call(this, this, e);
-            }
-            if (this.owner.on_edit_form_keydown) {
-                this.owner.on_edit_form_keydown.call(this, this, e);
-            }
-            if (this.on_edit_form_keydown) {
-                this.on_edit_form_keydown.call(this, this, e);
-            }
-        },
-
-        create_edit_form: function() {
-            var self = this,
-                args = this._check_args(arguments),
-                callback = args['function'],
-                container = args['object'];
-            this.edit_options.show_history = true;
-            this._create_form('edit', {
-                container: container,
-                beforeShow: function() {
-                    if (self.task.on_edit_form_created) {
-                        self.task.on_edit_form_created.call(self, self);
-                    }
-                    if (!self.master && self.owner.on_edit_form_created && !self.master) {
-                        self.owner.on_edit_form_created.call(self, self);
-                    }
-                    if (self.on_edit_form_created) {
-                        self.on_edit_form_created.call(self, self);
-                    }
-                },
-                onShown: function() {
-                    if (self.task.on_edit_form_shown) {
-                        self.task.on_edit_form_shown.call(self, self);
-                    }
-                    if (!self.master && self.owner.on_edit_form_shown && !self.master) {
-                        self.owner.on_edit_form_shown.call(self, self);
-                    }
-                    if (self.on_edit_form_shown) {
-                        self.on_edit_form_shown.call(self, self);
-                    }
-                    if (callback) {
-                        callback.call(self, self);
-                    }
-                },
-                onHide: function(e) {
-                    var mess,
-                        canClose;
-                    if (self.on_edit_form_close_query) {
-                        canClose = self.on_edit_form_close_query.call(self, self);
-                    }
-                    if (!self.master && canClose === undefined && self.owner.on_edit_form_close_query && !self.master) {
-                        canClose = self.owner.on_edit_form_close_query.call(self, self);
-                    }
-                    if (canClose === undefined && self.task.on_edit_form_close_query) {
-                        canClose = self.task.on_edit_form_close_query.call(self, self);
-                    }
-                    return canClose;
-                },
-                onHidden: function() {
-                    if (self.task.on_edit_form_closed) {
-                        self.task.on_edit_form_closed.call(self, self);
-                    }
-                    if (!this.master && self.owner.on_edit_form_closed) {
-                        self.owner.on_edit_form_closed.call(self, self);
-                    }
-                    if (self.on_edit_form_closed) {
-                        self.on_edit_form_closed.call(self, self);
-                    }
-                },
-                onKeyUp: this.do_on_edit_keyup,
-                onKeyDown: this.do_on_edit_keydown
-            })
+        create_edit_form: function(container) {
+            this._create_form('edit', container);
         },
 
         close_edit_form: function() {
-            this._close_form('edit_form');
+            this._close_form('edit');
         },
 
-        create_filter_form: function() {
-            var self = this,
-                args = this._check_args(arguments),
-                container = args['object'];
-            this._create_form('filter', {
-                container: container,
-                beforeShow: function() {
-                    if (self.task.on_filter_form_created) {
-                        self.task.on_filter_form_created.call(self, self);
-                    }
-                    if (!self.master && self.owner.on_filter_form_created) {
-                        self.owner.on_filter_form_created.call(self, self);
-                    }
-                    if (self.on_filter_form_created) {
-                        self.on_filter_form_created.call(self, self);
-                    }
-                },
-                onShown: function() {
-                    if (self.task.on_filter_form_shown) {
-                        self.task.on_filter_form_shown.call(self, self);
-                    }
-                    if (!self.master && self.owner.on_filter_form_shown && !self.master) {
-                        self.owner.on_filter_form_shown.call(self, self);
-                    }
-                    if (self.on_filter_form_shown) {
-                        self.on_filter_form_shown.call(self, self);
-                    }
-                },
-                onHide: function(e) {
-                    var mess,
-                        canClose;
-                    if (self.on_filter_form_close_query) {
-                        canClose = self.on_filter_form_close_query.call(self, self);
-                    }
-                    if (!self.master && canClose === undefined && self.owner.on_filter_form_close_query) {
-                        canClose = self.owner.on_filter_form_close_query.call(self, self);
-                    }
-                    if (canClose === undefined && self.task.on_filter_form_close_query) {
-                        canClose = self.task.on_filter_form_close_query.call(self, self);
-                    }
-                    return canClose;
-                },
-                onHidden: function() {
-                    if (self.task.on_filter_form_closed) {
-                        self.task.on_filter_form_closed.call(self, self);
-                    }
-                    if (!this.master && self.owner.on_filter_form_closed) {
-                        self.owner.on_filter_form_closed.call(self, self);
-                    }
-                    if (self.on_filter_form_closed) {
-                        self.on_filter_form_closed.call(self, self);
-                    }
-                }
-            })
+        create_filter_form: function(container) {
+            this._create_form('filter', container);
         },
 
         close_filter_form: function() {
-            this._close_form('filter_form');
+            this._close_form('filter');
         },
 
-        apply_filters: function() {
+        apply_filters: function(search_params) {
+            var params = {},
+                search_field,
+                search_value,
+                search_type;
             try {
                 if (this.on_filters_apply) {
                     this.on_filters_apply.call(this, this);
                 }
                 this.check_filters_valid();
-                this.open(function() {
+                try {
+                    if (search_params) {
+                        search_field = search_params[0];
+                        search_value = search_params[1];
+                        search_type = search_params[2];
+                        search_type = filter_value.indexOf(search_type) + 1;
+                        if (search_value) {
+                            params.__search = [search_field, search_value, search_type];
+                        }
+                    }
+                }
+                catch (e) {
+                    params = {};
+                }
+                this.open({params: params}, function() {
                     this.close_filter_form();
                 });
             }
@@ -5420,7 +5687,7 @@
                     result += ' ' + filter.text;
                 }
             });
-            if (result) {
+            if (result && task.old_forms) {
                 result = language.filter + ' -' + result;
             }
             return result;
@@ -5469,12 +5736,101 @@
             }
         },
 
+        create_detail_views: function(container, options) {
+            var self = this,
+                i,
+                detail,
+                detail_container,
+                details_to_open = [],
+                details;
+
+            if (!container.length) {
+                return;
+            }
+
+            if (options) {
+                details = options.details
+            }
+            if (!details) {
+                details = this.edit_options.edit_details;
+            }
+
+            if (details.length) {
+                if (details.length > 1) {
+                    this.task.init_tabs(container)
+                }
+                for (i = 0; i < details.length; i++) {
+                    detail = this.find(details[i]);
+                    detail_container = container;
+                    if (details.length > 1) {
+                        detail_container = task.add_tab(container, detail.item_caption);
+                    }
+                    detail.view_options.form_header = false;
+                    detail.view_options.form_border = false;
+                    detail.view(detail_container);
+                    if (!detail.active) {
+                        details_to_open.push(detail)
+                    }
+                }
+                if (details_to_open.length) {
+                    this._disable_form(this.edit_form);
+                    this.open_details({details: details_to_open}, function() {
+                        try {
+                        }
+                        finally {
+                            self._enable_form(this.edit_form);
+                        }
+                    });
+                }
+            }
+        },
+
         create_table: function(container, options) {
             return new DBTable(this, container, options);
         },
 
         create_tree: function(container, parent_field, text_field, parent_of_root_value, options) {
             return new DBTree(this, container, parent_field, text_field, parent_of_root_value, options);
+        },
+
+        create_bands: function(tab, container) {
+            var i,
+                j,
+                band,
+                field,
+                fields,
+                div,
+                options;
+            for (i = 0; i < tab.bands.length; i++) {
+                fields = tab.bands[i].fields
+                if (fields.length) {
+                    options = tab.bands[i].options;
+                    options.fields = fields;
+                    div = $('<div>')
+                    container.append(div)
+                    this.create_inputs(div, options);
+                }
+            }
+        },
+
+        create_tabs: function(container) {
+            var i,
+                tabs = this.edit_options.tabs;
+            this.task.init_tabs(container);
+            for (i = 0; i < tabs.length; i++) {
+                this.create_bands(tabs[i], task.add_tab(container, tabs[i].name))
+            }
+        },
+
+        create_controls: function(container) {
+            var tabs = this.edit_options.tabs;
+            container.empty();
+            if (tabs.length > 1 || tabs.length === 1 && tabs[0].name) {
+                this.create_tabs(container);
+            }
+            else {
+                this.create_bands(tabs[0], container);
+            }
         },
 
         create_inputs: function(container, options) {
@@ -5485,7 +5841,8 @@
                 visible_fields = [],
                 cols = [],
                 tabindex,
-                form;
+                form,
+                tabs;
 
             if (!container.length) {
                 return;
@@ -5496,18 +5853,37 @@
                 col_count: 1,
                 label_on_top: false,
                 label_width: undefined,
+                label_size: 3,
                 row_count: undefined,
                 autocomplete: false,
                 in_well: true,
                 tabindex: undefined
             };
 
-            options = $.extend({}, default_options, options);
-
-            if (options.fields.length) {
+            if (options && options.fields && options.fields.length) {
                 visible_fields = options.fields
             } else {
                 visible_fields = this.edit_options.fields;
+            }
+            if (visible_fields.length == 0) {
+                tabs = this.edit_options.tabs;
+                if (tabs) {
+                    if (tabs.length === 1 && !tabs[0].name && tabs[0].bands.length === 1) {
+                        visible_fields = tabs[0].bands[0].fields;
+                        default_options = $.extend({}, default_options, tabs[0].bands[0].options);
+                    }
+                    else {
+                        this.create_controls(container);
+                        return;
+                    }
+                }
+                else {
+                    this.each_field(function(f) {
+                        if (f.field_name !== f.owner._primary_key && f.field_name !== f.owner._deleted_flag) {
+                            visible_fields.push(f.field_name);
+                        }
+                    });
+                }
             }
             len = visible_fields.length;
             for (i = 0; i < len; i++) {
@@ -5515,19 +5891,23 @@
                 if (field) {
                     fields.push(field);
                 } else {
-                    throw this.item_name + ' create_entries: there is not a field with field_name - "' + visible_fields.fields[i] + '"';
+                    console.error(this.item_name + ' create_entries: there is not a field with field_name - "' + visible_fields[i] + '"');
                 }
             }
 
+            options = $.extend({}, default_options, options);
+
             container.empty();
 
-//            form = $('<form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").appendTo(container));
             form = $('<form class="row-fluid" autocomplete="off"></form>').appendTo(container);
             if (options.in_well) {
                 form.addClass('well');
             }
             if (options.autocomplete) {
                 form.attr("autocomplete", "on")
+            }
+            else {
+                form.attr("autocomplete", "off")
             }
             if (!options.label_on_top) {
                 form.addClass("form-horizontal");
@@ -5545,45 +5925,9 @@
                 options.row_count = Math.ceil(len / options.col_count);
             }
             for (i = 0; i < len; i++) {
-                new DBInput(fields[i], i + tabindex, cols[Math.floor(i / options.row_count)],
-                    options.label_on_top, options.label_width);
+                new DBInput(fields[i], i + tabindex,
+                    cols[Math.floor(i / options.row_count)], options);
             }
-        },
-
-        append_button: function(input, options) {
-            var result,
-                div,
-                default_options = {
-                    icon: 'icon-folder-open'
-                };
-            options = $.extend({}, default_options, options);
-            if (input.length) {
-                result = $('<button class="btn small-btn" type="button" tabindex="-1"></button>')
-                if (options && options.icon) {
-                    result.append('<i class="' + options.icon + '"></i>')
-                }
-                if (options && options.id) {
-                    result.attr('id', options.id)
-                }
-                //~ if (options && options.class) {
-                    //~ result.addClass(options.class)
-                //~ }
-                if (input.parent().hasClass('input-append')) {
-                    input.parent().append(result);
-                }
-                else if (input.parent().hasClass('input-prepend')) {
-                    input.parent().append(result);
-                    input.parent().addClass('input-append')
-                }
-                else {
-                    div = $('<div class="input-append">');
-                    input.parent().append(div);
-                    input.detach();
-                    div.append(input);
-                    div.append(result);
-                }
-            }
-            return result;
         },
 
         create_filter_inputs: function(container, options) {
@@ -5647,31 +5991,38 @@
                 filter = filters[i];
                 if (filter.filter_type === consts.FILTER_RANGE) {
                     new DBInput(filter.field, i + 1, cols[Math.floor(i % options.col_count)],
-                        options.label_on_top, options.label_width,
-                        filter.filter_caption + ' ' + language.range_from);
+                        options, filter.filter_caption + ' ' + language.range_from);
                     new DBInput(filter.field1, i + 1, cols[Math.floor(i % options.col_count)],
-                        options.label_on_top, options.label_width,
-                        filter.filter_caption + ' ' + language.range_to);
+                        options, filter.filter_caption + ' ' + language.range_to);
                 }
                 else {
                     new DBInput(filter.field, i + 1, cols[Math.floor(i % options.col_count)],
-                        options.label_on_top, options.label_width,
-                        filter.filter_caption);
+                        options, filter.filter_caption);
                 }
             }
         },
 
-        _find_lookup_value: function(field, lookup_field) {
+         _find_lookup_value: function(field, lookup_field) {
             if (lookup_field.field_kind === consts.ITEM_FIELD) {
-                if (field.field_name === lookup_field.lookup_field &&
-                    field.lookup_field === lookup_field.lookup_field1 &&
-                    field.lookup_field1 === lookup_field.lookup_field2) {
-                    return field.lookup_value;
+                if (field.lookup_field && field.lookup_field1) {
+                    if (field.owner.ID === lookup_field.lookup_item.ID &&
+                        field.lookup_item.ID === lookup_field.lookup_item1.ID &&
+                        field.lookup_field === lookup_field.lookup_field1 &&
+                        field.lookup_item1.ID === lookup_field.lookup_item2.ID &&
+                        field.lookup_field1 === lookup_field.lookup_field2) {
+                        return field.lookup_value;
+                    }
                 }
-                else if (field.field_kind === consts.ITEM_FIELD &&
-                    field.owner.ID === lookup_field.lookup_item.ID && field.lookup_field &&
-                    field.lookup_field === lookup_field.lookup_field1 &&
-                    field.lookup_field1 === lookup_field.lookup_field2) {
+                else if (field.lookup_field) {
+                    if (field.field_name === lookup_field.lookup_field &&
+                        field.owner.ID === lookup_field.lookup_item.ID &&
+                        field.lookup_field === lookup_field.lookup_field1 &&
+                        field.lookup_item.ID === lookup_field.lookup_item1.ID) {
+                        return field.lookup_value;
+                    }
+                }
+                else if (field.field_name === lookup_field.lookup_field &&
+                    field.owner.ID === lookup_field.lookup_item.ID) {
                     return field.lookup_value;
                 }
             }
@@ -5706,10 +6057,13 @@
                         item.each_field(function(item_field) {
                             if (item_field.master_field === lookup_field) {
                                 self.each_field(function(field) {
-                                    var lookup_value = self._find_lookup_value(field, item_field);
-                                    if (lookup_value) {
-                                        slave_field_values[item_field.field_name] = lookup_value;
-                                        return false;
+                                    var lookup_value
+                                    if (field.lookup_value) {
+                                        lookup_value = self._find_lookup_value(field, item_field);
+                                        if (lookup_value) {
+                                            slave_field_values[item_field.field_name] = lookup_value;
+                                            return false;
+                                        }
                                     }
                                 })
                             }
@@ -5841,6 +6195,10 @@
             return result
         }
 
+        //~ calc_detail: function(detail, fields, calculate) {
+
+        //~ }
+
     });
 
     /**********************************************************************/
@@ -5857,7 +6215,7 @@
         this._fields = [];
         this.params = this._fields;
         this._state = consts.STATE_EDIT;
-        this.param_options = $.extend({}, this.from_options);
+        this.param_options = $.extend({}, this.task.form_options);
     }
 
     $.extend(Report.prototype, {
@@ -5885,7 +6243,7 @@
             }
         },
 
-        bind_item: function() {
+        _bind_item: function() {
             var i = 0,
                 param,
                 len = this.params.length;
@@ -5930,64 +6288,12 @@
             }
         },
 
-        create_param_form: function() {
-            var self = this,
-                args = this._check_args(arguments),
-                container = args['object'];
-            this._create_form('param', {
-                container: container,
-                beforeShow: function() {
-                    if (self.task.on_param_form_created) {
-                        self.task.on_param_form_created.call(self, self);
-                    }
-                    if (self.owner.on_param_form_created) {
-                        self.owner.on_param_form_created.call(self, self);
-                    }
-                    if (self.on_param_form_created) {
-                        self.on_param_form_created.call(self, self);
-                    }
-                },
-                onShown: function() {
-                    if (self.task.on_param_form_shown) {
-                        self.task.on_param_form_shown.call(self, self);
-                    }
-                    if (self.owner.on_param_form_shown) {
-                        self.owner.on_param_form_shown.call(self, self);
-                    }
-                    if (self.on_param_form_shown) {
-                        self.on_param_form_shown.call(self, self);
-                    }
-                },
-                onHide: function(e) {
-                    var mess,
-                        canClose;
-                    if (self.on_param_form_close_query) {
-                        canClose = self.on_param_form_close_query.call(self, self);
-                    }
-                    if (canClose === undefined && self.owner.on_param_form_close_query) {
-                        canClose = self.owner.on_param_form_close_query.call(self, self);
-                    }
-                    if (canClose === undefined && self.task.on_param_form_close_query) {
-                        canClose = self.task.on_param_form_close_query.call(self, self);
-                    }
-                    return canClose;
-                },
-                onHidden: function() {
-                    if (self.task.on_param_form_closed) {
-                        self.task.on_param_form_closed.call(self, self);
-                    }
-                    if (!this.master && self.owner.on_param_form_closed) {
-                        self.owner.on_param_form_closed.call(self, self);
-                    }
-                    if (self.on_param_form_closed) {
-                        self.on_param_form_closed.call(self, self);
-                    }
-                }
-            })
+        create_param_form: function(container) {
+            this._create_form('param', container);
         },
 
         close_param_form: function() {
-            this._close_form('param_form');
+            this._close_form('param');
         },
 
         print: function(p1, p2) {
@@ -6165,8 +6471,8 @@
                 this.param_form.tabindex += len;
             }
             for (i = 0; i < len; i++) {
-                new DBInput(params[i], i + tabindex, cols[Math.floor(i % options.col_count)],
-                    options.label_on_top, options.label_width);
+                new DBInput(params[i], i + tabindex,
+                    cols[Math.floor(i % options.col_count)], options);
             }
         }
     });
@@ -6309,11 +6615,11 @@
             if (this.owner._dataset && this.owner._dataset.length) {
                 return this.owner._dataset[this.owner._get_rec_no()];
             } else {
+                var mess = language.value_in_empty_dataset.replace('%s', this.owner.item_name);
                 if (this.owner) {
-                    this.owner.warning('An error occurred while reading or writing to an empty dataset.');
-                    //~ this.owner.warning('Ошибка при чтении или записи в пустой набор данных. Обратитесь в тех.поддержку.');
+                    this.owner.warning(mess);
                 }
-                throw language.value_in_empty_dataset.replace('%s', this.owner.item_name);
+                throw mess
             }
         },
 
@@ -6369,8 +6675,8 @@
             var result = "",
                 error = "";
             try {
-                result = this.get_value();
-                if (result !== null) {
+                if (this.data !== null) {
+                    result = this.value;
                     switch (this.data_type) {
                         case consts.TEXT:
                             break;
@@ -6402,9 +6708,10 @@
                             }
                             break;
                     }
-                } else {
-                    result = "";
                 }
+                //~ } else {
+                    //~ result = "";
+                //~ }
             } catch (e) {
                 result = '';
                 console.error(e);
@@ -7111,7 +7418,7 @@
         valid_char_code: function(code) {
             var ch = String.fromCharCode(code),
                 isDigit = code >= 48 && code <= 57,
-                decPoint = ch === '.' || ch === settings.DECIMAL_POINT || ch === settings.MON_DECIMAL_POINT,
+                decPoint = ch === '.' || ch === locale.DECIMAL_POINT || ch === locale.MON_DECIMAL_POINT,
                 sign = ch === '+' || ch === '-',
                 data_type = this.get_lookup_data_type();
             if (data_type === consts.INTEGER) {
@@ -7136,17 +7443,17 @@
         },
 
         str_to_date: function(str) {
-            return this.format_string_to_date(str, settings.D_FMT);
+            return this.format_string_to_date(str, locale.D_FMT);
         },
 
         str_to_datetime: function(str) {
-            return this.format_string_to_date(str, settings.D_T_FMT);
+            return this.format_string_to_date(str, locale.D_T_FMT);
         },
 
         str_to_float: function(text) {
             var result;
-            text = text.replace(settings.DECIMAL_POINT, ".")
-            text = text.replace(settings.MON_DECIMAL_POINT, ".")
+            text = text.replace(locale.DECIMAL_POINT, ".")
+            text = text.replace(locale.MON_DECIMAL_POINT, ".")
             result = parseFloat(text);
             if (isNaN(result)) {
                 throw "invalid float value";
@@ -7158,20 +7465,20 @@
             var result = '';
             if (value) {
                 result = $.trim(val);
-                if (settings.MON_THOUSANDS_SEP) {
-                    result = result.replace(settings.MON_THOUSANDS_SEP, '');
+                if (locale.MON_THOUSANDS_SEP) {
+                    result = result.replace(locale.MON_THOUSANDS_SEP, '');
                 }
-                if (settings.CURRENCY_SYMBOL) {
-                    result = $.trim(result.replace(settings.CURRENCY_SYMBOL, ''));
+                if (locale.CURRENCY_SYMBOL) {
+                    result = $.trim(result.replace(locale.CURRENCY_SYMBOL, ''));
                 }
-                if (settings.POSITIVE_SIGN) {
-                    result = result.replace(settings.POSITIVE_SIGN, '');
+                if (locale.POSITIVE_SIGN) {
+                    result = result.replace(locale.POSITIVE_SIGN, '');
                 }
-                if (settings.NEGATIVE_SIGN && result.indexOf(settings.NEGATIVE_SIGN) !== -1) {
-                    result = result.replace(settings.NEGATIVE_SIGN, '')
+                if (locale.NEGATIVE_SIGN && result.indexOf(locale.NEGATIVE_SIGN) !== -1) {
+                    result = result.replace(locale.NEGATIVE_SIGN, '')
                     result = '-' + result
                 }
-                result = $.trim(result.replace(settings.MON_DECIMAL_POINT, '.'));
+                result = $.trim(result.replace(locale.MON_DECIMAL_POINT, '.'));
                 result = parseFloat(result);
             }
             return result;
@@ -7191,7 +7498,7 @@
                 i,
                 result = '';
             if (value || value === 0) {
-                str = ('' + value.toFixed(6)).replace(".", settings.DECIMAL_POINT);
+                str = ('' + value.toFixed(6)).replace(".", locale.DECIMAL_POINT);
                 i = str.length - 1;
                 for (; i >= 0; i--) {
                     if ((str[i] === '0') && (result.length === 0)) {
@@ -7200,7 +7507,7 @@
                         result = str[i] + result;
                     }
                 }
-                if (result.slice(result.length - 1) === settings.DECIMAL_POINT) {
+                if (result.slice(result.length - 1) === locale.DECIMAL_POINT) {
                     result = result + '0';
                 }
             }
@@ -7209,7 +7516,7 @@
 
         date_to_str: function(value) {
             if (value) {
-                return this.format_date_to_string(value, settings.D_FMT);
+                return this.format_date_to_string(value, locale.D_FMT);
             }
             else {
                 return '';
@@ -7218,7 +7525,7 @@
 
         datetime_to_str: function(value) {
             if (value) {
-                return this.format_date_to_string(value, settings.D_T_FMT);
+                return this.format_date_to_string(value, locale.D_T_FMT);
             }
             else {
                 return '';
@@ -7236,7 +7543,7 @@
                 result = '';
 
             if (value || value === 0) {
-                result = value.toFixed(settings.FRAC_DIGITS);
+                result = value.toFixed(locale.FRAC_DIGITS);
                 if (isNaN(result[0])) {
                     result = result.slice(1, result.length);
                 }
@@ -7254,71 +7561,71 @@
                     result = d + result;
                     count += 1;
                     if ((count % 3 === 0) && (i !== len - 1)) {
-                        result = settings.MON_THOUSANDS_SEP + result;
+                        result = locale.MON_THOUSANDS_SEP + result;
                     }
                 }
                 if (dec) {
-                    result = result + settings.MON_DECIMAL_POINT + dec;
+                    result = result + locale.MON_DECIMAL_POINT + dec;
                 }
                 if (value < 0) {
-                    if (settings.N_SIGN_POSN === 3) {
-                        result = settings.NEGATIVE_SIGN + result;
-                    } else if (settings.N_SIGN_POSN === 4) {
-                        result = settings.result + settings.NEGATIVE_SIGN;
+                    if (locale.N_SIGN_POSN === 3) {
+                        result = locale.NEGATIVE_SIGN + result;
+                    } else if (locale.N_SIGN_POSN === 4) {
+                        result = settings.result + locale.NEGATIVE_SIGN;
                     }
                 } else {
-                    if (settings.P_SIGN_POSN === 3) {
-                        result = settings.POSITIVE_SIGN + result;
-                    } else if (settings.P_SIGN_POSN === 4) {
-                        result = result + settings.POSITIVE_SIGN;
+                    if (locale.P_SIGN_POSN === 3) {
+                        result = locale.POSITIVE_SIGN + result;
+                    } else if (locale.P_SIGN_POSN === 4) {
+                        result = result + locale.POSITIVE_SIGN;
                     }
                 }
-                if (settings.CURRENCY_SYMBOL) {
+                if (locale.CURRENCY_SYMBOL) {
                     if (value < 0) {
-                        if (settings.N_CS_PRECEDES) {
-                            if (settings.N_SEP_BY_SPACE) {
-                                result = settings.CURRENCY_SYMBOL + ' ' + result;
+                        if (locale.N_CS_PRECEDES) {
+                            if (locale.N_SEP_BY_SPACE) {
+                                result = locale.CURRENCY_SYMBOL + ' ' + result;
                             } else {
-                                result = settings.CURRENCY_SYMBOL + result;
+                                result = locale.CURRENCY_SYMBOL + result;
                             }
                         } else {
-                            if (settings.N_SEP_BY_SPACE) {
-                                result = result + ' ' + settings.CURRENCY_SYMBOL;
+                            if (locale.N_SEP_BY_SPACE) {
+                                result = result + ' ' + locale.CURRENCY_SYMBOL;
                             } else {
-                                result = result + settings.CURRENCY_SYMBOL;
+                                result = result + locale.CURRENCY_SYMBOL;
                             }
                         }
                     } else {
-                        if (settings.P_CS_PRECEDES) {
-                            if (settings.P_SEP_BY_SPACE) {
-                                result = settings.CURRENCY_SYMBOL + ' ' + result;
+                        if (locale.P_CS_PRECEDES) {
+                            if (locale.P_SEP_BY_SPACE) {
+                                result = locale.CURRENCY_SYMBOL + ' ' + result;
                             } else {
-                                result = settings.CURRENCY_SYMBOL + result;
+                                result = locale.CURRENCY_SYMBOL + result;
                             }
                         } else {
-                            if (settings.P_SEP_BY_SPACE) {
-                                result = result + ' ' + settings.CURRENCY_SYMBOL;
+                            if (locale.P_SEP_BY_SPACE) {
+                                result = result + ' ' + locale.CURRENCY_SYMBOL;
                             } else {
-                                result = result + settings.CURRENCY_SYMBOL;
+                                result = result + locale.CURRENCY_SYMBOL;
                             }
                         }
                     }
                 }
                 if (value < 0) {
-                    if (settings.N_SIGN_POSN === 0 && settings.NEGATIVE_SIGN) {
-                        result = settings.NEGATIVE_SIGN + '(' + result + ')';
-                    } else if (settings.N_SIGN_POSN === 1) {
-                        result = settings.NEGATIVE_SIGN + result;
-                    } else if (settings.N_SIGN_POSN === 2) {
-                        result = result + settings.NEGATIVE_SIGN;
+                    if (locale.N_SIGN_POSN === 0 && locale.NEGATIVE_SIGN) {
+                        result = locale.NEGATIVE_SIGN + '(' + result + ')';
+                    } else if (locale.N_SIGN_POSN === 1) {
+                        result = locale.NEGATIVE_SIGN + result;
+                    } else if (locale.N_SIGN_POSN === 2) {
+                        result = result + locale.NEGATIVE_SIGN;
                     }
                 } else {
-                    if (settings.P_SIGN_POSN === 0 && settings.POSITIVE_SIGN) {
-                        result = settings.POSITIVE_SIGN + '(' + result + ')';
-                    } else if (settings.P_SIGN_POSN === 1) {
-                        result = settings.POSITIVE_SIGN + result;
-                    } else if (settings.P_SIGN_POSN === 2) {
-                        result = result + settings.POSITIVE_SIGN;
+                    if (locale.P_SIGN_POSN === 0 && locale.POSITIVE_SIGN) {
+                        result = locale.POSITIVE_SIGN + '(' + result + ')';
+                    } else if (locale.P_SIGN_POSN === 1) {
+                        result = locale.POSITIVE_SIGN + result;
+                    } else if (locale.P_SIGN_POSN === 2) {
+                        result = result + locale.POSITIVE_SIGN;
                     }
                 }
             }
@@ -7463,6 +7770,7 @@
             }
             if (this.field_name) {
                 field = this.owner._field_by_ID(this.field_name);
+                field.required = false;
                 this.field = this.create_field(field);
                 if (this.field.lookup_values && (typeof this.field.lookup_values === "number")) {
                     this.field.lookup_values = this.owner.task.lookup_lists[this.field.lookup_values];
@@ -7884,6 +8192,7 @@
                 $li,
                 $lis,
                 nodes;
+            clone.on_field_get_text = this.item.on_field_get_text;
             this.collect_nodes(clone);
             this.$element.empty();
             nodes = this.child_nodes[this.options.parent_of_root_value + ''];
@@ -8037,82 +8346,30 @@
         constructor: DBTable,
 
         init: function(item, container, options, master_table) {
-            var self = this,
-                default_options = {
-                    table_class: undefined,
-                    height: undefined,
-                    row_count: undefined,
-                    fields: [],
-                    column_width: {},
-                    title_word_wrap: false,
-                    row_line_count: 1,
-                    expand_selected_row: 0,
-                    selections: undefined,
-                    select_all: true,
-                    selection_limit: undefined,
-                    tabindex: 0,
-                    striped: true,
-                    dblclick_edit: true,
-                    on_click: undefined,
-                    on_dblclick: undefined,
-                    on_pagecount_update: undefined,
-                    on_page_changed: undefined,
-                    editable: false,
-                    keypress_edit: true,
-                    editable_fields: undefined,
-                    selected_field: undefined,
-                    append_on_lastrow_keydown: false,
-                    sortable: false,
-                    sort_fields: undefined,
-                    sort_add_primary: false,
-                    row_callback: undefined,
-                    title_callback: undefined,
-                    summary_fields: undefined,
-                    show_footer: undefined,
-                    show_paginator: true,
-                    paginator_container: undefined,
-                    freeze_count: 0,
-                    hide_y_scroll: true
-                };
+            var self = this;
 
             if (!container.length) {
                 return;
             }
-
             this.item = item;
-            if (!this.item.paginate) {
-                default_options.striped = false;
-            }
             this.id = item.task.gridId++;
             this.$container = container;
             this.$container.css('position', 'relative');
             this.master_table = master_table;
-            this.options = $.extend({}, default_options, options);
-            if (!this.options.height && !this.options.row_count) {
-                this.options.height = 480;
-            }
-            if (this.options.row_line_count < 1) {
-                this.options.row_line_count = 1;
-            }
-            if (this.item.master) {
-                this.options.select_all = false;
-            }
-            if (this.options.summary_fields && this.item.paginate) {
-                this.options.show_footer = true
-            }
+
             this.editMode = false;
             this._sorted_fields = [];
             this._multiple_sort = false;
-            this.on_dblclick = this.options.on_dblclick;
-            this.init_selections();
             this.page = 0;
             this.recordCount = 0;
             this.cellWidths = {};
-            this.autoFieldWidth = true;
+            this.auto_field_width = true;
             this.scrollLeft = 0;
-            this.fieldWidthUpdated = false;
+            this.field_width_updated = false;
 
-            this.initFields();
+            this.init_options(options);
+            this.init_selections();
+            this.init_fields();
 
             this.$element = $('<div class="dbtable">');
 
@@ -8141,7 +8398,7 @@
                         self.build();
                         self.sync_freezed();
                     },
-                    100
+                    50
                 );
             });
             this.$element.bind('destroyed', function() {
@@ -8157,13 +8414,156 @@
             this.sync_freezed();
 
             if (item._get_active()) {
-                setTimeout(function() {
-                        self.init_table();
-                        self.sync_freezed();
-                    },
-                    0
-                );
+                self.do_after_open();
             }
+        },
+
+        ids_to_field_names: function(ids) {
+            var i,
+                field,
+                result;
+            if (ids && ids.length) {
+                result = [];
+                for (i = 0; i < ids.length; i++) {
+                    field = this.item._field_by_ID(ids[i]);
+                    if (field) {
+                        result.push(field.field_name);
+                    }
+                }
+            }
+            return result;
+        },
+
+        init_options: function(options) {
+            var default_options = {
+                table_class: undefined,
+                pagination: false,
+                multiselect: false,
+                height: undefined,
+                row_count: undefined,
+                fields: [],
+                column_width: {},
+                title_word_wrap: false,
+                row_line_count: 1,
+                expand_selected_row: 0,
+                selections: undefined,
+                select_all: true,
+                selection_limit: undefined,
+                tabindex: 0,
+                striped: true,
+                dblclick_edit: true,
+                on_click: undefined,
+                on_dblclick: undefined,
+                on_pagecount_update: undefined,
+                on_page_changed: undefined,
+                editable: false,
+                editable_fields: undefined,
+                keypress_edit: true,
+                selected_field: undefined,
+                append_on_lastrow_keydown: false,
+                sortable: false,
+                sort_fields: undefined,
+                sort_add_primary: false,
+                row_callback: undefined,
+                title_callback: undefined,
+                summary_fields: undefined,
+                show_footer: undefined,
+                show_paginator: true,
+                paginator_container: undefined,
+                freeze_count: 0,
+                hide_y_scroll: true
+            };
+
+            this.options = $.extend(true, {}, default_options, this.item.table_options);
+            this.options = $.extend({}, this.options, options);
+            if (this.options.pagination !== undefined) {
+                this.item._paginate = this.options.pagination;
+            }
+            if (!this.item._paginate) {
+                default_options.striped = false;
+            }
+            if (this.options.row_count) {
+                this.options.height = undefined;
+            }
+            if (!this.options.height && !this.options.row_count) {
+                this.options.height = 480;
+            }
+            if (this.options.row_line_count < 1) {
+                this.options.row_line_count = 0;
+                this.options.hide_y_scroll = false;
+            }
+            if (this.item.master) {
+                this.options.select_all = false;
+            }
+            if (this.options.summary_fields && this.options.summary_fields.length && this.item._paginate) {
+                this.options.show_footer = true
+            }
+            this.on_dblclick = this.options.on_dblclick;
+        },
+
+        init_fields: function() {
+            var i = 0,
+                len,
+                field,
+                fields = [];
+            this.fields = [];
+            if (this.options.fields.length) {
+                fields = this.options.fields
+            } else if (this.item.view_options.fields && this.item.view_options.fields.length) {
+                fields = this.item.view_options.fields;
+            } else if (!fields.length) {
+                this.item.each_field(function(f) {
+                    if (f.field_name !== f.owner._primary_key && f.field_name !== f.owner._deleted_flag) {
+                        fields.push(f.field_name);
+                    }
+                });
+            }
+            if (fields.length) {
+                len = fields.length;
+                for (i = 0; i < len; i++) {
+                    field = this.item.field_by_name(fields[i]);
+                    if (field) {
+                        this.fields.push(field);
+                    }
+                }
+            }
+            //~ this.options.editable = this.options.editable && !this.item.read_only;
+            if (this.options.editable) {
+                this.options.striped = false;
+            }
+            this.editableFields = [];
+            if (this.options.editable_fields) {
+                len = this.fields.length;
+                for (i = 0; i < len; i++) {
+                    if (!this.fields[i].read_only) {
+                        if (this.options.editable_fields.indexOf(this.fields[i].field_name) !== -1) {
+                            this.editableFields.push(this.fields[i]);
+                        }
+                    }
+                }
+            } else {
+                len = this.fields.length;
+                for (i = 0; i < len; i++) {
+                    if (!this.fields[i].read_only) {
+                        this.editableFields.push(this.fields[i]);
+                    }
+                }
+            }
+            this.initSelectedField();
+            this.colspan = this.fields.length;
+            if (this.item.selections) {
+                this.colspan += 1;
+            }
+        },
+
+        can_edit: function() {
+            if (this.item.read_only) {
+                return false;
+            }
+            if (this.item.master && !this.item.master.is_changing()) {
+                return false;
+            }
+            return this.options.editable;
         },
 
         get_freezed_fields: function(len) {
@@ -8220,6 +8620,7 @@
                 fields2,
                 valid_fields,
                 scroll_left,
+                title_height,
                 width;
             if (this.options.freeze_count) {
                 if (this.freezed_table) {
@@ -8258,6 +8659,7 @@
             }
             else {
                 if (this.master_table) {
+                    this.$outer_table.find('thead tr').height(this.master_table.$outer_table.find('thead tr').height());
                     for (i = 0; i < this.fields.length - 1; i++) {
                         field_name = this.fields[i].field_name;
                         cell_width = this.master_table.getCellWidth(field_name);
@@ -8279,6 +8681,9 @@
 
         init_selections: function() {
             var value;
+            if (this.options.multiselect && !(this.item.selections instanceof Array)) {
+                this.item.selections = [];
+            }
             if (this.options.selections && this.options.selections instanceof Array) {
                 this.item.selections = this.options.selections;
             }
@@ -8333,22 +8738,27 @@
         },
 
         selections_set_selected: function(value) {
-            var result = value,
+            var self = this,
+                result = value,
                 index,
-                all_selected = false;
+                clone,
+                selected = false;
             if (this.selections_can_change(value)) {
                 if (value) {
-                    this.item.selections.push(this.item._primary_key_field.value);
-                    all_selected = true;
+                    this.item.selections.add(this.item._primary_key_field.value);
+                    selected = true;
                 } else {
-                    index = this.item.selections.indexOf(this.item._primary_key_field.value);
-                    if (index !== -1) {
-                        this.item.selections.splice(index, 1);
-                        all_selected = this.selections_get_all_selected();
-                    }
+                    this.item.selections.remove(this.item._primary_key_field.value)
+                    clone = this.item.clone();
+                    clone.each(function(c) {
+                        if (self.item.selections.indexOf(c._primary_key_field.value) !== -1) {
+                            selected = true;
+                            return false;
+                        }
+                    })
                 }
                 this.selections_update_selected();
-                this.$element.find('input.multi-select-header').prop('checked', all_selected);
+                this.$element.find('input.multi-select-header').prop('checked', selected);
             }
             else {
                 result = false;
@@ -8400,7 +8810,7 @@
                     }
                 }
                 copy.open({fields: fields, limit: limit}, function() {
-                    var dict = {};
+                    var dict = {}, sel = [];
                     for (i = 0; i < self.item.selections.length; i++) {
                         dict[self.item.selections[i]] = true;
                     }
@@ -8414,8 +8824,10 @@
                         }
                     });
                     for (var id in dict) {
-                        self.item.selections.push(parseInt(id, 10));
+                        sel.push(parseInt(id, 10))
+                        //~ self.item.selections.add(parseInt(id, 10));
                     }
+                    self.item.selections = sel;
                     self.$table.find('td input.multi-select').prop('checked', value);
                     self.$element.find('input.multi-select-header').prop('checked',
                         self.selections_get_all_selected());
@@ -8439,12 +8851,9 @@
                 var index;
                 if (self.selections_can_change(value)) {
                     if (value) {
-                        self.item.selections.push(c._primary_key_field.value);
+                        self.item.selections.add(c._primary_key_field.value);
                     } else {
-                        index = self.item.selections.indexOf(c._primary_key_field.value);
-                        if (index !== -1) {
-                            self.item.selections.splice(index, 1);
-                        }
+                        self.item.selections.remove(c._primary_key_field.value);
                     }
                 }
                 else {
@@ -8459,54 +8868,6 @@
                 self.$table.find('td input.multi-select').prop('checked', value);
             }
             this.selections_update_selected();
-        },
-
-        initFields: function() {
-            var i = 0,
-                len,
-                field,
-                fields;
-            this.fields = [];
-            if (this.options.fields.length) {
-                fields = this.options.fields
-            } else {
-                fields = this.item.view_options.fields;
-            }
-            if (fields.length) {
-                len = fields.length;
-                for (; i < len; i++) {
-                    field = this.item.field_by_name(fields[i]);
-                    if (field) {
-                        this.fields.push(field);
-                    }
-                }
-            }
-            this.options.editable = this.options.editable && !this.item.read_only;
-            if (this.options.editable) {
-                this.options.striped = false;
-            }
-            this.editableFields = [];
-            if (this.options.editable_fields) {
-                len = this.options.editable_fields.length;
-                for (i = 0; i < len; i++) {
-                    field = this.item.field_by_name(this.options.editable_fields[i])
-                    if (field && !field.read_only) {
-                        this.editableFields.push(field);
-                    }
-                }
-            } else {
-                len = this.fields.length;
-                for (i = 0; i < len; i++) {
-                    if (!this.fields[i].read_only) {
-                        this.editableFields.push(this.fields[i]);
-                    }
-                }
-            }
-            this.initSelectedField();
-            this.colspan = this.fields.length;
-            if (this.item.selections) {
-                this.colspan += 1;
-            }
         },
 
         initKeyboardEvents: function() {
@@ -8550,7 +8911,7 @@
                 '   </thead>' +
                 '   <tr>' +
                 '       <td id="top-td" style="padding: 0;" colspan=' + this.colspan + '>' +
-                '           <div class="overlay-div" style="height: 100px; width: 100%; overflow-y: auto; overflow-x: hidden;">' +
+                '           <div class="overlay-div" style="width: 100%; overflow-y: auto; overflow-x: hidden;">' +
                 '               <table class="inner-table" style="width: 100%"></table>' +
                 '           </div>' +
                 '       </td>' +
@@ -8566,14 +8927,15 @@
             this.$table = this.$element.find("table.inner-table");
             this.$head = this.$element.find("table.outer-table thead tr:first");
             this.$foot = this.$element.find("table.outer-table tfoot tr:first");
+            this.is_modal = this.$element.closest('.modal').length > 0;
 
-            if (this.item.paginate && this.options.hide_y_scroll) {
+            if (this.item._paginate && this.options.hide_y_scroll) {
                 this.$scroll_div.css('overflow-y', 'hidden');
             }
 
             this.$scroll_div.keydown(function(e) {
                 var code = (e.keyCode ? e.keyCode : e.which);
-                if (code == 32) {
+                if (code == 32 && !self.editing) {
                     e.preventDefault();
                 }
             })
@@ -8589,26 +8951,27 @@
                 this.$table.addClass("table-striped");
             }
 
-//            this.$table.on('mouseup dblclick', 'td', function(e) {
             this.$table.on('mousedown dblclick', 'td', function(e) {
-                var td = this;
+                var td = $(this);
                 if (this.nodeName !== 'TD') {
                     td = $(this).closest('td');
                 }
-                e.preventDefault();
-                e.stopPropagation();
-                self.clicked(e, td);
+                if (!(self.editing && td.find('input').length)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    self.clicked(e, td);
+                }
             });
 
             this.$element.on('mousewheel DOMMouseScroll', 'div.overlay-div, table.inner-table', function(e){
+                e.preventDefault();
+                e.stopPropagation();
                 if (e.originalEvent.wheelDelta > 0 || e.originalEvent.detail < 0) {
                     self.prior_record();
                 }
                 else {
                     self.next_record();
                 }
-                e.preventDefault();
-                e.stopPropagation();
             });
 
             this.$table.on('click', 'td', function(e) {
@@ -8619,13 +8982,20 @@
 
             this.$table.on('mouseenter mouseup', 'td div', function() {
                 var $this = $(this),
-                    tt = $this.data('tooltip');
+                    $td = $this.parent(),
+                    tt = $this.data('tooltip'),
+                    placement = 'right',
+                    container = this.closest('.dbtable');
+                self._remove_tooltip();
                 if (Math.abs(this.offsetHeight - this.scrollHeight) > 1 ||
                     Math.abs(this.offsetWidth - this.scrollWidth) > 1) {
-                    self._remove_tooltip()
-                    $this.tooltip({
-                            'placement': 'right',
-                            'container': 'body',
+                    if (self.$table.width() - ($this.position().left + $this.width()) < 200) {
+                        placement = 'left';
+                    }
+                    $td.tooltip({
+                            'placement': placement,
+                            'container': container,
+                            //~ 'container': 'body',
                             'title': $this.text()
                         })
                         .on('hide hidden show shown', function(e) {
@@ -8635,7 +9005,7 @@
                         })
                         .eq(0).tooltip('show');
                     try {
-                        $this.data('tooltip').$tip.addClass('table-tooltip');
+                        $td.data('tooltip').$tip.addClass('table-tooltip');
                     }
                     catch (e) {}
                 }
@@ -8653,10 +9023,7 @@
                 var $this = $(this);
                 e.stopPropagation();
                 e.preventDefault();
-                setTimeout(function() {
-                        $this.prop('checked', self.selections_get_selected());
-                    }, 0
-                );
+                $this.prop('checked', self.selections_get_selected());
             });
 
             this.$element.on('click', 'input.multi-select-header', function(e) {
@@ -8800,7 +9167,7 @@
 
                     $selection.appendTo(parent);
                 } else if (field_name && self.options.sortable &&
-                    (!self.options.sort_fields || self.options.sort_fields.indexOf(field_name) !== -1)) {
+                    (!self.options.sort_fields.length || self.options.sort_fields.indexOf(field_name) !== -1)) {
 
                     if (e.ctrlKey) {
                         if (!self._multiple_sort) {
@@ -8837,7 +9204,7 @@
                         }
                     }
                     self._sorted_fields = sorted_fields.slice();
-                    if (self.item.master || !self.item.paginate) {
+                    if (self.item.master || !self.item._paginate) {
                         self.item._sort(self._sorted_fields);
                     } else {
                         if (self.options.sort_add_primary) {
@@ -8875,13 +9242,14 @@
 
         _remove_tooltip: function() {
             try {
-                $('body > div.tooltip.table-tooltip').remove();
+                $('body').find('.tooltip.table-tooltip').remove();
             }
             catch (e) {}
         },
 
         calculate: function() {
             var i,
+                row_line_count,
                 $element,
                 $table,
                 row,
@@ -8891,9 +9259,13 @@
                 row_height,
                 elementHeight,
                 scrollDivHeight;
+            row_line_count  = this.options.row_line_count
+            if (!row_line_count) {
+                row_line_count = 1;
+            }
             if (this.master_table) {
                 this.row_count = this.master_table.row_count;
-                this.textHeight = this.master_table.textHeight;
+                this.text_height = this.master_table.text_height;
                 this.row_height = this.master_table.row_height;
                 this.selected_row_height = this.master_table.selected_row_height;
 
@@ -8904,8 +9276,8 @@
             $element = this.$element.clone()
                 .css("float", "left")
                 .css("position", "absolute")
-                .css("top", 0);
-                //.css("top", -1000),
+                //~ .css("top", 0);
+                .css("top", -1000);
             $element.width(this.$container.width());
             if (!$element.width()) {
                 $element.width($('body').width());
@@ -8922,9 +9294,10 @@
             for (i = 0; i < 10; i++) {
                 $table.append(row);
             }
+            $element.find('th > div > p').css('margin', 0);
             $('body').append($element);
             $td = $table.find('tr:last td');
-            this.textHeight = $td.find('div').height();
+            this.text_height = $td.find('div').height();
             row_height = $td.outerHeight(true);
             margin = row_height * 10 - $table.innerHeight();
             fix = Math.abs(Math.abs(margin) - 10); // fix for firebird
@@ -8932,35 +9305,46 @@
                 row_height += Math.round(fix);
                 margin = row_height * 10 - $table.innerHeight();
             }
-            this.row_height = row_height + (this.options.row_line_count - 1) * this.textHeight;
+            this.row_height = row_height + (row_line_count - 1) * this.text_height;
             this.selected_row_height = 0;
             elementHeight = $element.outerHeight();
             scrollDivHeight = $element.find('div.overlay-div').innerHeight();
             $element.remove();
-
-            this.$scroll_div.height(this.options.height - (elementHeight - scrollDivHeight) - $element.find('.paginator').outerHeight(true));
-            if (this.item.paginate) {
-                if (this.options.row_count) {
-                    this.row_count = this.options.row_count;
+            if (this.options.expand_selected_row) {
+                this.selected_row_height = row_height + (this.options.expand_selected_row - 1) * this.text_height;
+            }
+            if (this.options.row_count && this.item._paginate) {
+                this.row_count = this.options.row_count;
+                this.item._limit = this.options.row_count;
+                this.$scroll_div.height(this.row_height * this.options.row_count);
+                if (this.options.height) {
+                    this.$scroll_div.height(this.options.height - (elementHeight - scrollDivHeight) - $element.find('.paginator').outerHeight(true));
                 }
-                else {
+                return
+            }
+            this.$scroll_div.height(this.options.height - (elementHeight - scrollDivHeight) - $element.find('.paginator').outerHeight(true));
+            if (this.options.row_count) {
+                this.row_count = this.options.row_count;
+                this.$scroll_div.height(this.row_height * this.options.row_count);
+                if (this.options.expand_selected_row) {
+                    this.$scroll_div.height(this.row_height * (this.options.row_count - 1) + this.selected_row_height + margin);
+                }
+            }
+            if (this.item._paginate) {
+                if (!this.options.row_count) {
                     scrollDivHeight = this.$scroll_div.innerHeight() + margin;
                     if (this.options.expand_selected_row) {
-                        this.selected_row_height = row_height + (this.options.expand_selected_row - 1) * this.textHeight;
                         scrollDivHeight = this.$scroll_div.height() - this.selected_row_height + margin;
                     }
                     this.row_count = Math.floor(scrollDivHeight / this.row_height);
-                }
-                if (this.options.expand_selected_row) {
-                    this.row_count += 1;
-                }
-                if (this.row_count <= 0) {
-                    this.row_count = 1;
+                    if (this.options.expand_selected_row) {
+                        this.row_count += 1;
+                    }
+                    if (this.row_count <= 0) {
+                        this.row_count = 1;
+                    }
                 }
                 this.item._limit = this.row_count;
-            }
-            else if (this.options.row_count) {
-                this.$scroll_div.height(this.row_height * this.options.row_count);
             }
         },
 
@@ -8970,7 +9354,7 @@
                 $pager,
                 tabindex,
                 pagerWidth;
-            if (this.item.paginate && this.options.show_paginator) {
+            if (this.item._paginate && this.options.show_paginator) {
                 tabindex = -1;
                 $pagination = $(
                     '   <div id="pager" style="margin: 0 auto">' +
@@ -9067,19 +9451,18 @@
             var self = this,
                 fieldChanged = this.selectedField !== field;
             if (this.editableFields.indexOf(field) !== -1) {
-                if (fieldChanged && this.options.editable) {
-                    this.flushEditor();
-                    this.hideEditor();
+                if (fieldChanged && this.can_edit()) {
+                    this.flush_editor();
+                    this.hide_editor();
                 }
                 this.hide_selection();
                 this.selectedField = field
-                if (fieldChanged && this.options.editable && this.editMode) {
+                if (this.can_edit() && fieldChanged && this.editMode) {
                     clearTimeout(this.editorsTimeOut);
                     this.editorsTimeOut = setTimeout(function() {
-                            self.showEditor();
+                            self.show_editor();
                         },
                         75);
-                    //~ this.showEditor();
                 }
                 this.show_selection();
             }
@@ -9105,7 +9488,7 @@
             }
         },
 
-        hideEditor: function() {
+        hide_editor: function() {
             var width,
                 field,
                 $div,
@@ -9138,7 +9521,7 @@
             }
         },
 
-        flushEditor: function() {
+        flush_editor: function() {
             if (this.editor && this.editing) {
                 this.editor.change_field_text();
             }
@@ -9157,14 +9540,14 @@
             return true;
         },
 
-        showEditor: function() {
+        show_editor: function() {
             var width,
                 height,
                 editor,
                 $div,
                 $td,
                 $row = this.itemRow();
-            if ($row && !this.editing && this.selectedField &&
+            if ($row && this.can_edit() && !this.editing && this.selectedField &&
                 this.selected_field_visible() && this.item.record_count()) {
                 if (!this.item.is_changing()) {
                     this.item.edit();
@@ -9200,8 +9583,10 @@
                     width += $(this).outerWidth(true);
                 });
                 this.editor.$input.width(this.editor.$input.width() + this.editor.$controlGroup.width() - width);
-                this.editor.$controlGroup.find('.controls, .input-prepend, .input-append, input, btn')
-                    .outerHeight(height, true)
+                if (this.editor.$input.outerHeight(true) > height) {
+                    this.editor.$controlGroup.find('.controls, .input-prepend, .input-append, input, btn')
+                        .outerHeight(height, true)
+                }
 
                 this.editor.update();
 
@@ -9260,7 +9645,7 @@
             heading = $element.find("table.outer-table thead tr:first");
             heading.empty();
             if (this.item.selections) {
-                if (this.item.master) {
+                if (this.item.master || !this.item._paginate) {
                     if (this.selections_get_all_selected()) {
                         checked = 'checked';
                     }
@@ -9352,8 +9737,8 @@
                     '" style="overflow: hidden"><p>' + field.field_caption + '</p></div>');
                 cell = $('<th class="' + field.field_name + '" data-field_name="' + field.field_name + '"></th>').append(div);
                 if (!this.options.title_word_wrap) {
-                    div.css('height', this.textHeight);
-                    cell.css('height', this.textHeight);
+                    div.css('height', this.text_height);
+                    cell.css('height', this.text_height);
                 }
                 cellWidth = this.getCellWidth(field.field_name);
                 if (cellWidth && (i < this.fields.length - 1)) {
@@ -9362,7 +9747,7 @@
                 }
                 if (order_fields[field.field_name]) {
                     cell.find('p').append('<i class="' + order_fields[field.field_name] + '"></i>');
-                    cell.find('i').css('margin-left', 2)
+                    cell.find('i').css('margin-right', 2)
                 }
                 heading.append(cell);
             }
@@ -9429,14 +9814,14 @@
 
         init_table: function() {
             if (this.item._offset === 0) {
-                this.initFields();
+                this.init_fields();
                 this._sorted_fields = this.item._open_params.__order;
-                if (this.item.paginate) {
+                if (this.item._paginate) {
                     this.page = 0;
                     this.updatePageInfo();
                     this.updatePageCount();
                 } else {
-                    this.fieldWidthUpdated = false;
+                    this.field_width_updated = false;
                 }
             }
             this.refresh();
@@ -9450,6 +9835,25 @@
             return false;
         },
 
+        do_after_open: function() {
+            var self = this;
+            if (this.$table.is(':visible')) {
+                this.init_table();
+                this.sync_freezed();
+                this.calc_summary();
+            }
+            else {
+                setTimeout(
+                    function() {
+                        self.init_table();
+                        self.sync_freezed();
+                        self.calc_summary();
+                    },
+                    1
+                );
+            }
+        },
+
         update: function(state) {
             var recNo,
                 self = this,
@@ -9459,9 +9863,7 @@
             }
             switch (state) {
                 case consts.UPDATE_OPEN:
-                    this.init_table();
-                    this.sync_freezed();
-                    this.calc_summary();
+                    this.do_after_open();
                     break;
                 case consts.UPDATE_CANCEL:
                     this.refreshRow();
@@ -9509,8 +9911,11 @@
                 field_name,
                 field,
                 fields,
+                expanded = false,
+                search_field,
                 funcs;
-            if (this.options.summary_fields && this.item.paginate && this.page === 0) {
+            if (this.options.summary_fields && this.options.summary_fields.length &&
+                    this.item._paginate && this.page === 0) {
                 copy = this.item.copy({handlers: false, details: false});
                 fields = [];
                 funcs = {};
@@ -9525,21 +9930,35 @@
                         else {
                             funcs[field_name] = 'count';
                         }
+                        if (field.lookup_item) {
+                            expanded = true;
+                        }
+                    }
+                }
+                if (self.item._open_params.__search) {
+                    search_field = this.item._open_params.__search[0];
+                    fields.push(search_field);
+                    funcs[search_field] = 'count';
+                    field = this.item.field_by_name(search_field);
+                    if (field.lookup_item) {
+                        expanded = true;
                     }
                 }
                 if (fields.length) {
                     copy._where_list = self.item._open_params.__filters;
-                    copy.open({expanded: false, fields: fields, funcs: funcs},
+                    copy.open({expanded: expanded, fields: fields, funcs: funcs},
                         function() {
                             var text;
                             copy.each_field(function(f) {
-                                if (f.numeric_field()) {
-                                    text = f.display_text;
+                                if (f.field_name !== search_field) {
+                                    if (f.numeric_field()) {
+                                        text = f.display_text;
+                                    }
+                                    else {
+                                        text = f.data;
+                                    }
+                                    self.$foot.find('div.' + f.field_name).text(text);
                                 }
-                                else {
-                                    text = f.data;
-                                }
-                                self.$foot.find('div.' + f.field_name).text(text);
                             });
                         }
                     );
@@ -9640,30 +10059,33 @@
         do_on_edit: function(mouseClicked) {
             if (this.item.lookup_field) {
                 this.item.set_lookup_field_value();
-            } else if (!this.options.editable || (!this.editMode && mouseClicked)) {
+            } else if (!this.can_edit() || (!this.editMode && mouseClicked)) {
                 if (this.on_dblclick) {
                     this.on_dblclick.call(this.item, this.item);
                 } else if (this.options.dblclick_edit) {
                     this.item.edit_record();
                 }
-            } else if (!this.editMode && !mouseClicked && this.options.editable) {
-                this.showEditor();
+                else {
+                    this.show_editor();
+                }
+            } else if (this.can_edit() && !this.editMode && !mouseClicked) {
+                this.show_editor();
             }
         },
 
         clicked: function(e, td) {
             var rec,
                 field,
-                $row = $(td).parent();
-            if (this.options.editable) {
-                this.setSelectedField(this.item.field_by_name($(td).data('field_name')));
+                $row = td.parent();
+            if (this.can_edit()) {
+                this.setSelectedField(this.item.field_by_name(td.data('field_name')));
             }
             rec = this.item._dataset.indexOf($row.data("record"));
             if (this.editMode && rec !== this.item.rec_no) {
                 if (!this.item.is_edited()) {
                     this.item.edit();
                 }
-                this.flushEditor();
+                this.flush_editor();
                 this.item.post();
             }
             this.item._set_rec_no(rec);
@@ -9676,18 +10098,8 @@
         },
 
         hide_selection: function() {
-            this.remove_selection();
-            //~ if (this.master_table) {
-                //~ this.master_table.remove_selection();
-            //~ }
-            //~ if (this.freezed_table) {
-                //~ this.freezed_table.remove_selection();
-            //~ }
-        },
-
-        remove_selection: function() {
             if (this.selected_row) {
-                if (this.options.editable && this.selectedField) {
+                if (this.selectedField) {
                     this.selected_row.removeClass("selected-focused selected");
                     this.selected_row.find('td.' + this.selectedField.field_name)
                         .removeClass("field-selected-focused field-selected")
@@ -9699,29 +10111,15 @@
 
 
         show_selection: function() {
-            this.highlight_selection(this.is_focused());
-            //~ var focused;
-            //~ focused = this.is_focused() ||
-                //~ (this.master_table && this.master_table.is_focused()) ||
-                //~ (this.freezed_table && this.freezed_table.is_focused());
-            //~ this.highlight_selection(focused);
-            //~ if (this.master_table) {
-                //~ this.master_table.highlight_selection(focused);
-            //~ }
-            //~ if (this.freezed_table) {
-                //~ this.freezed_table.highlight_selection(focused);
-            //~ }
-        },
-
-        highlight_selection: function(focused) {
-            var selClassName = 'selected',
+            var focused = this.is_focused(),
+                selClassName = 'selected',
                 selFieldClassName = 'field-selected';
             if (focused) {
                 selClassName = 'selected-focused';
                 selFieldClassName = 'field-selected-focused';
             }
             if (this.selected_row) {
-                if (this.options.editable && this.selectedField) {
+                if (this.can_edit() && this.selectedField) {
                     this.selected_row.addClass(selClassName);
                     this.selected_row.find('td.' + this.selectedField.field_name)
                         .removeClass(selClassName)
@@ -9734,15 +10132,15 @@
 
         select_row: function($row) {
             var divs,
-                textHeight = this.textHeight;
+                textHeight = this.text_height;
             this.update_selected_row($row);
             this.hide_selection();
-            if (this.selected_row && this.options.expand_selected_row) {
+            if (this.options.row_line_count && this.selected_row && this.options.expand_selected_row) {
                 this.selected_row.find('tr, div').css('height', this.options.row_line_count * textHeight);
             }
             this.selected_row = $row;
             this.show_selection();
-            if (this.options.expand_selected_row) {
+            if (this.options.row_line_count && this.options.expand_selected_row) {
                 divs = this.selected_row.find('tr, div')
                 divs.css('height', '');
                 divs.css('height', this.options.expand_selected_row * textHeight);
@@ -9774,17 +10172,17 @@
             if (this.item.controls_enabled() && this.item.record_count() > 0) {
                 $row = this.itemRow();
                 rowChanged = !this.selected_row || (this.selected_row && $row && this.selected_row.get(0) !== $row.get(0));
-                if (rowChanged && this.options.editable) {
-                    this.hideEditor();
+                if (rowChanged && this.can_edit()) {
+                    this.hide_editor();
                 }
                 try {
                     this.select_row(this.itemRow());
                 } catch (e) {}
 
-                if (rowChanged && this.options.editable && this.editMode) {
+                if (rowChanged && this.can_edit() && this.editMode) {
                     clearTimeout(this.editorsTimeOut);
                     this.editorsTimeOut = setTimeout(function() {
-                            self.showEditor();
+                            self.show_editor();
                         },
                         75);
                 }
@@ -9808,7 +10206,7 @@
         next_record: function() {
             this.item.next();
             if (this.item.eof()) {
-                if (this.options.editable && this.options.append_on_lastrow_keydown) {
+                if (this.can_edit() && this.options.append_on_lastrow_keydown) {
                     this.item.append();
                 } else {
                     this.nextPage();
@@ -9837,13 +10235,16 @@
                     case 36:
                     case 38:
                     case 40:
+                        if (this.editing && code !== 38 && code !== 40) {
+                            return
+                        }
                         e.preventDefault();
-                        this.flushEditor();
-                        this.hideEditor();
+                        this.flush_editor();
+                        this.hide_editor();
                         if (code === 33) {
                             this.priorPage();
                         } else if (code === 34) {
-                            if (this.item.paginate && this.item.is_loaded) {
+                            if (this.item._paginate && this.item.is_loaded) {
                                 this.item.last();
                             } else {
                                 this.nextPage();
@@ -9859,12 +10260,12 @@
                         }
                         break;
                     case 37:
-                        if (this.options.editable && !this.editMode) {
+                        if (this.can_edit() && !this.editMode) {
                             this.priorField();
                         }
                         break;
                     case 39:
-                        if (this.options.editable && !this.editMode) {
+                        if (this.can_edit() && !this.editMode) {
                             this.nextField();
                         }
                         break;
@@ -9906,9 +10307,9 @@
             var self = this,
                 multi_sel,
                 code = e.which;
-            if (code > 32 && this.options.editable && this.options.keypress_edit && !this.editMode) {
+            if (code > 32 && this.can_edit() && this.options.keypress_edit && !this.editMode) {
                 if (this.selectedField && this.selectedField.valid_char_code(code)) {
-                    this.showEditor();
+                    this.show_editor();
                 }
             }
         },
@@ -9916,7 +10317,7 @@
         setPageNumber: function(value, callback) {
             var self = this;
 
-            if (!this.item.paginate || this.loading) {
+            if (!this.item._paginate || this.loading) {
                 return;
             }
             if (value < this.page_count || value === 0) {
@@ -9945,7 +10346,7 @@
         },
 
         reload: function(callback) {
-            if (this.item.paginate) {
+            if (this.item._paginate) {
                 this.setPageNumber(this.page, callback);
             } else {
                 this.open(callback);
@@ -9993,7 +10394,7 @@
         },
 
         firstPage: function(callback) {
-            if (this.item.paginate) {
+            if (this.item._paginate) {
                 this.setPageNumber(0, callback);
             } else {
                 this.item.first();
@@ -10003,7 +10404,7 @@
         nextPage: function(callback) {
             var lines,
                 clone;
-            if (this.item.paginate) {
+            if (this.item._paginate) {
                 if (!this.item.is_loaded) {
                     this.setPageNumber(this.page + 1, callback);
                 }
@@ -10025,7 +10426,7 @@
         priorPage: function(callback) {
             var lines,
                 clone;
-            if (this.item.paginate) {
+            if (this.item._paginate) {
                 if (this.page > 0) {
                     this.setPageNumber(this.page - 1, callback);
                 } else {
@@ -10048,7 +10449,7 @@
 
         lastPage: function(callback) {
             var self = this;
-            if (this.item.paginate) {
+            if (this.item._paginate) {
                 this.item.total_records(function(count) {
                     self.recordCount = count;
                     self.page_count = Math.ceil(count / self.row_count);
@@ -10096,8 +10497,8 @@
                 dataStr = 'data-field_name="' + columnName + '"',
                 tdStyleStr = 'style="text-align:' + align + ';overflow: hidden',
                 divStyleStr = 'style="overflow: hidden';
-            if (this.textHeight) {
-                divStyleStr += '; height: ' + this.options.row_line_count * this.textHeight + 'px; width: auto';
+            if (this.text_height && this.options.row_line_count) {
+                divStyleStr += '; height: ' + this.options.row_line_count * this.text_height + 'px; width: auto';
             }
             if (setFieldWidth && cellWidth && (index < this.fields.length - 1)) {
                 tdStyleStr += '; width: ' + cellWidth + 'px';
@@ -10119,8 +10520,8 @@
                 text,
                 rowStr,
                 checked = '',
-                setFieldWidth = !this.autoFieldWidth ||
-                (this.autoFieldWidth && this.fieldWidthUpdated);
+                setFieldWidth = !this.auto_field_width ||
+                (this.auto_field_width && this.field_width_updated);
             len = this.fields.length;
             rowStr = '';
             if (this.item.selections) {
@@ -10300,12 +10701,12 @@
                     is_focused = this.editor.$input.is(':focus');
                 }
                 editable_val = this.editor.$input.value;
-                this.hideEditor();
+                this.hide_editor();
             }
 
             container.css("position", "absolute")
-                .css("top", 0)
-//                .css("top", -1000)
+                //~ .css("top", 0)
+                .css("top", -1000)
                 .width(this.getElementWidth(this.$element));
             $('body').append(container);
             this.$element.detach();
@@ -10324,7 +10725,7 @@
             }
 
             row = this.$table.find("tr:first");
-            if (this.autoFieldWidth && !this.fieldWidthUpdated) {
+            if (this.auto_field_width && !this.field_width_updated) {
                 this.$table.css('table-layout', 'auto');
                 this.$outer_table.css('table-layout', 'auto');
                 tmpRow = '<tr>'
@@ -10360,10 +10761,10 @@
                 this.fill_footer(container);
                 this.set_saved_width(row);
                 if (this.item.record_count() > 0 && is_visible) {
-                    this.fieldWidthUpdated = true;
+                    this.field_width_updated = true;
                 }
                 tmpRow.remove();
-                if (this.fieldWidthUpdated) {
+                if (this.field_width_updated) {
                     this.refresh(false);
                 }
             } else {
@@ -10386,16 +10787,16 @@
             if (is_focused) {
                 this.focus();
             }
-            if (this.options.editable && this.editMode && this.editor) {
-                this.showEditor();
+            if (this.can_edit() && this.editMode && this.editor) {
+                this.show_editor();
                 this.editor.$input.value = editable_val;
             }
         },
 
         build: function() {
             var scroll_top = this.$scroll_div.scrollTop();
-            this.initFields();
-            this.fieldWidthUpdated = false;
+            this.init_fields();
+            this.field_width_updated = false;
             this.refresh();
             this.syncColWidth();
             this.$scroll_div.scrollTop(scroll_top);
@@ -10446,7 +10847,10 @@
                 field_type,
                 inpit_btn_class = '';
             if ($('body').css('font-size') === '12px') {
-                inpit_btn_class = ' small-btn'
+                inpit_btn_class = ' btn12'
+            }
+            else {
+                inpit_btn_class = ' btn14'
             }
             if (!field) {
                 return;
@@ -10464,22 +10868,14 @@
             }
             if (field.get_lookup_data_type() === consts.BOOLEAN) {
                 $input = $('<input>')
-                    .attr("id", field.field_name)
                     .attr("type", "checkbox")
-                    //~ .attr("tabindex", tabIndex + "")
                     .click(function(e) {
                         self.field.value = !self.field.value;
                     });
             } else if (field.get_lookup_data_type() === consts.BLOB) {
-                $input = $('<textarea>')
-                    .attr("id", field.field_name)
-                    //~ .attr("tabindex", tabIndex + "")
-                    .innerHeight(70);
+                $input = $('<textarea>').innerHeight(70);
             } else {
-                $input = $('<input>')
-                    .attr("id", field.field_name)
-                    .attr("type", "text")
-                    //~ .attr("tabindex", tabIndex + "");
+                $input = $('<input>').attr("type", "text")
             }
             if (tabIndex) {
                 $input.attr("tabindex", tabIndex + "");
@@ -10490,7 +10886,10 @@
             }
             this.$input = $input;
             this.$input.addClass(field.field_name)
-            this.$input.addClass('dbinput')
+            if (task.old_forms) {
+                this.$input.attr("id", field.field_name);
+            }
+            this.$input.addClass('dbinput');
             this.$input.data('dbinput', this);
             this.$input.focus(function(e) {
                 self.focusIn(e);
@@ -10498,6 +10897,9 @@
             this.$input.blur(function(e) {
                 self.focusOut();
             });
+            this.$input.on('input', (function(e) {
+                self.input(e);
+            }));
             this.$input.mousedown(function(e) {
                 self.mouseIsDown = true;
             });
@@ -10614,6 +11016,9 @@
             }
             if (this.label) {
                 this.$controlGroup.append($label);
+                if (!this.label_width) {
+                    this.$controlGroup.addClass('label-size' + this.label_size);
+                }
             }
             this.$controlGroup.append($controls);
 
@@ -10760,6 +11165,7 @@
                 }
                 this.$input.attr('placeholder', placeholder);
                 this.updateState(true);
+                this.changed = false;
             }
             if (state === consts.UPDATE_CLOSE) {
                 this.$input.val('');
@@ -10772,12 +11178,6 @@
             if (this.field.lookup_item && !this.field.enable_typeahead && !(code === 229 || code === 9 || code == 8)) {
                 e.preventDefault();
             }
-            if (e.ctrlKey === true) {
-                if (code !== 67 && code !== 86 && code !== 88 && code != 90 &&
-                    code != 8 && code != 37 && code != 39) { // Ctrl-V , C, X, Z, backspace, left arrow, right arrow
-                    e.preventDefault();
-                }
-            }
             if (code === 9) {
                 if (this.grid && this.grid.editMode) {
                     e.preventDefault();
@@ -10788,6 +11188,10 @@
                     }
                 }
             }
+        },
+
+        input: function(e) {
+            this.changed = true;
         },
 
         keyup: function(e) {
@@ -10807,8 +11211,8 @@
                         if (!this.grid.item.is_changing()) {
                             this.grid.item.edit();
                         }
-                        this.grid.flushEditor();
-                        this.grid.hideEditor();
+                        this.grid.flush_editor();
+                        this.grid.hide_editor();
                         if (this.grid.item.is_changing()) {
                             this.grid.item.post();
                         }
@@ -10824,15 +11228,20 @@
                 }
             } else if (code === 27) {
                 if (this.grid && this.grid.editMode) {
-                    e.stopPropagation();
                     e.preventDefault();
+                    e.stopPropagation();
                     this.grid.item.cancel();
-                    this.grid.hideEditor();
+                    this.grid.hide_editor();
                 } else if (this.field.lookup_values) {
                     if (this.$input.parent().hasClass('open')) {
                         this.$input.parent().removeClass('open');
                         e.stopPropagation();
                     }
+                }
+                else if (this.changed) {
+                    this.update();
+                    e.preventDefault();
+                    e.stopPropagation();
                 }
             }
         },
@@ -10851,17 +11260,18 @@
             var self = this,
                 format;
             if (this.field.data_type === consts.DATE) {
-                format = settings.D_FMT;
+                format = locale.D_FMT;
             } else if (this.field.data_type === consts.DATETIME) {
-                format = settings.D_T_FMT;
+                format = locale.D_T_FMT;
             }
 
-            this.$input.datepicker({
+            this.$input.datepicker(
+                {
                     weekStart: parseInt(language.week_start, 10),
                     format: format,
-                    daysMin: language.days_min,
-                    months: language.months,
-                    monthsShort: language.months_short,
+                    daysMin: language.days_min.slice(1, -1).split(','),
+                    months: language.months.slice(1, -1).split(','),
+                    monthsShort: language.months_short.slice(1, -1).split(','),
                     date: this.field.value
                 })
                 .on('show', function(e) {
@@ -10892,6 +11302,7 @@
 
         change_field_text: function() {
             var result = true,
+                data_type = this.field.data_type,
                 text;
             this.errorValue = undefined;
             this.error = undefined;
@@ -10916,6 +11327,7 @@
                                 this.$input.val(text);
                             }
                         }
+                        this.changed = false;
                     }
                 } catch (e) {
                     this.errorValue = text;
@@ -10953,15 +11365,22 @@
         focusOut: function(e) {
             var result = false;
 
+            if (!this.changed) {
+                if (this.field.field_kind !== consts.ITEM_FIELD || this.field.owner.rec_count) {
+                    this.$input.val(this.field.get_display_text());
+                }
+                return;
+            }
             if (this.grid && this.grid.editMode) {
                 if (this.grid.item.is_changing()) {
-                    this.grid.flushEditor();
+                    this.grid.flush_editor();
                     this.grid.item.post();
+                    this.grid.hide_editor();
                 }
             }
             if (this.field.data_type === consts.BOOLEAN) {
                 result = true;
-            } else if (!this.$input.is(':disabled') && this.change_field_text()) {
+            } else if (!this.grid && this.change_field_text()) {
                 if (this.$input.is(':visible')) {
                     this.$input.val(this.field.get_display_text());
                 }
@@ -11004,7 +11423,7 @@
     };
 
     /**********************************************************************/
-    /*                        DBTableInput class                           */
+    /*                        DBTableInput class                          */
     /**********************************************************************/
 
     DBTableInput.prototype = new DBAbstractInput();
@@ -11029,16 +11448,19 @@
     DBInput.prototype = new DBAbstractInput();
     DBInput.prototype.constructor = DBInput;
 
-    function DBInput(field, index, container, label_on_top,
-        label_width, label) {
+    function DBInput(field, index, container, options, label) {
         DBAbstractInput.call(this, field);
         if (this.field.owner && this.field.owner.edit_form &&
             this.field.owner.edit_form.hasClass("modal")) {
             this.$edit_form = this.field.owner.edit_form;
         }
         this.label = label;
-        this.label_width = label_width;
-        this.label_on_top = label_on_top
+        this.label_width = options.label_width;
+        this.label_on_top = options.label_on_top;
+        this.label_size = options.label_size;
+        if (!this.label_size) {
+            this.label_size = 3;
+        }
         if (!this.label) {
             this.label = this.field.field_caption;
         }

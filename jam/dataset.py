@@ -61,6 +61,12 @@ class DBField(object):
         self.filter = None
         self.on_field_get_text_called = None
 
+    def __setattr__(self, name, value):
+        if name != 'owner' and self.owner and self.owner.task_locked():
+            raise Exception(self.owner.task.lang['server_tree_immutable'] + \
+                ' Item: "%s", Field: "%s", Attribute: "%s"' % (self.owner.item_name, self.field_name, name))
+        super(DBField, self).__setattr__(name, value)
+
     def get_row(self):
         if self.owner._dataset:
             return self.owner._dataset[self.owner.rec_no]
@@ -596,6 +602,12 @@ class DBFilter(object):
             if self.filter_type == common.FILTER_RANGE:
                 self.field1 = FilterField(self, field, self.owner)
 
+    def __setattr__(self, name, value):
+        if name != 'owner' and self.owner and self.owner.task_locked():
+            raise Exception(self.owner.task.lang['server_tree_immutable'] + \
+                ' Item: "%s", Filter: "%s", attribute: "%s"' % (self.owner.item_name, self.filter_name, name))
+        super(DBFilter, self).__setattr__(name, value)
+
     def set_value(self, value):
         if not isinstance(value, FilterField):
             if self.filter_type == common.FILTER_RANGE:
@@ -1085,7 +1097,7 @@ class AbstractDataSet(object):
     keep_history = property (get_keep_history)
 
     def _copy(self, filters=True, details=True, handlers=True):
-        result = self.__class__(self.owner, self.item_name, self.item_caption, self.visible)
+        result = self.__class__(self.task, None, self.item_name, self.item_caption, self.visible)
         result.ID = self.ID
         result.item_name = self.item_name
         result.expanded = self.expanded
@@ -1111,7 +1123,7 @@ class AbstractDataSet(object):
         return result
 
     def clone(self, keep_filtered=True):
-        result = self.__class__(self.owner, self.item_name, self.item_caption, self.visible)
+        result = self.__class__(self.task, None, self.item_name, self.item_caption, self.visible)
         result.ID = self.ID
         result.item_name = self.item_name
         result.field_defs = self.field_defs
@@ -1557,7 +1569,7 @@ class AbstractDataSet(object):
             try:
                 fld = self._field_by_name(field_name)
             except:
-                raise RuntimeError('%s: change_order method arument error - %s' % (self.item_name, field))
+                raise RuntimeError('%s: order_by param error - %s' % (self.item_name, field))
             result.append([fld.ID, desc])
         return result
 
@@ -1637,12 +1649,12 @@ class AbstractDataSet(object):
                 params['__order'] = self.get_order_by_list(order_by)
             elif self._order_by_list:
                 params['__order'] = list(self._order_by_list)
-            elif self._order_by:
-                params['__order'] = self._order_by
-                for param in self._order_by:
-                    if not self.field_by_ID(param[0]):
-                        params['__order'] = [];
-                        break
+            #~ elif self._order_by:
+                #~ params['__order'] = self._order_by
+                #~ for param in self._order_by:
+                    #~ if not self.field_by_ID(param[0]):
+                        #~ params['__order'] = [];
+                        #~ break
             if funcs:
                 params['__funcs'] = funcs
             if group_by:
@@ -1991,7 +2003,6 @@ class MasterDataSet(AbstractDataSet):
         if details:
             for detail in self.details:
                 copy_table = detail._copy(filters, details, handlers)
-                copy_table.owner = result
                 copy_table.master = result
                 copy_table.expanded = detail.expanded
                 result.details.append(copy_table)
@@ -2000,6 +2011,7 @@ class MasterDataSet(AbstractDataSet):
                     setattr(result, copy_table.item_name, copy_table)
                 if not hasattr(result.details, copy_table.item_name):
                     setattr(result.details, copy_table.item_name, copy_table)
+                copy_table.owner = result
 
         return result
 

@@ -33,12 +33,6 @@ input.dropdown-toggle {
     width: 100%;
 }
 
-
-form {
-    margin-bottom: 10px;
-    padding: 9px;
-}
-
 .control-label.required:after {
     content: " *";
     color: red;
@@ -52,16 +46,51 @@ form {
     margin-top: 10px;
 }
 
-.modal {
-    width: 680px;
+.form-horizontal .control-group.label-size1 .control-label {
+    width: 80px;
 }
 
+.form-horizontal .control-group.label-size1 .controls {
+    margin-left: 100px;
+}
+
+.form-horizontal .control-group.label-size2 .control-label {
+    width: 120px;
+}
+
+.form-horizontal .control-group.label-size2 .controls {
+    margin-left: 140px;
+}
+
+.form-horizontal .control-group.label-size4 .control-label {
+    width: 240px;
+}
+
+.form-horizontal .control-group.label-size4 .controls {
+    margin-left: 260px;
+}
+
+.form-horizontal .control-group.label-size5 .control-label {
+    width: 320px;
+}
+
+.form-horizontal .control-group.label-size5 .controls {
+    margin-left: 340px;
+}
+
+.modal {
+    width: 600px;
+}
+
+.modal.edit-form,
+.form-frame.edit-form {
+    width: 600px;
+}
 
 .form-body .well,
 .modal-body .well {
     min-height: 20px;
     width: auto;
-    margin-top: 6px;
     margin-bottom: 6px;
     padding: 6px;
 }
@@ -112,25 +141,29 @@ form {
 }
 
 input.input-integer {
-  width: 28%;
+  width: 26%;
+/*
+  min-width: 80px;
+*/
+  max-width: 110px;
 }
 
 input.input-float {
-  width: 35%;
-  min-width: 110px;
+  width: 37%;
+  max-width: 146px;
 }
 
 input.input-currency {
-  width: 35%;
-  min-width: 110px;
+  width: 37%;
+  max-width: 146px;
 }
 
 .datetime-input-container {
-    width: 54%;
+    width: 64%;
 }
 
 .date-input-container {
-    width: 46%;
+    width: 52%;
 }
 
 .lookupfield-input-container {
@@ -153,10 +186,12 @@ input.input-datetime {
 
 input.input-date {
     min-width: 70px;
+    max-width: 110px;
 }
 
 input.input-datetime {
-    min-width: 100px;
+    min-width: 110px;
+    max-width: 150px;
 }
 
 input.input-text {
@@ -165,6 +200,19 @@ input.input-text {
 
 .input-blob {
   width: 80%;
+}
+
+.dbtable td input {
+    min-width: initial;
+}
+
+@media (max-width: 480px) {
+    .form-horizontal .control-group.label-size1 .controls,
+    .form-horizontal .control-group.label-size2 .controls,
+    .form-horizontal .control-group.label-size4 .controls,
+    .form-horizontal .control-group.label-size5 .controls {
+        margin-left: 0;
+    }
 }
 
 @media (max-width: 767px) {
@@ -327,8 +375,6 @@ input.input-text {
 }
 
 .accordion-toggle.history-toggle {
-    font-size: 13px;
-    background-color: #eaf5fb;
     outline: 0;
 }
 
@@ -345,10 +391,11 @@ input.input-text {
 .form-body {
   position: relative;
   overflow-y: auto;
+  padding: 14px 15px;
 }
 
-.form-frame .form-body {
-  padding: 14px 15px
+.no-border .form-body {
+    padding: 0;
 }
 
 .form-header {
@@ -449,12 +496,20 @@ input.input-text {
           background-clip: padding-box;
 }
 
+.form-frame.no-border {
+    border-style: none;
+}
+
 .modal-header {
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
     padding: 4px 15px;
+}
+
+.no-border .modal-header {
+    border-style: none;
 }
 
 .modal .modal-header {
@@ -466,24 +521,14 @@ input.input-text {
     align-self: flex-start
 }
 
-.header-history-btn,
-.header-refresh-btn,
-.header-selected {
-    margin-left: 10px;
-}
-
-.header-filter {
-    text-align: right;
-    flex-grow: 5;
-}
-
-.header-filter {
+.header-filters {
+    margin-right: 20px;
     flex-grow: 5;
 }
 
 .header-search {
     display: none;
-    flex-grow: 5;
+    flex-grow: 0;
 }
 
 #search-form {
@@ -491,12 +536,13 @@ input.input-text {
     padding: 0;
 }
 
-.form-title {
+.modal-title {
     margin: 10px 0;
 }
 
-.filter-text {
-    margin: 0;
+.filters-text-div {
+  font-weight: bold;
+  line-height: 20px;
 }
 
 .header-selected {
@@ -505,4 +551,14 @@ input.input-text {
 
 .flex-container {
     display: flex;
+}
+
+sup {
+    vertical-align: super;
+    font-size: smaller;
+}
+
+.header-btn {
+    padding: 3px 7px;
+    margin-left: 6px;
 }

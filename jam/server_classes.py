@@ -103,7 +103,7 @@ class ServerDataset(Dataset, SQL):
                     self.change_log.update(data)
 
     def add_detail(self, table):
-        detail = Detail(self, table.item_name, table.item_caption, table.table_name)
+        detail = Detail(self.task, self, table.item_name, table.item_caption, table.table_name)
         self.details.append(detail)
         detail.owner = self
         detail.init_fields()
@@ -113,21 +113,6 @@ class ServerDataset(Dataset, SQL):
         for table in self.details:
             if table.item_name == caption:
                 return table
-
-    def change_order(self, *fields):
-        self._order_by = []
-        for field in fields:
-            field_name = field
-            desc = False
-            if field[0] == '-':
-                desc = True
-                field_name = field[1:]
-            try:
-                fld = self._field_by_name(field_name)
-            except:
-                raise RuntimeError('%s: change_order method arument error - %s' % (self.item_name, field))
-            self._order_by.append([fld.ID, desc])
-        return self
 
     def get_record_count(self, params, safe=False):
         if safe and not self.can_view():
@@ -244,9 +229,9 @@ class ServerDataset(Dataset, SQL):
         return
 
 class Item(AbstrItem, ServerDataset):
-    def __init__(self, owner, name, caption, visible = True,
+    def __init__(self, task, owner, name, caption, visible = True,
             table_name='', view_template='', js_filename='', soft_delete=True):
-        AbstrItem.__init__(self, owner, name, caption, visible, js_filename=js_filename)
+        AbstrItem.__init__(self, task, owner, name, caption, visible, js_filename=js_filename)
         ServerDataset.__init__(self, table_name, soft_delete)
         self.item_type_id = None
         self.reports = []
@@ -271,7 +256,6 @@ class Param(DBField):
         self._value = None
         self._lookup_value = None
         setattr(owner, self.param_name, self)
-
 
     def system_field(self):
         return False
@@ -302,9 +286,9 @@ class Param(DBField):
 
 
 class Report(AbstrReport):
-    def __init__(self, owner, name='', caption='', visible = True,
+    def __init__(self, task, owner, name='', caption='', visible = True,
             table_name='', view_template='', js_filename=''):
-        AbstrReport.__init__(self, owner, name, caption, visible, js_filename=js_filename)
+        AbstrReport.__init__(self, task, owner, name, caption, visible, js_filename=js_filename)
         self.param_defs = []
         self.params = []
         self.template = view_template
@@ -390,13 +374,14 @@ class Report(AbstrReport):
 
 
     def copy(self):
-        result = self.__class__(self.owner, self.item_name, self.item_caption, self.visible,
+        result = self.__class__(self.task, None, self.item_name, self.item_caption, self.visible,
             '', self.template, '');
         result.on_before_generate = self.on_before_generate
         result.on_generate = self.on_generate
         result.on_after_generate = self.on_after_generate
         result.on_before_save_report = self.on_before_save_report
         result.on_parsed = self.on_parsed
+        result.on_convert_report = self.owner.on_convert_report
         result.param_defs = self.param_defs
         result.template_content = self.template_content.copy()
         result.template_name = self.template_name
@@ -409,8 +394,8 @@ class Report(AbstrReport):
     def print_report(self, param_values, url, ext=None, safe=False):
         if safe and not self.can_view():
             raise Exception(self.task.lang['cant_view'] % self.item_caption)
-        if not self.template_content:
-            self.parse_template()
+        #~ if not self.template_content:
+            #~ self.parse_template()
         copy_report = self.copy()
         copy_report.ext = ext
         return copy_report.generate(param_values, url, ext)
@@ -462,9 +447,9 @@ class Report(AbstrReport):
                     pass
             if ext and (ext != 'ods'):
                 converted = False
-                if self.owner.on_convert_report:
+                if self.on_convert_report:
                     try:
-                        self.owner.on_convert_report(self)
+                        self.on_convert_report(self)
                         converted = True
                     except:
                         pass
@@ -773,6 +758,10 @@ class Consts(object):
         self.RECORD_DETAILS_MODIFIED = common.RECORD_DETAILS_MODIFIED
         self.RECORD_DELETED = common.RECORD_DELETED
 
+class ConCounter(object):
+    def __init__(self):
+        self.val = 0
+
 
 class AbstractServerTask(AbstrTask):
     def __init__(self, app, name, caption, js_filename, db_type,
@@ -808,7 +797,8 @@ class AbstractServerTask(AbstrTask):
         self.con_pool_size = con_pool_size
         self.mp_pool = mp_pool
         self.persist_con = persist_con
-        self.persist_con_busy = 0
+        self.con_counter = ConCounter()
+        #~ self.persist_con_busy = 0
         if self.mp_pool:
             if self.persist_con:
                 self.create_connection_pool(1)
@@ -870,12 +860,12 @@ class AbstractServerTask(AbstrTask):
 
     def execute(self, command, params=None, call_proc=False, select=False):
         if self.mp_pool:
-            if self.persist_con and not self.persist_con_busy:
-                self.persist_con_busy += 1
+            if self.persist_con and not self.con_counter.val:
+                self.con_counter.val += 1
                 try:
                     result = self.execute_in_pool(command, params, call_proc, select)
                 finally:
-                    self.persist_con_busy -= 1
+                    self.con_counter.val -= 1
             else:
                 result = self.execute_in_mp_poll(command, params, call_proc, select)
         else:
@@ -1049,8 +1039,8 @@ class AdminTask(AbstractServerTask):
 
 
 class Group(AbstrGroup):
-    def __init__(self, owner, name, caption, view_template=None, js_filename=None, visible=True, item_type_id=0):
-        AbstrGroup.__init__(self, owner, name, caption, visible, item_type_id, js_filename)
+    def __init__(self, task, owner, name, caption, view_template=None, js_filename=None, visible=True, item_type_id=0):
+        AbstrGroup.__init__(self, task, owner, name, caption, visible, item_type_id, js_filename)
         self.ID = None
         self.view_template = view_template
         self.js_filename = js_filename
@@ -1058,24 +1048,24 @@ class Group(AbstrGroup):
             self.on_convert_report = None
 
     def add_catalog(self, name, caption, table_name, visible=True, view_template='', js_filename='', soft_delete=True):
-        result = Item(self, name, caption, visible, table_name, view_template, js_filename, soft_delete)
+        result = Item(self.task, self, name, caption, visible, table_name, view_template, js_filename, soft_delete)
         result.item_type_id = common.ITEM_TYPE
         return result
 
     def add_table(self, name, caption, table_name, visible=True, view_template='', js_filename='', soft_delete=True):
-        result = Item(self, name, caption, visible, table_name, view_template, js_filename, soft_delete)
+        result = Item(self.task, self, name, caption, visible, table_name, view_template, js_filename, soft_delete)
         result.item_type_id = common.TABLE_TYPE
         return result
 
     def add_report(self, name, caption, table_name, visible=True, view_template='', js_filename='', soft_delete=True):
-        result = Report(self, name, caption, visible, table_name, view_template, js_filename)
+        result = Report(self.task, self, name, caption, visible, table_name, view_template, js_filename)
         result.item_type_id = common.REPORT_TYPE
         return result
 
 
 class Detail(AbstrDetail, ServerDataset):
-    def __init__(self, owner, name, caption, table_name):
-        AbstrDetail.__init__(self, owner, name, caption, True)
+    def __init__(self, task, owner, name, caption, table_name):
+        AbstrDetail.__init__(self, task, owner, name, caption, True)
         ServerDataset.__init__(self, table_name)
         self.prototype = self.task.item_by_name(self.item_name)
         self.master = owner

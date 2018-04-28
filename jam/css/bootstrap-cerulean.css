@@ -1,4 +1,6 @@
+/*
 @import url(//fonts.googleapis.com/css?family=Telex);
+*/
 
 /*!
  * Bootstrap v2.3.2
@@ -6517,17 +6519,10 @@ jam.py css
 }
 */
 
-.table thead th {
-    color: #ffffff;
-    background-color: #034482;
-    background-image: -moz-linear-gradient(top,#04498c,#033c73);
-    background-image: -webkit-gradient(linear,0 0,0 100%,from(#04498c),to(#033c73));
-    background-image: -webkit-linear-gradient(top,#04498c,#033c73);
-    background-image: -o-linear-gradient(top,#04498c,#033c73);
-    background-image: linear-gradient(to bottom,#04498c,#033c73);
-    background-repeat: repeat-x;
-    border-color: #033464;
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff04498c',endColorstr='#ff033c73',GradientType=0);
+.table thead th,
+.table tfoot th {
+    color: #317eac;
+    background-color: #ffffff;
 }
 
 .table tbody tr.selected > td:not(.field-selected) {
@@ -6537,40 +6532,21 @@ jam.py css
 
 .table tbody tr.selected-focused > td:not(.field-selected-focused) {
   color: #ffffff;
-  background-color: #27a0e5;
-/*
-  background-image: -moz-linear-gradient(top, #2fa4e7, #1a99e2);
-  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#2fa4e7), to(#1a99e2));
-  background-image: -webkit-linear-gradient(top, #2fa4e7, #1a99e2);
-  background-image: -o-linear-gradient(top, #2fa4e7, #1a99e2);
-  background-image: linear-gradient(to bottom, #2fa4e7, #1a99e2);
-  background-repeat: repeat-x;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff2fa4e7', endColorstr='#ff1a99e2', GradientType=0);
-*/
+  background-color: #2fa4e7;
 }
 
 .table tbody td.field-selected {
     color: #ffffff;
-    background-color: #27a0e5;
+    background-color: #2fa4e7;
 }
 
 .table tbody td.field-selected-focused {
     color: #ffffff;
-    background-color: #034482;
-/*
-    background-image: -moz-linear-gradient(top,#04498c,#033c73);
-    background-image: -webkit-gradient(linear,0 0,0 100%,from(#04498c),to(#033c73));
-    background-image: -webkit-linear-gradient(top,#04498c,#033c73);
-    background-image: -o-linear-gradient(top,#04498c,#033c73);
-    background-image: linear-gradient(to bottom,#04498c,#033c73);
-    background-repeat: repeat-x;
-    border-color: #033464;
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff04498c',endColorstr='#ff033c73',GradientType=0);
-*/
+    background-color: #3b83c7
 }
 
-.input-append .btn.small-btn,
-.input-prepend .btn.small-btn {
+.input-append .btn.btn12,
+.input-prepend .btn.btn12 {
     padding: 1px 4px;
     line-height: 22px;
 }

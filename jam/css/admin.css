@@ -18,8 +18,12 @@
             border-radius: 4px;
 }
 
+form.row-fluid.form-horizontal {
+    margin: 0;
+}
+
 .modal {
-    width: 600px;
+    width: 560px;
 }
 
 .dbtree li.selected-focused > div span.tree-text {
@@ -29,22 +33,22 @@
 
 .table tbody tr.selected > td:not(.field-selected) {
     color: #333333;
-    background-color: #e5e5e5;
+    background-color: #e6f7ff;
 }
 
 .table tbody tr.selected-focused > td:not(.field-selected-focused) {
     color: #333333;
-    background-color: #d9edf7;
+    background-color: #cceeff;
 }
 
 .table tbody td.field-selected {
     color: #333333;
-    background-color: #cacaca;
+    background-color: #b3e6ff
 }
 
 .table tbody td.field-selected-focused {
     color: #333333;
-    background-color: #b4e3fa;
+    background-color: #99ddff;
 }
 
 .title-panel {
@@ -124,6 +128,10 @@
 
 #left-box, #right-box {
     border: solid 1px #eee;
+}
+
+.sys_langs-view #right-box {
+    border-style: none;
 }
 
 #left-box .nav-tabs > li > a {
@@ -224,4 +232,24 @@ p.search {
         padding: 0px;
         line-height: 50%;
     }
+}
+
+#options-box .control-label {
+    margin: 0;
+    margin-bottom: 5px;
+}
+
+.edit-title {
+    margin-bottom: 12px;
+}
+
+.lang-warning {
+    text-align: center;
+    font-size: 14px;
+    color: #0088cc;
+}
+
+p.lang-warning a {
+    color: #e41e06;
+    font-weight: bold;
 }

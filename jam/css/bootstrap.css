@@ -6171,27 +6171,27 @@ jam.py css
 */
 
 .table tbody tr.selected > td:not(.field-selected) {
-    background-color: #edf6fb;
+    background-color: #e6f7ff;
 }
 
 .table tbody tr.selected-focused > td:not(.field-selected-focused) {
-    background-color: #d9edf7;
+    background-color: #cceeff;
 }
 
 .table tbody td.field-selected {
-    background-color: #d9edf7;
+    background-color: #b3e6ff
 }
 
 .table tbody td.field-selected-focused {
-    background-color: #b4e3fa;
+    background-color: #99ddff;
 }
 
 .table th{
     color:#7F7F7F;
 }
 
-.input-append .btn.small-btn,
-.input-prepend .btn.small-btn {
+.input-append .btn.btn12,
+.input-prepend .btn.btn12 {
     padding: 1px 4px;
     line-height: 22px;
 }

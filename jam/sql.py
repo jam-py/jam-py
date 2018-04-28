@@ -165,28 +165,28 @@ class SQL(object):
                 user_info = None
                 if item.session:
                     user_info = item.session.get('user_info')
-                try:
-                    h_sql = item.task.__history_sql
-                except:
-                    h_fields = ['item_id', 'item_rec_id', 'operation', 'changes', 'user', 'date']
-                    table_name = item.task.history_item.table_name
-                    fields = []
-                    for f in h_fields:
-                        fields.append(item.task.history_item._field_by_name(f).db_field_name)
-                    h_fields = fields
-                    index = 0
-                    fields = []
-                    values = []
-                    index = 0
-                    for f in h_fields:
-                        index += 1
-                        fields.append('"%s"' % f)
-                        values.append('%s' % db_module.value_literal(index))
-                    fields = ', '.join(fields)
-                    values = ', '.join(values)
-                    h_sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
-                        (table_name, fields, values)
-                    item.task.__history_sql = h_sql
+                #~ try:
+                    #~ h_sql = item.task.__history_sql
+                #~ except:
+                h_fields = ['item_id', 'item_rec_id', 'operation', 'changes', 'user', 'date']
+                table_name = item.task.history_item.table_name
+                fields = []
+                for f in h_fields:
+                    fields.append(item.task.history_item._field_by_name(f).db_field_name)
+                h_fields = fields
+                index = 0
+                fields = []
+                values = []
+                index = 0
+                for f in h_fields:
+                    index += 1
+                    fields.append('"%s"' % f)
+                    values.append('%s' % db_module.value_literal(index))
+                fields = ', '.join(fields)
+                values = ', '.join(values)
+                h_sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
+                    (table_name, fields, values)
+                #~ item.task.__history_sql = h_sql
                 changes = None
                 user = None
                 item_id = item.ID
@@ -362,42 +362,47 @@ class SQL(object):
 
     def _convert_field_value(self, field, value, filter_type, db_module):
         data_type = field.data_type
-        if data_type == common.DATE:
-            if type(value) in string_types:
-                result = value
-            else:
-                result = value.strftime('%Y-%m-%d')
-            return db_module.cast_date(result)
-        elif data_type == common.DATETIME:
-            if type(value) in string_types:
-                result = value
-            else:
-                result = value.strftime('%Y-%m-%d %H:%M')
-            result = db_module.cast_datetime(result)
-            return result
-        elif data_type == common.INTEGER:
-            if type(value) == int or type(value) in string_types and value.isdigit():
-                return str(value)
-            else:
-                if filter_type and filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
-                    return value
+        if filter_type and filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
+            if data_type == common.FLOAT:
+                value = common.str_to_float(value)
+            elif data_type == common.CURRENCY:
+                value = common.str_to_currency(value)
+            if type(value) == float:
+                if int(value) == value:
+                    value = str(int(value)) + '.'
+                else:
+                    value = str(value)
+            return value
+        else:
+            if data_type == common.DATE:
+                if type(value) in string_types:
+                    result = value
+                else:
+                    result = value.strftime('%Y-%m-%d')
+                return db_module.cast_date(result)
+            elif data_type == common.DATETIME:
+                if type(value) in string_types:
+                    result = value
+                else:
+                    result = value.strftime('%Y-%m-%d %H:%M')
+                result = db_module.cast_datetime(result)
+                return result
+            elif data_type == common.INTEGER:
+                if type(value) == int or type(value) in string_types and value.isdigit():
+                    return str(value)
                 else:
                     return "'" + value + "'"
-        elif data_type == common.BOOLEAN:
-            if value:
-                return '1'
-            else:
-                return '0'
-        elif data_type == common.TEXT:
-            if filter_type and filter_type in [common.FILTER_CONTAINS, common.FILTER_STARTWITH, common.FILTER_ENDWITH]:
-                return value
-            else:
+            elif data_type == common.BOOLEAN:
+                if value:
+                    return '1'
+                else:
+                    return '0'
+            elif data_type == common.TEXT:
                 return "'" + value + "'"
-        elif data_type in (common.FLOAT, common.CURRENCY):
-            value = float(value)
-            return str(value)
-        else:
-            return value
+            elif data_type in (common.FLOAT, common.CURRENCY):
+                return str(float(value))
+            else:
+                return value
 
     def _escape_search(self, value, esc_char):
         result = ''
@@ -524,6 +529,7 @@ class SQL(object):
         if db_module is None:
             db_module = self.task.db_module
         order_list = query.get('__order', [])
+        #~ order_list.append([self._field_by_name(self._primary_key).ID, False])
         orders = []
         for order in order_list:
             field = self._field_by_ID(order[0])

@@ -6912,7 +6912,7 @@ label {
 
 .input-append .btn,
 .input-prepend .btn {
-  padding: 5px 14px;
+  padding: 5px 12px;
   margin-top: -1px;
 }
 
@@ -7134,8 +7134,8 @@ textarea[readonly] {
     background-color: #0b0c0e;
 }
 
-.input-append .btn.small-btn,
-.input-prepend .btn.small-btn {
+.input-append .btn.btn12,
+.input-prepend .btn.btn12 {
     padding: 2px 4px;
     line-height: 22px;
 }

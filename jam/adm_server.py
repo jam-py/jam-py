@@ -19,16 +19,19 @@ import jam.db.db_modules as db_modules
 from jam.server_classes import *
 from jam.events import get_events
 from jam.execute import execute_sql
+import jam.langs as langs
 from werkzeug._compat import iteritems, iterkeys, to_unicode, to_bytes, text_type, string_types
 
 def read_language(task):
     result = None
-    sql = 'SELECT F_LANGUAGE FROM SYS_PARAMS'
-    db_module = db_modules.get_db_module(task.db_type)
-    connection, (rec, error) = execute_sql(db_module,
-        task.db_database, task.db_user, task.db_password,
-        task.db_host, task.db_port, task.db_encoding,
-        None, sql, select=True)
+    con = task.create_connection()
+    try:
+        cursor = con.cursor()
+        cursor.execute('SELECT F_LANGUAGE FROM SYS_PARAMS')
+        rec = cursor.fetchall()
+    finally:
+        con.rollback()
+        con.close()
     if rec:
         result = rec[0][0]
     if not result:
@@ -42,11 +45,15 @@ def read_setting(task):
         sql += 'F_%s, ' % key
     sql = sql[:-2]
     sql += ' FROM SYS_PARAMS'
-    db_module = db_modules.get_db_module(task.db_type)
-    connection, (rec, error) = execute_sql(db_module,
-        task.db_database, task.db_user, task.db_password,
-        task.db_host, task.db_port, task.db_encoding,
-        None, sql, select=True)
+    result = None
+    con = task.create_connection()
+    try:
+        cursor = con.cursor()
+        cursor.execute(sql)
+        rec = cursor.fetchall()
+    finally:
+        con.rollback()
+        con.close()
     rec = rec[0]
     common.SETTINGS = {}
     for i, key in enumerate(keys):
@@ -60,18 +67,6 @@ def read_setting(task):
             common.SETTINGS[key] = common.DEFAULT_SETTINGS[key]
     for key in iterkeys(common.SETTINGS):
         common.__dict__[key] = common.SETTINGS[key]
-
-def get_value_list(str_list, order=False):
-
-    def getKey(item):
-        return item[1]
-
-    result = []
-    for i, s in enumerate(str_list):
-        result.append([i + 1, s])
-    if order:
-        result = sorted(result, key=getKey)
-    return result
 
 def write_setting(task):
     sql = 'UPDATE SYS_PARAMS SET '
@@ -89,57 +84,61 @@ def write_setting(task):
         else:
             sql += 'F_%s=%s, ' % (key, value)
     sql = sql[:-2]
-    db_module = db_modules.get_db_module(task.db_type)
-    connection, (rec, error) = execute_sql(db_module, \
-        task.db_database, task.db_user, task.db_password,
-        task.db_host, task.db_port, task.db_encoding, None, sql)
+    con = task.create_connection()
+    try:
+        cursor = con.cursor()
+        cursor.execute(sql)
+        con.commit()
+    except:
+        con.rollback()
+    finally:
+        con.close()
+
+def get_value_list(str_list, order=False):
+
+    def getKey(item):
+        return item[1]
+
+    result = []
+    for i, s in enumerate(str_list):
+        result.append([i + 1, s])
+    if order:
+        result = sorted(result, key=getKey)
+    return result
 
 def create_items(task):
     task.items = []
-    task.sys_catalogs = Group(task, 'catalogs', task.lang['catalogs'])
-    task.sys_tables = Group(task, 'tables', task.lang['details'], visible=False)
+    task.sys_catalogs = Group(task, task, 'catalogs', task.lang['catalogs'])
+    task.sys_tables = Group(task, task, 'tables', task.lang['details'], visible=False)
 
     task.sys_items = task.sys_catalogs.add_catalog('sys_items', 'Items', 'SYS_ITEMS')
     task.sys_fields = task.sys_tables.add_table('sys_fields', task.lang['fields'], 'SYS_FIELDS')
-
     task.sys_params = task.sys_catalogs.add_catalog('sys_params', '', 'SYS_PARAMS')
+    task.sys_langs = task.sys_catalogs.add_catalog('sys_langs', 'Languages', 'SYS_LANGS')
 
     task.sys_params.add_field(1, 'id', 'ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_params.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
     task.sys_params.add_field(3, 'f_safe_mode', task.lang['safe_mode'], common.BOOLEAN)
     task.sys_params.add_field(4, 'f_debugging', task.lang['debugging'], common.BOOLEAN, edit_visible=False)
-    task.sys_params.add_field(5, 'f_con_pool_size', task.lang['con_pool_size'], common.INTEGER, required=True)
-    task.sys_params.add_field(6, 'f_decimal_point', task.lang['decimal_point'], common.TEXT, size = 1)
-    task.sys_params.add_field(7, 'f_mon_decimal_point', task.lang['mon_decimal_point'], common.TEXT, size = 1)
-    task.sys_params.add_field(8, 'f_mon_thousands_sep', task.lang['mon_thousands_sep'], common.TEXT, size = 3)
-    task.sys_params.add_field(9, 'f_currency_symbol', task.lang['currency_symbol'], common.TEXT, size = 10)
-    task.sys_params.add_field(10, 'f_frac_digits', task.lang['frac_digits'], common.INTEGER)
-    task.sys_params.add_field(11, 'f_p_cs_precedes', task.lang['p_cs_precedes'], common.BOOLEAN)
-    task.sys_params.add_field(12, 'f_n_cs_precedes', task.lang['n_cs_precedes'], common.BOOLEAN)
-    task.sys_params.add_field(13, 'f_p_sep_by_space', task.lang['p_sep_by_space'], common.BOOLEAN)
-    task.sys_params.add_field(14, 'f_n_sep_by_space', task.lang['n_sep_by_space'], common.BOOLEAN)
-    task.sys_params.add_field(15, 'f_positive_sign', task.lang['positive_sign'], common.TEXT, size = 1)
-    task.sys_params.add_field(16, 'f_negative_sign', task.lang['negative_sign'], common.TEXT, size = 1)
-    task.sys_params.add_field(17, 'f_p_sign_posn', task.lang['p_sign_posn'], common.INTEGER)
-    task.sys_params.add_field(18, 'f_n_sign_posn', task.lang['n_sign_posn'], common.INTEGER)
-    task.sys_params.add_field(19, 'f_d_fmt', task.lang['d_fmt'], common.TEXT, size = 30)
-    task.sys_params.add_field(20, 'f_d_t_fmt', task.lang['d_t_fmt'], common.TEXT, size = 30)
-    task.sys_params.add_field(21, 'f_language', task.lang['language'], common.INTEGER, required=True,
-        lookup_values=task.languages, edit_visible=False)
-    task.sys_params.add_field(22, 'f_author', task.lang['author'], common.TEXT, size = 30, edit_visible=False)
-    task.sys_params.add_field(23, 'f_version', task.lang['version'], common.TEXT, size = 256)
-    task.sys_params.add_field(24, 'f_mp_pool', task.lang['mp_pool'], common.BOOLEAN)
-    task.sys_params.add_field(25, 'f_persist_con', task.lang['persist_con'], common.BOOLEAN)
-    task.sys_params.add_field(26, 'f_single_file_js', task.lang['single_file_js'], common.BOOLEAN)
-    task.sys_params.add_field(27, 'f_dynamic_js', task.lang['dynamic_js'], common.BOOLEAN)
-    task.sys_params.add_field(28, 'f_compressed_js', task.lang['compressed_js'], common.BOOLEAN)
-    task.sys_params.add_field(29, 'f_field_id_gen', 'f_field_id_gen', common.INTEGER)
-    task.sys_params.add_field(30, 'f_timeout', task.lang['session_timeout'], common.INTEGER)
-    task.sys_params.add_field(31, 'f_delete_reports_after', 'Delete reports after (hours)', common.INTEGER)
-    task.sys_params.add_field(32, 'f_ignore_change_ip', task.lang['ignore_change_ip'], common.BOOLEAN)
-    task.sys_params.add_field(33, 'f_history_item', 'History item', common.INTEGER, False, task.sys_items, 'f_name')
-    task.sys_params.add_field(34, 'f_lock_item', 'Lock item', common.INTEGER, False, task.sys_items, 'f_name')
-    task.sys_params.add_field(35, 'f_sys_group', 'System group', common.INTEGER)
+    task.sys_params.add_field(5, 'f_con_pool_size', task.lang['con_pool_size'], common.INTEGER, required=False)
+    task.sys_params.add_field(6, 'f_language', task.lang['language'], common.INTEGER, True, task.sys_langs, 'f_name', enable_typeahead=True)
+    task.sys_params.add_field(7, 'f_version', task.lang['version'], common.TEXT, size = 256)
+    task.sys_params.add_field(8, 'f_mp_pool', task.lang['mp_pool'], common.BOOLEAN)
+    task.sys_params.add_field(9, 'f_persist_con', task.lang['persist_con'], common.BOOLEAN)
+    task.sys_params.add_field(10, 'f_single_file_js', task.lang['single_file_js'], common.BOOLEAN)
+    task.sys_params.add_field(11, 'f_dynamic_js', task.lang['dynamic_js'], common.BOOLEAN)
+    task.sys_params.add_field(12, 'f_compressed_js', task.lang['compressed_js'], common.BOOLEAN)
+    task.sys_params.add_field(13, 'f_field_id_gen', 'f_field_id_gen', common.INTEGER)
+    task.sys_params.add_field(14, 'f_timeout', task.lang['session_timeout'], common.INTEGER)
+    task.sys_params.add_field(15, 'f_delete_reports_after', task.lang['delete_reports_after'], common.INTEGER)
+    task.sys_params.add_field(16, 'f_ignore_change_ip', task.lang['ignore_change_ip'], common.BOOLEAN)
+    task.sys_params.add_field(17, 'f_history_item', task.lang['history'], common.INTEGER, False, task.sys_items, 'f_name')
+    task.sys_params.add_field(18, 'f_lock_item', 'Lock item', common.INTEGER, False, task.sys_items, 'f_name')
+    task.sys_params.add_field(19, 'f_sys_group', task.lang['system_group'], common.INTEGER)
+    task.sys_params.add_field(20, 'f_theme', task.lang['theme'], common.INTEGER, required=True, lookup_values=get_value_list(common.THEMES))
+    task.sys_params.add_field(21, 'f_small_font', task.lang['small_font'], common.BOOLEAN)
+    task.sys_params.add_field(22, 'f_full_width', task.lang['full_width'], common.BOOLEAN)
+    task.sys_params.add_field(23, 'f_forms_in_tabs', task.lang['forms_in_tabs'], common.BOOLEAN)
 
     task.sys_items.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_items.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
@@ -168,7 +167,7 @@ def create_items(task):
     task.sys_items.add_field(25, 'f_master_id', task.lang['master_id'], common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_items.add_field(26, 'f_master_rec_id', task.lang['master_rec_id'], common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_items.add_field(27, 'f_js_funcs', 'f_js_funcs', common.BLOB, visible=False, edit_visible=False)
-    task.sys_items.add_field(28, 'f_keep_history', 'Keep_history', common.BOOLEAN)
+    task.sys_items.add_field(28, 'f_keep_history', task.lang['history'], common.BOOLEAN)
     task.sys_items.add_field(29, 'f_edit_lock', 'Edit lock', common.BOOLEAN)
     task.sys_items.add_field(30, 'sys_id', 'sys_id', common.INTEGER)
     task.sys_items.add_field(31, 'f_select_all', task.lang['select_all'], common.BOOLEAN)
@@ -369,10 +368,35 @@ def create_items(task):
 
     task.sys_fields_editor.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_fields_editor.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
-    task.sys_fields_editor.add_field(3, 'name', task.lang['caption'], common.TEXT, required=True, size = 256)
+    task.sys_fields_editor.add_field(3, 'name', task.lang['caption'], common.TEXT, size = 256)
     task.sys_fields_editor.add_field(4, 'param1', 'param1', common.BOOLEAN)
     task.sys_fields_editor.add_field(5, 'param2', 'param2', common.BOOLEAN)
-    task.sys_fields_editor.add_field(6, 'param3', 'param3', common.BOOLEAN)
+    task.sys_fields_editor.add_field(6, 'param3', 'param3', common.TEXT, size = 6)
+    task.sys_fields_editor.add_field(7, 'width', task.lang['width'], common.INTEGER)
+    task.sys_fields_editor.add_field(8, 'col_count', task.lang['col_count'], common.INTEGER)
+    task.sys_fields_editor.add_field(9, 'in_well', task.lang['in_well'], common.BOOLEAN)
+    task.sys_fields_editor.add_field(10, 'pagination', 'Pagination', common.BOOLEAN)
+    task.sys_fields_editor.add_field(11, 'row_count', task.lang['row_count'], common.INTEGER)
+    task.sys_fields_editor.add_field(11, 'row_line_count', task.lang['row_line_count'], common.INTEGER)
+    task.sys_fields_editor.add_field(11, 'freeze_count', task.lang['freeze_count'], common.INTEGER)
+    task.sys_fields_editor.add_field(12, 'expand_selected_row', task.lang['expand_selected_row'], common.INTEGER)
+    task.sys_fields_editor.add_field(13, 'multiselect', task.lang['multi_select'], common.BOOLEAN)
+    task.sys_fields_editor.add_field(14, 'dblclick_edit', task.lang['dblclick_edit'], common.BOOLEAN)
+    task.sys_fields_editor.add_field(15, 'sort_fields', task.lang['sort_fields'], common.KEYS, False, task.sys_fields, 'id')
+    task.sys_fields_editor.add_field(16, 'edit_fields', task.lang['edit_fields'], common.KEYS, False, task.sys_fields, 'id')
+    task.sys_fields_editor.add_field(17, 'summary_fields', task.lang['summary_fields'], common.KEYS, False, task.sys_fields, 'id')
+    task.sys_fields_editor.add_field(18, 'label_size', task.lang['label_size'], common.INTEGER, lookup_values=get_value_list(['xSmall', 'Small', 'Medium', 'Large', 'xLarge']))
+    task.sys_fields_editor.add_field(19, 'history_button', task.lang['history'], common.BOOLEAN)
+    task.sys_fields_editor.add_field(20, 'refresh_button', task.lang['refresh_button'], common.BOOLEAN)
+    task.sys_fields_editor.add_field(21, 'close_button', task.lang['close_button'], common.BOOLEAN)
+    task.sys_fields_editor.add_field(22, 'close_on_escape', task.lang['close_on_escape'], common.BOOLEAN)
+    task.sys_fields_editor.add_field(23, 'form_border', task.lang['form_border'], common.BOOLEAN)
+    task.sys_fields_editor.add_field(24, 'form_header', task.lang['form_header'], common.BOOLEAN)
+    task.sys_fields_editor.add_field(25, 'enable_search', task.lang['enable_search'], common.BOOLEAN)
+    task.sys_fields_editor.add_field(26, 'enable_filters', task.lang['enable_filters'], common.BOOLEAN)
+    task.sys_fields_editor.add_field(27, 'edit_details', task.lang['edit_details'], common.KEYS, False, task.sys_items, 'id')
+    task.sys_fields_editor.add_field(28, 'view_detail', task.lang['view_detail'], common.KEYS, False, task.sys_items, 'id')
+    task.sys_fields_editor.add_field(29, 'modeless', task.lang['modeless'], common.BOOLEAN)
 
     task.sys_search = task.sys_catalogs.add_catalog('sys_search', task.lang['find_in_task'], '')
 
@@ -387,47 +411,57 @@ def create_items(task):
 
     task.sys_new_group.add_field(1, 'group_type',  'Group type', common.INTEGER, required=True, lookup_values=get_value_list(common.GROUP_TYPES))
 
-    #~ task.jam_languages = task.sys_catalogs.add_catalog('jam_languages', 'Languages', '')
-    #~ task.jam_languages.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
-    #~ task.jam_languages.add_field(2, 'f_abr', '', common.INTEGER, required=True, visible=False, edit_visible=False)
-    #~ task.jam_languages.add_field(3, 'f_name', task.lang['language'], common.TEXT, required=True, size = 20)
+    task.sys_languages = task.sys_catalogs.add_catalog('sys_languages', 'Languages', 'SYS_LANGUAGES')
 
-    task.jam_lang = task.sys_catalogs.add_catalog('jam_lang', 'Languages', '')
+    task.sys_languages.add_field(1, 'id', 'ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_languages.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_languages.add_field(3, 'f_abr', 'ISO code', common.INTEGER, required=True)
+    task.sys_languages.add_field(4, 'f_name', 'Language', common.TEXT, required=True, size=20)
+    task.sys_languages.add_field(5, 'f_rtl', 'Right to left', common.BOOLEAN)
 
-    task.jam_lang.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.jam_lang.add_field(2, 'f_abr', '', common.INTEGER, required=True, visible=False, edit_visible=False)
-    task.jam_lang.add_field(3, 'f_name', task.lang['language'], common.TEXT, required=True, size = 20)
-    task.jam_lang.add_field(4, 'f_decimal_point', task.lang['decimal_point'], common.TEXT, size = 1)
-    task.jam_lang.add_field(5, 'f_mon_decimal_point', task.lang['mon_decimal_point'], common.TEXT, size = 1)
-    task.jam_lang.add_field(6, 'f_mon_thousands_sep', task.lang['mon_thousands_sep'], common.TEXT, size = 3)
-    task.jam_lang.add_field(7, 'f_currency_symbol', task.lang['currency_symbol'], common.TEXT, size = 10)
-    task.jam_lang.add_field(8, 'f_frac_digits', task.lang['frac_digits'], common.INTEGER)
-    task.jam_lang.add_field(9, 'f_p_cs_precedes', task.lang['p_cs_precedes'], common.BOOLEAN)
-    task.jam_lang.add_field(10, 'f_n_cs_precedes', task.lang['n_cs_precedes'], common.BOOLEAN)
-    task.jam_lang.add_field(11, 'f_p_sep_by_space', task.lang['p_sep_by_space'], common.BOOLEAN)
-    task.jam_lang.add_field(12, 'f_n_sep_by_space', task.lang['n_sep_by_space'], common.BOOLEAN)
-    task.jam_lang.add_field(13, 'f_positive_sign', task.lang['positive_sign'], common.TEXT, size = 1)
-    task.jam_lang.add_field(14, 'f_negative_sign', task.lang['negative_sign'], common.TEXT, size = 1)
-    task.jam_lang.add_field(15, 'f_p_sign_posn', task.lang['p_sign_posn'], common.INTEGER)
-    task.jam_lang.add_field(16, 'f_n_sign_posn', task.lang['n_sign_posn'], common.INTEGER)
-    task.jam_lang.add_field(17, 'f_d_fmt', task.lang['d_fmt'], common.TEXT, size = 30)
-    task.jam_lang.add_field(18, 'f_d_t_fmt', task.lang['d_t_fmt'], common.TEXT, size = 30)
+    task.sys_countries = task.sys_catalogs.add_catalog('sys_countries', 'Countries', 'SYS_COUNTRIES')
+
+    task.sys_countries.add_field(1, 'id', 'ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_countries.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_countries.add_field(3, 'f_abr', 'ISO code', common.INTEGER, required=True)
+    task.sys_countries.add_field(4, 'f_name', 'Country', common.TEXT, required=True, size=20)
+
+    task.sys_langs.add_field(1, 'id', 'ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_langs.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_langs.add_field(3, 'f_name', 'Language', common.TEXT, required=True, size=100)
+    task.sys_langs.add_field(4, 'f_abr', 'ISO code', common.TEXT, visible=False, required=True, size=20)
+    task.sys_langs.add_field(5, 'f_language', 'Language', common.INTEGER, True, task.sys_languages, 'f_name', visible=False, enable_typeahead=True)
+    task.sys_langs.add_field(6, 'f_country', 'Country', common.INTEGER, True, task.sys_countries, 'f_name', visible=False, enable_typeahead=True)
+    task.sys_langs.add_field(7, 'f_decimal_point', 'Decimal point', common.TEXT, size=1, visible=False, edit_visible=False)
+    task.sys_langs.add_field(8, 'f_mon_decimal_point', 'Monetory decimal point', common.TEXT, size=1, visible=False, edit_visible=False)
+    task.sys_langs.add_field(9, 'f_mon_thousands_sep', 'Monetory thousands separator', common.TEXT, size=3, visible=False, edit_visible=False)
+    task.sys_langs.add_field(10, 'f_currency_symbol', 'Currency symbol', common.TEXT, size=10, visible=False, edit_visible=False)
+    task.sys_langs.add_field(11, 'f_frac_digits', 'Number of fractional digits', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_langs.add_field(12, 'f_p_cs_precedes', 'Currency symbol precedes the value (positive values)', common.BOOLEAN, visible=False, edit_visible=False)
+    task.sys_langs.add_field(13, 'f_n_cs_precedes', 'Currency symbol precedes the value (negative values)', common.BOOLEAN, visible=False, edit_visible=False)
+    task.sys_langs.add_field(14, 'f_p_sep_by_space', 'Currency symbol is separated by a space (positive values)', common.BOOLEAN, visible=False, edit_visible=False)
+    task.sys_langs.add_field(15, 'f_n_sep_by_space', 'Currency symbol is separated by a space (negative values)', common.BOOLEAN, visible=False, edit_visible=False)
+    task.sys_langs.add_field(16, 'f_positive_sign', 'Symbol for a positive monetary value', common.TEXT, size=1, visible=False, edit_visible=False)
+    task.sys_langs.add_field(17, 'f_negative_sign', 'Symbol for a negative monetary value', common.TEXT, size=1, visible=False, edit_visible=False)
+    task.sys_langs.add_field(18, 'f_p_sign_posn', 'The position of the sign (positive values)', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_langs.add_field(19, 'f_n_sign_posn', 'The position of the sign (negative values)', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_langs.add_field(20, 'f_d_fmt', 'Date format string', common.TEXT, size=30, visible=False, edit_visible=False)
+    task.sys_langs.add_field(21, 'f_d_t_fmt', 'Date and time format string', common.TEXT, size=30, visible=False, edit_visible=False)
+    task.sys_langs.add_field(22, 'f_rtl', 'Right to left', common.BOOLEAN, visible=False)
+
+    task.sys_lang_keys_values = task.sys_catalogs.add_catalog('sys_lang_keys_values', 'Language values', '')
+
+    task.sys_lang_keys_values.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
+    task.sys_lang_keys_values.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_lang_keys_values.add_field(3, 'f_type', 'Key type', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_lang_keys_values.add_field(3, 'f_lang', 'Language ID', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_lang_keys_values.add_field(4, 'f_key', 'Key', common.INTEGER, visible=False, edit_visible=False)
+    task.sys_lang_keys_values.add_field(5, 'f_value', 'Translation', common.TEXT, size=1048)
+    task.sys_lang_keys_values.add_field(6, 'f_key_str', 'Key', common.TEXT, size=1048)
+    task.sys_lang_keys_values.add_field(6, 'f_eng_str', 'English', common.TEXT, size=1048)
 
 
-    task.jam_lang_keys = task.sys_catalogs.add_catalog('jam_lang_keys', 'Language keys', '')
-
-    task.jam_lang_keys.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.jam_lang_keys.add_field(2, 'f_keyword', 'Keyword', common.TEXT, required=True, size = 128)
-
-    task.jam_lang_values = task.sys_catalogs.add_catalog('jam_lang_values', 'Language values', '')
-
-    task.jam_lang_values.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
-    task.jam_lang_values.add_field(2, 'f_lang', 'Key', common.INTEGER, visible=False, edit_visible=False)
-    task.jam_lang_values.add_field(3, 'f_key', task.lang['key'], common.INTEGER, visible=False, edit_visible=False)
-    task.jam_lang_values.add_field(4, 'f_value', task.lang['value'], common.TEXT, size = 1048)
-
-
-    def init_item(item, id_value, *order_by):
+    def init_item(item, id_value):
         item.ID = id_value
         item.soft_delete = False
         item._primary_key = 'id'
@@ -443,41 +477,46 @@ def create_items(task):
             item._master_id_db_field_name = 'OWNER_ID'
             item._master_rec_id = 'owner_rec_id'
             item._master_rec_id_db_field_name = 'OWNER_REC_ID'
+        item._view_list = []
+        item._edit_list = []
         if hasattr(item, '_fields'):
             for field in item._fields:
                 field.alignment = common.get_alignment(field.data_type, field.lookup_item, field.lookup_values)
                 if field.lookup_field:
                     field.lookup_db_field = field.lookup_field.upper()
-        if order_by:
-            item.change_order(*order_by)
+                if field.view_visible:
+                    item._view_list.append([field.ID])
+                if field.edit_visible:
+                    item._edit_list.append([field.ID])
 
     init_item(task, 0)
-    init_item(task.sys_users, 1, 'id')
-    init_item(task.sys_roles, 2, 'id')
-    init_item(task.sys_items, 3, 'type_id', 'f_index')
-    init_item(task.sys_fields, 4, 'id')
-    init_item(task.sys_filters, 5, 'f_index')
-    init_item(task.item_fields, 6, 'f_field_name')#'id')
+    init_item(task.sys_users, 1)
+    init_item(task.sys_roles, 2)
+    init_item(task.sys_items, 3)
+    init_item(task.sys_fields, 4)
+    init_item(task.sys_filters, 5)
+    init_item(task.item_fields, 6)
     init_item(task.sys_privileges, 7)
     init_item(task.role_privileges, 8)
     init_item(task.sys_tasks, 9)
-    init_item(task.sys_indices, 10, 'id')
+    init_item(task.sys_indices, 10)
     init_item(task.sys_params, 11)
-    init_item(task.sys_report_params, 12, 'f_index')
+    init_item(task.sys_report_params, 12)
     init_item(task.sys_code_editor, 14)
     init_item(task.sys_fields_editor, 15)
     init_item(task.sys_search, 16)
     init_item(task.sys_field_lookups, 17)
-    init_item(task.sys_lookup_lists, 18, 'f_name')
-    init_item(task.jam_lang, 19)
-    init_item(task.jam_lang_keys, 20)
-    init_item(task.jam_lang_values, 21)
-    init_item(task.sys_new_group, 22)
+    init_item(task.sys_lookup_lists, 18)
+    init_item(task.sys_new_group, 19)
+    init_item(task.sys_languages, 20)
+    init_item(task.sys_countries, 21)
+    init_item(task.sys_langs, 22)
+    init_item(task.sys_lang_keys_values, 23)
 
     task.sys_catalogs.ID = 101
     task.sys_tables.ID = 102
 
-    for i in range(1, 16):
+    for i in range(1, 23):
         try:
             item = task.item_by_ID(i)
             for field in item._fields:
@@ -494,120 +533,8 @@ def create_items(task):
 
 def update_admin_fields(task):
 
-    def update_system_fields(cursor, id_value, parent, type_id, name):
-        cursor.execute("SELECT ID, F_FIELD_NAME FROM SYS_FIELDS WHERE OWNER_REC_ID IN (%d, %d)" % (id_value, parent))
-        rows = cursor.fetchall()
-        for (field_id, field_name) in rows:
-            if field_name == 'id':
-                cursor.execute("UPDATE SYS_ITEMS SET F_PRIMARY_KEY=%d WHERE ID=%d" % (field_id, id_value))
-            elif field_name == 'deleted':
-                cursor.execute("UPDATE SYS_ITEMS SET F_DELETED_FLAG=%d WHERE ID=%d" % (field_id, id_value))
-                cursor.execute("UPDATE SYS_FIELDS SET f_data_type=%d WHERE ID=%d" % (common.INTEGER, field_id))
-            elif field_name == 'owner_id':
-                cursor.execute("UPDATE SYS_ITEMS SET F_MASTER_ID=%d WHERE ID=%d" % (field_id, id_value))
-            elif field_name == 'owner_rec_id':
-                cursor.execute("UPDATE SYS_ITEMS SET F_MASTER_REC_ID=%d WHERE ID=%d" % (field_id, id_value))
-
-    def get_db_module(con):
-        cursor = con.cursor()
-        cursor.execute('SELECT F_DB_TYPE FROM SYS_TASKS')
-        rows = cursor.fetchall()
-        db_type = rows[0][0]
-        if db_type:
-            return db_modules.get_db_module(db_type)
-
     def do_updates(con, field, item_name):
-        if field.field_name.lower() == 'f_delete_reports_after':
-            pass
-        if field.field_name.lower() == 'f_gen_name':
-            db_module = get_db_module(con)
-            if db_module and hasattr(db_module, 'get_sequence_name'):
-                cursor = con.cursor()
-                cursor.execute("SELECT ID, F_TABLE_NAME FROM SYS_ITEMS")
-                rows = cursor.fetchall()
-                for (id_val, table_name) in rows:
-                    if table_name:
-                        table_name = db_module.set_literal_case(table_name)
-                        cursor.execute("UPDATE SYS_ITEMS SET F_TABLE_NAME=?, F_GEN_NAME=?WHERE ID=%d" % id_val, \
-                        (table_name, db_module.get_sequence_name(table_name)))
-                con.commit()
-        if field.field_name.lower() == 'f_db_field_name':
-            db_module = get_db_module(con)
-            if db_module:
-                cursor = con.cursor()
-                cursor.execute("SELECT ID, F_FIELD_NAME, F_DB_FIELD_NAME FROM SYS_FIELDS")
-                rows = cursor.fetchall()
-                for (id_val, f_field_name, f_db_field_name) in rows:
-                    f_db_field_name = db_module.set_literal_case(f_field_name)
-                    cursor.execute("UPDATE SYS_FIELDS SET F_DB_FIELD_NAME=? WHERE ID=%d" % id_val, (f_db_field_name,))
-                con.commit()
-        if field.field_name.lower() == 'f_fields_list':
-            import pickle, json
-            cursor = con.cursor()
-            cursor.execute("SELECT ID, F_FIELDS, F_FIELDS_LIST, DESCENDING FROM SYS_INDICES")
-            rows = cursor.fetchall()
-            for (id_val, f_fields, f_fields_list, descending) in rows:
-                if f_fields:
-                    fields = pickle.loads(to_bytes(f_fields, 'utf-8'))
-                    f_fields_list = []
-                    for f in fields:
-                        f_fields_list.append([f[0], bool(descending)])
-                    f_fields_list = json.dumps(f_fields_list)
-                cursor.execute("UPDATE SYS_INDICES SET F_FIELDS=?, F_FIELDS_LIST=? WHERE ID=%d" % id_val, (f_fields, f_fields_list))
-            con.commit()
-        if field.field_name.lower() == 'f_psw_hash':
-            cursor = con.cursor()
-            cursor.execute("SELECT ID, F_PASSWORD FROM SYS_USERS")
-            rows = cursor.fetchall()
-            for (id_value, password) in rows:
-                if password:
-                    psw_hash = hashlib.md5(password).hexdigest()
-                    cursor.execute("UPDATE SYS_USERS SET F_PSW_HASH=? WHERE ID=%d" % id_value, (psw_hash,))
-            con.commit()
-        if field.field_name.lower() == 'f_edit_lock':
-            cursor = con.cursor()
-            cursor.execute("SELECT ID, F_SERVER_MODULE FROM SYS_ITEMS")
-            rows = cursor.fetchall()
-            for (id_value, code) in rows:
-                if code:
-                    code = code.replace('on_open(item, params, user_info, enviroment)',
-                        'on_open(item, params)')
-                    code = code.replace('on_count(item, params, user_info, enviroment)',
-                        'on_count(item, params)')
-                    code = code.replace('on_apply(item, delta, params, privileges, user_info, enviroment)',
-                        'on_apply(item, delta, params)')
-                    cursor.execute("UPDATE SYS_ITEMS SET F_SERVER_MODULE=? WHERE ID=%d" % id_value, (code,))
-            con.commit()
-        if field.field_name.lower() == 'f_js_funcs':
-            cursor = con.cursor()
-            cursor.execute("SELECT ID, F_WEB_CLIENT_MODULE FROM SYS_ITEMS")
-            rows = cursor.fetchall()
-            for (id_value, code) in rows:
-                if code:
-                    js_funcs = parse_js(to_bytes(code, 'utf-8'))
-                    cursor.execute("UPDATE SYS_ITEMS SET F_JS_FUNCS='%s' WHERE ID=%d" % (js_funcs, id_value))
-                else:
-                    cursor.execute("UPDATE SYS_ITEMS SET F_JS_FUNCS=NULL WHERE ID=%d" % id_value)
-            con.commit()
-        if field.field_name.lower() == 'f_field_id_gen':
-            cursor = con.cursor()
-            cursor.execute("SELECT MAX(ID) FROM SYS_FIELDS")
-            rows = cursor.fetchall()
-            max_field_id = rows[0][0]
-            cursor.execute("UPDATE SYS_PARAMS SET F_FIELD_ID_GEN = %d" % max_field_id)
-            con.commit()
-        if field.field_name.lower() == 'f_master_rec_id':
-            cursor = con.cursor()
-            cursor.execute("UPDATE SYS_ITEMS SET TYPE_ID = %d WHERE TYPE_ID=%d" % (common.ITEMS_TYPE, common.JOURNALS_TYPE))
-            cursor.execute("UPDATE SYS_ITEMS SET TYPE_ID = %d WHERE TYPE_ID=%d" % (common.ITEM_TYPE, common.JOURNAL_TYPE))
-            con.commit()
-            cursor.execute("SELECT ID, PARENT, TYPE_ID, F_NAME FROM SYS_ITEMS WHERE TYPE_ID IN (%d, %d, %d, %d)" % \
-                (common.ITEMS_TYPE, common.TABLES_TYPE, common.ITEM_TYPE, common.TABLE_TYPE))
-            rows = cursor.fetchall()
-            for (id_value, parent, type_id, name) in rows:
-                update_system_fields(cursor, id_value, parent, type_id, name)
-            con.commit()
-            create_items(task)
+        pass
 
     def get_item_fields(item, table_name):
         cursor.execute('PRAGMA table_info(%s)' % table_name)
@@ -641,23 +568,15 @@ def update_admin_fields(task):
         return True
 
     con = task.create_connection()
-    cursor = con.cursor()
-    for group in task.items:
-        for item in group.items:
-            if item.table_name and not item.master:
-                if check_table_exists(item):
-                    check_item_fields(item)
-    con.close()
-
-    #~ con = sqlite3.connect('langs.sqlite')
-    #~ cursor = con.cursor()
-    #~ for group in task.items:
-        #~ for item in group.items:
-            #~ if item.item_name.find('jam_lang') != -1:
-                #~ if check_table_exists(item, item.item_name.upper()):
-                    #~ check_item_fields(item, item.item_name.upper())
-    #~ con.close()
-
+    try:
+        cursor = con.cursor()
+        for group in task.items:
+            for item in group.items:
+                if item.table_name and not item.master:
+                    if check_table_exists(item):
+                        check_item_fields(item)
+    finally:
+        con.close()
 
 def delete_reports(task):
     while True:
@@ -672,7 +591,6 @@ def delete_reports(task):
                         if hours > common.SETTINGS['DELETE_REPORTS_AFTER']:
                             os.remove(file_name)
         time.sleep(1)
-        #~ time.sleep(600)
 
 def init_delete_reports(task):
     t = threading.Thread(target=delete_reports, args=(task,))
@@ -680,12 +598,11 @@ def init_delete_reports(task):
     t.start()
 
 
-def create_admin(app):
-    task = AdminTask(app, 'admin', 'Administrator', '', db_modules.SQLITE, db_database='admin.sqlite')
-
+def init_admin(task):
     task.language = read_language(task)
     create_items(task)
     update_admin_fields(task)
+    langs.update_langs(task)
     task.fields_id_lock = Lock()
 
     read_setting(task)
@@ -703,8 +620,14 @@ def create_admin(app):
     task.ignore_change_ip = common.SETTINGS['IGNORE_CHANGE_IP']
     task.language = common.SETTINGS['LANGUAGE']
     task.item_caption = task.lang['admin']
-    register_defs(task)
+    register_events(task)
+    init_fields_next_id(task)
     init_delete_reports(task)
+    return task
+
+def create_admin(app):
+    task = AdminTask(app, 'admin', 'Administrator', '', db_modules.SQLITE, db_database='admin.sqlite')
+    init_admin(task)
     return task
 
 def db_info(task):
@@ -840,21 +763,8 @@ def load_task(target, app, first_build=True, after_import=False):
                     word_wrap = False
                     expand = False
                     editable = False
-                    for i, rec in enumerate(sys_items._view_list):
-                        if sys_fields.id.value == rec[0]:
-                            view_index = i
-                            visible = True
-                            word_wrap = rec[1]
-                            expand = rec[2]
-                            editable = rec[3]
-                            break
                     edit_visible = False
                     edit_index = -1
-                    for i, rec in enumerate(sys_items._edit_list):
-                        if sys_fields.id.value == rec[0]:
-                            edit_index = i
-                            edit_visible = True
-                            break
                     field = item.add_field(sys_fields.field_by_name('id').value,
                         sys_fields.f_field_name.value,
                         sys_fields.f_name.value,
@@ -953,6 +863,8 @@ def load_task(target, app, first_build=True, after_import=False):
                         item._sys_id = rec.sys_id.value
                         if group_type_id != common.REPORTS_TYPE:
                             common.load_interface(sys_items)
+                            item._view_list = sys_items._view_list
+                            item._edit_list = sys_items._edit_list
                             create_fields(item, group_id)
                             create_fields(item, rec.id.value)
                             item._order_by = sys_items._order_list
@@ -973,7 +885,7 @@ def load_task(target, app, first_build=True, after_import=False):
                 common.load_interface(sys_items)
                 target.server_code = rec.f_server_module.value
             if rec.parent.value == parent:
-                group = Group(target, rec.f_item_name.value, rec.f_name.value, rec.f_view_template.value,
+                group = Group(target, target, rec.f_item_name.value, rec.f_name.value, rec.f_view_template.value,
                     rec.f_js_filename.value, rec.f_visible.value, rec.type_id.value)
                 group.ID = rec.id.value
                 group.server_code = rec.f_server_module.value
@@ -995,36 +907,11 @@ def load_task(target, app, first_build=True, after_import=False):
                     detail.view_template = it.f_view_template.value
                     detail.js_filename = it.f_js_filename.value
                     detail.server_code = it.f_server_module.value
-#                    detail.keep_history = it.f_keep_history.value
                     detail.item_type = common.ITEM_TYPES[detail.item_type_id - 1]
                     common.load_interface(sys_items)
+                    detail._view_list = sys_items._view_list
+                    detail._edit_list = sys_items._edit_list
                     detail._order_by = sys_items._order_list
-                    for field in detail._fields:
-                        field.view_index = -1
-                        field.view_visible = False
-                        field.word_wrap = False
-                        field.expand = False
-                        field.editable = False
-                        for i, rec in enumerate(sys_items._view_list):
-                            if field.ID == rec[0]:
-                                field.view_index = i
-                                field.view_visible = True
-                                field.word_wrap = rec[1]
-                                field.expand = rec[2]
-                                field.editable = rec[3]
-                                break
-                        field.edit_visible = False
-                        field.edit_index = -1
-                        for i, rec in enumerate(sys_items._edit_list):
-                            if field.ID == rec[0]:
-                                field.edit_index = i
-                                field.edit_visible = True
-                                break
-                        field.field_def[FIELD_VISIBLE] = field.view_visible
-                        field.field_def[FIELD_VIEW_INDEX] = field.view_index
-                        field.field_def[FIELD_EDIT_VISIBLE] = field.edit_visible
-                        field.field_def[FIELD_EDIT_INDEX] = field.edit_index
-
 
     def process_reports():
         def add_reports(item):
@@ -1040,7 +927,7 @@ def load_task(target, app, first_build=True, after_import=False):
 
     def process_lookup_lists():
         lists = task.sys_lookup_lists.copy()
-        lists.open()
+        lists.open(order_by=['f_name'])
         for l in lists:
             text = l.f_lookup_values_text.value
             target.lookup_lists[l.id.value] = json.loads(l.f_lookup_values_text.value)
@@ -1061,7 +948,7 @@ def load_task(target, app, first_build=True, after_import=False):
     remove_attr(target)
     target.items = []
     sys_fields = task.sys_fields.copy()
-    sys_fields.open()
+    sys_fields.open(order_by=[ 'id'])
     fields_dict = {}
     for f in sys_fields:
         d = fields_dict.get(f.owner_rec_id.value, [])
@@ -1069,12 +956,12 @@ def load_task(target, app, first_build=True, after_import=False):
             fields_dict[f.owner_rec_id.value] = d
         d.append(f.rec_no)
     sys_filters = task.sys_filters.copy()
-    sys_filters.open()
+    sys_filters.open(order_by=['f_index'])
     sys_params = task.sys_report_params.copy()
-    sys_params.open()
+    sys_params.open(order_by=['f_index'])
     sys_items = task.sys_items.copy()
     sys_items.details_active = False
-    sys_items.open()
+    sys_items.open(order_by=['type_id', 'f_index'])
     create_groups(target.ID)
     create_details()
     process_reports()
@@ -1136,7 +1023,6 @@ def server_set_task_name(task, f_name, f_item_name):
 def server_set_project_langage(task, lang):
     common.SETTINGS['LANGUAGE'] = lang
     task.language = lang
-    task.init_locale()
     write_setting(task)
     read_setting(task)
     create_items(task)
@@ -1171,7 +1057,7 @@ def server_set_project_langage(task, lang):
             pass
     with open(file_name, 'wb') as f:
         f.write(to_bytes(data, 'utf8'))
-    register_defs(task)
+    register_events(task)
 
 def server_update_has_children(task):
     has_children = {}
@@ -1251,6 +1137,9 @@ def server_export_task(task, task_id, url=None):
     return result
 
 def server_import_task(task, task_id, file_name, from_client=False):
+    return task.app.import_metadata(task, task_id, file_name, from_client)
+
+def import_metadata(task, task_id, file_name, from_client=False):
 
     def refresh_old_item(item):
         item = item.copy(handlers=False)
@@ -1564,8 +1453,6 @@ def server_import_task(task, task_id, file_name, from_client=False):
         task._import_message += '<div style="margin-left: 30px;">' + info + '</div>'
 
     db_type = get_db_type(task)
-    #~ if db_type == db_modules.SQLITE:
-        #~ return False, error, '<h5>' + task.lang['import_sqlite_not_supported'] + '</h5>'
     task.app.under_maintenance = True
     success = False
     try:
@@ -1856,8 +1743,8 @@ def update_events_code(task):
                 else:
                     script = script_start + script + script_end
                     cur_js_filename = js_filename
-                    with open(file_name, 'w') as f:
-                        f.write(script)
+                    with open(file_name, 'wb') as f:
+                        f.write(to_bytes(script, 'utf-8'))
                     if common.SETTINGS['COMPRESSED_JS']:
                         minify(file_name)
             js_filenames[it.id.value] = cur_js_filename
@@ -1867,8 +1754,8 @@ def update_events_code(task):
         js_filenames[it.id.value] = js_file_name
         script = script_start + script_common + script_end
         file_name = os.path.join(to_unicode(os.getcwd(), 'utf-8'), 'js', js_file_name)
-        with open(file_name, 'w') as f:
-            f.write(script)
+        with open(file_name, 'wb') as f:
+            f.write(to_bytes(script, 'utf-8'))
         if common.SETTINGS['COMPRESSED_JS']:
             minify(file_name)
     sql = []
@@ -2082,43 +1969,6 @@ def server_save_edit(task, item_id, text, is_server):
             task.app.task_client_modified = True
     return {'error': error, 'line': line, 'module_info': module_info}
 
-#~ def get_templates(text):
-    #~ text = to_unicode(text, 'utf-8')
-    #~ result = {}
-    #~ all = []
-    #~ views = []
-    #~ edits = []
-    #~ filters = []
-    #~ params = []
-    #~ start = 0
-    #~ while True:
-        #~ index = text.find('class=', start)
-        #~ if index == -1:
-            #~ break
-        #~ else:
-            #~ start_char = text[index + 6: index + 7]
-            #~ sub_str = text[index + 7:]
-            #~ class_str = ''
-            #~ for ch in sub_str:
-                #~ if ch == start_char:
-                    #~ break
-                #~ else:
-                    #~ class_str += ch
-            #~ if class_str.find('-view') > 0:
-                #~ views.append(class_str)
-            #~ elif class_str.find('-edit') > 0:
-                #~ edits.append(class_str)
-            #~ elif class_str.find('-filter') > 0:
-                #~ filters.append(class_str)
-            #~ elif class_str.find('-param') > 0:
-                #~ params.append(class_str)
-            #~ start = index + 6 + len(class_str)
-    #~ all = views + edits + filters + params
-    #~ for one in all:
-        #~ if not one in ['icon-edit', 'icon-filter']:
-            #~ result[one] = None
-    #~ return result
-
 def server_file_info(task, file_name):
     result = {}
     file_path = file_name
@@ -2129,8 +1979,6 @@ def server_file_info(task, file_name):
     if os.path.exists(file_path):
         with open(file_path, 'r') as f:
             result['doc'] = f.read()
-        #~ if file_name == 'index.html':
-            #~ result['templates'] = get_templates(result['doc'])
     result['name'] = file_name
     result['ext'] = ext
     result['type'] = ''
@@ -2147,12 +1995,12 @@ def server_save_file(task, file_name, code):
     try:
         with open(file_name, 'wb') as f:
             f.write(to_bytes(code, 'utf-8'))
-        #~ if file_name == 'index.html':
-            #~ result['Templates'] = get_templates(code)
     except Exception as e:
         traceback.print_exc()
         error = error_message(e)
     result['error'] = error
+    if file_name == 'index.html':
+        change_theme(task)
     return result
 
 def server_get_db_options(task, db_type):
@@ -2240,12 +2088,34 @@ def server_create_task(task):
     fields.apply()
     task.create_task()
 
-def do_on_apply_sys_changes(item, delta, params):
+def change_theme(task):
+    rlist = []
+    prefix = '/css/'
+    theme = common.THEME_FILE[common.SETTINGS['THEME']]
+    for t in common.THEME_FILE:
+        if t and t != theme:
+            rlist.append((t, theme))
+    if common.SETTINGS['SMALL_FONT']:
+        rlist.append(('jam.css', 'jam12.css'))
+    else:
+        rlist.append(('jam12.css', 'jam.css'))
+    file_name = os.path.join(task.work_dir, 'index.html')
+    with open(file_name, 'r') as f:
+        content = f.read()
+        for r1, r2 in rlist:
+            content = content.replace(prefix + r1, prefix + r2)
+    with open(file_name, 'wb') as f:
+        f.write(to_bytes(content, 'utf-8'))
+
+def do_on_apply_param_changes(item, delta, params):
     task = item.task
+    language = common.SETTINGS['LANGUAGE']
     debugging = common.SETTINGS['DEBUGGING']
     safe_mode = common.SETTINGS['SAFE_MODE']
     single_file_js = common.SETTINGS['SINGLE_FILE_JS']
     compressed_js = common.SETTINGS['COMPRESSED_JS']
+    theme = common.SETTINGS['THEME']
+    small_font = common.SETTINGS['SMALL_FONT']
 
     sql = delta.apply_sql()
     result = item.task.execute(sql)
@@ -2260,9 +2130,27 @@ def do_on_apply_sys_changes(item, delta, params):
     if safe_mode != common.SETTINGS['SAFE_MODE']:
         task.safe_mode = common.SETTINGS['SAFE_MODE']
         task.app.users = {}
+    if language != common.SETTINGS['LANGUAGE']:
+        task.language = common.SETTINGS['LANGUAGE']
+        init_admin(task)
+    if theme != common.SETTINGS['THEME'] or small_font != common.SETTINGS['SMALL_FONT']:
+        change_theme(task)
+
     task.timeout = common.SETTINGS['TIMEOUT']
     task.ignore_change_ip = common.SETTINGS['IGNORE_CHANGE_IP']
     return result
+
+def init_fields_next_id(task):
+    con = task.create_connection()
+    try:
+        cursor = con.cursor()
+        cursor.execute('SELECT MAX(ID) FROM SYS_FIELDS')
+        res = cursor.fetchall()
+        max_id = res[0][0]
+        cursor.execute('UPDATE SYS_PARAMS SET F_FIELD_ID_GEN=%s' % max_id)
+        con.commit()
+    finally:
+        con.close()
 
 def get_fields_next_id(task, length=1):
     with task.fields_id_lock:
@@ -2382,7 +2270,7 @@ def create_system_item(task, field_name):
             items.parent.value = task_id
             items.task_id.value = task_id
             items.type_id.value = common.ITEMS_TYPE
-            items.f_name.value = 'System'
+            items.f_name.value = task.lang['system_group']
             items.f_item_name.value = check_item_name('system')
             items.f_index.value = '999999'
             items.post()
@@ -2573,8 +2461,10 @@ def update_interface(delta, type_id, item_id):
             for field in fields:
                 if field.owner_rec_id.value == item.parent.value:
                     if not field.f_field_name.value in system_fields:
-                        item._view_list.append([field.id.value, False, False, False])
-                        item._edit_list.append([field.id.value])
+                        if type(item._view_list) is list:
+                            item._view_list.append([field.id.value, False, False, False])
+                        if type(item._edit_list) is list:
+                            item._edit_list.append([field.id.value])
 
         for d in delta.details.sys_fields:
             if d.record_status in [common.RECORD_INSERTED, common.RECORD_DELETED]:
@@ -2582,11 +2472,15 @@ def update_interface(delta, type_id, item_id):
                 if fields.locate('f_field_name', field_name):
                     if d.record_status == common.RECORD_INSERTED:
                         if not field_name in system_fields:
-                            item._view_list.append([fields.id.value, False, False, False])
-                            item._edit_list.append([fields.id.value])
+                            if type(item._view_list) is list:
+                                item._view_list.append([fields.id.value, False, False, False])
+                            if type(item._edit_list) is list:
+                                item._edit_list.append([fields.id.value])
                     elif d.record_status == common.RECORD_DELETED:
-                        item._view_list = delete_id_from_list(item._view_list, fields.id.value)
-                        item._edit_list = delete_id_from_list(item._edit_list, fields.id.value)
+                        if type(item._view_list) is list:
+                            item._view_list = delete_id_from_list(item._view_list, fields.id.value)
+                        if type(item._edit_list) is list:
+                            item._edit_list = delete_id_from_list(item._edit_list, fields.id.value)
                         item._order_list = delete_id_from_list(item._order_list, fields.id.value)
         common.store_interface(item)
 
@@ -3045,7 +2939,35 @@ def privileges_open(item, params):
     return rows, error_mes
 
 
-def register_defs(task):
+###############################################################################
+#                                  sys_langs                                  #
+###############################################################################
+
+def add_lang(item, lang_id, language, country, name, abr, rtl, copy_lang):
+    langs.add_lang(item, lang_id, language, country, name, abr, rtl, copy_lang)
+
+def save_lang_field(item, lang_id, field_name, value):
+    langs.save_lang_field(item, lang_id, field_name, value)
+
+def get_lang_translation(item, lang1, lang2):
+    return langs.get_lang_translation(lang1, lang2)
+
+def save_lang_translation(item, lang_id, key_id, value):
+    langs.save_lang_translation(item, lang_id, key_id, value)
+
+def add_key(item, key):
+    return langs.add_key(key)
+
+def del_key(item, key_id):
+    return langs.del_key(key_id)
+
+def export_lang(item, lang_id, host):
+    return langs.export_lang(item.task.work_dir, lang_id, host)
+
+def import_lang(item, file_path):
+    return langs.import_lang(item.task, os.path.join(item.task.work_dir, file_path))
+
+def register_events(task):
     task.register(server_check_connection)
     task.register(server_set_task_name)
     task.register(server_set_project_langage)
@@ -3071,9 +2993,9 @@ def register_defs(task):
     task.register(server_set_literal_case)
     task.register(get_new_table_name)
     task.register(create_system_item)
-    task.sys_params.on_apply = do_on_apply_sys_changes
+    task.sys_params.on_apply = do_on_apply_param_changes
     task.sys_users.on_apply = users_on_apply
-    task.sys_tasks.on_apply = do_on_apply_sys_changes
+    task.sys_tasks.on_apply = do_on_apply_param_changes
     task.sys_items.register(server_can_delete)
     task.sys_items.register(server_group_is_empty)
     task.sys_items.register(server_load_interface)
@@ -3089,3 +3011,12 @@ def register_defs(task):
     task.role_privileges.on_open = privileges_table_get_select
     task.sys_privileges.on_open = privileges_open
     task.sys_roles.register(roles_changed)
+    task.sys_langs.register(get_lang_translation)
+    task.sys_langs.register(save_lang_field)
+    task.sys_langs.register(save_lang_translation)
+    task.sys_langs.register(add_lang)
+    task.sys_langs.register(add_key)
+    task.sys_langs.register(del_key)
+    task.sys_langs.register(export_lang)
+    task.sys_langs.register(import_lang)
+
