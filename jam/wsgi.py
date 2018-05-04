@@ -201,7 +201,7 @@ class App():
                 if self.get_task():
                     self.check_project_modified()
                 else:
-                    return Response(self.admin.lang['no_task'])(environ, start_response)
+                    return Response(self.admin.language('no_task'))(environ, start_response)
             elif file_name == 'builder.html':
                 self.check_modified(os.path.join(self.jam_dir, file_name), environ)
                 environ['PATH_INFO'] = os.path.join('jam', file_name)
@@ -279,9 +279,12 @@ class App():
             user_info = session['user_info']
             if not (user_info and user_info.get('user_id')):
                 return False
-            if not self.admin.ignore_change_ip and task != self.admin:
-                ip = self.get_client_address(request);
-                if not adm_server.user_valid_ip(self.admin, user_info['user_id'], ip):
+            if not self.admin.ignore_change_ip and task != self.admin and not task.on_login:
+                try:
+                    ip = self.get_client_address(request);
+                    if not adm_server.user_valid_ip(self.admin, user_info['user_id'], ip):
+                        return False
+                except:
                     return False
         return True
 
@@ -297,11 +300,14 @@ class App():
             jam.context.session = session
             return True
 
-    def login(self, request, task, login, psw_hash):
+    def login(self, request, task, login, password):
         ip = None
         if not self.admin.ignore_change_ip:
             ip = self.get_client_address(request);
-        user_info = adm_server.login(self.admin, login, psw_hash, self.admin == task, ip)
+        if self.admin == task or task.on_login is None:
+            user_info = adm_server.login(self.admin, login, password, self.admin == task, ip)
+        elif task.on_login:
+            user_info = task.on_login(task, login, password)
         if user_info:
             self.create_session(request, task, user_info)
             return True

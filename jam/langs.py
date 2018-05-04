@@ -212,6 +212,13 @@ def add_lang(item, lang_id, language, country, name, abr, rtl, copy_lang):
 
 def save_lang_field(item, lang_id, field_name, value):
     execute('UPDATE JAM_LANGS SET %s=? WHERE ID=%s' % (field_name, lang_id), (value,))
+    con = sqlite3.connect(os.path.join(item.task.work_dir, 'admin.sqlite'))
+    try:
+        cursor = con.cursor()
+        cursor.execute('UPDATE SYS_LANGS SET %s=? WHERE ID=%s' % (field_name, lang_id), (value,))
+        con.commit()
+    finally:
+        con.close()
     if item.task.language == lang_id:
         item.task.update_lang(lang_id)
 
@@ -301,6 +308,18 @@ def import_lang(task, file_path):
                     field_values.append(value)
                 fields = ',' .join(fields)
                 cursor.execute("UPDATE JAM_LANGS SET %s WHERE ID=%s" % (fields, lang_id), field_values)
+
+                sys_con = sqlite3.connect(os.path.join(task.work_dir, 'admin.sqlite'))
+                try:
+                    sys_cursor = sys_con.cursor()
+                    sys_cursor.execute("UPDATE SYS_LANGS SET %s WHERE ID=%s" % (fields, lang_id), field_values)
+                    sys_con.commit()
+                finally:
+                    sys_con.close()
+
+                #~ try:
+                #~ except:
+                    #~ pass
             else:
                 fields = []
                 values = []

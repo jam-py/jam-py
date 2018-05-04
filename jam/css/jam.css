@@ -89,6 +89,9 @@ input.dropdown-toggle {
 
 .form-body .well,
 .modal-body .well {
+/*
+    background-color: inherit;
+*/
     min-height: 20px;
     width: auto;
     margin-bottom: 6px;
@@ -542,7 +545,6 @@ input.input-text {
 
 .filters-text-div {
   font-weight: bold;
-  line-height: 20px;
 }
 
 .header-selected {
@@ -561,4 +563,23 @@ sup {
 .header-btn {
     padding: 3px 7px;
     margin-left: 6px;
+}
+
+.alert-absolute {
+    position: absolute;
+    z-index: 1030;
+    display: block;
+}
+
+.pulsate {
+    text-shadow: 0 -1px rgba(0, 0, 0, .1);
+    -webkit-animation: pulsate 1.2s linear infinite;
+    animation: pulsate 1.2s linear infinite;
+}
+
+@-webkit-keyframes pulsate {
+ 50% { color: #fff; text-shadow: 0 -1px rgba(0, 0, 0, .3), 0 0 5px #ffd, 0 0 8px #fff; }
+}
+@keyframes pulsate {
+ 50% { color: #fff; text-shadow: 0 -1px rgba(0, 0, 0, .3), 0 0 5px #ffd, 0 0 8px #fff; }
 }

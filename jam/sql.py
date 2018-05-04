@@ -88,17 +88,17 @@ class SQL(object):
                 item._master_rec_id_field.set_data(item.master._primary_key_field.value)
             if item.record_status == common.RECORD_INSERTED:
                 if safe and not self.can_create():
-                    raise Exception(self.task.lang['cant_create'] % self.item_caption)
+                    raise Exception(self.task.language('cant_create') % self.item_caption)
                 sql, param = item.insert_sql(db_module)
             elif item.record_status == common.RECORD_MODIFIED:
                 if safe and not self.can_edit():
-                    raise Exception(self.task.lang['cant_edit'] % self.item_caption)
+                    raise Exception(self.task.language('cant_edit') % self.item_caption)
                 sql, param = item.update_sql(db_module)
             elif item.record_status == common.RECORD_DETAILS_MODIFIED:
                 sql, param = '', None
             elif item.record_status == common.RECORD_DELETED:
                 if safe and not self.can_delete():
-                    raise Exception(self.task.lang['cant_delete'] % self.item_caption)
+                    raise Exception(self.task.language('cant_delete') % self.item_caption)
                 sql = item.delete_sql(db_module)
                 param = None
             else:

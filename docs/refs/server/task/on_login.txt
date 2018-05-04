@@ -1,0 +1,53 @@
+========
+on_login
+========
+
+on_login(task, login, password)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Task class </refs/server/task_api>`
+
+Description
+===========
+
+Use ``on_login`` to override default login procedure using Application
+Builder Users table.
+
+The ``task`` parameter is a reference to the 
+:doc:`task tree </programming/task_tree>`,
+``login`` and ``password`` are the login and password of the user.
+
+The event handler must return the dictionary with the following attributes:
+
+* ``user_id`` - the unique id of the user
+* ``user_name`` - user name
+* ``role_id`` - ID of the role defined in the 
+  :doc:`Roles </admin/roles>`
+* ``role_name`` - role name
+
+Example
+=======
+
+.. code-block:: py
+
+    def on_login(task, login, password):
+        result = None
+        if login == 'admin' and password == '111': 
+            result = {
+              'user_id': 'admin',
+              'user_name': 'Bob',
+              'role_id': 1,
+              'role_name': 'Admin'
+          }
+        elif login == 'user':
+          result = {
+              'user_id': 'user',
+              'user_name': 'Tom',
+              'role_id': 6,
+              'role_name': 'User'
+          }
+        return result
+   

@@ -149,7 +149,7 @@ function Events1() { // demo
 				e.preventDefault();
 				item.delete_record(function() {
 					item.refresh_page(true);
-				}) 
+				}); 
 			});
 		}
 		else {
@@ -319,7 +319,7 @@ function Events1() { // demo
 	
 	function on_edit_form_keyup(item, event) {
 		if (event.keyCode === 13 && event.ctrlKey === true){
-			item.edit_form.find("#ok-btn").focus();
+			item.edit_form.find("#ok-btn").focus(); 
 			item.apply_record();
 		}
 	}

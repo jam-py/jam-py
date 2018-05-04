@@ -47,7 +47,7 @@ class AbstractItem(object):
 
     def __setattr__(self, name, value):
         if self.task_locked():
-            raise Exception(self.task.lang['server_tree_immutable'] + \
+            raise Exception(self.task.language('server_tree_immutable') + \
                 ' Item: "%s", Attribute: "%s"' % (self.item_name, name))
         super(AbstractItem, self).__setattr__(name, value)
 
@@ -242,9 +242,6 @@ class AbstrTask(AbstractItem):
                     for detail in item.details:
                         self.compile_item(detail)
 
-    def get_language(self):
-        return self.__language
-
     def update_lang(self, value):
         self.lang = langs.get_lang_dict(value)
         self.locale = langs.get_locale_dict(self, value)
@@ -261,7 +258,8 @@ class AbstrTask(AbstractItem):
             self.update_lang(value)
             self.__language = value
 
-    language = property (get_language, set_language)
+    def language(self, key):
+        return self.lang.get(key)
 
     def get_settings(self):
         return common.SETTINGS

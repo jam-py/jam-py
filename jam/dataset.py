@@ -63,7 +63,7 @@ class DBField(object):
 
     def __setattr__(self, name, value):
         if name != 'owner' and self.owner and self.owner.task_locked():
-            raise Exception(self.owner.task.lang['server_tree_immutable'] + \
+            raise Exception(self.owner.task.language('server_tree_immutable') + \
                 ' Item: "%s", Field: "%s", Attribute: "%s"' % (self.owner.item_name, self.field_name, name))
         super(DBField, self).__setattr__(name, value)
 
@@ -72,7 +72,7 @@ class DBField(object):
             return self.owner._dataset[self.owner.rec_no]
         else:
             traceback.print_exc()
-            raise Exception(self.owner.task.lang['value_in_empty_dataset'] % self.owner.item_name)
+            raise Exception(self.owner.task.language('value_in_empty_dataset') % self.owner.item_name)
 
     def get_data(self):
         row = self.get_row()
@@ -121,17 +121,17 @@ class DBField(object):
                 elif self.data_type == common.BOOLEAN:
                     if self.value:
                         if self.owner:
-                            result = self.owner.task.lang['yes']
+                            result = self.owner.task.language('yes')
                         else:
                             result = 'True'
                     else:
                         if self.owner:
-                            result = self.owner.task.lang['no']
+                            result = self.owner.task.language('no')
                         else:
                             result = 'False'
                 elif self.data_type == common.KEYS:
                     if len(result):
-                        result = self.owner.task.lang['items_selected'] % len(result)
+                        result = self.owner.task.language('items_selected') % len(result)
                 else:
                     result = str(result)
             else:
@@ -158,7 +158,7 @@ class DBField(object):
                     self.set_value(common.str_to_datetime(value))
                 elif self.data_type == common.BOOLEAN:
                     if self.owner:
-                        if len(value) and value.upper().split() == self.owner.task.lang['yes'].upper().split():
+                        if len(value) and value.upper().split() == self.owner.task.language('yes').upper().split():
                             self.set_value(True)
                         else:
                             self.set_value(False)
@@ -267,16 +267,16 @@ class DBField(object):
     def _do_before_changed(self):
         if self.owner:
             if not self.owner.item_state in (common.STATE_INSERT, common.STATE_EDIT):
-                raise DatasetException(self.owner.task.lang['not_edit_insert_state'] % self.owner.item_name)
+                raise DatasetException(self.owner.task.language('not_edit_insert_state') % self.owner.item_name)
             if self.owner.on_before_field_changed:
                 self.owner.on_before_field_changed(self)
 
     def _check_system_field_value(self, value):
         if self.field_kind == common.ITEM_FIELD:
             if self.field_name == self.owner._primary_key and self.value and self.value != value:
-                raise DatasetException(self.owner.task.lang['no_primary_field_changing'] % self.owner.item_name)
+                raise DatasetException(self.owner.task.language('no_primary_field_changing') % self.owner.item_name)
             if self.field_name == self.owner._deleted_flag and self.value != value:
-                raise DatasetException(self.owner.task.lang['no_deleted_field_changing'] % self.owner.item_name)
+                raise DatasetException(self.owner.task.language('no_deleted_field_changing') % self.owner.item_name)
 
     def set_value(self, value, lookup_value=None, lookup_item=None):
         self._check_system_field_value(value)
@@ -385,7 +385,7 @@ class DBField(object):
     def get_display_text(self):
         result = ''
         if self.filter and self.filter.filter_type == common.FILTER_IN and self.filter.field.lookup_item and self.filter.value:
-            result = self.filter.owner.task.lang['items_selected'] % len(self.filter.value)
+            result = self.filter.owner.task.language('items_selected') % len(self.filter.value)
         elif self.lookup_item:
             result = self.lookup_text
         elif self.lookup_values:
@@ -461,7 +461,7 @@ class DBField(object):
         self.get_value()
         if (self.data_type == common.TEXT) and (self.field_size != 0) and \
             (len(self.text) > self.field_size):
-            self.do_on_error(self.owner.task.lang['invalid_length'] % self.field_size)
+            self.do_on_error(self.owner.task.language('invalid_length') % self.field_size)
         return True
 
     def check_reqired(self):
@@ -470,7 +470,7 @@ class DBField(object):
         elif self.get_raw_value() != None:
             return True
         else:
-            self.do_on_error(self.owner.task.lang['value_required'])
+            self.do_on_error(self.owner.task.language('value_required'))
 
     def check_valid(self):
         if self.check_reqired():
@@ -499,22 +499,22 @@ class DBField(object):
         if mess:
             if self.owner:
                 print('%s %s - %s: %s' % (self.owner.item_name,
-                    self.owner.task.lang['error'].lower(), self.field_name, mess))
+                    self.owner.task.language('error').lower(), self.field_name, mess))
         raise TypeError(mess)
 
     def type_error(self):
         if self.data_type == common.INTEGER:
-            return self.owner.task.lang['invalid_int']
+            return self.owner.task.language('invalid_int')
         elif self.data_type == common.FLOAT:
-            return self.owner.task.lang['invalid_float']
+            return self.owner.task.language('invalid_float')
         elif self.data_type == common.CURRENCY:
-            return self.owner.task.lang['invalid_cur']
+            return self.owner.task.language('invalid_cur')
         elif (self.data_type == common.DATE) or (self.data_type == common.DATE):
-            return self.owner.task.lang['invalid_date']
+            return self.owner.task.language('invalid_date')
         elif self.data_type == common.BOOLEAN:
-            return self.owner.task.lang['invalid_bool']
+            return self.owner.task.language('invalid_bool')
         else:
-            return self.owner.task.lang['invalid_value']
+            return self.owner.task.language('invalid_value')
 
     def system_field(self):
         if self.field_name and self.field_name in (self.owner._primary_key,  \
@@ -604,7 +604,7 @@ class DBFilter(object):
 
     def __setattr__(self, name, value):
         if name != 'owner' and self.owner and self.owner.task_locked():
-            raise Exception(self.owner.task.lang['server_tree_immutable'] + \
+            raise Exception(self.owner.task.language('server_tree_immutable') + \
                 ' Item: "%s", Filter: "%s", attribute: "%s"' % (self.owner.item_name, self.filter_name, name))
         super(DBFilter, self).__setattr__(name, value)
 
@@ -1729,9 +1729,9 @@ class AbstractDataSet(object):
 
     def append(self):
         if not self.active:
-            raise DatasetException(self.task.lang['append_not_active'] % self.item_name)
+            raise DatasetException(self.task.language('append_not_active') % self.item_name)
         if self.item_state != common.STATE_BROWSE:
-            raise DatasetException(self.task.lang['append_not_browse'] % self.item_name)
+            raise DatasetException(self.task.language('append_not_browse') % self.item_name)
         self._do_before_append()
         self._do_before_scroll()
         self._old_row = self.rec_no
@@ -1745,9 +1745,9 @@ class AbstractDataSet(object):
 
     def insert(self):
         if not self.active:
-            raise DatasetException(self.task.lang['insert_not_active'] % self.item_name)
+            raise DatasetException(self.task.language('insert_not_active') % self.item_name)
         if self.item_state != common.STATE_BROWSE:
-            raise DatasetException(self.task.lang['insert_not_browse'] % self.item_name)
+            raise DatasetException(self.task.language('insert_not_browse') % self.item_name)
         self._do_before_append()
         self._do_before_scroll()
         self._old_row = self.rec_no
@@ -1794,11 +1794,11 @@ class AbstractDataSet(object):
 
     def edit(self):
         if not self.active:
-            raise DatasetException(self.task.lang['edit_not_active'] % self.item_name)
+            raise DatasetException(self.task.language('edit_not_active') % self.item_name)
         if self.item_state != common.STATE_BROWSE:
-            raise DatasetException(self.task.lang['edit_not_browse'] % self.item_name)
+            raise DatasetException(self.task.language('edit_not_browse') % self.item_name)
         if self.record_count() == 0:
-            raise DatasetException(self.task.lang['edit_no_records'] % self.item_name)
+            raise DatasetException(self.task.language('edit_no_records') % self.item_name)
         self._do_before_edit()
         self.change_log.log_change()
         self._buffer = self.change_log.store_record_log()
@@ -1818,9 +1818,9 @@ class AbstractDataSet(object):
 
     def delete(self):
         if not self.active:
-            raise DatasetException(self.task.lang['delete_not_active'] % self.item_name)
+            raise DatasetException(self.task.language('delete_not_active') % self.item_name)
         if self.record_count() == 0:
-            raise DatasetException(self.task.lang['delete_no_records'] % self.item_name)
+            raise DatasetException(self.task.language('delete_no_records') % self.item_name)
         self.item_state = common.STATE_DELETE
         try:
             self._do_before_delete()
@@ -1857,7 +1857,7 @@ class AbstractDataSet(object):
             self.update_controls(common.UPDATE_DELETE)
             del self._dataset[self.rec_no]
         else:
-            raise Exception(self.task.lang['cancel_invalid_state'] % self.item_name)
+            raise Exception(self.task.language('cancel_invalid_state') % self.item_name)
         prev_state = self.item_state
         self.item_state = common.STATE_BROWSE
         if prev_state in [common.STATE_INSERT]:
@@ -1880,7 +1880,7 @@ class AbstractDataSet(object):
 
     def post(self):
         if not self.is_changing():
-            raise DatasetException(self.task.lang['not_edit_insert_state'] % self.item_name)
+            raise DatasetException(self.task.language('not_edit_insert_state') % self.item_name)
         self.check_record_valid()
         self._do_before_post()
         if self.master and self._master_id:
@@ -2096,7 +2096,7 @@ class MasterDetailDataset(MasterDataSet):
         open_empty=False, params=None, offset=None, limit=None, funcs=None,
         group_by=None, safe=False):
         if safe and not self.can_view():
-            raise Exception(self.task.lang['cant_view'] % self.item_caption)
+            raise Exception(self.task.language('cant_view') % self.item_caption)
         if options and type(options) == dict:
             if options.get('expanded'):
                 expanded = options['expanded']
@@ -2206,22 +2206,22 @@ class MasterDetailDataset(MasterDataSet):
 
     def insert(self):
         if self.master and not self.master.is_changing():
-            raise DatasetException(self.task.lang['insert_master_not_changing'] % self.item_name)
+            raise DatasetException(self.task.language('insert_master_not_changing') % self.item_name)
         super(MasterDetailDataset, self).insert()
 
     def append(self):
         if self.master and not self.master.is_changing():
-            raise DatasetException(self.task.lang['append_master_not_changing'] % self.item_name)
+            raise DatasetException(self.task.language('append_master_not_changing') % self.item_name)
         super(MasterDetailDataset, self).append()
 
     def edit(self):
         if self.master and not self.master.is_changing():
-            raise DatasetException(self.task.lang['edit_master_not_changing'] % self.item_name)
+            raise DatasetException(self.task.language('edit_master_not_changing') % self.item_name)
         super(MasterDetailDataset, self).edit()
 
     def delete(self):
         if self.master and not self.master.is_changing():
-            raise DatasetException(self.task.lang['delete_master_not_changing'] % self.item_name)
+            raise DatasetException(self.task.language('delete_master_not_changing') % self.item_name)
         super(MasterDetailDataset, self).delete()
 
     def _set_modified(self, value):

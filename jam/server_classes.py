@@ -116,7 +116,7 @@ class ServerDataset(Dataset, SQL):
 
     def get_record_count(self, params, safe=False):
         if safe and not self.can_view():
-            raise Exception(self.task.lang['cant_view'] % self.item_caption)
+            raise Exception(self.task.language('cant_view') % self.item_caption)
         result = None
         if self.task.on_count:
             result = self.task.on_count(self, params)
@@ -133,7 +133,7 @@ class ServerDataset(Dataset, SQL):
 
     def select_records(self, params, safe=False):
         if safe and not self.can_view():
-            raise Exception(self.task.lang['cant_view'] % self.item_caption)
+            raise Exception(self.task.language('cant_view') % self.item_caption)
         result = None
         if self.task.on_open:
             result = self.task.on_open(self, params)
@@ -194,17 +194,18 @@ class ServerDataset(Dataset, SQL):
                                 det._master_id: self.ID,
                                 det._master_rec_id: self._primary_key_field.value
                             }
-                            det.open(fields=fields, expanded=detail.expanded, where=where)#, order_by=[])
-                            it.edit()
-                            for d in det:
-                                detail.append()
-                                for field in detail.fields:
-                                    f = det.field_by_name(field.field_name)
-                                    field.set_value(f.value, f.lookup_value)
-                                detail.post()
-                            it.post()
-                            for d in detail:
-                                d.record_status = common.RECORD_DELETED
+                            det.open(fields=fields, expanded=detail.expanded, where=where)
+                            if det.record_count():
+                                it.edit()
+                                for d in det:
+                                    detail.append()
+                                    for field in detail.fields:
+                                        f = det.field_by_name(field.field_name)
+                                        field.set_value(f.value, f.lookup_value)
+                                    detail.post()
+                                it.post()
+                                for d in detail:
+                                    d.record_status = common.RECORD_DELETED
             finally:
                 self.rec_no = rec_no
 
@@ -393,7 +394,7 @@ class Report(AbstrReport):
 
     def print_report(self, param_values, url, ext=None, safe=False):
         if safe and not self.can_view():
-            raise Exception(self.task.lang['cant_view'] % self.item_caption)
+            raise Exception(self.task.language('cant_view') % self.item_caption)
         #~ if not self.template_content:
             #~ self.parse_template()
         copy_report = self.copy()
@@ -999,7 +1000,6 @@ class AbstractServerTask(AbstrTask):
 class DebugException(Exception):
     pass
 
-
 class Task(AbstractServerTask):
     def __init__(self, app, name, caption, js_filename,
         db_type, db_database = '', db_user = '', db_password = '',
@@ -1009,6 +1009,7 @@ class Task(AbstractServerTask):
             db_type, db_database, db_user, db_password,
             host, port, encoding, con_pool_size, mp_pool, persist_con)
         self.on_created = None
+        self.on_login = None
         self.on_ext_request = None
         self.compress_history = True
         self.init_dict = {}

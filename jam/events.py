@@ -122,6 +122,7 @@ report_client_events = \
 task_server_events = \
     {
         'on_created': 'task',
+        'on_login': 'task, login, password',
         'on_open': 'item, params',
         'on_count': 'item, params',
         'on_apply': 'item, delta, params',

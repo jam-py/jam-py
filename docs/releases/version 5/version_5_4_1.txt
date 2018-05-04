@@ -66,3 +66,4 @@ Demo application
   For libraries with versions 4.3, clear the code of client modules of
   catalogs and journals and replace client module of the task with the
   corresponding code of the Demo application or the new project.
+  Make an archive of the project before doing it.

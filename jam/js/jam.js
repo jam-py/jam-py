@@ -477,8 +477,11 @@
                     if (!template) {
                         template = this._search_template(item.owner.owner.item_name + "-details", suffix);
                     }
+                    //~ if (!template) {
+                        //~ template = this._search_template("default-details", suffix);
+                    //~ }
                     if (!template) {
-                        template = this._search_template("default-details", suffix);
+                        template = this._search_template("default", suffix);
                     }
                     if (!template) {
                         item = item.owner;
@@ -1085,6 +1088,60 @@
             body = html.clone();
             win.document.write(head + '<body onload="window.print()">' + body.html() + '</body>');
             win.document.close();
+        },
+
+        alert: function(message, options) {
+            var default_options = {
+                    type: 'info',
+                    align: 'right',
+                    pulsate: true,
+                    click_close: true,
+                    body_click_hide: true,
+                    show_header: false,
+                    timeout: 0
+                },
+                options = $.extend({}, default_options, options),
+                pos = 0,
+                container = $('#container'),
+                title_class =
+                alert = $(
+                '<div class="alert alert-block alert-absolute">' +
+                  '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                  '<h4>' + task.language[options.type] + '</h4>' +
+                  '<p>' + message + '</p>' +
+                '</div>'
+            )
+            $('body').find('.alert-absolute').remove();
+            $('body').off('click.alert-absolute').on('click.alert-absolute', function() {
+                $('body').find('.alert-absolute').remove();
+            })
+            alert.addClass('alert-' + options.type)
+            if (options.pulsate) {
+                alert.find('h4').addClass('pulsate');
+            }
+            if (!options.show_header) {
+                alert.find('h4').hide();
+            }
+            $('body').append(alert);
+            alert.css('top', 0);
+            if (options.align === 'right') {
+                if (container) {
+                    pos = $(window).width() - (container.offset().left + container.width())
+                }
+                alert.css('right', pos);
+            }
+            else {
+                if (container) {
+                    pos = container.offset().left;
+                }
+                alert.css('left', pos);
+            }
+            alert.show();
+        },
+
+        alert_error: function(message, options) {
+            options.type = 'error';
+            this.alert(message, options);
         },
 
         message: function(mess, options) {
@@ -1770,11 +1827,11 @@
 
             $form.find("#login-btn").click(function(e) {
                 var login = $form.find("#inputLoging").val(),
-                    passWord = $form.find("#inputPassword").val(),
-                    pswHash = hex_md5(passWord);
+                    passWord = $form.find("#inputPassword").val();
+                    //~ pswHash = hex_md5(passWord);
                 e.preventDefault();
                 if (login && passWord) {
-                    self.send_request('login', [login, pswHash], function(success) {
+                    self.send_request('login', [login, passWord], function(success) {
                         if (success) {
                             if ($form) {
                                 $form.modal('hide');
@@ -5354,7 +5411,7 @@
 
         edit_record: function(container, tab_name) {
             container = this._check_container(container);
-            if (this.rec_count && this.can_edit()) {
+            if (this.rec_count) {
                 if ($('.modal').length === 0 && container && this.task.can_add_tab(container)) {
                     this._edit_record_in_tab(container, tab_name)
                 }
@@ -5368,6 +5425,7 @@
             if (!this.is_changing()) {
                 this.edit();
             }
+            this.read_only = !this.can_edit();
             this.create_edit_form(container);
         },
 
@@ -7283,15 +7341,7 @@
                 lookup_item: lookup_item,
                 source: function(query, process) {
                     var params = {}
-                    if (self.owner && self.owner.on_param_select_value) {
-                        self.owner.on_param_select_value.call(self.owner, self, lookup_item);
-                    }
-                    if (self.owner && self.owner.on_field_select_value) {
-                        self.owner.on_field_select_value.call(self.owner, self, lookup_item);
-                    }
-                    if (self.filter && self.filter.owner.on_filter_select_value) {
-                        self.filter.owner.on_filter_select_value.call(self.filter.owner, self.filter, lookup_item);
-                    }
+                    self._do_select_value(lookup_item);
                     params.__search = [self.lookup_field, query, consts.FILTER_CONTAINS_ALL];
                     lookup_item.open({limit: length, params: params}, function(item) {
                         var data = [],
@@ -7320,15 +7370,7 @@
                 field: this,
                 source: function(query, process) {
                     var params = {};
-                    if (self.owner && self.owner.on_param_select_value) {
-                        self.owner.on_param_select_value.call(self.owner, self, lookup_item);
-                    }
-                    if (self.owner && self.owner.on_field_select_value) {
-                        self.owner.on_field_select_value.call(self.owner, self, lookup_item);
-                    }
-                    if (self.filter && self.filter.owner.on_filter_select_value) {
-                        self.filter.owner.on_filter_select_value.call(self.filter.owner, self.filter, lookup_item);
-                    }
+                    self._do_select_value(lookup_item);
                     params.__search = [self.lookup_field, query, consts.FILTER_CONTAINS_ALL];
                     lookup_item.open({limit: items, params: params}, function(item) {
                         var data = [],
@@ -7725,10 +7767,26 @@
             return result;
         },
 
+        _do_select_value: function(lookup_item) {
+            if (this.owner && this.owner.on_param_select_value) {
+                this.owner.on_param_select_value.call(this.owner, this, lookup_item);
+            }
+            if (this.owner && this.owner.on_field_select_value) {
+                this.owner.on_field_select_value.call(this.owner, this, lookup_item);
+            }
+            if (this.filter && this.filter.owner.on_filter_select_value) {
+                this.filter.owner.on_filter_select_value.call(this.filter.owner, this.filter, lookup_item);
+            }
+        },
+
         select_value: function() {
             var self = this,
                 copy = this.lookup_item.copy(),
                 on_view_form_closed = copy.on_view_form_closed;
+            if (!copy.can_view()) {
+                task.alert(task.language.cant_view.replace('%s', copy.item_caption));
+                return;
+            }
             copy.is_lookup_item = true; //depricated
             copy.lookup_field = this;
             if (this.data_type === consts.KEYS) {
@@ -7740,15 +7798,7 @@
                     self.value = copy.selections;
                 }
             }
-            if (this.owner && this.owner.on_param_select_value) {
-                this.owner.on_param_select_value.call(this.owner, this, copy);
-            }
-            if (this.owner && this.owner.on_field_select_value) {
-                this.owner.on_field_select_value.call(this.owner, this, copy);
-            }
-            if (this.filter && this.filter.owner.on_filter_select_value) {
-                this.filter.owner.on_filter_select_value.call(this.filter.owner, this.filter, copy);
-            }
+            this._do_select_value(copy);
             copy.view();
         }
     };
@@ -7770,8 +7820,8 @@
             }
             if (this.field_name) {
                 field = this.owner._field_by_ID(this.field_name);
-                field.required = false;
                 this.field = this.create_field(field);
+                this.field.required = false;
                 if (this.field.lookup_values && (typeof this.field.lookup_values === "number")) {
                     this.field.lookup_values = this.owner.task.lookup_lists[this.field.lookup_values];
                 }
