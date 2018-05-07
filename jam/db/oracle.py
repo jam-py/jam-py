@@ -237,32 +237,4 @@ def get_table_info(connection, table_name, db_name):
             'default_value': default_value,
             'pk': False
         })
-
-    #~ return {'fields': fields, 'indexes': {}}
-
-    pr_index_name = ''
-    sql = "SELECT INDEX_NAME FROM USER_CONSTRAINTS WHERE CONSTRAINT_TYPE IN ('P') and TABLE_NAME = UPPER('%s')" % table_name
-    cursor.execute(sql)
-    result = cursor.fetchone()
-    if result:
-        pr_index_name = result[0]
-    sql = "SELECT INDEX_NAME, UNIQUENESS FROM USER_INDEXES WHERE TABLE_NAME = UPPER('%s')" % table_name
-    cursor.execute(sql)
-    result = cursor.fetchall()
-    indexes = []
-    for index_name, uniqueness in result:
-        if index_name != pr_index_name:
-            unique = uniqueness.upper() == 'UNIQUE'
-            sql = "SELECT COLUMN_NAME, DESCEND FROM USER_IND_COLUMNS WHERE TABLE_NAME = UPPER('%s') AND INDEX_NAME = '%s' ORDER BY COLUMN_POSITION" % (table_name, index_name)
-            cursor.execute(sql)
-            cols = cursor.fetchall()
-            field_defs = []
-            for column_name, descend in cols:
-                desc = descend.upper() == 'DESC'
-                field_defs.append([column_name, desc])
-            indexes.append({
-                'index_name': index_name,
-                'unique': unique,
-                'fields': field_defs
-            })
-    return {'fields': fields, 'indexes': indexes}
+    return {'fields': fields, 'field_types': FIELD_TYPES}

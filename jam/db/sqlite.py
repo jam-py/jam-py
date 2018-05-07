@@ -166,49 +166,14 @@ def get_table_info(connection, table_name, db_name):
     result = cursor.fetchall()
     fields = []
     for r in result:
-        size = 0
-        if r[2] == 'TEXT':
-            size = 256
         fields.append({
             'field_name': r[1],
             'data_type': r[2],
-            'size': size,
+            'size': 0,
             'default_value': r[4],
             'pk': r[5]==1
         })
-    cursor.execute('PRAGMA index_list(%s)' % table_name)
-    result = cursor.fetchall()
-    indexes = []
-    for r in result:
-        try:
-            index_name = r[1]
-            unique = r[2]
-            cursor.execute('PRAGMA index_info(%s)' % index_name)
-            info = cursor.fetchall()
-            cursor.execute("SELECT sql FROM sqlite_master WHERE type='index' AND name='%s'" % index_name)
-            sql = cursor.fetchall()
-            flds = sql[0][0].split('(')[1].split(')')[0].split(',')
-            defs = []
-            for i in info:
-                for field in flds:
-                    f = i[2].upper()
-                    field = field.upper()
-                    if field.find(f) != -1:
-                        a = field.split()
-                        desc = False
-                        if len(a) == 2 and a[1].strip() == 'DESC':
-                            desc = True
-                        f_name = a[0]
-                        f_name = f_name.strip('"').strip("'")
-                        defs.append([f_name, desc])
-            indexes.append({
-                'index_name': index_name,
-                'unique': unique,
-                'fields': defs
-            })
-        except Exception as e:
-            pass
-    return {'fields': fields, 'indexes': indexes}
+    return {'fields': fields, 'field_types': FIELD_TYPES}
 
 
 

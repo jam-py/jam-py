@@ -223,58 +223,5 @@ def get_table_info(connection, table_name, db_name):
             'default_value': column_default,
             'pk': pk
         })
-    sql = "SELECT indexname FROM pg_indexes WHERE tablename = '%s'" % table_name
-    cursor.execute(sql)
-    result = cursor.fetchall()
-    indexes = {}
-    for indexname in result:
-        indexname = indexname[0]
-        sql = """
-            SELECT i.indisunique AS IS_UNIQUE,
-                   i.indisprimary AS IS_PRIMARY,
-                   ci.relname AS INDEX_NAME,
-                   (i.keys).n AS ORDINAL_POSITION,
-                   pg_catalog.pg_get_indexdef(ci.oid, (i.keys).n, false) AS COLUMN_NAME,
-                   CASE am.amcanorder
-                     WHEN true THEN CASE i.indoption[(i.keys).n - 1] & 1
-                       WHEN 1 THEN TRUE
-                       ELSE FALSE
-                     END
-                     ELSE FALSE
-                   END AS DESC
-            FROM pg_catalog.pg_class ct
-              JOIN pg_catalog.pg_namespace n ON (ct.relnamespace = n.oid)
-              JOIN (SELECT i.indexrelid, i.indrelid, i.indoption,
-                      i.indisunique, i.indisprimary, i.indisclustered, i.indpred,
-                      i.indexprs,
-                      information_schema._pg_expandarray(i.indkey) AS keys
-                    FROM pg_catalog.pg_index i) i
-                ON (ct.oid = i.indrelid)
-              JOIN pg_catalog.pg_class ci ON (ci.oid = i.indexrelid)
-              JOIN pg_catalog.pg_am am ON (ci.relam = am.oid)
-            AND ct.relname = '%s' and ci.relname = '%s'
-            ORDER BY ORDINAL_POSITION
-        """
-        try:
-            cursor.execute(sql % (str(table_name), str(indexname)))
-            result = cursor.fetchall()
-        except:
-            continue
-        for is_unique, is_primary, index_name, ordinal_position, column_name, desc in result:
-            if not is_primary:
-                column_name = column_name.strip('"').strip("'")
-                index = indexes.get(index_name)
-                if not index:
-                    index = {
-                        'index_name': index_name,
-                        'unique': is_unique,
-                        'fields': []
-                    }
-                    indexes[index_name] = index
-                index['fields'].append([column_name, desc])
-    ind = []
-    indexes.values()
-    for key, value in iteritems(indexes):
-        ind.append(value)
-    return {'fields': fields, 'indexes': ind}
+    return {'fields': fields, 'field_types': FIELD_TYPES}
 

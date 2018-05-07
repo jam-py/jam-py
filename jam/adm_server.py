@@ -218,7 +218,7 @@ def create_items(task):
     task.sys_fields.add_field(5, 'task_id', 'Task ID', common.INTEGER, visible=False, edit_visible=False)
     task.sys_fields.add_field(6, 'f_name',         task.language('caption'), common.TEXT, True, size=256)
     task.sys_fields.add_field(7, 'f_field_name',   task.language('name'), common.TEXT, True, size=256)
-    task.sys_fields.add_field(8, 'f_db_field_name',   task.language('db_field_name'), common.TEXT, True, size=256)
+    task.sys_fields.add_field(8, 'f_db_field_name',   task.language('db_field_name'), common.TEXT, False, size=256)
     task.sys_fields.add_field(9, 'f_data_type',    task.language('data_type'), common.INTEGER, True,  False, lookup_values=get_value_list(common.FIELD_TYPES))
     task.sys_fields.add_field(10, 'f_size',         task.language('size'), common.INTEGER)
     task.sys_fields.add_field(11, 'f_object',       task.language('object'), common.INTEGER, False, task.sys_items, 'f_item_name')
@@ -396,7 +396,8 @@ def create_items(task):
     task.sys_fields_editor.add_field(26, 'enable_filters', task.language('enable_filters'), common.BOOLEAN)
     task.sys_fields_editor.add_field(27, 'edit_details', task.language('edit_details'), common.KEYS, False, task.sys_items, 'id')
     task.sys_fields_editor.add_field(28, 'view_detail', task.language('view_detail'), common.KEYS, False, task.sys_items, 'id')
-    task.sys_fields_editor.add_field(29, 'modeless', task.language('modeless'), common.BOOLEAN)
+    task.sys_fields_editor.add_field(29, 'detail_height', 'Detail height', common.INTEGER, False)
+    task.sys_fields_editor.add_field(30, 'modeless', task.language('modeless'), common.BOOLEAN)
 
     task.sys_search = task.sys_catalogs.add_catalog('sys_search', task.language('find_in_task'), '')
 
@@ -599,10 +600,10 @@ def init_delete_reports(task):
 
 
 def init_admin(task):
+    langs.update_langs(task)
     task.set_language(read_language(task))
     create_items(task)
     update_admin_fields(task)
-    langs.update_langs(task)
     task.fields_id_lock = Lock()
 
     read_setting(task)
@@ -1090,6 +1091,7 @@ def server_export_task(task, task_id, url=None):
         result[item.item_name] = {'fields': fields, 'records': table.dataset}
 
     result = {}
+    result['db_type'] = get_db_type(task)
     add_item(task.sys_items)
     add_item(task.sys_fields)
     add_item(task.sys_indices)
@@ -1188,7 +1190,10 @@ def import_metadata(task, task_id, file_name, from_client=False):
             new_items[item.item_name] = new_item
             old_items[item.item_name] = old_item
         os.remove(file_name)
-        return new_items, old_items
+        db_type = data_lists.get('db_type')
+        if not db_type:
+            db_type = get_db_type(task)
+        return new_items, old_items, db_type
 
     def can_copy_field(field):
         if field.owner.item_name == 'sys_params':
@@ -1463,7 +1468,8 @@ def import_metadata(task, task_id, file_name, from_client=False):
         file_name = os.path.join(os.getcwd(), os.path.normpath(file_name))
         show_progress(task.language('import_reading_data'))
         dir = copy_tmp_files(file_name)
-        new_dict, old_dict = get_items(dir)
+        new_dict, old_dict, db_type = get_items(dir)
+        task.new_db_type = db_type
         show_progress(task.language('import_checking_integrity'))
         error = check_items()
         info = ''
@@ -2188,7 +2194,6 @@ def server_import_table(task, table_name):
     connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
     try:
         result = db_module.get_table_info(connection, table_name, db_database)
-        result['field_types'] = db_module.FIELD_TYPES
     finally:
         connection.close()
     return result

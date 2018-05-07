@@ -1544,6 +1544,7 @@
         this.edit_options = $.extend({}, this.form_options, {
             history_button: true,
             edit_details: [],
+            detail_height: 0,
             modeless: false
         });
         this.view_options = $.extend({}, this.form_options, {
@@ -1552,7 +1553,8 @@
             refresh_button: true,
             enable_search: true,
             enable_filters: true,
-            view_detail: []
+            view_detail: [],
+            detail_height: 0,
         });
         this.table_options = {
             pagination: false,

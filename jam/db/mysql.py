@@ -223,28 +223,5 @@ def get_table_info(connection, table_name, db_name):
             'default_value': default_value,
             'pk': pk
         })
-    sql = 'SHOW INDEXES FROM %s FROM %s' % (table_name, db_name)
-    cursor.execute(sql)
-    result = cursor.fetchall()
-    indexes = {}
-    for r in result:
-        index_name = r[2]
-        unique = False
-        if r[1] == 0:
-            unique = True
-        if index_name != 'PRIMARY':
-            index = indexes.get(index_name)
-            if not index:
-                index = {
-                    'index_name': index_name,
-                    'unique': unique,
-                    'fields': []
-                }
-                indexes[index_name] = index
-            index['fields'].append([r[4], False])
-    ind = []
-    indexes.values()
-    for key, value in iteritems(indexes):
-        ind.append(value)
-    return {'fields': fields, 'indexes': ind}
+    return {'fields': fields, 'field_types': FIELD_TYPES}
 

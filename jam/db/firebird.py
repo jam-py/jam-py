@@ -234,44 +234,4 @@ def get_table_info(connection, table_name, db_name):
             'default_value': default_value,
             'pk': False
         })
-    sql = '''
-        SELECT RDB$INDEX_NAME, RDB$UNIQUE_FLAG, RDB$INDEX_TYPE FROM RDB$INDICES
-        WHERE RDB$RELATION_NAME='%s'
-        AND RDB$FOREIGN_KEY IS NULL
-    '''
-    cursor.execute(sql % table_name)
-    result = cursor.fetchall()
-    indexes = []
-    for index_name, unique, itype in result:
-        try:
-            index_name = index_name.strip()
-            if unique == 1:
-                unique = True
-            else:
-                unique = False
-            desc = itype == 1
-            sql = '''
-                SELECT RDB$INDEX_SEGMENTS.RDB$FIELD_NAME AS field_name,
-                (RDB$INDEX_SEGMENTS.RDB$FIELD_POSITION + 1) AS field_position
-                FROM RDB$INDEX_SEGMENTS
-                LEFT JOIN RDB$INDICES ON RDB$INDICES.RDB$INDEX_NAME = RDB$INDEX_SEGMENTS.RDB$INDEX_NAME
-                LEFT JOIN RDB$RELATION_CONSTRAINTS ON RDB$RELATION_CONSTRAINTS.RDB$INDEX_NAME = RDB$INDEX_SEGMENTS.RDB$INDEX_NAME
-                WHERE UPPER(RDB$INDICES.RDB$RELATION_NAME)='%s'         -- table name
-                AND UPPER(RDB$INDICES.RDB$INDEX_NAME)='%s' -- index name
-                AND RDB$RELATION_CONSTRAINTS.RDB$CONSTRAINT_TYPE IS NULL
-                ORDER BY RDB$INDEX_SEGMENTS.RDB$FIELD_POSITION
-            '''
-            cursor.execute(sql % (table_name, index_name))
-            info = cursor.fetchall()
-            field_defs = []
-            for f_name, position in info:
-                field_defs.append([f_name, desc])
-            if field_defs:
-                indexes.append({
-                    'index_name': index_name,
-                    'unique': unique,
-                    'fields': field_defs
-                })
-        except Exception as e:
-            pass
-    return {'fields': fields, 'indexes': []}
+    return {'fields': fields, 'field_types': FIELD_TYPES}
