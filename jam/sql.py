@@ -276,26 +276,32 @@ class SQL(object):
                 sql.append('NULL %s "%s"' % (db_module.FIELD_AS, field.db_field_name))
             else:
                 field_sql = '%s."%s"' % (self.table_alias(), field.db_field_name)
+                func = None
                 if funcs:
                     func = functions.get(field.field_name.upper())
-                    if func:
-                        field_sql = '%s(%s) AS "%s"' % (func.upper(), field_sql, field.db_field_name)
+                if func:
+                    field_sql = '%s(%s) %s "%s"' % (func.upper(), field_sql, db_module.FIELD_AS, field.db_field_name)
                 sql.append(field_sql)
         if query['__expanded']:
             for field in fields:
                 if field.lookup_item:
+                    field_alias = '%s_LOOKUP' % field.db_field_name
                     if field.lookup_field2:
-                        field_sql = '%s."%s" %s %s_LOOKUP' % \
-                        (self.lookup_table_alias2(field), field.lookup_db_field2, db_module.FIELD_AS, field.db_field_name)
+                        field_sql = '%s."%s"' % (self.lookup_table_alias2(field), field.lookup_db_field2)
                     elif field.lookup_field1:
-                        field_sql = '%s."%s" %s %s_LOOKUP' % \
-                        (self.lookup_table_alias1(field), field.lookup_db_field1, db_module.FIELD_AS, field.db_field_name)
+                        field_sql = '%s."%s"' % (self.lookup_table_alias1(field), field.lookup_db_field1)
                     else:
                         if field.data_type == common.KEYS:
                             field_sql = 'NULL'
                         else:
-                            field_sql = '%s."%s" %s %s_LOOKUP' % \
-                            (self.lookup_table_alias(field), field.lookup_db_field, db_module.FIELD_AS, field.db_field_name)
+                            field_sql = '%s."%s"' % (self.lookup_table_alias(field), field.lookup_db_field)
+                    func = None
+                    if funcs:
+                        func = functions.get(field.field_name.upper())
+                    if func:
+                        field_sql = '%s(%s) %s "%s"' % (func.upper(), field_sql, db_module.FIELD_AS, field_alias)
+                    else:
+                        field_sql = '%s %s %s' % (field_sql, db_module.FIELD_AS, field_alias)
                     sql.append(field_sql)
         sql = ', '.join(sql)
         return sql

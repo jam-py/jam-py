@@ -159,6 +159,8 @@ def get_locale_dict(task, language):
         else:
             raise Exception('Language with id %s is not found' % language)
         con.rollback()
+    except:
+        result = jam.common.DEFAULT_LOCALE
     finally:
         con.close()
     return result

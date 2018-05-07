@@ -600,10 +600,10 @@ def init_delete_reports(task):
 
 
 def init_admin(task):
-    langs.update_langs(task)
     task.set_language(read_language(task))
     create_items(task)
     update_admin_fields(task)
+    langs.update_langs(task)
     task.fields_id_lock = Lock()
 
     read_setting(task)
@@ -1469,7 +1469,7 @@ def import_metadata(task, task_id, file_name, from_client=False):
         show_progress(task.language('import_reading_data'))
         dir = copy_tmp_files(file_name)
         new_dict, old_dict, db_type = get_items(dir)
-        task.new_db_type = db_type
+        task.old_db_type = db_type
         show_progress(task.language('import_checking_integrity'))
         error = check_items()
         info = ''

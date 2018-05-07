@@ -2087,13 +2087,19 @@
                 tab_content = this._tab_content(tab),
                 tab_div = tab.parent().parent().parent();
             tab_div.find('> .tabbable > div.tab-content > div.tab-pane').removeClass('active');
-            tab_content.addClass('active');
+            tab_content.addClass('active').trigger('tab_active_changed');
             tab_div.find('> .tabbable > ul.nav-tabs > li').removeClass('active');
             tab.addClass('active');
             el = tab_content.data('active_el');
             if (el) {
                 el.focus();
             }
+            tab_content.on('tab_active_changed', function() {
+                var form = tab_content.find('.jam-form:first');
+                if (form.length) {
+                    form.trigger('active_changed');
+                }
+            });
         },
 
         show_tab: function(container, tab_id) {
@@ -9981,9 +9987,6 @@
                         }
                         else {
                             funcs[field_name] = 'count';
-                        }
-                        if (field.lookup_item) {
-                            expanded = true;
                         }
                     }
                 }
