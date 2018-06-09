@@ -4,7 +4,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/platipusica/jam-py/badge.svg?branch=master)](https://coveralls.io/github/platipusica/jam-py?branch=master)
 ![Python versions](https://img.shields.io/pypi/pyversions/python3-saml.svg)
 
-Make a stunning database apps for your business really fast, for **free**. Hwere is the Demo for **Heroku** which you can access from:
+Make a stunning database apps for your business really fast, for **free**. Here is the Demo for **Heroku** which you can access from:
 
 https://jampy.herokuapp.com/
 
