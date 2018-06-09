@@ -4,13 +4,13 @@
 [![Coverage Status](https://coveralls.io/repos/github/platipusica/jam-py/badge.svg?branch=master)](https://coveralls.io/github/platipusica/jam-py?branch=master)
 ![Python versions](https://img.shields.io/pypi/pyversions/python3-saml.svg)
 
-Make a stunning database apps for your business really fast, for **free**. This is the Demo for **Heroku** which you can access from here:
+Make a stunning database apps for your business really fast, for **free**. Hwere is the Demo for **Heroku** which you can access from:
 
 https://jampy.herokuapp.com/
 
 With Jam.py you can create, customise, test and share awesome, fast, event-driven applications for SQLite, Oracle, MySQL, PostgreSQL and Firebird. All of that for free and no vendor lock-in!
 
-How was this Demo published on Heroku?
+How was the Demo published on Heroku?
 ------------------------------------
 The Jam.py Demo you see on Heroku is just a Git repo made from the original Jam.py Demo with two files added: requirements.txt and Procfile.
 
