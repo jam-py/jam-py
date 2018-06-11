@@ -285,6 +285,7 @@ class AbstrItem(AbstractItem):
         info['lock_on_edit'] = self.lock_on_edit
         info['view_params'] = self._view_list
         info['edit_params'] = self._edit_list
+        info['virtual_table'] = self.virtual_table
 
     def read_info(self, info):
         super(AbstrItem, self).read_info(info)

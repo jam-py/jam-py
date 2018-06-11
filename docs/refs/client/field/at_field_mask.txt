@@ -1,0 +1,39 @@
+==========
+field_mask
+==========
+
+.. js:attribute:: field_mask
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Field class </refs/client/field_api>`
+
+
+Description
+===========
+
+You can use **field_mask** attribute to specify the name of the field that appears to 
+
+The mask allows a user to more easily enter fixed width input where you would 
+like them to enter the data in a certain format (dates,phone numbers, etc). 
+
+A mask is defined by a format made up of mask literals and mask definitions. 
+Any character not in the definitions list below is considered a mask literal. 
+Mask literals will be automatically entered for the user as they type and will 
+not be able to be removed by the user.The following mask definitions are predefined:
+
+* a - Represents an alpha character (A-Z,a-z)
+* 9 - Represents a numeric character (0-9)
+* `*` - Represents an alphanumeric character (A-Z,a-z,0-9)
+
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_edit_form_created(item) {
+        item.phone.field_mask = '999-99-99';
+    }

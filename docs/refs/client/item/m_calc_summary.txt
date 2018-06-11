@@ -1,0 +1,48 @@
+============
+calc_summary
+============
+
+.. js:function:: calc_summary(detail, fields)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Use the calc_summary method to calculate sums for fields of a detail and save 
+these values in fields of its master in the on_detail_changed event handler.
+
+The ``detail`` parameter is the detail for the fields of which the sums are 
+calculated.
+
+The ``fields`` parameter is an object that defines the correspondence between 
+the master and detail fields. The keys of this object are the master fields, 
+the values are the corresponding details fields. If the detail field is a numeric 
+field, its sum is calculated, otherwise the resulting value will be the number 
+of records. The value of this object can be a function that returns the result 
+of the calculation for a record of the detail.
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_detail_changed(item, detail) {
+        var fields = [
+            {"total": "total"}, 
+            {"tax": "tax"}, 
+            {"subtotal": function(d) {return d.quantity.value * d.unitprice.value}}
+        ];  
+        item.calc_summary(detail, fields);
+    }
+
+
+See also
+========
+
+:doc:`on_detail_changed <on_detail_changed>`
+:doc:`Details </programming/data/details>`

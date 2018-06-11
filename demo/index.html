@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/static/img/j.png" type="image/png">
 
-    <link href="jam/css/bootstrap-cerulean.css" rel="stylesheet">            <!--do not modify-->
+    <link href="jam/css/bootstrap.css" rel="stylesheet">            <!--do not modify-->
     <link href="jam/css/bootstrap-responsive.css" rel="stylesheet">
     <link href="jam/css/bootstrap-modal.css" rel="stylesheet">
     <link href="jam/css/datepicker.css" rel="stylesheet">
@@ -15,7 +15,7 @@
     <link href="css/project.css" rel="stylesheet">
  
   <body>
-    <div id="container" class="container">
+    <div id="container" class="container" style="display: none">
         <div class="row-fluid">
             <div class="span6">
                 <h3 id="title" class="muted"></h3>
@@ -25,8 +25,8 @@
                 <a href="#" id="log-out" style="display: none">&nbsp;&nbsp;&nbsp;Log out</a>
             </div>
         </div>
-        <div class="container" style="width: auto;">        
-            <div id="taskmenu" class="navbar" style="display: none">        
+        <div class="container" style="width: auto">        
+            <div id="taskmenu" class="navbar">        
                 <div class="navbar-inner">
                     <ul id="menu" class="nav">
                     </ul>
@@ -218,6 +218,7 @@
     <script src="jam/js/bootstrap-modal.js"></script>
     <script src="jam/js/bootstrap-modalmanager.js"></script>
     <script src="jam/js/bootstrap-datepicker.js"></script>
+    <script src="jam/js/jquery.maskedinput.js"></script>    
     <script src="jam/js/jam.js"></script>
     <script src="static/js/Chart.min.js"></script>
 

@@ -13,12 +13,12 @@ clone
 Description
 ===========
 
-Use the clone method to create a copy of an item that shares with it the dataset.
-The clone item has its own cursor, so you can navigate it and the item item 
-cursor position doesn't change.
+Use the clone method to create a copy of an item that shares with it its dataset.
+The clone item has its own cursor, so you can navigate it and the cursor 
+position of the item doesn't change.
 
-Set the keep_filtered parameter to true if you want to have it the same local
-filter.
+Set the ``keep_filtered`` parameter to true if you want the clone to have the same 
+local filter as the item.
 
 Example
 =======

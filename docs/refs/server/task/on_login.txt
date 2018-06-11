@@ -46,7 +46,7 @@ Example
           result = {
               'user_id': 'user',
               'user_name': 'Tom',
-              'role_id': 6,
+              'role_id': 2,
               'role_name': 'User'
           }
         return result

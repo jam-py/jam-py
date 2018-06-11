@@ -41,8 +41,7 @@ def connect(database, user, password, host, port, encoding):
         port = int(port)
     return fdb.connect(database=database, user=user, password=password, charset=encoding, host=host, port=port)
 
-def get_lastrowid(cursor):
-    return None
+get_lastrowid = None
 
 def get_select(query, start, end, fields):
     offset = query['__offset']
@@ -155,7 +154,7 @@ def change_field_sql(table_name, old_field, new_field):
     result = []
     if FIELD_TYPES[old_field['data_type']] != FIELD_TYPES[new_field['data_type']] \
         or old_field['size'] != new_field['size']:
-        raise Exception(u"Don't know how to change field's size or type of %s" % old_field['field_name'])
+        raise Exception(u"Don't know how to change field's size or type of %s, table name %s" % (old_field['field_name'], table_name))
     if old_field['field_name'] != new_field['field_name']:
         sql = 'ALTER TABLE "%s" ALTER "%s" TO "%s"' % \
             (table_name, old_field['field_name'], new_field['field_name'])
@@ -175,16 +174,13 @@ def change_field_sql(table_name, old_field, new_field):
         result.append(sql)
     return result
 
-def get_sequence_name(table_name):
-    return '%s_GEN' % table_name
-
 def next_sequence_value_sql(gen_name):
     return 'SELECT NEXT VALUE FOR "%s" FROM RDB$DATABASE' % gen_name
 
 def restart_sequence_sql(gen_name, value):
     return 'ALTER SEQUENCE %s RESTART WITH %d' % (gen_name, value)
 
-def set_literal_case(name):
+def identifier_case(name):
     return name.upper()
 
 def get_table_names(connection):

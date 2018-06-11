@@ -1,5 +1,5 @@
 import MySQLdb
-from werkzeug._compat import iteritems
+from werkzeug._compat import iteritems, to_unicode
 
 DATABASE = 'MYSQL'
 NEED_DATABASE_NAME = True
@@ -72,8 +72,14 @@ def process_sql_params(params, cursor):
 def process_sql_result(rows):
     result = []
     for row in rows:
-        result.append(list(row))
+        new_row = []
+        for r in row:
+            if isinstance(r, bytes):
+                r = to_unicode(r, 'utf-8')
+            new_row.append(r)
+        result.append(new_row)
     return result
+
 
 def cast_date(date_str):
     return "'" + date_str + "'"
@@ -180,16 +186,13 @@ def param_literal():
 def quotes():
     return '`'
 
-def get_sequence_name(table_name):
-    return None
-
 def next_sequence_value_sql(table_name):
     return None
 
 def restart_sequence_sql(table_name, value):
     pass
 
-def set_literal_case(name):
+def identifier_case(name):
     return name.lower()
 
 def get_table_names(connection):

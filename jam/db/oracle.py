@@ -38,8 +38,7 @@ def connect(database, user, password, host, port, encoding):
     elif database:
         return cx_Oracle.connect(dsn=database)
 
-def get_lastrowid(cursor):
-    return None
+get_lastrowid = None
 
 def get_fields(query, fields, alias):
     sql = ''
@@ -202,9 +201,6 @@ def change_field_sql(table_name, old_field, new_field):
 def param_literal():
     return '?'
 
-def get_sequence_name(table_name):
-    return '%s_GEN' % table_name
-
 def next_sequence_value_sql(gen_name):
     return 'SELECT "%s".NEXTVAL FROM DUAL' % gen_name
 
@@ -214,7 +210,7 @@ def restart_sequence_sql(gen_name, value):
     result.append('CREATE SEQUENCE "%s" START WITH %s' % (gen_name, value))
     return result
 
-def set_literal_case(name):
+def identifier_case(name):
     return name.upper()
 
 def get_table_names(connection):

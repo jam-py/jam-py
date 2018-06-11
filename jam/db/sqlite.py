@@ -95,7 +95,7 @@ def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
         if field['primary_key']:
             primary_key = field['field_name']
             sql += ' PRIMARY KEY'
-        if field['default_value']:
+        if field['default_value'] and not field['primary_key']:
             if field['data_type'] == TEXT:
                 sql += " DEFAULT '%s'" % field['default_value']
             else:
@@ -142,16 +142,13 @@ def del_field_sql(table_name, field):
 def change_field_sql(table_name, old_field, new_field):
     return ''
 
-def get_sequence_name(table_name):
-    return None
-
 def next_sequence_value_sql(table_name):
     return None
 
 def restart_sequence_sql(table_name, value):
     pass
 
-def set_literal_case(name):
+def identifier_case(name):
     return name.upper()
 
 def get_table_names(connection):

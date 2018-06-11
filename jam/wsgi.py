@@ -78,7 +78,7 @@ class JamRequest(Request):
             session['session_expires'] = session_expires
             session.save_cookie(response, key=key, session_expires=session_expires)
 
-def create_application(from_file):
+def create_application(from_file=None):
     if from_file:
         work_dir = os.path.dirname(os.path.abspath(from_file))
     else:
@@ -160,16 +160,14 @@ class App():
         return self.__task_locked
 
     def __call__(self, environ, start_response):
-        return self.wsgi_app(environ, start_response)
-
-    def wsgi_app(self, environ, start_response):
         jam.context.environ = environ
         request = JamRequest(environ)
         adapter = self.url_map.bind_to_environ(request.environ)
         try:
             endpoint, values = adapter.match()
             if endpoint in ['file', 'root_file']:
-                return self.serve_file(environ, start_response, endpoint, **values)
+                result = self.serve_file(environ, start_response, endpoint, **values)
+                return result
             elif endpoint in ['api', 'upload']:
                 response = getattr(self, 'on_' + endpoint)(request, **values)
         except HTTPException as e:
@@ -177,6 +175,7 @@ class App():
                 response = self.on_ext(request)
             else:
                 response = e
+        jam.context.session = None
         return response(environ, start_response)
 
     def check_modified(self, file_path, environ):
@@ -203,7 +202,7 @@ class App():
                 else:
                     return Response(self.admin.language('no_task'))(environ, start_response)
             elif file_name == 'builder.html':
-                self.check_modified(os.path.join(self.jam_dir, file_name), environ)
+                self.check_modified(os.path.join(to_unicode(self.jam_dir, 'utf-8'), file_name), environ)
                 environ['PATH_INFO'] = os.path.join('jam', file_name)
         if file_name:
             base, ext = os.path.splitext(file_name)
@@ -307,7 +306,11 @@ class App():
         if self.admin == task or task.on_login is None:
             user_info = adm_server.login(self.admin, login, password, self.admin == task, ip)
         elif task.on_login:
-            user_info = task.on_login(task, login, password)
+            try:
+                user_info = task.on_login(task, login, password)
+            except:
+                user_info = None
+                traceback.print_exc()
         if user_info:
             self.create_session(request, task, user_info)
             return True
@@ -334,17 +337,22 @@ class App():
                     self.__task_locked = True
 
     def import_metadata(self, task, task_id, file_name, from_client):
-        self.__task_locked = False
-        try:
-            return adm_server.import_metadata(task, task_id, file_name, from_client)
-        finally:
-            self.__task_locked = True
+        if self.get_task():
+            self.__task_locked = False
+            try:
+                return adm_server.import_metadata(task, task_id, file_name, from_client)
+            finally:
+                self.__task_locked = True
 
     def get_privileges(self, role_id):
         if self.privileges is None:
             roles, privileges = adm_server.get_roles(self.admin)
             self.privileges = privileges
-        return self.privileges[role_id]
+        try:
+            result = self.privileges[role_id]
+        except:
+            result = {}
+        return result
 
     def init_client(self, task):
         session = jam.context.session
@@ -532,7 +540,8 @@ class App():
                     else:
                         string += s
                 start = len(header_str) + pos
-                path = os.path.join(os.getcwd(), os.path.normpath(to_unicode(data[start: start + header[1]], 'utf-8')))
+                path = os.path.join(to_unicode(os.getcwd(), 'utf-8'), \
+                    os.path.normpath(to_unicode(data[start: start + header[1]], 'utf-8')))
                 if not os.path.exists(path):
                     os.makedirs(path)
                 start = start + header[1]

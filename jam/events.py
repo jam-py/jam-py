@@ -106,6 +106,7 @@ detail_client_events = \
 item_client_events = detail_client_events
 item_client_events['on_before_apply'] = 'item'
 item_client_events['on_after_apply'] = 'item'
+item_client_events['on_detail_changed'] = 'item, detail'
 
 report_client_events = \
     {
@@ -124,7 +125,7 @@ task_server_events = \
         'on_created': 'task',
         'on_login': 'task, login, password',
         'on_open': 'item, params',
-        'on_count': 'item, params',
+        #~ 'on_count': 'item, params',
         'on_apply': 'item, delta, params',
         'on_ext_request': 'task, request, params'
         #~ 'on_before_request': 'item, request, params'
@@ -143,7 +144,7 @@ reports_server_events = \
 detail_server_events = \
     {
         'on_open': 'item, params',
-        'on_count': 'item, params',
+        #~ 'on_count': 'item, params',
 #        'on_field_get_text': 'field'
     }
 

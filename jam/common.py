@@ -126,6 +126,8 @@ LOCKS_FIELDS = [
 ]
 LOCKS_INDEX_FIELDS = ['item_id', 'item_rec_id']
 
+SQL_KEYWORDS = ['DATE', 'DAY', 'MONTH']
+
 def error_message(e):
     try:
         return str(e)
@@ -458,7 +460,7 @@ def json_defaul_handler(obj):
     return result
 
 def zip_dir(dir, zip_file, exclude_dirs=[], exclude_ext=[], recursive=True):
-    folder = os.path.join(to_unicode(os.getcwd(), 'utf-8'), dir)
+    folder = os.path.join(os.getcwd(), dir)
     if os.path.exists(folder):
         if recursive:
             for dirpath, dirnames, filenames in os.walk(folder):

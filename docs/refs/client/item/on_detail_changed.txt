@@ -1,0 +1,48 @@
+=================
+on_detail_changed
+=================
+
+on_detail_changed(item, detail)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Occurs after changes to detail record has been posted. It uses the clearTimeout
+and setTimeout Javascript functions so if records have been changed in a cicle it
+is triggered only when last record change occurs.
+
+The ``item`` parameter is an item that triggered the event.
+The ``detail`` parameter is a detail that has been changed.
+
+Write an on_detail_changed event handler to calculate, by using 
+:doc:`calc_summary <m_calc_summary>` method,
+sums for fields of a detail and save these values in fields of its master.
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_detail_changed(item, detail) {
+        var fields;
+        if (detail.item_name === 'invoice_table') {
+            fields = [
+                {"total": "total"}, 
+                {"tax": "tax"}, 
+                {"subtotal": "amount"}
+            ];  
+            item.calc_summary(detail, fields);
+        }
+    }
+
+See also
+========
+
+:doc:`Details </programming/data/details>`
+:doc:`calc_summary <m_calc_summary>`

@@ -1,13 +1,13 @@
-=================
-Project managment
-=================
+==================
+Project management
+==================
 
 After the Application builder is first run or when the **Project** node is selected
 in the project tree, the Application builder page will look as follows:
 
 .. image:: /admin/_images/project_node.png
 	:align: center
-	:alt: Project managment
+	:alt: Project management
 
 Click on the links below to see the purpose of the buttons in the right panel of 
 the page.

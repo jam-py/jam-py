@@ -527,6 +527,9 @@ input.input-text {
 .header-filters {
     margin-right: 20px;
     flex-grow: 5;
+    display: flex;
+    align-items: center;
+    font-weight: bold;
 }
 
 .header-search {
@@ -543,8 +546,9 @@ input.input-text {
     margin: 10px 0;
 }
 
-.filters-text-div {
-  font-weight: bold;
+.filters-text {
+    padding: 0;
+    margin-left: 4px;
 }
 
 .header-selected {
@@ -552,7 +556,9 @@ input.input-text {
 }
 
 .flex-container {
+/*
     display: flex;
+*/
 }
 
 sup {
@@ -569,6 +575,7 @@ sup {
     position: absolute;
     z-index: 1030;
     display: block;
+    min-width: 200px;
 }
 
 .pulsate {
