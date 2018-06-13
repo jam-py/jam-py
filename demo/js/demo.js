@@ -582,11 +582,11 @@ function Events25() { // demo.catalogs.mail
 
 	function on_edit_form_created(item) {
 		var title = 'Email to ';
-		if (item.task.customers.selections.length)
-			title += item.task.customers.selections.length + ' selected customers';
+		if (task.customers.selections && task.customers.selections.length)
+			title += task.customers.selections.length + ' selected customers';
 		else {
-			title += item.task.customers.firstname.value + ' ' +
-				item.task.customers.lastname.value;
+			title += task.customers.firstname.value + ' ' +
+				task.customers.lastname.value;
 		}
 		item.edit_options.title = title;
 		item.edit_form.find('#ok-btn')

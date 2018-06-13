@@ -3156,7 +3156,7 @@
         this._is_delta = false;
         this._limit = 1;
         this._offset = 0;
-        this.set_selections([]);
+        this._selections = undefined;
         this.show_selected = false;
         this.selection_limit = 1500;
         this.is_loaded = false;
@@ -6184,6 +6184,45 @@
             }
         },
 
+        select_records: function(source, fields) {
+            var self = this,
+                source = source.copy()
+            source.selections = [];
+            source.on_view_form_close_query = function() {
+                var copy = source.copy(),
+                    pk_in = copy._primary_key + '__in',
+                    where = {};
+                if (source.selections.length) {
+                    where[pk] = source.selections;
+                    copy.set_where(where);
+                    copy.open(function() {
+                        var rec_no = self.rec_no;
+                        self.disable_controls();
+                        try {
+                            copy.each(function(c){
+                                if (!self.locate('track', c.id.value)) {
+                                    self.append();
+                                    self.track.value = c.id.value;
+                                    self.track.lookup_value = c.name.value;
+                                    self.album.lookup_value = c.album.display_text;
+                                    self.artist.lookup_value = c.artist.display_text;
+                                    self.unitprice.value = c.unitprice.value;
+                                    self.quantity.value = 1;
+                                    self.post();
+                                }
+                            });
+                        }
+                        finally {
+                            self.rec_no = rec_no;
+                            self.enable_controls();
+                            self.update_controls();
+                        }
+                    })
+                }
+            }
+            source.view();
+        },
+
         _detail_changed: function(detail, modified) {
             if (modified && !detail.paginate && this.on_detail_changed ||
                 detail.controls.length && detail.table_options.summary_fields.length) {
@@ -6705,11 +6744,6 @@
             }
             return result
         }
-
-        //~ calc_detail: function(detail, fields, calculate) {
-
-        //~ }
-
     });
 
     /**********************************************************************/
@@ -9235,10 +9269,13 @@
 
         init_selections: function() {
             var value;
-            //~ if (this.options.multiselect && !(this.item.selections instanceof Array)) {
-                //~ this.item.selections = [];
-            //~ }
-            if (this.options.selections && this.options.selections instanceof Array && this.options.selections.length) {
+            if (this.options.multiselect && !this.item.selections) {
+                this.item.selections = [];
+            }
+            if (this.item.selections) {
+                this.options.multiselect = true;
+            }
+            if (this.options.selections && this.options.selections.length) {
                 this.item.selections = this.options.selections;
                 this.options.multiselect = true;
             }
