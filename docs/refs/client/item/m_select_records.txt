@@ -1,0 +1,46 @@
+==============
+select_records
+==============
+
+.. js:function:: select_records(source, fields)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Use the select_records method to add records to an item by selecting them from
+source item.
+
+For example, this method is used in the Demo application to add tracks to an 
+invoice by selecting them from Tracks catalog.
+
+The ``source`` parameter is the item to select records from.
+
+The ``fields`` parameter is an object that defines the correspondence between 
+the item fields and source item fields. The keys of this object are the field_names of the item, 
+the values are the corresponding field_names of the source item or a value that 
+will be assigned to the item field. 
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        var btn = item.add_button(item.view_form.find(".form-footer"), 'Select'),
+            fields =             {
+                'track': 'name',
+                'album': 'album',
+                'artist': 'artist',
+                'unitprice': 'unitprice',
+                'quantity': 1
+            };
+        btn.click(function() {
+            item.select_records(task.tracks, fields);
+        });
+    }

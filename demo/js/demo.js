@@ -295,73 +295,34 @@ function Events10() { // demo.catalogs.customers
 
 	function on_view_form_created(item) {
 		if (!item.view_form.hasClass('modal')) {	
-			item.view_form.find('#email-btn')
-				.click(function() {
-					if (task.mail.can_create()) {
-						task.mail.open({open_empty: true}); 
-						task.mail.append_record(); 
-					}
-					else { 
-						item.warning('You are not allowed to send emails.');
-					}
-				}) 
-				.show(); 
-			item.view_form.find('#print-btn')
-				.click(function() { 
-					task.customers_report.customers.value = item.selections;
-					task.customers_report.print(false);
-				})
-				.show();
+			var print_btn = item.add_button(item.view_form.find(".form-footer"), 'Print', {image: 'icon-print'}),
+				email_btn = item.add_button(item.view_form.find(".form-footer"), 'Send email', {image: 'icon-pencil'});
+			email_btn.click(function() { send_email() });
+			print_btn.click(function() { print(item) });
 		}
 		
+	}  
+	
+	function send_email() {
+		if (task.mail.can_create()) {
+			task.mail.open({open_empty: true}); 
+			task.mail.append_record(); 
+		}
+		else { 
+			item.warning('You are not allowed to send emails.');
+		}
+	}
+	
+	function print(item) {
+		task.customers_report.customers.value = item.selections;
+		task.customers_report.print(false);
 	}
 	this.on_view_form_created = on_view_form_created;
+	this.send_email = send_email;
+	this.print = print;
 }
 
 task.events.events10 = new Events10();
-
-function Events15() { // demo.catalogs.tracks 
-
-	function on_view_form_close_query(item) {
-		var copy;
-		if (item.invoices) {
-			if (item.selections.length > 100) {
-				item. warning('Too many records selected. Maximum is 100');
-				return false;
-			}
-			else if (item.selections.length) {
-				copy = item.copy();
-				copy.set_where({id__in: item.selections});
-				copy.open(function() {
-					var rec_no = item.invoices.invoice_table.record_count();
-					item.invoices.invoice_table.disable_controls();
-					try {
-						copy.each(function(c){
-							if (!item.invoices.invoice_table.locate('track', c.id.value)) {
-								item.invoices.invoice_table.append();
-								item.invoices.invoice_table.track.value = c.id.value;
-								item.invoices.invoice_table.track.lookup_value = c.name.value;
-								item.invoices.invoice_table.album.lookup_value = c.album.display_text;
-								item.invoices.invoice_table.artist.lookup_value = c.artist.display_text;
-								item.invoices.invoice_table.unitprice.value = c.unitprice.value;
-								item.invoices.invoice_table.quantity.value = 1;
-								item.invoices.invoice_table.post();
-							}
-						});
-					}
-					finally {
-						item.invoices.invoice_table.rec_no = rec_no;
-						item.invoices.invoice_table.enable_controls();
-						item.invoices.invoice_table.update_controls();
-					}
-				});
-			}
-		}
-	}
-	this.on_view_form_close_query = on_view_form_close_query;
-}
-
-task.events.events15 = new Events15();
 
 function Events16() { // demo.journals.invoices 
 
@@ -372,15 +333,6 @@ function Events16() { // demo.journals.invoices
 	
 	function on_view_form_created(item) {
 		item.filters.invoicedate1.value = new Date(new Date().setYear(new Date().getFullYear() - 1));
-	}
-	
-	function on_edit_form_created(item) {
-		item.edit_form.find("#select-btn").click(function(e) { 
-			var tracks = task.tracks.copy();
-			tracks.invoices = item;
-			tracks.table_options.multiselect = true;
-			tracks.view();
-		});
 	}
 	
 	function on_field_get_text(field) {
@@ -411,7 +363,6 @@ function Events16() { // demo.journals.invoices
 	}
 	this.on_after_append = on_after_append;
 	this.on_view_form_created = on_view_form_created;
-	this.on_edit_form_created = on_edit_form_created;
 	this.on_field_get_text = on_field_get_text;
 	this.on_field_changed = on_field_changed;
 	this.on_detail_changed = on_detail_changed;
@@ -437,8 +388,23 @@ function Events18() { // demo.journals.invoices.invoice_table
 			calc(item);
 		}
 	}
+	
+	function on_view_form_created(item) {
+		var btn = item.add_button(item.view_form.find(".form-footer"), 'Select', {type: 'primary'}),
+			fields =			 {
+				'track': 'name',
+				'album': 'album',
+				'artist': 'artist',
+				'unitprice': 'unitprice',
+				'quantity': 1
+			};
+		btn.click(function() {
+			item.select_records(task.tracks, fields);
+		});
+	}
 	this.calc = calc;
 	this.on_field_changed = on_field_changed;
+	this.on_view_form_created = on_view_form_created;
 }
 
 task.events.events18 = new Events18();

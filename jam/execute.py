@@ -154,6 +154,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
     messages = []
     result = None
     error = None
+    info = ''
     try:
         cursor = connection.cursor()
         if call_proc:
@@ -192,13 +193,10 @@ def execute_sql(db_module, db_database, db_user, db_password,
             connection = None
     finally:
         if ddl:
+            if error:
+                messages.append(info_from_error(error))
             if messages:
                 info = ''.join(messages)
-            else:
-                if error:
-                    info = info_from_error(error)
-                else:
-                    info = ''
             result = connection, (result, error, info)
         else:
             result = connection, (result, error)

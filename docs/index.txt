@@ -42,42 +42,48 @@ Tutorials
 
 If you are new to Jam.py, we highly recommend that you watch these video tutorials
 
+It is recommended to watch these videos with a resolution of 1080p
+
 Tutorial 1 - `Getting started`_ 
 
 .. _`Getting started`: https://youtu.be/4Sd3YKSUoy4
 
-Tutorial 2 - `Task tree`_ 
+Tutorial 2 - `Jam.py interface setup`_ 
+
+.. _`Jam.py interface setup`: https://youtu.be/XxPmqrZFtqQ
+
+Tutorial 3 - `Task tree`_ 
 
 .. _`Task tree`: https://youtu.be/hsSKqEh6vL4
 
-Tutorial 3 - Forms_
+Tutorial 4 - Forms_
 
 .. _Forms: https://youtu.be/3sh-TSt52P0
 
-Tutorial 4 - `Form events`_
+Tutorial 5 - `Form events`_
  
 .. _`Form events`: https://youtu.be/DY463lcv0R4
 
-Tutorial 5 - `Data aware controls`_
+Tutorial 6 - `Data aware controls`_
  
 .. _`Data aware controls`: https://youtu.be/fMTq8P4XdGw
 
-Tutorial 6 - `Datasets`_
+Tutorial 7 - `Datasets`_
  
 .. _`Datasets`: https://youtu.be/gHTYj7h9ljI
 
-Tutorial 7 - `Datasets Part 2`_
+Tutorial 8 - `Datasets Part 2`_
  
 .. _`Datasets Part 2`: https://youtu.be/1bUGmgBfrNw
 
-Tutorial 8 - `Fields and filters`_
+Tutorial 9 - `Fields and filters`_
  
 .. _`Fields and filters`: https://youtu.be/ahXqlZrA0fQ
 
-Tutorial 9 - `Client-server interactions`_
+Tutorial 10 - `Client-server interactions`_
  
 .. _`Client-server interactions`: https://youtu.be/nLOhdA2FX0I
 
-Tutorial 9 - `Working with data on the server`_
+Tutorial 11 - `Working with data on the server`_
  
 .. _`Working with data on the server`: https://youtu.be/dDK78lIjHHY

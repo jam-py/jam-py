@@ -1,0 +1,16 @@
+==============
+Version 5.4.11
+==============
+
+Library:
+
+* :doc:`add_button </refs/client/item/m_add_button>` method added
+
+* :doc:`select_records </refs/client/item/m_select_records>` method added
+
+* :doc:`alert </refs/client/abstr_item/m_alert>` method bugs fixed
+
+* bootstrap theme buttons changed
+
+* Metadata import bug fixed - didn't display error that was raised when changes
+  to DB were commited

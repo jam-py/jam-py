@@ -1278,6 +1278,7 @@
                     type: 'info',
                     header: undefined,
                     align: 'right',
+                    replace: true,
                     pulsate: true,
                     click_close: true,
                     body_click_hide: true,
@@ -1289,6 +1290,9 @@
                 container = $('body'),
                 $alert;
             options = $.extend({}, default_options, options);
+            if (!options.replace && $('body').find('.alert-absolute').length) {
+                return;
+            }
             if (!options.header) {
                 options.header = task.language[options.type];
             }
@@ -1302,16 +1306,30 @@
               '<p>' + message + '</p>' +
             '</div>'
             );
-            $('body').children().each(function() {
-                if ($(this).width() > width) {
-                    width = $(this).width();
-                    container = $(this);
-                }
-            });
+            if (task.forms_container.length) {
+                container = task.forms_container;
+            }
+            else {
+                $('body').children().each(function() {
+                    var $this = $(this);
+                    if ($this.width() > width && $this.css('z-index') === 'auto') {
+                        width = $this.width();
+                        container = $this;
+                    }
+                });
+            }
             $('body').find('.alert-absolute').remove();
-            $('body').off('mouseup.alert-absolute').on('mouseup.alert-absolute', function(e) {
+            $('body')
+                .off('mouseup.alert-absolute keyup.alert-absolute')
+                .on('mouseup.alert-absolute keyup.alert-absolute', function(e) {
                 $('body').find('.alert-absolute').remove();
             })
+            $(window)
+                .off('resize.alert-absolute')
+                .on('resize.alert-absolute', function(e) {
+                $('body').find('.alert-absolute').remove();
+            })
+
             $alert.addClass('alert-' + options.type)
             if (options.pulsate) {
                 $alert.find('h4').addClass('pulsate');
@@ -2396,7 +2414,9 @@
         set_forms_container: function(container) {
             if (container && container.length) {
                 this.forms_container = container;
-                this.init_tabs(container);
+                if (this.forms_in_tabs) {
+                    this.init_tabs(container);
+                }
             }
         },
 
@@ -5686,9 +5706,7 @@
                             if (on_after_apply) {
                                 on_after_apply(copy, copy);
                             }
-                            //~ self.refresh_page(function() {
-                                //~ self.locate(self._primary_key, copy._primary_key_field.value);
-                            //~ });
+                            self.refresh_page(true);
                         }
                     });
                 }
@@ -6184,6 +6202,52 @@
             }
         },
 
+        add_button: function(container, text, options) {
+            var default_options = {
+                    id: undefined,
+                    'class': undefined,
+                    image: undefined,
+                    type: undefined,
+                    pull_left: false,
+                    shortcut: undefined
+                },
+                result;
+            if (!container.length) {
+                return;
+            }
+            options = $.extend({}, default_options, options);
+            if (!text) {
+                text = 'Button';
+            }
+            result = $('<button class="btn expanded-btn" type="button"></button>')
+            if (options.id) {
+                result.attr('id', options.id);
+            }
+            if (options['class']) {
+                result.addClass(options['class']);
+            }
+            if (options.pull_left) {
+                result.addClass('pull-left');
+            }
+            if (options.type) {
+                result.addClass('btn-' + options.type);
+            }
+            if (options.image && options.shortcut) {
+                result.html('<i class="' + options.image + '"></i> ' + text + '<small class="muted">&nbsp;[' + options.shortcut + ']</small>')
+            }
+            else if (options.image) {
+                result.html('<i class="' + options.image + '"></i> ' + text)
+            }
+            else if (options.shortcut) {
+                result.html(' ' + text + '<small class="muted">&nbsp;[' + options.shortcut + ']</small>')
+            }
+            else {
+                result.html(' ' + text)
+            }
+            container.append(result)
+            return result;
+        },
+
         select_records: function(source, fields) {
             var self = this,
                 source = source.copy()
@@ -6193,27 +6257,65 @@
                     pk_in = copy._primary_key + '__in',
                     where = {};
                 if (source.selections.length) {
-                    where[pk] = source.selections;
+                    where[pk_in] = source.selections;
                     copy.set_where(where);
                     copy.open(function() {
-                        var rec_no = self.rec_no;
+                        var field,
+                            pk_field1,
+                            pk_field2,
+                            rec_no = self.rec_no;
+                        for (var f in fields) {
+                            field = self.field_by_name(f);
+                            if (field) {
+                                if (field.lookup_item && !field.master_field && field.lookup_item.ID === source.ID) {
+                                    pk_field1 = field;
+                                    pk_field2 = copy.field_by_name(fields[f]);
+                                }
+                            }
+                            else {
+                                throw this.item_name + ' - select_records method argument error: ' + f;
+                            }
+                        }
                         self.disable_controls();
                         try {
                             copy.each(function(c){
-                                if (!self.locate('track', c.id.value)) {
-                                    self.append();
-                                    self.track.value = c.id.value;
-                                    self.track.lookup_value = c.name.value;
-                                    self.album.lookup_value = c.album.display_text;
-                                    self.artist.lookup_value = c.artist.display_text;
-                                    self.unitprice.value = c.unitprice.value;
-                                    self.quantity.value = 1;
-                                    self.post();
+                                var field1,
+                                    field2;
+                                self.append();
+                                pk_field1.value = c._primary_key_field.value;
+                                pk_field1.lookup_value = pk_field2.display_text;
+                                for (var f in fields) {
+                                    field1 = self.field_by_name(f);
+                                    field2 = c.field_by_name(fields[f]);
+                                    if (field1 !== pk_field1) {
+                                        if (field1.lookup_item && field1.master_field && field1.lookup_item.ID === source.ID) {
+                                            if (field2) {
+                                                field1.lookup_value = field2.display_text;
+                                            }
+                                        }
+                                        else {
+                                            if (field2) {
+                                                field1.value = field2.value;
+                                            }
+                                            else {
+                                                field1.value = fields[f];
+                                            }
+                                        }
+                                    }
                                 }
+                                self.post();
                             });
                         }
+                        catch (e) {
+                            console.error(e);
+                        }
                         finally {
-                            self.rec_no = rec_no;
+                            if (rec_no === null) {
+                                self.first();
+                            }
+                            else {
+                                self.rec_no = rec_no;
+                            }
                             self.enable_controls();
                             self.update_controls();
                         }
@@ -12016,6 +12118,8 @@
                     .tooltip('fixTitle');
                 this.hideError();
             } else {
+                task.alert_error(this.error, {replace: false});
+                //~ task.alert(this.error, {replace: false});
                 this.showError();
                 if (this.$controlGroup) {
                     this.$controlGroup.addClass('error');

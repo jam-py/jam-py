@@ -1,0 +1,63 @@
+==========
+add_button
+==========
+
+.. js:function:: add_button(container, text, options) 
+
+**domain**: client 
+
+**language**: javascript
+
+Description
+===========
+
+Use ``add_button`` to dynamically create a button in the container element.
+
+This method is usually used in the ``on_edit_form_created`` events.
+
+The following parameters are passed to the method:
+
+* ``container`` - a JQuery object that will contain a new button, if 
+  container length is 0 (no container), the method returns.
+
+* ``text`` - the text that will be displayed on the button
+
+* ``options`` - options that specify additional properties of the button
+
+The ``options`` parameter is an object that may have following attributes:
+
+* ``id`` - the id attribute of the button
+
+* ``class`` - the class of the button
+
+* ``type`` - specifies the type (color) of the button, it can be one of the 
+  following text values:
+  
+  * primary
+  * success
+  * info
+  * warning
+  * danger
+
+  
+* ``pull_left``: if this attribute is set to true, the button will be left aligned
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        var btn = item.add_button(item.view_form.find(".form-footer"), 'Select', {type: 'primary'}),
+            fields =             {
+                'track': 'name',
+                'album': 'album',
+                'artist': 'artist',
+                'unitprice': 'unitprice',
+                'quantity': 1
+            };
+        btn.click(function() {
+            item.select_records(task.tracks, fields);
+        });
+    }
+
