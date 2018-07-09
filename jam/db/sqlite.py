@@ -131,9 +131,9 @@ def add_field_sql(table_name, field):
         (table_name, field['field_name'], FIELD_TYPES[field['data_type']])
     if field['default_value']:
         if field['data_type'] == TEXT:
-            sql += " DEFAULT '%s'" % field['default_value']
+            result += " DEFAULT '%s'" % field['default_value']
         else:
-            sql += ' DEFAULT %s' % field['default_value']
+            result += ' DEFAULT %s' % field['default_value']
     return result
 
 def del_field_sql(table_name, field):
