@@ -18,7 +18,7 @@ LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" AS %s'
 FIELD_AS = 'AS'
 LIKE = 'LIKE'
 
-JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB, KEYS = range(1, 10)
+JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, LONGTEXT, KEYS = range(1, 10)
 FIELD_TYPES = {
     INTEGER: 'INT',
     TEXT: 'VARCHAR',
@@ -27,11 +27,11 @@ FIELD_TYPES = {
     DATE: 'DATE',
     DATETIME: 'DATETIME',
     BOOLEAN: 'INT',
-    BLOB: 'BLOB',
-    KEYS: 'BLOB'
+    LONGTEXT: 'LONGTEXT',
+    KEYS: 'LONGTEXT'
 }
 
-def connect(database, user, password, host, port, encoding):
+def connect(database, user, password, host, port, encoding, server):
     charset = None
     use_unicode = None
     if encoding:
@@ -51,7 +51,9 @@ def connect(database, user, password, host, port, encoding):
 def get_lastrowid(cursor):
     return cursor.lastrowid
 
-def get_select(query, start, end, fields):
+def get_select(query, fields_clause, from_clause, where_clause, group_clause, order_clause, fields):
+    start = fields_clause
+    end = ''.join([from_clause, where_clause, group_clause, order_clause])
     offset = query['__offset']
     limit = query['__limit']
     result = 'SELECT %s FROM %s' % (start, end)

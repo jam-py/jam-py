@@ -21,7 +21,7 @@ FIELD_AS = 'AS'
 LIKE = 'ILIKE'
 DESC = 'DESC NULLS LAST'
 
-JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB, KEYS = range(1, 10)
+JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, LONGTEXT, KEYS = range(1, 10)
 FIELD_TYPES = {
     INTEGER: 'INTEGER',
     TEXT: 'VARCHAR',
@@ -30,16 +30,18 @@ FIELD_TYPES = {
     DATE: 'DATE',
     DATETIME: 'TIMESTAMP',
     BOOLEAN: 'INTEGER',
-    BLOB: 'BYTEA',
-    KEYS: 'BYTEA'
+    LONGTEXT: 'TEXT',
+    KEYS: 'TEXT'
 }
 
-def connect(database, user, password, host, port, encoding):
+def connect(database, user, password, host, port, encoding, server):
     return psycopg2.connect(database=database, user=user, password=password, host=host, port=port)
 
 get_lastrowid = None
 
-def get_select(query, start, end, fields):
+def get_select(query, fields_clause, from_clause, where_clause, group_clause, order_clause, fields):
+    start = fields_clause
+    end = ''.join([from_clause, where_clause, group_clause, order_clause])
     offset = query['__offset']
     limit = query['__limit']
     result = 'SELECT %s FROM %s' % (start, end)
@@ -52,14 +54,13 @@ def process_sql_params(params, cursor):
     for p in params:
         if type(p) == tuple:
             value, data_type = p
-            if data_type in [BLOB, KEYS]:
-                if type(value) == text_type:
-                    value = to_bytes(value, 'utf-8')
-                value = psycopg2.Binary(value)
         else:
             value = p
         result.append(value)
     return result
+
+#~ def process_sql_result(rows):
+    #~ return [list(row) for row in rows]
 
 def process_sql_result(rows):
     result = []

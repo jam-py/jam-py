@@ -15,7 +15,6 @@ The following files and folders will be created in the directory::
 
     /
         css/
-            project.css
         js/
         img/
         reports/
@@ -23,6 +22,7 @@ The following files and folders will be created in the directory::
         admin.sqlite
         server.py
         index.html
+        wsgi.py
 
 
 To start Jam.py web server run **server.py** script.
@@ -62,7 +62,7 @@ In the New project dialog box fill in:
 
 * **Caption** - the project name that appears to users
 * **Name** - name of project (task) that will be used in programming code to 
-  get access to the task object. Should be a short valid python identifier. 
+  get access to the task object. Should be a short valid python identifier.
 * **DB type** — select database type. If database is not Sqlite, it must be 
   created in advance and its attributes should be entered in the 
   corresponding form fields. 

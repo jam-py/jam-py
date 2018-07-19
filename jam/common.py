@@ -75,9 +75,9 @@ ITEM_TYPES = ["root", "users", "roles", "tasks", "task",
 
 GROUP_TYPES = ["Item group", "Detail group", "Report group"]
 
-TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB, KEYS = range(1, 10)
-FIELD_TYPES = ('TEXT', 'INTEGER', 'FLOAT', 'CURRENCY', 'DATE', 'DATETIME', 'BOOLEAN', 'BLOB', 'KEYS')
-FIELD_TYPE_NAMES = ('', 'text', 'integer', 'float', 'currency', 'date', 'datetime', 'boolean', 'blob', 'keys')
+TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, LONGTEXT, KEYS = range(1, 10)
+FIELD_TYPES = ('TEXT', 'INTEGER', 'FLOAT', 'CURRENCY', 'DATE', 'DATETIME', 'BOOLEAN', 'LONGTEXT', 'KEYS')
+FIELD_TYPE_NAMES = ('', 'text', 'integer', 'float', 'currency', 'date', 'datetime', 'boolean', 'longtext', 'keys')
 ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT = 1, 2, 3
 ALIGNMENT = ('ALIGN_LEFT', 'ALIGN_CENTER', 'ALIGN_RIGHT')
 ITEM_FIELD, FILTER_FIELD, PARAM_FIELD = range(1, 4)
@@ -111,7 +111,7 @@ HISTORY_FIELDS = [
     ['item_id', INTEGER, None],
     ['item_rec_id', INTEGER, None],
     ['operation', INTEGER, None],
-    ['changes', BLOB, None],
+    ['changes', LONGTEXT, None],
     ['user', TEXT, 30],
     ['date', DATETIME, None]
 ]

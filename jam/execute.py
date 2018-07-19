@@ -17,7 +17,7 @@ def execute_select(cursor, db_module, command):
         raise
     return db_module.process_sql_result(cursor.fetchall())
 
-def execute(cursor, command, params):
+def execute(cursor, command, params=None):
     #~ print('')
     #~ print(command)
     #~ print(params)
@@ -97,7 +97,13 @@ def process_delta(cursor, db_module, delta, master_rec_id, result):
             if params:
                 params = db_module.process_sql_params(params, cursor)
             if command:
+                before = info.get('before_command')
+                if before:
+                    execute(cursor, before)
                 execute(cursor, command, params)
+                after = info.get('after_command')
+                if after:
+                    execute(cursor, after)
             if inserted and not rec_id and db_module.get_lastrowid:
                 rec_id = db_module.get_lastrowid(cursor)
             result_details = []
@@ -137,13 +143,13 @@ def execute_list(cursor, db_module, command, delta_result, params, select, ddl, 
             raise Exception('server_classes execute_list: invalid argument - command: %s' % command)
     return res
 
-def execute_sql(db_module, db_database, db_user, db_password,
+def execute_sql(db_module, db_server, db_database, db_user, db_password,
     db_host, db_port, db_encoding, connection, command,
     params=None, call_proc=False, select=False, ddl=False):
 
     if connection is None:
         try:
-            connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding)
+            connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding, db_server)
         except Exception as x:
             print(str(x))
             if ddl:
@@ -202,7 +208,7 @@ def execute_sql(db_module, db_database, db_user, db_password,
             result = connection, (result, error)
     return result
 
-def process_request(parentPID, name, queue, db_type, db_database, db_user, db_password, db_host, db_port, db_encoding, mod_count):
+def process_request(parentPID, name, queue, db_type, db_server, db_database, db_user, db_password, db_host, db_port, db_encoding, mod_count):
     con = None
     counter = 0
     db_module = db_modules.get_db_module(db_type)
@@ -224,7 +230,7 @@ def process_request(parentPID, name, queue, db_type, db_database, db_user, db_pa
                 con = None
                 mod_count = cur_mod_count
                 counter = 0
-            con, result = execute_sql(db_module, db_database, db_user, db_password,
+            con, result = execute_sql(db_module, db_server, db_database, db_user, db_password,
                 db_host, db_port, db_encoding, con, command, params, call_proc, select)
             counter += 1
             result_queue.put(result)

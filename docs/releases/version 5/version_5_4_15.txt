@@ -1,0 +1,27 @@
+==============
+Version 5.4.15
+==============
+
+Library:
+
+* Support for MS SQL SERVER added
+
+* Jam.py supports deletion and changing of fields, and foreign indexes for SQLITE 
+  databases now. As SQLITE doesn't support column changing and deletion and addition
+  of foreign indexes to existing tables, Jam.py creates a new table and copies
+  records into it from old one.
+  
+* Jam.py doesn't support import of metadata to an existing project (project items of 
+  which have corresponding tables in database) now. You can import of metadata to 
+  a new project
+  
+* BLOB field type renamed to LONGTEXT 
+
+Application Builder:
+
+* History item creation bug fixed
+
+* Foeign indexes creation bug fixed
+
+
+

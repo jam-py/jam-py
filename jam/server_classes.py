@@ -107,13 +107,13 @@ class ServerDataset(Dataset, SQL):
     def do_apply(self, params=None, safe=False):
         if not self.master and self.log_changes:
             changes = {}
-            self.get_changes(changes)
+            self.change_log.get_changes(changes)
             if changes['data']:
                 data, error = self.apply_changes((changes, params), safe)
                 if error:
                     raise Exception(error)
                 else:
-                    self.update_log(data)
+                    self.change_log.update(data)
 
     def add_detail(self, table):
         detail = Detail(self.task, self, table.item_name, table.item_caption, table.table_name)
@@ -739,7 +739,7 @@ class Consts(object):
         self.DATE = common.DATE
         self.DATETIME = common.DATETIME
         self.BOOLEAN = common.BOOLEAN
-        self.BLOB = common.BLOB
+        self.LONGTEXT = common.LONGTEXT
 
         self.ITEM_FIELD = common.ITEM_FIELD
         self.FILTER_FIELD = common.FILTER_FIELD
@@ -783,7 +783,7 @@ class ConCounter(object):
 
 
 class AbstractServerTask(AbstrTask):
-    def __init__(self, app, name, caption, js_filename, db_type,
+    def __init__(self, app, name, caption, js_filename, db_type, db_server = '',
         db_database = '', db_user = '', db_password = '', host='', port='',
         encoding='', con_pool_size=1, mp_pool=False, persist_con=False):
         AbstrTask.__init__(self, None, None, None, None)
@@ -796,6 +796,7 @@ class AbstractServerTask(AbstrTask):
         self.item_caption = caption
         self.js_filename = js_filename
         self.db_type = db_type
+        self.db_server = db_server
         self.db_database = db_database
         self.db_user = db_user
         self.db_password = db_password
@@ -835,7 +836,7 @@ class AbstractServerTask(AbstrTask):
         pid = None
         for i in range(con_count):
             p = threading.Thread(target=process_request, args=(pid, self.item_name,
-                self.queue, self.db_type, self.db_database, self.db_user,
+                self.queue, self.db_type, self.db_server, self.db_database, self.db_user,
                 self.db_password, self.db_host, self.db_port,
                 self.db_encoding, self.mod_count))
             p.daemon = True
@@ -847,14 +848,15 @@ class AbstractServerTask(AbstrTask):
         pid = os.getpid()
         for i in range(con_count):
             p = multiprocessing.Process(target=process_request, args=(pid, self.item_name,
-                self.mp_queue, self.db_type, self.db_database, self.db_user,
+                self.mp_queue, self.db_type, self.db_server, self.db_database, self.db_user,
                 self.db_password, self.db_host, self.db_port,
                 self.db_encoding, self.mod_count))
             p.daemon = True
             p.start()
 
     def create_connection(self):
-        return self.db_module.connect(self.db_database, self.db_user, self.db_password, self.db_host, self.db_port, self.db_encoding)
+        return self.db_module.connect(self.db_database, self.db_user, \
+            self.db_password, self.db_host, self.db_port, self.db_encoding, self.db_server)
 
     def send_to_pool(self, queue, result_queue, command, params=None, call_proc=False, select=False):
         request = {}
@@ -968,11 +970,11 @@ class DebugException(Exception):
 
 class Task(AbstractServerTask):
     def __init__(self, app, name, caption, js_filename,
-        db_type, db_database = '', db_user = '', db_password = '',
+        db_type, db_server = '', db_database = '', db_user = '', db_password = '',
         host='', port='', encoding='', con_pool_size=4, mp_pool=True,
         persist_con=True):
         AbstractServerTask.__init__(self, app, name, caption, js_filename,
-            db_type, db_database, db_user, db_password,
+            db_type, db_server, db_database, db_user, db_password,
             host, port, encoding, con_pool_size, mp_pool, persist_con)
         self.on_created = None
         self.on_login = None
@@ -981,6 +983,11 @@ class Task(AbstractServerTask):
         self.init_dict = {}
         for key, value in iteritems(self.__dict__):
             self.init_dict[key] = value
+
+    def get_safe_mode(self):
+        return self.app.admin.safe_mode
+
+    safe_mode = property (get_safe_mode)
 
     def drop_indexes(self):
         from jam.adm_server import drop_indexes_sql
@@ -1001,7 +1008,7 @@ class Task(AbstractServerTask):
                 pass
 
     def copy_database(self, dbtype, database=None, user=None, password=None,
-        host=None, port=None, encoding=None, limit = 4096):
+        host=None, port=None, encoding=None, server=None, limit = 4096):
 
         def convert_sql(item, sql, db_module):
             new_case = item.task.db_module.identifier_case
@@ -1021,6 +1028,8 @@ class Task(AbstractServerTask):
         db_module = db_modules.get_db_module(dbtype)
         print('copying droping indexes')
         self.drop_indexes()
+        if hasattr(self.db_module, 'set_foreign_keys'):
+            self.execute(self.db_module.set_foreign_keys(False))
         try:
             for group in self.items:
                 for it in group.items:
@@ -1033,7 +1042,7 @@ class Task(AbstractServerTask):
                             sql = item.get_record_count_query(params, db_module)
                             sql = convert_sql(item, sql, db_module)
                             connection, (result, error) = \
-                            execute_sql(db_module, database, user, password,
+                            execute_sql(db_module, server, database, user, password,
                                 host, port, encoding, connection, sql,
                                 params=None, select=True)
                             record_count = result[0][0]
@@ -1047,7 +1056,7 @@ class Task(AbstractServerTask):
                                     sql = item.get_select_statement(params, db_module)
                                     sql = convert_sql(item, sql, db_module)
                                     connection, (result, error) = \
-                                    execute_sql(db_module, database, user, password,
+                                    execute_sql(db_module, server, database, user, password,
                                         host, port, encoding, connection, sql,
                                         params=None, select=True)
                                     if not error:
@@ -1075,15 +1084,17 @@ class Task(AbstractServerTask):
         finally:
             print('copying restoring indexes')
             self.restore_indexes()
+            if hasattr(self.db_module, 'set_foreign_keys'):
+                self.execute(self.db_module.set_foreign_keys(True))
         print('copying finished')
 
 
 class AdminTask(AbstractServerTask):
     def __init__(self, app, name, caption, js_filename,
-        db_type, db_database = '', db_user = '', db_password = '',
+        db_type, db_server = '', db_database = '', db_user = '', db_password = '',
         host='', port='', encoding=''):
         AbstractServerTask.__init__(self, app, name, caption, js_filename,
-            db_type, db_database, db_user, db_password, host, port, encoding, 2)
+            db_type, db_server, db_database, db_user, db_password, host, port, encoding, 2)
         filepath, filename = os.path.split(__file__)
         self.cur_path = filepath
         self.edited_docs = []

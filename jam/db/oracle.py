@@ -18,8 +18,9 @@ FROM = '"%s" %s '
 LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" %s'
 FIELD_AS = 'AS'
 LIKE = 'LIKE'
+DESC = 'DESC NULLS LAST'
 
-JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, BLOB, KEYS = range(1, 10)
+JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, LONGTEXT, KEYS = range(1, 10)
 FIELD_TYPES = {
     INTEGER: 'NUMBER',
     TEXT: 'VARCHAR2',
@@ -28,11 +29,11 @@ FIELD_TYPES = {
     DATE: 'DATE',
     DATETIME: 'TIMESTAMP',
     BOOLEAN: 'NUMBER',
-    BLOB: 'BLOB',
-    KEYS: 'BLOB'
+    LONGTEXT: 'CLOB',
+    KEYS: 'CLOB'
 }
 
-def connect(database, user, password, host, port, encoding):
+def connect(database, user, password, host, port, encoding, server):
     if database and user and password:
         return cx_Oracle.connect(user=user, password=password, dsn=database)
     elif database:
@@ -56,8 +57,9 @@ def get_fields(query, fields, alias):
     sql = sql[:-2]
     return sql
 
-
-def get_select(query, start, end, fields):
+def get_select(query, fields_clause, from_clause, where_clause, group_clause, order_clause, fields):
+    start = fields_clause
+    end = ''.join([from_clause, where_clause, group_clause, order_clause])
     offset = query['__offset']
     limit = query['__limit']
     result = 'SELECT %s FROM %s' % (start, end)
@@ -76,12 +78,6 @@ def process_sql_params(params, cursor):
     for i, p in enumerate(params):
         if type(p) == tuple:
             value, data_type = p
-            if data_type in [BLOB, KEYS]:
-                if type(value) == text_type:
-                    value = to_bytes(value, 'utf-8')
-                blob = cursor.var(cx_Oracle.BLOB)
-                blob.setvalue(0, value)
-                value = blob
         else:
             value = p
         result.append(value)

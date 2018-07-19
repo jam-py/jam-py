@@ -201,7 +201,7 @@ input.input-text {
   width: 80%;
 }
 
-.input-blob {
+.input-longtext {
   width: 80%;
 }
 
@@ -278,6 +278,10 @@ input.input-text {
     -moz-user-select: none;
     -khtml-user-select: none;
     -ms-user-select: none;
+}
+
+.tooltip {
+  z-index: 3000;
 }
 
 .tooltip-inner {
@@ -573,7 +577,7 @@ sup {
 
 .alert-absolute {
     position: absolute;
-    z-index: 1030;
+    z-index: 3000;
     display: block;
     min-width: 200px;
 }

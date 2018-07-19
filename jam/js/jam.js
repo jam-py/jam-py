@@ -18,7 +18,7 @@
             "DATE": 5,
             "DATETIME": 6,
             "BOOLEAN": 7,
-            "BLOB": 8,
+            "LONGTEXT": 8,
             "KEYS": 9,
 
             "ITEM_FIELD": 1,
@@ -123,7 +123,7 @@
             "filter_placeholder"
         ],
         field_type_names = ["", "text", "integer", "float", 'currency',
-            "date", "datetime", "boolean", "blob", "keys"
+            "date", "datetime", "boolean", "longtext", "keys"
         ];
 
 
@@ -628,7 +628,7 @@
                 options.title = '&nbsp';
             }
 
-            if (container) {
+            if (container && container.length) {
                 if (task.old_forms) {
                     form.addClass('jam-form')
                     return form
@@ -842,7 +842,7 @@
         init_filters: function() {
             var self = this;
             this._on_filters_applied_internal = function() {
-                if (self.view_form) {
+                if (self.view_form.length) {
                     self.view_form.find(".filters-text").text(self.get_filter_text());
                 }
             };
@@ -851,7 +851,7 @@
         init_search: function() {
 
             function can_search_on_field(field) {
-                if (field && field.lookup_type !== "blob" &&  field.lookup_type !== "boolean" &&
+                if (field && field.lookup_type !== "boolean" &&
                     field.lookup_type !== "date" &&  field.lookup_type !== "datetime") {
                     return true;
                 }
@@ -986,20 +986,6 @@
             }
         },
 
-        _close_modeless_form: function(form_type) {
-            var self = this,
-                form_name = form_type + '_form';
-            if (this[form_name]) {
-                this._close_form(form_type);
-            }
-            if (this[form_name]) {
-                this[form_name].bind('destroyed', function() {
-                    self._close_modeless_form(form_type);
-                });
-                throw this.item_name + " - can't close form";
-            }
-        },
-
         _active_form: function(form) {
             var cur_form = $(document.activeElement).closest('.jam-form')
             if (form.get(0) === cur_form.get(0)) {
@@ -1106,9 +1092,6 @@
                 key_suffix += '.' + item_options.tab_id;
             }
 
-            if (this[form_name] && options.container) {
-                this._close_modeless_form(form_name);
-            }
             if (container) {
                 container.empty();
             }
@@ -1202,6 +1185,20 @@
                         });
                     }
                 }
+            }
+        },
+
+        _close_modeless_form: function(form_type) {
+            var self = this,
+                form_name = form_type + '_form';
+            if (this[form_name]) {
+                this._close_form(form_type);
+            }
+            if (this[form_name]) {
+                this[form_name].bind('destroyed', function() {
+                    self._close_modeless_form(form_type);
+                });
+                throw this.item_name + " - can't close form";
             }
         },
 
@@ -1306,7 +1303,7 @@
               '<p>' + message + '</p>' +
             '</div>'
             );
-            if (task.forms_container.length) {
+            if (task.forms_container && task.forms_container.length) {
                 container = task.forms_container;
             }
             else {
@@ -1552,7 +1549,7 @@
                 lookup_item,
                 mess;
             if (self.master) {
-                master = self.master.copy({handlers: false}),
+                master = self.master.copy({handlers: false});
                 item = master.item_by_ID(self.ID);
                 master.open({open_empty: true});
                 master.append();
@@ -2175,7 +2172,8 @@
                             if (field.value === consts.RECORD_INSERTED) {
                                 return self.language.created;
                             }
-                            else if (field.value === consts.RECORD_MODIFIED || field.value === consts.RECORD_DETAILS_MODIFIED) {
+                            else if (field.value === consts.RECORD_MODIFIED ||
+                                field.value === consts.RECORD_DETAILS_MODIFIED) {
                                 return self.language.modified;
                             }
                             else if (field.value === consts.RECORD_DELETED) {
@@ -3921,18 +3919,16 @@
                 for (i = 0; i < len; i++) {
                     result[this._events[i][0]] = this._events[i][1];
                 }
-            }
-            if (options.handlers) {
+                for (var name in this) {
+                    if (this.hasOwnProperty(name)) {
+                        if ((name.substring(0, 3) === "on_") && (typeof this[name] === "function")) {
+                            result[name] = this[name];
+                        }
+                    }
+                }
                 result.edit_options = $.extend({}, this._edit_options);
                 result.view_options = $.extend({}, this._view_options);
                 result.table_options = $.extend({}, this._table_options);
-                //~ for (var name in this) {
-                    //~ if (this.hasOwnProperty(name)) {
-                        //~ if ((name.substring(0, 3) === "on_") && (typeof this[name] === "function")) {
-                            //~ result[name] = this[name];
-                        //~ }
-                    //~ }
-                //~ }
             }
             else {
                 result.edit_options = $.extend({}, this.task.edit_options);
@@ -5434,11 +5430,21 @@
         },
 
         eof: function() {
-            return this._eof;
+            if (this.active) {
+                return this._eof;
+            }
+            else {
+                return true;
+            }
         },
 
         bof: function() {
-            return this._bof;
+            if (this.active) {
+                return this._bof;
+            }
+            else {
+                return true;
+            }
         },
 
         _valid_record: function() {
@@ -5822,27 +5828,29 @@
                 if (this.rec_count > 0) {
                     this.question(language.delete_record, function() {
                         self["delete"]();
-                        this.apply(function(e) {
+                        self.apply(function(e) {
                             var error;
                             if (e) {
                                 error = (e + '').toUpperCase();
-                                if (error && (error.indexOf('FOREIGN KEY') !== -1 || error.indexOf('INTEGRITY CONSTRAINT') !== -1) &&
-                                    (error.indexOf('VIOLAT') !== -1 || error.indexOf('FAIL') !== -1)) {
-                                    self.warning(language.cant_delete_used_record);
+                                if (error && (error.indexOf('FOREIGN KEY') !== -1 ||
+                                    error.indexOf('INTEGRITY CONSTRAINT') !== -1 ||
+                                    error.indexOf('REFERENCE CONSTRAINT') !== -1
+                                    )
+                                ) {
+                                    self.alert_error(language.cant_delete_used_record);
+                                    //~ self.warning(language.cant_delete_used_record);
                                 } else {
                                     self.warning(e);
                                 }
-                                self._dataset.splice(rec_no, 0, record);
-                                self._cur_row = rec_no;
-                                self.change_log.remove_record_log();
-                                self.update_controls();
-                                self._do_after_scroll();
+                                self.refresh_page(true);
                             }
-                            if (callback) {
-                                callback.call(this, this);
-                            }
-                            else if (refresh_page) {
-                                this.refresh_page(true);
+                            else {
+                                if (callback) {
+                                    callback.call(this, this);
+                                }
+                                else if (refresh_page) {
+                                    self.refresh_page(true);
+                                }
                             }
                         });
                     });
@@ -5960,10 +5968,10 @@
             this.view(container);
         },
 
-        view: function(container, view_id) {
+        view: function(container, options) {
             this.show_selected = false;
             if (container && this.task.can_add_tab(container)) {
-                this._view_in_tab(container, view_id);
+                this._view_in_tab(container, options);
             }
             else {
                 this._view(container);
@@ -6134,12 +6142,12 @@
                 detail = this.find(this.view_options.view_detail),
                 after_scroll = this.on_after_scroll,
                 scroll_timeout;
-            if (detail && container) {
+            if (detail && container && container.length) {
                 options.editable = false;
                 options.multiselect = false;
                 detail.create_table(container, options);
                 this._on_after_scroll_internal = function() {
-                    if (self.view_form) {
+                    if (self.view_form.length) {
                         clearTimeout(scroll_timeout);
                         scroll_timeout = setTimeout(
                             function() {
@@ -6806,7 +6814,9 @@
 
 
         _do_on_refresh_page: function(rec_no, callback) {
-            this.rec_no = rec_no;
+            if (rec_no !== null) {
+                this.rec_no = rec_no;
+            }
             this.update_controls(consts.UPDATE_OPEN);
             if (callback) {
                 callback.call(this);
@@ -9159,7 +9169,7 @@
                 sort_add_primary: false,
                 row_callback: undefined,
                 title_callback: undefined,
-                summary_fields: undefined,
+                summary_fields: [],
                 show_footer: undefined,
                 show_paginator: true,
                 paginator_container: undefined,
@@ -11573,7 +11583,7 @@
                     .click(function(e) {
                         self.field.value = !self.field.value;
                     });
-            } else if (field.get_lookup_data_type() === consts.BLOB) {
+            } else if (field.get_lookup_data_type() === consts.LONGTEXT) {
                 $input = $('<textarea>').innerHeight(70);
             } else {
                 $input = $('<input>').attr("type", "text")
@@ -11717,8 +11727,8 @@
                     case consts.BOOLEAN:
                         $controls.append($input);
                         break;
-                    case consts.BLOB:
-                        $input.addClass("input-blob");
+                    case consts.LONGTEXT:
+                        $input.addClass("input-longtext");
                         $controls.append($input);
                         break;
                 }
@@ -11793,6 +11803,7 @@
                 }
             }
             this.$input.tooltip({
+                    container: 'body',
                     placement: 'bottom',
                     title: ''
                 })
@@ -12093,6 +12104,7 @@
                     this.grid.item.post();
                     this.grid.hide_editor();
                 }
+                result = true;
             }
             if (this.field.data_type === consts.BOOLEAN) {
                 result = true;

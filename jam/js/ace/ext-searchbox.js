@@ -189,7 +189,7 @@ var SearchBox = function(editor, range, showReplaceForm) {
     var div = dom.createElement("div");
     div.innerHTML = html;
     this.element = div.firstChild;
-    
+
     this.setSession = this.setSession.bind(this);
 
     this.$init();
@@ -202,7 +202,7 @@ var SearchBox = function(editor, range, showReplaceForm) {
         editor.renderer.scroller.appendChild(this.element);
         this.editor = editor;
     };
-    
+
     this.setSession = function(e) {
         this.searchRange = null;
         this.$syncOptions(true);
@@ -220,12 +220,12 @@ var SearchBox = function(editor, range, showReplaceForm) {
         this.replaceInput = this.replaceBox.querySelector(".ace_search_field");
         this.searchCounter = sb.querySelector(".ace_search_counter");
     };
-    
+
     this.$init = function() {
         var sb = this.element;
-        
+
         this.$initElements(sb);
-        
+
         var _this = this;
         event.addListener(sb, "mousedown", function(e) {
             setTimeout(function(){
@@ -353,7 +353,7 @@ var SearchBox = function(editor, range, showReplaceForm) {
             sb.$syncOptions();
         }
     }]);
-    
+
     this.setSearchRange = function(range) {
         this.searchRange = range;
         if (range) {
@@ -405,11 +405,11 @@ var SearchBox = function(editor, range, showReplaceForm) {
             var value = this.searchRange
                 ? editor.session.getTextRange(this.searchRange)
                 : editor.getValue();
-            
+
             var offset = editor.session.doc.positionToIndex(editor.selection.anchor);
             if (this.searchRange)
                 offset -= editor.session.doc.positionToIndex(this.searchRange.start);
-                
+
             var last = regex.lastIndex = 0;
             var m;
             while ((m = regex.exec(value))) {
@@ -435,7 +435,7 @@ var SearchBox = function(editor, range, showReplaceForm) {
         this.find(true, true);
     };
     this.findAll = function(){
-        var range = this.editor.findAll(this.searchInput.value, {            
+        var range = this.editor.findAll(this.searchInput.value, {
             regExp: this.regExpOption.checked,
             caseSensitive: this.caseSensitiveOption.checked,
             wholeWord: this.wholeWordOption.checked
@@ -449,7 +449,7 @@ var SearchBox = function(editor, range, showReplaceForm) {
     this.replace = function() {
         if (!this.editor.getReadOnly())
             this.editor.replace(this.replaceInput.value);
-    };    
+    };
     this.replaceAndFindNext = function() {
         if (!this.editor.getReadOnly()) {
             this.editor.replace(this.replaceInput.value);
@@ -465,7 +465,7 @@ var SearchBox = function(editor, range, showReplaceForm) {
         this.active = false;
         this.setSearchRange(null);
         this.editor.off("changeSession", this.setSession);
-        
+
         this.element.style.display = "none";
         this.editor.keyBinding.removeKeyboardHandler(this.$closeSearchBarKb);
         this.editor.focus();
@@ -475,15 +475,15 @@ var SearchBox = function(editor, range, showReplaceForm) {
         this.editor.on("changeSession", this.setSession);
         this.element.style.display = "";
         this.replaceOption.checked = isReplace;
-        
+
         if (value)
             this.searchInput.value = value;
-        
+
         this.searchInput.focus();
         this.searchInput.select();
 
         this.editor.keyBinding.addKeyboardHandler(this.$closeSearchBarKb);
-        
+
         this.$syncOptions(true);
     };
 
@@ -508,4 +508,3 @@ exports.Search = function(editor, isReplace) {
                         }
                     });
                 })();
-            

@@ -10,8 +10,8 @@ the client utilizes JavaScript_, jQuery_ and Bootstrap_
 .. _Python: https://www.python.org
 .. _JavaScript: https://developer.mozilla.org/en/docs/Web/JavaScript
 .. _jQuery: https://jquery.com/
-.. _Bootstrap: http://getbootstrap.com/2.3.2/
-
+.. _Bootstrap: http://getbootstrap.com/2.3.2/ 
+ 
 How the documentation is organized
 ==================================
 
