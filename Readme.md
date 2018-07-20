@@ -14,8 +14,10 @@ How was the Demo published on Heroku?
 ------------------------------------
 The Jam.py Demo you see on Heroku is just a Git repo made from the original Jam.py Demo with two files added: requirements.txt and Procfile.
 
-Then the Heroku account was open, jampy App created, Git repo linked and deployed. In 10 seconds it magically appeared as a live Web site. Enjoy.
-
+Then the Heroku account was open, jampy App created, Git repo linked and deployed. In 10 seconds it magically appeared as a live Web site. 
+There is also development effort with Postfix Email Aliases App in here: https://github.com/platipusica/jampy-posfixaliases
+with the Demo running on Heroku as well.
+Enjoy.
 
 Why using Jam.py?
 ------------------------------------
@@ -102,7 +104,7 @@ Navigate to jam.py installation demo folder, enter the command:
 python server.py
 ```
 
-You'll have the Demo App running at http://localhost:8001
+You'll have the Demo App running at http://localhost:8080
 
 ## Create a new App
 
@@ -112,7 +114,7 @@ cd newapp
 jam-project.py
 python server.py
 ```
-The new and empty App will run at http://localhost:8001
+The new and empty App will run at http://localhost:8080
 
 Please visit http://jam-py.com/docs/intro/index.html for complete Getting Started Introduction.
 
