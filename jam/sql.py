@@ -789,7 +789,7 @@ class SQL(object):
     def change_table_sql(self, db_type, old_fields, new_fields):
 
         def recreate(comp):
-            for key, (old_field, new_field) in comp.iteritems():
+            for key, (old_field, new_field) in iteritems(comp):
                 if old_field and new_field:
                     if old_field['field_name'] != new_field['field_name']:
                         return True
