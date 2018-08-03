@@ -418,7 +418,7 @@ class SQL(object):
                 else:
                     return '0'
             elif data_type == common.TEXT:
-                return "'" + value + "'"
+                return "'" + str(value) + "'"
             elif data_type in (common.FLOAT, common.CURRENCY):
                 return str(float(value))
             else:
