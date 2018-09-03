@@ -16,9 +16,11 @@ Use buttons in the right panel of the page to edit
   
 * *index.html* file from the project root folder that contains project page and 
   templates of the forms, see
-  :doc:`Forms </programming/interface/forms>`
+  :doc:`Forms </programming/interface/forms>`,
+  :doc:`Code editor <code_editor>`
   
-* *project.css* file from **css** directory the project root folder
+* *project.css* file from **css** directory the project root folder, see
+  :doc:`Code editor <code_editor>`
 
 * **Lookup lists** - click on the button to open 
   :doc:`Lookup lists <lookup_lists>` Dialog

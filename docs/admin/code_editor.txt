@@ -23,14 +23,20 @@ To the left of the **Edior** there is an information pane with four tabs:
 * **Module** - this tab displays all events and functions defined in the editor, 
   double-click on one of them to move the cursor to the proper function. 
 * **Events** - displays all the published event of the item, double-click to 
-  generated a wrapper for the event (see the on_before_post event on the 
-  figure above).
+  add a wrapper for the event at the current cursor position (see the 
+  on_before_post event on the figure above).
 * **Task** - the 
   :doc:`task tree </programming/task_tree>`, 
-  double-click on the node to print it's item_name under the cursor.
+  double-click on the node to enter the item_name at the current cursor position.
 * **Fields** - the field list of the current item, double-click on one of the 
-  fields to print it's field_name under the cursor.
+  fields to enter the field_name at the current cursor position.
   
+To save changes click the **OK** button or press Ctrl-S.
+
+To search the project modules, click the **Find in project** button or press 
+Alt-F to display the 
+:doc:`Find inproject Dialog <project/find>`
+
 Jam.py uses the `ace editor`_  editor to implement its code editor.
 
 `Hear are keyboard shortcuts for the ace editor`_.

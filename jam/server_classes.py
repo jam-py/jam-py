@@ -127,7 +127,7 @@ class ServerDataset(Dataset, SQL):
             if table.item_name == caption:
                 return table
 
-    def get_record_count(self, params, safe=False):
+    def get_record_count(self, params, safe=False): #depricated
         if safe and not self.can_view():
             raise Exception(self.task.language('cant_view') % self.item_caption)
         result = None
@@ -135,13 +135,35 @@ class ServerDataset(Dataset, SQL):
             result = self.task.on_count(self, params)
         if result is None and self.on_count:
             result = self.on_count(self, params)
-        elif result is None:
+        if result is None:
             error_mess = ''
             count = 0
             for sql in self.get_record_count_queries(params):
-                rows = self.task.execute_select(sql)
+                rows = self.task.select(sql)
                 count += rows[0][0]
             result = count, error_mess
+        return result
+
+    def execute_select(self, params):
+        error_mes = ''
+        limit = params['__limit']
+        offset = params['__offset']
+        sqls = self.get_select_queries(params)
+        if len(sqls) == 1:
+            rows = self.task.select(sqls[0])
+        else:
+            rows = []
+            cut = False
+            for sql in sqls:
+                rows += self.task.select(sql)
+                if limit or offset:
+                    if len(rows) >= offset + limit:
+                        rows = rows[offset:offset + limit]
+                        cut = True
+                        break
+            if (limit or offset) and not cut:
+                rows = rows[offset:offset + limit]
+        result = rows, error_mes
         return result
 
     def select_records(self, params, safe=False):
@@ -152,26 +174,8 @@ class ServerDataset(Dataset, SQL):
             result = self.task.on_open(self, params)
         if result is None and self.on_open:
             result = self.on_open(self, params)
-        elif result is None:
-            error_mes = ''
-            limit = params['__limit']
-            offset = params['__offset']
-            sqls = self.get_select_queries(params)
-            if len(sqls) == 1:
-                rows = self.task.execute_select(sqls[0])
-            else:
-                rows = []
-                cut = False
-                for sql in sqls:
-                    rows += self.task.execute_select(sql)
-                    if limit or offset:
-                        if len(rows) >= offset + limit:
-                            rows = rows[offset:offset + limit]
-                            cut = True
-                            break
-                if (limit or offset) and not cut:
-                    rows = rows[offset:offset + limit]
-            result = rows, error_mes
+        if result is None:
+            result = self.execute_select(params)
         return result
 
     def apply_delta(self, delta, safe=False):
@@ -898,12 +902,15 @@ class AbstractServerTask(AbstrTask):
         if not error:
             return result_set
 
-    def execute_select(self, command, params=None):
+    def select(self, command, params=None):
         result, error = self.execute(command, params, select=True)
         if error:
             raise Exception(error)
         else:
             return result
+
+    def execute_select(self, command, params=None): #depricated
+        return self.select(command, params=None)
 
     def get_module_name(self):
         return str(self.item_name)

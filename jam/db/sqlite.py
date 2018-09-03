@@ -30,21 +30,14 @@ FIELD_TYPES = {
     KEYS: 'TEXT'
 }
 
-def sqlite_lower(value_):
+def sqlite_upper(value):
     try:
-        return value_.lower()
+        return value.upper()
     except:
-        pass
-
-def sqlite_upper(value_):
-    try:
-        return value_.upper()
-    except:
-        pass
+        return value
 
 def connect(database, user, password, host, port, encoding, server):
     connection = sqlite3.connect(database)
-    connection.create_function("LOWER", 1, sqlite_lower)
     connection.create_function("UPPER", 1, sqlite_upper)
     cursor = connection.cursor()
     cursor.execute("PRAGMA foreign_keys = ON")
@@ -85,8 +78,8 @@ def cast_datetime(datetime_str):
 def value_literal(index):
     return '?'
 
-def upper_function():
-    pass
+def convert_like(field_name, val, data_type):
+    return 'UPPER(%s)' % field_name, val.upper()
 
 def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
     result = []

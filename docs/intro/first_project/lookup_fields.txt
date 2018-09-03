@@ -7,19 +7,26 @@ Now we will create the "Contacts" item.
 Select the "Journals" group in the project task tree and add a new journal in the 
 same way that we created the "Customers" catalog. 
 
-First we add the "Date" field of the "datetime" type and then "Notes" fields of the "text" type.
+First we add the "Contact date" field of the "datetime" type and then "Notes" fields of the "text" type.
 
 Let's add the
 :doc:`lookup field </programming/data/lookup_fields>`
-"Customer" that will store a reference to a record in the "Customers" catalog.
+"Customer" field that will store a reference to a record in the "Customers" catalog.
 
 .. image:: /intro/_images/contacs_cutomer_fld.png
 	:align: center
 	:alt: Adding Customer field
 
 To create a lookup field, after specifying its caption and name, we need to 
-select a lookup item. Click the button to the right of the **Lookup item** 
-input and double click the record to select it.
+select a lookup item. Select **Lookup** tab and click the button to the right of 
+the **Lookup item** input 
+
+
+.. image:: /intro/_images/cutomers_lookup_tab.png
+	:align: center
+	:alt: Cutomer lookup tab
+
+and double click the record to select it.
 
 .. image:: /intro/_images/cutomers_lookup_item.png
 	:align: center
@@ -27,17 +34,21 @@ input and double click the record to select it.
 
 The same way specify a lookup field.
 
-Now we add "Firstname" and "Phone" lookup fields. But for this fields we specify 
-the "Customer" field as their master_field attribute. In this case the server 
-won't create for them fields in the database table.
 
-Now add the lookup fields "Firstname" and "Phone". But for these fields we 
-specify the "Customer" field as their master_field attribute. In this case, the 
-server will not create fields for them in the database table.
+.. image:: /intro/_images/lastname_lookup.png
+	:align: center
+	:alt: Lastname lookup field
+
+In the same way we add the "Firstname" and "Phone" lookup fields. For this fields 
+we specify the "Customer" field as their **Master field** attribute. 
 
 .. image:: /intro/_images/contacts_firstname.png
 	:align: center
-	:alt: Firstname lookup item
+	:alt: contacts_firstname.png
+
+.. image:: /intro/_images/phone_lookup.png
+	:align: center
+	:alt: Phone lookup field
 	
 Click the "OK" button to save the "Contacts" item. 
 
@@ -45,34 +56,22 @@ Click the "OK" button to save the "Contacts" item.
 	:align: center
 	:alt: Contacts sql
 
-Now we create a 
-:doc:`lookup List </admin/lookup_lists>`
-"Status".
+As you can see, there is no "FIRSTNAME" and "PHONE" fields in the "CRM_CONTACTS" 
+table. This is due to the fact that we have set **Master field** attribute of these 
+fields to "Customer". The "Customer" field will store a reference to a record in the
+"Customers" catalog and that record have the "Fisrtname" and "Phone" fields.
 
-Select the "Task" node in the project tree and click the **Lookup lists** button.
+When we refresh the project page and click the **New** button we'll see that 
+there is a small button to the right of the "Customer" input. 
 
-.. image:: /intro/_images/lookup_lists.png
+.. image:: /intro/_images/customer_input.png
 	:align: center
-	:alt: Lookup lists
+	:alt: Customer input
 
-Click the **New** button and specify the new lookup list name and add a list of 
-integer-text pairs:
+When we click on it and select a record in the "Customers" catalog the
+fields "Customer", "Firstname" and "Phone" will be filled.
 
-.. image:: /intro/_images/lookup_list_ready.png
+.. image:: /intro/_images/customer_input_selected.png
 	:align: center
-	:alt: Lookup list entries
-	
-Save the Lookup	Lists dialog and open the "Contacts" journal to add the "Status"
-field using the "Status" lookup list as a Lookup values attribute: 
+	:alt: Customer input selected
 
-.. image:: /intro/_images/status_lookup_field.png
-	:align: center
-	:alt: Status lookup field
-	
-Before saving open the "Customer" field and set the **Required** and **Typeahead** 
-attributes. When the **Typeahead** checkbox is checked, typeahead is enabled for 
-the lookup field.
-
-.. image:: /intro/_images/customer_attr.png
-	:align: center
-	:alt: Customer attributes

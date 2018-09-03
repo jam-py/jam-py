@@ -278,12 +278,8 @@ class App():
             user_info = session['user_info']
             if not (user_info and user_info.get('user_id')):
                 return False
-            if not self.admin.ignore_change_ip and task != self.admin and not task.on_login:
-                try:
-                    ip = self.get_client_address(request);
-                    if not adm_server.user_valid_ip(self.admin, user_info['user_id'], ip):
-                        return False
-                except:
+            if not self.admin.ignore_change_ip and task != self.admin:
+                if session['ip'] != self.get_client_address(request):
                     return False
         return True
 
@@ -337,7 +333,9 @@ class App():
                     self.__task_locked = True
 
     def import_metadata(self, task, task_id, file_name, from_client):
-        if self.get_task():
+        if not from_client:
+            return adm_server.import_metadata(task, task_id, file_name, from_client)
+        elif self.get_task():
             self.__task_locked = False
             try:
                 return adm_server.import_metadata(task, task_id, file_name, from_client)

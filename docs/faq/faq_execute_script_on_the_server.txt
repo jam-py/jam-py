@@ -1,0 +1,38 @@
+====================================================
+How can I add a button to run a script on the server
+====================================================
+
+The simplest way to add a button to a view form is to use
+the 
+:doc:`add_view_button </refs/client/item/m_add_view_button>`
+method of the item:
+
+.. code-block:: js
+
+  function on_view_form_created(item) {
+      var btn = item.add_view_button('Calculate', {type: 'primary'});
+      btn.click(function() {
+          item.server('calulate', [item.id.value], function(result, error) {
+            if (error) {
+              item.alert_error(error);
+            }
+            else {
+              console.log(result);
+            }          
+          })
+      });
+  }
+
+This code creates the ``btn`` button that is a JQuery object. Then we use its 
+click method to attach a function that calls the 
+:doc:`server </refs/client/abstr_item/m_server>`
+method of the item to run the ``calculate`` function defined in the server module
+of the item:
+
+.. code-block:: py
+
+  def calculate(item, item_id):
+      result = 0
+      # perform calulation of the result, based on item_id
+      return result
+

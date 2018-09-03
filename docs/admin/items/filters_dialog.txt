@@ -28,10 +28,18 @@ Fill in the following fields:
 
 * **Filter type** - select filter type.
 
-* **Visible** - if this checkbox is not checked, this filter will be ommited, 
-  when filters are created by using 
-  :doc:`create_filter_inputs </refs/client/item/m_create_filter_inputs>` and 
-  the filters attribute in options is not specified.
+* **Placeholder** - use this attribute to specify the placeholder that will be
+  displayed by the field input.
+
+* **Help** - if any text / html-message is specified, a question mark will be 
+  displayed to the right of the input, so when the user moves the mouse pointer 
+  over this mark, a pop-up window appears displaying this message.
+
+Help - if any text / html-message is specified, a question mark will be displayed to the right of the input, 
+so when the user moves the mouse pointer over this label, a pop-up window appears displaying this message.
+
+* **Visible** - if this checkbox is not checked, this filter will not be displayed
+  in the item Filters dialog.
 
 Use the up and down arrows to place the filters in the order in which they will 
 be displayed. See 

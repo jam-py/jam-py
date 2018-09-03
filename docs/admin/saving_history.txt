@@ -1,8 +1,8 @@
-===========================================
-Saving the history of changes made by users
-===========================================
+===============================================
+Saving audit trail/change history made by users
+===============================================
 
-To save history of changes made by users to must specify the item that will 
+To save change history made by users to must specify the item that will 
 store them. 
 
 To do so, open project parameters and click the button to the right of the

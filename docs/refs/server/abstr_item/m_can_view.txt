@@ -1,0 +1,30 @@
+========
+can_view
+========
+
+.. py:method:: can_view(self) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`AbstractItem class </refs/server/abstractitem_api>`
+
+Description
+===========
+
+Use the ``can_view`` method to determine whether a user of the current session 
+can view records if a data item or print a report.
+
+See also
+========
+
+:doc:`Roles </admin/roles>`
+
+:doc:`session <at_session>`
+
+:doc:`can_create </refs/server/item/m_can_create>`
+
+:doc:`can_edit </refs/server/item/m_can_edit>`
+
+:doc:`can_delete </refs/server/item/m_can_delete>`

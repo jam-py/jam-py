@@ -11,119 +11,46 @@ create_table
 Description
 ===========
 
-Use ``create_table`` method to create a data bound table that displays records of 
-an item dataset.
+Use ``create_table`` method to create a table that displays records of 
+the item dataset.
 
 The behavior of the table is determined by the 
 :doc:`paginate <at_paginate>`
 attribute of the item. 
-When 
-:doc:`paginate <at_paginate>`
-is true, a paginator will be created, that will internally reopen the item 
-dataset when the page is changed.
-In this case the table, when created, calculates the number of the rows 
-displayed, based on the height parameter of the options.
-If 
-:doc:`paginate <at_paginate>`
-value is false, the table will displays all available
-records of the item dataset.
 
-The following parameters are passed to the method:
+When
+:doc:`paginate <at_paginate>`
+is true, a paginator will be created, that will internally update the item 
+dataset when the page is changed.
+
+If the value of 
+:doc:`paginate <at_paginate>`
+is false, all available records of the item dataset will be displayed in the table.
+
+The table, created by this method is data aware, when you change the dataset, 
+these changes are immediately reflected in the table. So you can create a table
+and then call the
+:doc:`open <m_open>`
+method.
+
+The following parameters could be passed to the method:
 
 * ``container`` - an JQuery object that will contain the table, if 
   container length is 0 (no container), the method returns. Before creating 
   the table the application empties the container.
 
-* ``options`` - options that specify the way the table will be displayed
+* ``options`` - options that specify the way the table will be displayed. 
+  By default, the method uses the
+  :doc:`table_options <at_table_options>` that are set in the
+  :doc:`View Form Dialog </admin/items/view_form_dialog>` in Application
+  Builder when creating the table. The ``options`` attributes take precedence over the
+  :doc:`table_options <at_table_options>` attributes.
 
-The ``options`` parameter is an object that may have the following attributes:
-
-* ``height`` - specidies the height of the table, the default value is 480.
-
-* ``fields`` - a list of field names. If specified, a column will be 
-  created for each field whose name is in this list, if not specified (the 
-  default) then the ``fields`` attribute of an 
-  :doc:`view_options <at_view_options>`
-  will be used (by default it lists all view fields, specified in the 
-  Application builder (``View`` button for the item)).
-
-* ``striped`` — the grid is striped if this value is true.
-
-* ``row_line_count`` - specifies the number of lines of text displayed in a 
-  table row, the default value is 1.
-
-* ``expand_selected_row`` - if ``row_line_count`` is equal 1 and 
-  ``expand_selected_row`` is greater that 0, specifies the minimal number of 
-  lines of text displayed in the selected row of the table,
-
-* ``title_word_wrap`` - specifies if the column title text can be wrapped.
-
-* ``column_width`` - The width of the columns are calulated by a Web Browser. 
-  You can use this option to force the width of some columns. The option is an 
-  object, key values of which are field names, the values are column widths:
-  
-* ``editable`` - if this option is set to true, a user can edit fields in the 
-  selected row of the table. If an ``editable_fields`` option is not specified,
-  then it is possible to edit any field in the table. The default value if false,
-  
-* ``editable_fields`` - if an ``editable`` option is set, the option limits the 
-  fields that can be edited in the table. The option is an array 
-  of field names.
-
-* ``selected_field`` - if an ``editable`` option is set, specifies the field 
-  name whose column will be selected, when the selected row is changed.
-
-* ``sortable`` - if this option is specified, it is possible to sort the records 
-  by clicking on the table column header. When a ``sort_fields`` option is not 
-  specified (default), a user can sort records on any field, otherwise, only on 
-  the fields whose names are listed in this option.
-  If an item is a detail the operation is performed on the client, otherwise 
-  sorting is performed on the server (the 
-  :doc:`open <m_open>`
-  method is used internally).
-
-* ``sort_fields`` - if an ``sortable`` option is set, the option limits the 
-  sortable fields
-  
-* ``summary_fields`` - a list of field names. When it is specified and item 
-  paginate attribute is true, the table calculates sums for numeric fields and 
-  displays them in the table footer, for not numeric fields it displays the 
-  number of records.
-
-* ``freeze_count`` - an integer value. If it is greater than 0, it specifies 
-  number of first columns that become frozen - they will not scroll when the table
-  is scrolled.
- 
-* ``on_click`` - specifies the function, that will be executed when a user click
-  on a table row. The item will be passed as a parameter to the function. 
-
-* ``on_dblclick`` - specifies the function, that will be executed when a user 
-  double click on a table row. The item will be passed as a parameter to 
-  the function. 
-
-* ``dblclick_edit`` - if the value of the option is set to true and the 
-  ``on_dblclick`` options is not set, the edit form will be shown when a user 
-  double click on a table row. The the default value is true.
-
-* ``selections`` - if this option is set to a javascript ``set`` object, a leftmost 
-  column with check-boxes will be created to select records. So, that when a user 
-  clicks on the check-box, the value of the primary key field of the record will 
-  be added to or deleted from the set. If ``select_all`` option is set to true,
-  then clicking on the checkbox in leftmost column of the table head will fill 
-  the set with primary key values, by executing a request to the database 
-  table.
-
-* ``row_callback`` - the callback functions called each time fields of the record
-  are changed. Two parameters are passed to the function - item, whose record has 
-  changed and Jquery object of the corresponding row of the table. Please be 
-  carefull - the item passed to the function can be not item itself, but its clone
-  that share the same dataset. 
+The ``options`` parameter is an object that may have the same attributes as 
+:doc:`table_options <at_table_options>`.
 
 Examples
 ========
-
-The code below creates an edit form of the optionsInvoices** journal in the
-:doc:`Demo project </intro/demo_project>`.
 
 .. code-block:: js
 
@@ -132,64 +59,9 @@ The code below creates an edit form of the optionsInvoices** journal in the
         item.invoice_table.create_table(item.edit_form.find(".edit-detail"),
             {
                 height: 400,
-                tabindex: 90,
-                editable: true,
                 editable_fields: ['quantity'],
-                sortable: true,
                 column_width: {"track": "60%"}
             });
-        item.edit_form.find("#new-btn").on('click.task', function() {
-            item.invoice_table.append_record();
-        });
-        item.edit_form.find("#edit-btn").on('click.task', function() {
-            item.invoice_table.edit_record()
-        });
-        item.edit_form.find("#delete-btn").on('click.task', function() {
-            item.invoice_table.delete_record()
-        });
-    }
-
-In the following code a selections attribute of the item is created, that will 
-store values of primary key field of records that have been selected. 
-
-.. code-block:: js
-
-    function on_view_form_created(item) {
-        item.selections = new Set();
-        item.create_table(item.view_form.find(".view-table"), 
-            {selections: item.selections});
-    }
-    
-This set could be converted to an array by the following code:
-
-.. code-block:: js
-
-    Array.from(item.selections);
-
-
-Below is the ``init_table`` function that is called before the ``create_table``
-method is executed  in the 
-:doc:`on_view_form_created </refs/client/task/on_view_form_created>`
-events handler of the task in the 
-:doc:`Demo project </intro/demo_project>`.
-The ``options`` parameter is passed to the function, that is used to 
-specify the common options used in the in the ``create_table`` method. 
-
-.. code-block:: js
-
-    function init_table(item, options) {
-        options.height = $(window).height() - $('body').height() - 200 - 10;
-        if (options.height < 200) {
-            options.height = 200;
-        }
-        options.show_footer = true;    
-        options.row_callback = function(row, it) {
-            var font_weight = 'normal';
-            if (it.total.value > 10) {
-                font_weight = 'bold';
-            }
-            row.find('td.total').css('font-weight', font_weight);
-        };
     }
 
 See also

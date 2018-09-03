@@ -33,19 +33,13 @@ The right panel of the page have following buttons:
   to edit server module of an item, see 
   :doc:`Working with modules </programming/modules>`.
 
-* **View** - use this button to invoke the 
-  :doc:`View Fields Dialog <view_fields_dialog>` 
-  to set the fields to be displayed in tables on the client and their order, 
-  by default. See 
-  :doc:`create_table </refs/client/item/m_create_table>` 
-  method
+* **View Form** - use this button to invoke the 
+  :doc:`View Form Dialog <view_form_dialog>` 
+  to set how the view form will be displayed.
 
-* **Edit** -  use this button to invoke the 
-  :doc:`Edit Fields Dialog <edit_fields_dialog>`
-  to set the fields to be displayed in edit forms on the client and their 
-  order, by default. See 
-  :doc:`create_inputs </refs/client/item/m_create_inputs>`
-  method.
+* **Edit Form** - use this button to invoke the 
+  :doc:`Edit Form Dialog <edit_form_dialog>`
+  to set how the edit form will be displayed.
 
 * **Filters** - use this button to invoke the
   :doc:`Filters Dialog <filters_dialog>`
@@ -89,8 +83,8 @@ The right panel of the page have following buttons:
    
    item_editor_dialog
    field_editor_dialog
-   view_fields_dialog
-   edit_fields_dialog
+   edit_form_dialog
+   view_form_dialog
    filters_dialog
    details_dialog
    order_dialog

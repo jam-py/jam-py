@@ -16,7 +16,6 @@ the page.
    :maxdepth: 1
 
    parameters
-   project_locale
    database
    export
    import

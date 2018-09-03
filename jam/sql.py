@@ -16,7 +16,7 @@ class SQL(object):
             db_module = self.task.db_module
         sql = db_module.next_sequence_value_sql(self.gen_name)
         if sql:
-            rec = self.task.execute_select(sql)
+            rec = self.task.select(sql)
             if rec:
                 if rec[0][0]:
                     return int(rec[0][0])
@@ -418,7 +418,8 @@ class SQL(object):
                 else:
                     return '0'
             elif data_type == common.TEXT:
-                return "'" + value + "'"
+                #~ return "'" + str(value) + "'"
+                return "'" + to_unicode(value) + "'"
             elif data_type in (common.FLOAT, common.CURRENCY):
                 return str(float(value))
             else:
@@ -470,10 +471,7 @@ class SQL(object):
                     value = value + '%'
                 elif filter_type == common.FILTER_ENDWITH:
                     value = '%' + value
-                upper_function =  db_module.upper_function()
-                if upper_function:
-                    cond_string = upper_function + '(%s) %s %s'
-                    value = value.upper()
+                cond_field_name, value = db_module.convert_like(cond_field_name, value, field.data_type)
                 if esc_found:
                     value = "'" + value + "' ESCAPE '" + esc_char + "'"
                 else:
@@ -495,7 +493,8 @@ class SQL(object):
         filters = query['__filters']
         deleted_in_filters = False
         if filters:
-            for (field_name, filter_type, value) in filters:
+            for f in filters:
+                field_name, filter_type, value = f
                 if not value is None:
                     field = self._field_by_name(field_name)
                     if field_name == self._deleted_flag:
@@ -547,7 +546,7 @@ class SQL(object):
     def order_clause(self, query, db_module=None):
         limit = query.get('__limit')
         if limit and not query.get('__order') and self._primary_key:
-            query['__order'] = [[self._field_by_name(self._primary_key).ID, False]]
+            query['__order'] = [[self._primary_key, False]]
         if query.get('__funcs') and not query.get('__group_by'):
             return ''
         funcs = query.get('__funcs')
@@ -560,7 +559,7 @@ class SQL(object):
         order_list = query.get('__order', [])
         orders = []
         for order in order_list:
-            field = self._field_by_ID(order[0])
+            field = self._field_by_name(order[0])
             if field:
                 if not query['__expanded'] and field.lookup_item1:
                    orders = []
@@ -597,7 +596,8 @@ class SQL(object):
         filter_index = -1
         max_list = 0
         if filters:
-            for i, (field_name, filter_type, value) in enumerate(filters):
+            for i, f in enumerate(filters):
+                field_name, filter_type, value = f
                 if filter_type in [common.FILTER_IN, common.FILTER_NOT_IN]:
                     length = len(value)
                     if length > MAX_IN_LIST and length > max_list:
@@ -686,7 +686,7 @@ class SQL(object):
                     dic['field_name'] = field.db_field_name
                     dic['data_type'] = field.data_type
                     dic['size'] = field.field_size
-                    dic['default_value'] = field.f_default_value.value
+                    dic['default_value'] = ''#field.f_default_value.value
                     dic['primary_key'] = field.id.value == item.f_primary_key.value
                     fields.append(dic)
         result = []

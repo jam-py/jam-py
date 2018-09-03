@@ -2,16 +2,28 @@
 Language support
 ================
 
-The language information is stored in the langs.sqlite database in the 
-"jam" folder of the package. 
+Use Language Dialog to add, select and change your language.  
 
-Therefore, if you have made some changes to the language database and installed 
-a new version of the package, you will use the appropriate languages database 
-where there will be no changes you made.
+.. image:: _images/lang_dialog.png
+	:align: center
+	:alt: lang_dialog.png
 
-If you want your language translation to be included to Jam.py package,
-export it to a file and send it me, Andrew Yushev. 
+Language locale
+===============
 
-Please note that Jam.py is constantly evolving and by submitting your translation 
-you agree to make the necessary changes in the future.
+Use language locale to set up how the field value will be displayed. See
+:doc:`display_text </refs/client/field/at_display_text>`
 
+.. image:: _images/lang_locale.png
+	:align: center
+	:alt: lang_locale.png
+
+
+Language translation
+====================
+
+See :doc:`Language translation <language_translation>`
+
+.. image:: _images/lang_translation.png
+	:align: center
+	:alt: lang_translation.png

@@ -1,0 +1,137 @@
+=============
+table_options
+=============
+
+.. js:attribute:: table_options
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+The ``table_options`` attribute is a set of options that determine how the table
+of the view form of will be displayed. Options defined in it are used by the
+:doc:`create_table <m_create_table>`
+method if its options parameter don't override corresponding option.
+
+These options are set in the **Layout** tab of the
+:doc:`View Form Dialog </admin/items/view_form_dialog>`
+in Application Builder.
+
+You can change ``table_options`` in the 
+:doc:`on_view_form_created <on_view_form_created>`
+event handler of the item. See example.
+
+The ``table_options`` parameter is an object that may have the following attributes:
+
+* ``row_count`` - specifies the number of rows displayed by the table
+
+* ``height`` - if ``row_count`` is not specified, it determines the height of 
+  the table, the default value is 480. The table at creation calculates the number 
+  of rows displayed (``row_count``), based on the value of this parameter.
+  If the
+  :doc:`paginate <at_paginate>`
+  attribute of the item is set and 
+
+* ``fields`` - a list of field names. If specified, a column will be 
+  created for each field whose name is in this list, if not specified (the 
+  default) then the ``fields`` attribute of an 
+  :doc:`view_options <at_view_options>`
+  will be used 
+
+* ``striped`` —   If the
+  :doc:`paginate <at_paginate>`
+  attribute of the item is set,
+  the grid is striped if this value is true.
+
+* ``row_line_count`` - specifies the number of lines of text displayed in a 
+  table row, if it is 0, the height of the row is determined by the contents of 
+  the cells
+
+* ``expand_selected_row`` - if ``row_line_count`` is set and 
+  ``expand_selected_row`` is greater that 0, it specifies the minimal number of 
+  lines of text displayed in the selected row of the table
+
+* ``title_word_wrap`` - specifies if the column title text can be wrapped.
+
+* ``column_width`` - The width of the columns are calulated by a Web Browser. 
+  You can use this option to force the width of columns. The option is an 
+  object, key values of which are field names, the values are column widths
+  as CSS units
+  
+* ``editable_fields`` - the list of field names could be edited in the table. 
+
+* ``selected_field`` - if ``editable_fields`` are set, specifies the name of the
+  field whose column will be selected, when the selected row is changed.
+
+* ``sortable`` - if this option is specified, it is possible to sort the records 
+  by clicking on the table column header. When a ``sort_fields`` option is not 
+  specified (default), a user can sort records on any field, otherwise, only on 
+  the fields whose names are listed in this option.
+
+* ``sort_fields`` - the list of field name on which the table can be sorted,
+  by clicking on the corresponding table column header.
+  If an item is a detail the operation is performed on the client, otherwise 
+  sorting is performed on the server (the 
+  :doc:`open <m_open>`
+  method is used internally).
+
+* ``summary_fields`` - a list of field names. When it is specified, the table 
+  calculates sums for numeric fields and displays them in the table footer, 
+  for not numeric fields it displays the number of records.
+
+* ``freeze_count`` - an integer value. If it is greater than 0, it specifies 
+  number of first columns that become frozen - they will not scroll when the table
+  is scrolled horizontally.
+ 
+* ``on_click`` - specifies the function, that will be executed when a user click
+  on a table row. The item will be passed as a parameter to the function. 
+
+* ``on_dblclick`` - specifies the function, that will be executed when a user 
+  double click on a table row. The item will be passed as a parameter to 
+  the function. 
+
+* ``dblclick_edit`` - if the value of the option is set to true and the 
+  ``on_dblclick`` options is not set, the edit form will be shown when a user 
+  double click on a table row. 
+
+* ``multiselect`` - if this option is set, a leftmost 
+  column with check-boxes will be created to select records. So, that when a user 
+  clicks on the check-box, the value of the primary key field of the record will 
+  be added to or deleted from the 
+  :doc:`selections <at_selections>`
+  attribute.
+  
+  ``select_all`` if  true,
+  the menu will appear in the leftmost column of the table header, which will allow
+  the user selects all records that match the current filters and the search value.
+
+* ``row_callback`` - the callback functions called each time fields of the record
+  are changed. Two parameters are passed to the function - item, whose record has 
+  changed and JQuery object of the corresponding row of the table. Please be 
+  carefull - the item passed to the function can be not item itself, but its clone
+  that share the same dataset. 
+
+
+Example
+=======
+
+.. code-block:: js
+
+    function on_view_form_created(item) {
+        item.table_options.row_line_count = 2;
+        item.table_options.expand_selected_row = 3;    
+    }
+
+See also
+========
+
+:doc:`View Form Dialog </admin/items/view_form_dialog>`
+
+:doc:`on_view_form_created <on_view_form_created>`
+
+:doc:`create_table <m_create_table>`

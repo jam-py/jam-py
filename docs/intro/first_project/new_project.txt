@@ -20,7 +20,7 @@ After that we run *server.py* script that *jam-project.py* have created:
     $ ./server.py
 
 Now, to complete the creation of the project, open the web browser and go to 
-127.0.0.1:8080/builder.html to open the Application builder. You should see the language 
+127.0.0.1:8080/builder.html to open the Application Builder. You should see the language 
 selection dialog.
 
 .. image:: /intro/_images/lang.png

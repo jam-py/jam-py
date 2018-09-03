@@ -27,28 +27,17 @@ The following parameters are passed to the method:
 
 The ``options`` parameter is an object that may have following attributes:
 
-* ``fields`` - a list of field names, if specified, a visual control will be 
-  create for each field whose name is in this list, if not specified (the 
-  default) then the fields attribute of an 
-  :doc:`edit_options <at_edit_options>`
-  will be used (by default it lists all edit fields, specified in the 
-  Application builder 
-  :doc:`Edit Fields Dialog </admin/items/edit_fields_dialog>`
+* ``fields`` - a list of field names.  If specified, a visual control will be 
+  create for each field whose name is in this list, if not specified then the 
+  ``fields`` attribute of 
+  :doc:`edit_options <at_edit_options>` 
+  will be used (if defined), otherwise the layout, created in the 
+  :doc:`Edit Form Dialog </admin/items/edit_form_dialog>` of
+  Application builder, will be created
 
 * ``col_count`` - the number of columns that will be created for visual controls, 
   the default value is 1, 
   
-* ``label_on_top``: the default value is false. If this value is false, the 
-  labels are placed to the left of controls, otherwise the are created above the
-  controls
-
-* ``label_width``: the width of the label (integer). the default value is 180.
-  
-* ``tabindex`` - if tabindex is specified, it will the tabindex of the first 
-  visual control, tabindex of all subsequent controls will be increased by 1.
-  
-* ``autocomplete`` - the default value is false. If this attribute is set to 
-  true, the autocomplete attribute of controls is set to "on"   
 
 Before creating controls the application empties the container.
 
@@ -58,18 +47,8 @@ Example
 .. code-block:: js
 
     function on_edit_form_created(item) {
-    	item.edit_form.find('#customer-tabs a').click(function (e) {
-    	  e.preventDefault();
-    	  $(this).tab('show');
-    	});
-    	item.create_inputs(item.edit_form.find("#cust-name"), 
+    	item.create_inputs(item.edit_form.find(".left-div"), 
     	    {fields: ['firstname', 'lastname', 'company', 'support_rep_id']}
-    	);
-    	item.create_inputs(item.edit_form.find("#cust-address"), 
-    	    {fields: ['country', 'state', 'address', 'postalcode']}
-    	);
-    	item.create_inputs(item.edit_form.find("#cust-contact"), 
-    	    {fields: ['phone', 'fax', 'email']}
     	);
     }
 

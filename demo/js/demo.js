@@ -18,13 +18,16 @@ function Events1() { // demo
 			}); 
 		}
 		
-		task.set_forms_container($("#content"));
 		if (task.full_width) {
 			$('#container').removeClass('container').addClass('container-fluid');
 		}
-	
 		$('#container').show();
-		task.create_menu($("#menu"), {view_first: true});
+		
+		task.create_menu($("#menu"), {
+			forms_container: $("#content"),
+			splash_screen: '<h1 class="text-center">Jam.py Demo Application</h1>',
+			view_first: true
+		});
 	
 		$("#menu-right #admin a").click(function(e) {
 			var admin = [location.protocol, '//', location.host, location.pathname, 'builder.html'].join('');
@@ -294,13 +297,14 @@ task.events.events1 = new Events1();
 function Events10() { // demo.catalogs.customers 
 
 	function on_view_form_created(item) {
+		item.table_options.multiselect = false;
 		if (!item.view_form.hasClass('modal')) {	
-			var print_btn = item.add_button(item.view_form.find(".form-footer"), 'Print', {image: 'icon-print'}),
-				email_btn = item.add_button(item.view_form.find(".form-footer"), 'Send email', {image: 'icon-pencil'});
+			var print_btn = item.add_view_button('Print', {image: 'icon-print'}),
+				email_btn = item.add_view_button('Send email', {image: 'icon-pencil'});
 			email_btn.click(function() { send_email() });
 			print_btn.click(function() { print(item) });
+			item.table_options.multiselect = true;
 		}
-		
 	}  
 	
 	function send_email() {
@@ -326,15 +330,6 @@ task.events.events10 = new Events10();
 
 function Events16() { // demo.journals.invoices 
 
-	function on_after_append(item) {
-		item.date.value = new Date(); 
-		item.taxrate.value = 5;
-	}
-	
-	function on_view_form_created(item) {
-		item.filters.invoicedate1.value = new Date(new Date().setYear(new Date().getFullYear() - 1));
-	}
-	
 	function on_field_get_text(field) {
 		if (field.field_name === 'customer' && field.value) {
 			return field.owner.firstname.lookup_text + ' ' + field.lookup_text;
@@ -361,11 +356,17 @@ function Events16() { // demo.journals.invoices
 		];  
 		item.calc_summary(detail, fields);
 	}
-	this.on_after_append = on_after_append;
-	this.on_view_form_created = on_view_form_created;
+	
+	function on_field_select_value(field, lookup_item) {
+		if (field.field_name === 'customer') {
+			lookup_item.set_where({lastname__startwith: 'B'});
+			lookup_item.view_options.fields = ['firstname', 'lastname', 'address', 'phone'];
+		}
+	}
 	this.on_field_get_text = on_field_get_text;
 	this.on_field_changed = on_field_changed;
 	this.on_detail_changed = on_detail_changed;
+	this.on_field_select_value = on_field_select_value;
 }
 
 task.events.events16 = new Events16();
@@ -381,7 +382,6 @@ function Events18() { // demo.journals.invoices.invoice_table
 	function on_field_changed(field, lookup_item) {
 		var item = field.owner;
 		if (field.field_name === 'track' && lookup_item) {
-			item.quantity.value = 1;
 			item.unitprice.value = lookup_item.unitprice.value;
 		}
 		else if (field.field_name === 'quantity' || field.field_name === 'unitprice') {
@@ -390,16 +390,9 @@ function Events18() { // demo.journals.invoices.invoice_table
 	}
 	
 	function on_view_form_created(item) {
-		var btn = item.add_button(item.view_form.find(".form-footer"), 'Select', {type: 'primary'}),
-			fields =			 {
-				'track': 'name',
-				'album': 'album',
-				'artist': 'artist',
-				'unitprice': 'unitprice',
-				'quantity': 1
-			};
+		var btn = item.add_view_button('Select', {type: 'primary'});
 		btn.click(function() {
-			item.select_records(task.tracks, fields);
+			item.select_records('track');
 		});
 	}
 	this.calc = calc;
@@ -565,27 +558,25 @@ function Events25() { // demo.catalogs.mail
 	}
 	
 	function send_email(item) {
-		var customers = task.customers.selections;
-		try {
-			item.post();
-			if (!customers.length) {
-				customers.add(task.customers.id.value);
-			}
-			item.server('send_email', [customers, item.subject.value, item.mess.value], 
-				function(result, err) {
-					if (err) {
-						item.warning('Failed to send the mail: ' + err);
-						item.edit();
-					}
-					else {
-						item.warning('Successfully sent the mail');
-						item.close_edit_form();
-						item.delete();			
-					}
-				}
-			);
+		var selected = task.customers.selections;
+		item.post();
+		if (!selected.length) {
+			selected.add(task.customers.id.value);
 		}
-		catch (e) {}
+		
+		item.server('send_email', [selected, item.subject.value, item.mess.value], 
+			function(result, err) {
+				if (err) {
+					item.alert_error('Failed to send the mail: ' + err);
+					item.edit();
+				}
+				else {
+					item.alert('Successfully sent the mail');
+					item.close_edit_form();
+					item.delete();			
+				}
+			}
+		);
 	}
 	this.on_edit_form_created = on_edit_form_created;
 	this.send_email = send_email;

@@ -38,8 +38,8 @@ are triggered:
    :header: Client event, Server event, Description
    :widths: 10, 10, 80
    
-   :doc:`on_before_scroll </refs/client/item/on_before_scroll>`, :doc:`on_before_scroll </refs/server/item/on_before_scroll>`,  "Occurs before an application scrolls from one record to another."
-   :doc:`on_after_scroll </refs/client/item/on_after_scroll>`, :doc:`on_after_scroll </refs/server/item/on_after_scroll>`,  "Occurs after an application scrolls from one record to another."
+   :doc:`on_before_scroll </refs/client/item/on_before_scroll>`, ``on_before_scroll``,  "Occurs before an application scrolls from one record to another."
+   :doc:`on_after_scroll </refs/client/item/on_after_scroll>`, ``on_after_scroll``,  "Occurs after an application scrolls from one record to another."
 
 Using this methods we can navigate a dataset. For example,
 

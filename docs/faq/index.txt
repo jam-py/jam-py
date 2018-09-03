@@ -3,9 +3,13 @@ Jam.py FAQ
 ==========
 
 .. toctree::
-   :maxdepth: 1
+    :maxdepth: 1
 
-   general/index
-   groups/index
-   forms/index
-   reports/index
+    faq_catalogs_vs_journals
+    faq_can_i_use_jam_py_with_existing_database
+    faq_execute_script_on_the_server
+    faq_request_from_other_application
+    faq_foreign_keys
+    faq_using_other_libraries
+    faq_multitenancy
+    faq_print_ods_pdf

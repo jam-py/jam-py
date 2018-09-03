@@ -4,11 +4,16 @@ Field Editor Dialog
 
 Use the **Field Editor Dialog** to create a new or modify an existing field.
 
-.. image:: /admin/_images/fields_editr_dialog.png
-	:align: center
-	:alt: Field Editor Dialog
+It has two tabs **Field**, **Lookup** and **Interface**.
 
-The **Field Editor Dialog** have the following fields:
+Field tab
+=========
+
+.. image:: /admin/_images/fields_editr_field.png
+	:align: center
+	:alt: fields_editr_field.png
+
+The **Field** tab have the following fields:
 
 * **Caption** - the field name that appears to users.
 
@@ -24,7 +29,7 @@ The **Field Editor Dialog** have the following fields:
   * **DATE**
   * **DATETIME**
   * **BOOLEAN**
-  * **BLOB**
+  * **LONGTEXT**
 
 * **Size** - the size of the field for text fields.
 
@@ -40,10 +45,24 @@ The **Field Editor Dialog** have the following fields:
   :doc:`create_inputs </refs/client/item/m_create_inputs>`
   method on the client.
 
+Lookup tab
+==========
+
+.. image:: /admin/_images/fields_editr_lookup.png
+	:align: center
+	:alt: fields_editr_lookup.png
+
+
 * **Lookup item** - the lookup item for 
   :doc:`Lookup fields </programming/data/lookup_fields>`
 
 * **Lookup field** - the lookup field for 
+  :doc:`Lookup fields </programming/data/lookup_fields>`
+
+* **Lookup field 2** - the lookup field 2 for 
+  :doc:`Lookup fields </programming/data/lookup_fields>`
+
+* **Lookup field 3** - the lookup field 3 for 
   :doc:`Lookup fields </programming/data/lookup_fields>`
 
 * **Master field** - the master field for 
@@ -52,28 +71,29 @@ The **Field Editor Dialog** have the following fields:
 * **Typeahead** - if this checkbox is checked, typeahead is enabled for the
   lookup field
 
-* **Lookup values** - use it to specify a
+* **Lookup value list** - use it to specify a
   :doc:`lookup list </admin/lookup_lists>`
   for an integer field
 
-* **Alignment** - defines the alignment of the text in the interface controls, 
-  created by the
-  :doc:`create_inputs </refs/client/item/m_create_inputs>`
-  method on the client.
 
-* **Placeholder** - use this attribute to specify a placeholder, that will be 
-  displayed by input,
-  created by the
-  :doc:`create_inputs </refs/client/item/m_create_inputs>`
-  method on the client.
+Interface tab
+=============
 
-* **Help** - if some text/html message is specified here, there will be an 
-  question mark displayed to the right of the input, such that, when user click 
-  this mark, the popup will appear displaying this message.
+.. image:: /admin/_images/fields_editr_interface.png
+	:align: center
+	:alt: fields_editr_interface.png
 
-* **Default** - if this checkbox is checked, in the 
-  :doc:`Default code </intro/default_code>` a search is enabled in the table for
+
+* **Alignment** - determines the alignment of text in the controls that display 
   this field.
-  
+
+* **Placeholder** - use this attribute to specify the placeholder that will be
+  displayed by the field input.
+
+* **Help** - if any text / html-message is specified, a question mark will be 
+  displayed to the right of the input, so when the user moves the mouse pointer 
+  over this mark, a pop-up window appears displaying this message.
+
+
   
   

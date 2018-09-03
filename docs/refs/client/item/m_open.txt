@@ -45,7 +45,7 @@ with the same ID attribute) has the
 event handler. If so it executes this event handler and returns the result of 
 the execution to the client, otherwise generates a SELECT SQL query, based on 
 parameters of the request, executes this query using the
-:doc:`execute_select </refs/server/task/m_execute_select>`
+:doc:`select </refs/server/task/m_select>`
 method of the task and returns the result to the client.
 
 The client, after receiving the result of the request, sets 

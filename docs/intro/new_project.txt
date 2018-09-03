@@ -78,18 +78,23 @@ of failure 	an error message will be displayed.
 
     Please note the following requirements:
     
-    * to use FireBird database, the python fdb library must be installed 
-    * PostgreSQL requires psycopg2 library 
-    * MySQL requires MySQLdb library
-    * Oracle requires cx_Oracle library     
-    * to generate reports LibreOffice must be installed
+    * to use **FireBird** database, the python ``fdb`` library must be installed 
+    * **PostgreSQL** requires ``psycopg2`` library 
+    * **MySQL** requires ``MySQLdb`` library
+    * **Oracle** requires ``cx_Oracle`` library     
+    * **MSSQL** requires ``pymssql`` library
+    * to generate reports **LibreOffice** must be installed
     
 .. note::
 
-    For SQLite databases, when an item field is deleted in the 
+    For **SQLite** database, when an item field is deleted or renamed, or foreign 
+    key is created, 
     :doc:`Application builder </admin/index>`,
-    the field in the database table is not deleted, when the field is renamed, 
-    the field in the table does not change.
+    creates a new table and copies records from the old one into it.
+    
+    For **SQLite** database, Jam.py doesn’t support importing of metadata into an 
+    existing project (project with tables in the database). 
+    You can only import metadata into a new project.
 
 If all goes well, a new project will be created and the project tree will appear 
 in the Application builder.    

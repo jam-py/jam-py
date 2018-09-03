@@ -1,0 +1,44 @@
+==============
+on_open_events
+==============
+
+When the ``open`` method of the item is called 
+on the :doc:`client </refs/client/item/m_open>` or the 
+:doc:`server </refs/server/item/m_open>`, the server application
+calls the ``select_records`` method of the item:
+
+.. code-block:: py
+
+    def select_records(self, params, safe=False):
+        if safe and not self.can_view():
+            raise Exception(self.task.language('cant_view') % self.item_caption)
+        result = None
+        if self.task.on_open:
+            result = self.task.on_open(self, params)
+        if result is None and self.on_open:
+            result = self.on_open(self, params)
+        if result is None:
+            result = self.execute_select(params)
+        return result
+
+This method checks whether the task has an ``on_apply`` event handler. If
+the ``on_apply`` event handler is declared in the task server module, it is executed.
+
+If the result that the event handler returns is not ``None``, the method checks 
+whether the item has an on_apply event handler. If the on_apply event handler is 
+declared in the item server module, it is executed.
+
+If the result returned by the event handler is not ``None``, the method checks 
+whether the item has an ``on_apply`` event handler. If the ``on_apply event`` 
+handler is declared in the item server module, it is executed.
+
+If the result returned by the item event handler is not ``None``, the 
+``execute_select`` method of the item is called that generates SQL query,
+execute it and returns the result
+
+For more information see :doc:`on_open </refs/server/item/on_open>`
+
+Example
+=======
+
+:doc:`Here is an example how server events can be used </faq/faq_multitenancy>`

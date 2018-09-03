@@ -27,7 +27,7 @@ property for
 , and 
 :doc:`text <at_text>` 
 property, converted according to the
-:doc:`project locale </admin/project/project_locale>`
+:doc:`language locale </admin/language_support>`
 settings,
 for other fields.
 

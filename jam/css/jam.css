@@ -162,11 +162,11 @@ input.input-currency {
 }
 
 .datetime-input-container {
-    width: 64%;
+    width: 59%;
 }
 
 .date-input-container {
-    width: 52%;
+    width: 49%;
 }
 
 .lookupfield-input-container {
@@ -255,7 +255,7 @@ input.input-text {
 }
 
 .close {
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .inner-table {
@@ -546,13 +546,24 @@ input.input-text {
     padding: 0;
 }
 
+#search-form .dropdown-menu > li > a {
+    font-size: 12px;
+    padding: 2px 20px;
+}
+
+#search-form #search-input {
+    margin-bottom: 0;
+}
+
 .modal-title {
     margin: 10px 0;
 }
 
 .filters-text {
+    font-weight: normal;
     padding: 0;
     margin-left: 4px;
+    font-size: 13px;
 }
 
 .header-selected {
@@ -593,4 +604,8 @@ sup {
 }
 @keyframes pulsate {
  50% { color: #fff; text-shadow: 0 -1px rgba(0, 0, 0, .3), 0 0 5px #ffd, 0 0 8px #fff; }
+}
+
+.view-detail {
+    margin-top: 8px;
 }

@@ -4,7 +4,7 @@ New catalog
 
 Let's go back to the Application builder page and create a "Customers" catalog.
 
-Now we select the "Catalogs" group in the project tree and and click on the **New** 
+Now we select the "Catalogs" group in the project tree and and click the **New** 
 button at the bottom right corner of the page
 
 .. image:: /intro/_images/catalogs.png
@@ -29,7 +29,8 @@ dialog appears. Type the caption and name of the
 	:align: center
 	:alt: New journal tasks
 
-Similarly, add the "Lastname" and "Phone" fields.
+Similarly, we added the "Lastname" and "Phone" fields. When adding the "Lastname" 
+field, we checked the **Required** attribute. 
 
 .. image:: /intro/_images/customers_fields.png
 	:align: center
@@ -42,20 +43,10 @@ builder created the CRM_CUSTOMERS table in the ctm.sqlite database:
 	:align: left
 	:alt: Table created
 	
-Go to the Project page and press F5 to refresh it and click on the **New** 
-button
+Go to the Project page, refresh it and click the **New** 
+button and then **OK** button:
 
 .. image:: /intro/_images/customers_refresh.png
 	:align: center
 	:alt: Customers page
-
-Go back to the Application builder, double-click the "Clients" catalog, and then, 
-the "Lastname" field and set the "Required" and "Default" attributes. For catalogs 
-whose "Default" attribute is set, the 
-:doc:`default code </intro/default_code>`
-supports searching.
-
-.. image:: /intro/_images/customers_attr.png
-	:align: center
-	:alt: Customers page after attributes are set
 

@@ -38,17 +38,13 @@ The ``edit`` method
   :doc:`state <at_item_state>`
   , otherwise raises exception
 
-* triggers the 
-  :doc:`on_before_edit <on_before_edit>` 
-  event handler if one is defined for the item 
+* triggers the ``on_before_edit`` event handler if one is defined for the item 
 
 * puts the item into edit 
   :doc:`state <at_item_state>`
   , enabling the application or user to modify fields in the record
 
-* triggers the 
-  :doc:`on_after_edit <on_after_edit>` 
-  event handler if one is defined for the item
+* triggers the ``on_after_edit>`` event handler if one is defined for the item
 
 See also
 ========

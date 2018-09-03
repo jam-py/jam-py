@@ -1,0 +1,47 @@
+===============
+on_apply events
+===============
+
+When the ``apply`` method of the item is called 
+on the :doc:`client </refs/client/item/m_apply>` or the 
+:doc:`server </refs/server/item/m_apply>`, the server application
+calls the ``apply_changes`` method:
+
+.. code-block:: py
+
+    def apply_changes(self, data, safe):
+        result = None
+        changes, params = data
+        if not params:
+            params = {}
+        delta = self.delta(changes)
+        if self.task.on_apply:
+            result = self.task.on_apply(self, delta, params)
+        if result is None and self.on_apply:
+            result = self.on_apply(self, delta, params)
+        if result is None:
+            result = self.apply_delta(delta, safe)
+        return result
+
+This method checks whether the task has an ``on_open`` event handler. If
+the ``on_open`` event handler is declared in the task server module, it is executed.
+
+If the result that the event handler returns is not ``None``, the method checks 
+whether the item has an on_open event handler. If the on_open event handler is 
+declared in the item server module, it is executed.
+
+If the result returned by the event handler is not ``None``, the method checks 
+whether the item has an ``on_open`` event handler. If the ``on_open event`` 
+handler is declared in the item server module, it is executed.
+
+If the result returned by the item event handler is not ``None``, the 
+``apply_delta`` method of the item is called that generates SQL query,
+execute it and returns the result
+
+For more information see :doc:`on_apply </refs/server/item/on_apply>`
+
+Example
+=======
+
+:doc:`Here is an example how server events can be used </faq/faq_multitenancy>`
+

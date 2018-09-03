@@ -32,8 +32,7 @@ The ``delete`` method
   , checks if it is in browse 
   :doc:`state <at_item_state>`, otherwise raises exception.
   
-* triggers the :doc:`on_before_delete <on_before_delete>` event handler if one is 
-  defined for the item. 
+* triggers the ``on_before_delete`` event handler if one is defined for the item. 
   
 * puts the item into delete :doc:`state <at_item_state>`
 
@@ -41,8 +40,7 @@ The ``delete`` method
 
 * puts the item into browse :doc:`state <at_item_state>`
 
-* triggers the :doc:`on_after_delete <on_after_delete>` event handler if one is 
-  defined for the item
+* triggers the ``on_after_delete`` event handler if one is defined for the item
 
 See also
 ========

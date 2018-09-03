@@ -240,6 +240,7 @@ def create_items(task):
     task.sys_fields.add_field(26, 'f_help',          task.language('help'), common.LONGTEXT, visible=False)
     task.sys_fields.add_field(27, 'f_placeholder',   task.language('placeholder'), common.TEXT, visible=False, size=256)
     task.sys_fields.add_field(28, 'f_mask',  'Mask', common.TEXT, visible=False, size=30)
+    task.sys_fields.add_field(29, 'f_default_lookup_value', task.language('default_value'), common.INTEGER, lookup_values=[[0, '']])
 
     task.sys_fields.add_filter('id', 'ID', 'id', common.FILTER_EQ, visible=False)
     task.sys_fields.add_filter('owner_rec_id', 'Owner record ID', 'owner_rec_id', common.FILTER_IN, visible=False)
@@ -313,7 +314,7 @@ def create_items(task):
     task.sys_filters.add_field(9, 'f_filter_name',  task.language('name'),     common.TEXT, True)
     task.sys_filters.add_field(10, 'f_data_type', task.language('data_type'), common.INTEGER, False,  visible=False, edit_visible=False, lookup_values=get_value_list(common.FIELD_TYPES))
     task.sys_filters.add_field(11, 'f_type',      task.language('filter_type'), common.INTEGER, False, lookup_values=get_value_list(common.FILTER_STRING))
-    task.sys_filters.add_field(12, 'f_multi_select_all', task.language('multi_select_all'),  common.BOOLEAN)
+    task.sys_filters.add_field(12, 'f_multi_select_all', task.language('multi_select_all'),  common.BOOLEAN, edit_visible=False)
     task.sys_filters.add_field(13, 'f_visible',   task.language('visible'),    common.BOOLEAN)
     task.sys_filters.add_field(14, 'f_help',      task.language('help'), common.LONGTEXT, visible=False)
     task.sys_filters.add_field(15, 'f_placeholder', task.language('placeholder'), common.TEXT, visible=False, size=256)
@@ -402,7 +403,7 @@ def create_items(task):
     task.sys_fields_editor.add_field(29, 'detail_height', 'Detail height', common.INTEGER, False)
     task.sys_fields_editor.add_field(30, 'height', 'Height', common.INTEGER, False)
     task.sys_fields_editor.add_field(31, 'modeless', task.language('modeless'), common.BOOLEAN)
-    task.sys_fields_editor.add_field(15, 'search_field', 'Defaul search field', common.KEYS, False, task.sys_fields, 'id')
+    task.sys_fields_editor.add_field(15, 'search_field', task.language('default_search_field'), common.KEYS, False, task.sys_fields, 'id')
 
     task.sys_search = task.sys_catalogs.add_catalog('sys_search', task.language('find_in_task'), '')
 
@@ -688,7 +689,7 @@ def execute_ddl(task, db_sql):
     return success, error, info
 
 def execute_select(task_id, sql, params=None):
-    return task.execute_select(sql)
+    return task.select(sql)
 
 def get_privileges(task, role_id):
     result = {}
@@ -738,11 +739,11 @@ def login(task, log, password, admin, ip=None):
                     break
     return user_info
 
-def user_valid_ip(task, user_id, ip):
-    res = task.execute_select("SELECT F_IP FROM SYS_USERS WHERE ID=%s" % user_id)
-    if res and res[0][0] == ip:
-        return True
-    return False
+#~ def user_valid_ip(task, user_id, ip):
+    #~ res = task.select("SELECT F_IP FROM SYS_USERS WHERE ID=%s" % user_id)
+    #~ if res and res[0][0] == ip:
+        #~ return True
+    #~ return False
 
 def create_task(app):
     result = None
@@ -1348,7 +1349,7 @@ def import_metadata(task, task_id, file_name, from_client=False):
                     dic['field_name'] = field.f_db_field_name.value
                     dic['data_type'] = field.f_data_type.value
                     dic['size'] = field.f_size.value
-                    dic['default_value'] = field.f_default_value.value
+                    dic['default_value'] = ''#field.f_default_value.value
                     dic['primary_key'] = field.id.value == new_items.f_primary_key.value
                     result.append(dic)
         return result
@@ -2208,6 +2209,12 @@ def server_create_task(task):
     fields.apply()
     task.create_task()
 
+def get_lookup_list(task, list_id):
+    lists = task.sys_lookup_lists.copy()
+    lists.set_where(id=list_id)
+    lists.open()
+    return json.loads(lists.f_lookup_values_text.value)
+
 def change_theme(task):
     rlist = []
     #~ prefix = '/css/'
@@ -2293,7 +2300,7 @@ def server_get_table_names(task):
     try:
         tables = db_module.get_table_names(connection)
         tables = [t.strip() for t in tables]
-        ex_tables = task.execute_select('SELECT F_TABLE_NAME FROM SYS_ITEMS')
+        ex_tables = task.select('SELECT F_TABLE_NAME FROM SYS_ITEMS')
         ex_tables = [t[0].upper() for t in ex_tables if t[0]]
         result = [t for t in tables if not t.upper() in ex_tables]
         result.sort()
@@ -2526,7 +2533,7 @@ def get_table_fields(item, fields, delta_fields=None):
             dic['field_name'] = field.f_db_field_name.value
             dic['data_type'] = field.f_data_type.value
             dic['size'] = field.f_size.value
-            dic['default_value'] = field.f_default_value.value
+            dic['default_value'] = ''#field.f_default_value.value
             dic['master_field'] = field.f_master_field.value
             dic['primary_key'] = field.id.value == item.f_primary_key.value
             return dic
@@ -2569,7 +2576,7 @@ def get_table_fields(item, fields, delta_fields=None):
                         field_info['field_name'] = field.f_db_field_name.value
                         field_info['data_type'] = field.f_data_type.value
                         field_info['size'] = field.f_size.value
-                        field_info['default_value'] = field.f_default_value.value
+                        field_info['default_value'] = ''#field.f_default_value.value
                     else:
                         dic = field_dict(field)
                         if dic:
@@ -2854,6 +2861,46 @@ def server_store_interface(item, id_value, info):
     common.store_interface(item)
     item.task.app.task_server_modified = True
 
+def create_detail_index(task, table_id):
+    items = task.sys_items.copy()
+    items.set_where(type_id=common.TASK_TYPE)
+    items.open(fields = ['id', 'type_id', 'f_item_name'])
+    task_id = items.id.value
+    task_name = items.f_item_name.value
+
+    tables = task.sys_items.copy(handlers=False)
+    tables.set_where(id=table_id)
+    tables.open()
+
+    if not tables.f_master_id.value:
+        return
+
+    found = False
+    indexes = task.sys_indices.copy(handlers=False)
+    indexes.set_where(owner_rec_id=table_id)
+    indexes.open()
+    for i in indexes:
+        if not i.f_foreign_index.value:
+            field_list = common.load_index_fields(i.f_fields_list.value)
+            if len(field_list) >= 2 and \
+                field_list[0][0] == tables.f_master_id.value and \
+                field_list[1][0] == tables.f_master_rec_id.value:
+                found = True
+    if not found:
+        dest_list = [[tables.f_master_id.value, False], [tables.f_master_rec_id.value, False]]
+        indexes.append()
+        index_name = task_name.upper() + '_' + tables.f_item_name.value.upper()
+        if len(index_name) > 20:
+            index_name = index_name[0:20]
+        indexes.f_index_name.value = index_name + '_DETAIL_' + 'IDX';
+        indexes.task_id.value = task_id
+        indexes.owner_rec_id.value = table_id
+        indexes.f_foreign_index.value = False
+        indexes.f_fields_list.value = server_dump_index_fields(indexes, dest_list)
+        indexes.post()
+        indexes.on_apply = indices_apply_changes
+        indexes.apply(params={'manual_update': False})
+
 def server_update_details(item, item_id, dest_list):
 
     def get_table_info(table_id):
@@ -2902,6 +2949,10 @@ def server_update_details(item, item_id, dest_list):
         common.store_interface(items)
         items.apply()
         init_priviliges(items, items.id.value)
+        try:
+            create_detail_index(items.task, table_id)
+        except Exception as e:
+            traceback.print_exc()
     item.task.app.task_server_modified = True
 
 
@@ -3080,7 +3131,7 @@ def privileges_table_get_select(item, query):
 
     error_mes = ''
     try:
-        rows = item.task.execute_select(result_sql)
+        rows = item.task.select(result_sql)
     except Exception as e:
         error_mes = error_message(e)
     return rows, error_mes
@@ -3112,7 +3163,7 @@ def privileges_open(item, params):
 
     error_mes = ''
     try:
-        rows = item.task.execute_select(result_sql)
+        rows = item.task.select(result_sql)
     except Exception as e:
         error_mes = error_message(e)
     return rows, error_mes
@@ -3161,6 +3212,7 @@ def register_events(task):
     task.register(server_file_info)
     task.register(server_save_file)
     task.register(get_fields_next_id)
+    task.register(get_lookup_list)
     task.register(server_get_db_options)
     task.register(server_create_task)
     task.register(server_get_table_names)
@@ -3172,6 +3224,7 @@ def register_events(task):
     task.register(server_set_literal_case)
     task.register(get_new_table_name)
     task.register(create_system_item)
+    task.register(create_detail_index)
     task.sys_params.on_apply = do_on_apply_param_changes
     task.sys_users.on_apply = users_on_apply
     task.sys_tasks.on_apply = do_on_apply_param_changes

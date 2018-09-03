@@ -15,7 +15,7 @@ Description
 
 Use ``execute`` to execute an SQL query (except SELECT queries) using 
 multiprocessing connection pool. For SELECT queries use the
-:doc:`execute_select <m_execute_select>`
+:doc:`select <m_select>`
 method.
 
 The ``sql`` parameter can be a query string, a list of query strings, a list of
@@ -37,4 +37,4 @@ Example
 See also
 ========
 
-:doc:`execute_select <m_execute_select>`
+:doc:`select <m_select>`

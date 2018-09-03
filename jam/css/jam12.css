@@ -763,11 +763,21 @@ input.input-text {
     padding: 0;
 }
 
+#search-form #search-input {
+    margin-bottom: 0;
+}
+
+#search-form .dropdown-menu > li > a {
+    font-size: 12px;
+    padding: 2px 20px;
+}
+
 .modal-title {
     margin: 10px 0;
 }
 
 .filters-text {
+    font-weight: normal;
     padding: 0;
     margin-left: 4px;
 }
@@ -810,4 +820,8 @@ sup {
 }
 @keyframes pulsate {
  50% { color: #fff; text-shadow: 0 -1px rgba(0, 0, 0, .3), 0 0 5px #ffd, 0 0 8px #fff; }
+}
+
+.view-detail {
+    margin-top: 4px;
 }

@@ -37,6 +37,7 @@ To see the changes made in Application builder go to the Project page and reload
    intergation_with_existing_database
    saving_history
    language_support
+   language_translation
 
 .. image:: _images/admin.png
 	:align: center

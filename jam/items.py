@@ -12,6 +12,10 @@ class AbortException(Exception):
 class DebugException(Exception):
     pass
 
+class DictObject(object):
+    def __init__(self, d):
+        self.__dict__ = d
+
 class AbstractItem(object):
     def __init__(self, task, owner, name='', caption='', visible = True, item_type_id=0, js_filename=''):
         self.owner = owner
@@ -60,6 +64,11 @@ class AbstractItem(object):
     def environ(self):
         if hasattr(jam.context, 'environ'):
             return jam.context.environ
+
+    @property
+    def user_info(self):
+        if self.session:
+            return DictObject(self.session['user_info'])
 
     def find(self, name):
         for item in self.items:
@@ -159,7 +168,7 @@ class AbstractItem(object):
     def check_operation(self, operation):
         try:
             app = self.task.app
-            if not app.admin.safe_mode or self.master:
+            if not app.admin.safe_mode:# or self.master:
                 return True
             elif self.task == app.admin:
                 if app.admin.safe_mode:

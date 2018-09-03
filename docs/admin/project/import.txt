@@ -4,10 +4,9 @@ Import
 
 Use this button to import project metadata from zip file.
 
-When Import button is pressed, 
+When you click the "Import" button, 
 :doc:`Application builder </admin/index>`
-opens a Dialog to select the 
-file to be imported.
+opens a Dialog to select a file to be imported.
 
 After the file is selected, the Application builder uploads it to the server and 
 sends the server a request to import it.
@@ -25,7 +24,7 @@ The server while importing the metadata performs the following operations:
 * starts to execute sql statments to update the project database.
 
 * if an error occurs while updating the project database, for databases, that 
-  support DDL statment rollback (Postgress, Firebird), rollbacks changes, stops the 
+  support DDL statment rollback (Postgress, Firebird, MSSQL), rollbacks changes, stops the 
   import process and returns the import log to the Application builder. 
   If the database do not support DDL statment rollback (MySql, Oracle) writes error 
   to the import log and continues until all statments will be processed
@@ -42,3 +41,10 @@ The server while importing the metadata performs the following operations:
 .. note::
     It is strongly recommended that you make a backup of the project database 
     and *admin.sqlite* before performing the import.
+    
+.. note::
+
+    For **SQLite** database, Jam.py doesn’t support importing of metadata into an 
+    existing project (project with tables in the database). 
+    You can only import metadata into a new project.
+    

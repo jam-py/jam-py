@@ -20,27 +20,92 @@ open method on the
 or
 :doc:`server <m_open>`.
 
+See
+:doc:`on_open_events </programming/server/on_open_events>`
+to understand how on_open events are triggered.
+
+
 The ``on_open`` event handler has the following parameters:
 
-* ``item`` - a reference to the item,
-* ``params`` - the parameters passed to the server by open method
+* ``item`` - reference to the item,
 
-The following code is execute by default, when the ``on_open`` event handler is
-not defined:
+* ``params`` - dictionary containing parameters passed to the server by the open 
+  method:
+
+  * ``__expanded`` - corresponds to the ``expanded`` parameter of the server 
+    :doc:`open <m_open>` method / ``expanded`` attribute of options parameter of
+    the client 
+    :doc:`open </refs/client/item/m_open>`
+    method
+    
+  * ``__fields`` - list of field names
+  
+  * ``__filters`` - list of items, each of which is a list with the following members:
+  
+    * field name
+    * filter constant from :doc:`Filtering records </programming/data/filtering_records>`
+    * filter value
+    
+  * ``__funcs`` - functions dictionary
+  
+  * ``__order`` - list of items, each of which is a list with the following members:
+  
+    * field name
+    * boolen value, if it is true the order is descending
+  
+  * ``__offset`` - corresponds to the offset parameter of the open method
+  
+  * ``__limit`` - corresponds to the limit parameter of the open method  
+  
+  ``params`` can also include user defined parameters passed to the open method.
+  
+Below is an example of params that the client open methods of invoices items 
+sends to the server: 
+
+.. code-block:: py  
+
+  {
+      '__fields': [u'id', u'deleted', u'customer', u'firstname', u'date',
+          u'subtotal', u'taxrate', u'tax', u'total',
+          u'billing_address', u'billing_city', u'billing_country',
+          u'billing_postal_code', u'billing_state'],
+      '__filters': [[u'customer', 7, [6]]],
+      '__expanded': True,
+      '__limit': 11,    
+      '__offset': 0,
+      '__order': [[u'date', True]]
+  }
+  
+  {
+      '__fields': [u'id'],
+      '__funcs': {u'id': u'count'},
+      '__filters': [],
+      '__expanded': False,
+      '__offset': 0,
+      '__order': [],
+      '__summary': True
+  }
+
+The server application uses ``get_select_query`` method generates an SQL query, 
+based on params that the :doc:`select </refs/server/task/m_select>` method executes. 
+The server returns to the client the records, that the item  and error message.
+
+Example
+=======
 
 .. code-block:: py
 
-    error_mes = ''
-    sql = item.get_select_statement(params)
-    rows = item.task.execute_select(sql)
-    return rows, error_mes
+  def on_open(item, params):
+    sql = item.get_select_query(params)
+    rows = item.task.select(sql)
+    return rows, ''
 
-The ``get_select_statement`` method generates an SQL query, that the
-:doc:`execute_select </refs/server/task/m_execute_select>`
-method executes. The server returns to the client the records, that the item  and error message.
+:doc:`Here is an example how server events can be used </faq/faq_multitenancy>`
 
 See also
 ========
+
+:doc:`on_open_events </programming/server/on_open_events>`
 
 :doc:`Server side programming </programming/server/index>`
 

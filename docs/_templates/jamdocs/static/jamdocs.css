@@ -108,7 +108,7 @@ table {
 .docutils.literal {
     color: #178acc;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 13px;
     background-color: #ffffff;
 }
 
@@ -138,6 +138,10 @@ code {
 
 dt {
   font-size: 18px;
+}
+
+ul.simple li {
+    padding: 2px 0;    
 }
 
 .gsc-control-cse {

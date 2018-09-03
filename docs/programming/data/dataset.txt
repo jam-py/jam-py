@@ -11,7 +11,7 @@ datasets of `Embarcadero Delphi`_.
 
     There are other ways to read and modify the database data. You can use
     :doc:`execute </refs/server/task/m_execute>` and 
-    :doc:`execute_select </refs/server/task/m_execute_select>` 
+    :doc:`select </refs/server/task/m_select>` 
     methods or just 
     create a connection by using, for example,   
     :doc:`create_connection </refs/server/task/m_create_connection>` 

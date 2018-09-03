@@ -86,8 +86,8 @@ def cast_datetime(datetime_str):
 def value_literal(index):
     return '?'
 
-def upper_function():
-    return 'UPPER'
+def convert_like(field_name, val, data_type):
+    return 'UPPER(%s)' % field_name, val.upper()
 
 def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
     result = []

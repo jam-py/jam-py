@@ -2,21 +2,30 @@
 Parameters
 ==========
 
-After clicking on the Parameters button the following dialog will appear:
+After clicking on the **Parameters** button the Parameters Dialog will appear. 
+It has two tabs **General** and **Interface**.
 
+General tab
+===========
 
 .. image:: /admin/_images/parameters.png
 	:align: center
 	:alt: Project parameters dialog
 
-* **Safe mode** - If safe mode is enabled, authentication  is needed for user to 
+On the General tab, you can specify general parameters of the project:
+
+
+* **Language** - use it to open Language Dialog. See 
+  :doc:`Language support </admin/language_support>`
+
+* **Safe mode** - if safe mode is enabled, authentication  is needed for user to 
   work in the system (See 
   :doc:`Users </admin/users>`
   and 
   :doc:`Roles </admin/roles>`
   ). 
   
-* **Debugging** - If this button is checked, the Werkzeug libarary bebugger will
+* **Debugging** - if this button is checked, the Werkzeug libarary bebugger will
   be invoked when an error on the server occurs.
   
 * **Connection pool size** — the size of the server database connection pool. 
@@ -51,7 +60,8 @@ After clicking on the Parameters button the following dialog will appear:
   *task_name.js* will be loaded when application is run. All other files must be 
   loaded dynamically. See :doc:`Working with modules </programming/modules>`.
   
-* **History item** - to specify item, that will store change history
+* **History item** - to specify item, that will store change history, see 
+  :doc:`Saving audit trail/change history made by users </admin/saving_history>`
 
 * **Session timeout (seconds)** - number of second of inactivity that is allowed 
   before the session expires.
@@ -60,7 +70,7 @@ After clicking on the Parameters button the following dialog will appear:
   it is accessed from the same ip address that created the session.
   
 * **Delete reports after (hours)** - if a value is specified the generated 
-  reports that are located in the static/reports folder will be deleted 
+  reports that are located in the static/reports folder will be deleted after
   specified number of hours have passed.
 
 * **Version** — specify the version of the project here.
@@ -69,3 +79,26 @@ After clicking on the Parameters button the following dialog will appear:
    When **Connection pool size**, **Multiprocessing connection pool** or
    **Persistent connection** parameters are changed, the server applicaton must be 
    restarted for changes to take effect.
+
+
+Interface tab
+=============
+
+.. image:: /admin/_images/parameters_interface.png
+	:align: center
+	:alt: parameters_interface.png
+	
+On the Interface tab, you can specify interface parameters of the project:	
+
+* **Theme** - use this parameter to select the theme of the project from one of
+  predefined themes
+
+* **Small font** - if this button is checked, the default font size will be 12px,
+  otherwise it is 14px
+
+* **Full width** - if this button is checked the project will fill the page width,
+  without left and right margins
+
+* **Display forms in tabs** - if this button is checked, the forms will be opened 
+  tabs
+

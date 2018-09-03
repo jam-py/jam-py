@@ -19,13 +19,17 @@ procedure during the execution of the apply method on the
 or
 :doc:`server <m_apply>`.
 
+See
+:doc:`on_apply events </programming/server/on_apply_events>`
+to understand how on_apply events are triggered.
+
 The ``on_apply`` event handler has the following parameters:
 
 * ``item`` - a reference to the item,
 * ``delta`` - a delta containing item change log (discussed in more detail below),
 * ``params`` - the parameters passed to the server by apply method,
 
-The delta parameter contains changes that must be saved in the databae. 
+The delta parameter contains changes that must be saved in the database. 
 By itself, this option is an item's copy, and its dataset is the item's change 
 log. The nature of the record change can be obtained by using following methods: 
 
@@ -48,13 +52,14 @@ storing detail changes.
     You do not need to open delta detail after the cursor has been moved to 
     another record.
     
-The following code is execute by default when the ``on_apply`` event 
-handler is not defined:
+when the ``on_apply`` event handler is not defined the ``apply_delta`` method
+is executed:
 
 .. code-block:: py
 
-    sql = delta.apply_sql()
-    return item.task.execute(sql)
+    def apply_delta(self, delta, safe=False):
+        sql = delta.apply_sql(safe)
+        return self.task.execute(sql)
 
 The ``apply_sql`` method generates a dictionary, containing SQL queries, that the
 :doc:`execute </refs/server/task/m_execute>`
@@ -64,8 +69,7 @@ returns to the client information about the result of processing, that stores th
 id's of the new records as well. The client based on this information updates the 
 item's change log and values of ``id`` fields of new records.
 
-When ``on_apply`` event handler returns ``None`` this standard code is 
-executed after it, otherwise it is ommited.
+When ``on_apply`` event handler returns ``None`` the ``apply_delta`` is executed.
 
 You can make some additional processing of the delta. In the following code, the
 a value of the date field is set to the current date before changes are applied 
@@ -83,7 +87,10 @@ to the database table.
 
 .. note::
     Please note that changes made this way are not reflected in the item dataset
-    on the client!!!
+    on the client. You can use the item client methods
+    :doc:`refresh_record </refs/client/item/m_refresh_record>` or
+    :doc:`refresh_page </refs/client/item/m_refresh_page>` to display these
+    changes.
 
 In the following code, while saving the changes made to the invoices, the 
 application as well updates the value of the ``sold`` field for tracks in this 
@@ -91,32 +98,33 @@ invoices. All this is done in one transection.
 
 .. code-block:: py
 
-    def on_apply(item, delta, params, privileges, user_info, enviroment):
-        tracks_sql = []
-        delta.update_deleted()    
-        for d in delta:
-            for t in d.invoice_table:
-                if t.rec_inserted():
-                    sql = "UPDATE DEMO_TRACKS SET TRACKS_SOLD = COALESCE(TRACKS_SOLD, 0) + \
-                    %s WHERE ID = %s" % \
-                    (t.quantity.value, t.track.value)                
-                elif t.rec_deleted():
-                    sql = "UPDATE DEMO_TRACKS SET TRACKS_SOLD = COALESCE(TRACKS_SOLD, 0) - \
-                    (SELECT QUANTITY FROM DEMO_INVOICE_TABLE WHERE ID=%s) WHERE ID = %s" % \
-                    (t.id.value, t.track.value)
-                elif t.rec_modified():
-                    sql = "UPDATE DEMO_TRACKS SET TRACKS_SOLD = COALESCE(TRACKS_SOLD, 0) - \
-                    (SELECT QUANTITY FROM DEMO_INVOICE_TABLE WHERE ID=%s) + %s WHERE ID = %s" % \
-                    (t.id.value, t.quantity.value, t.track.value)
-                tracks_sql.append(sql)                
-        sql = delta.apply_sql()
-        with item.task.invoices_lock:
-            return item.task.execute(tracks_sql + [sql])
+  def on_apply(item, delta, params): 
+      tracks_sql = []
+      delta.update_deleted()    
+      for d in delta:
+          for t in d.invoice_table:
+              if t.rec_inserted():
+                  sql = "UPDATE DEMO_TRACKS SET TRACKS_SOLD = COALESCE(TRACKS_SOLD, 0) + \
+                  %s WHERE ID = %s" % \
+                  (t.quantity.value, t.track.value)                
+              elif t.rec_deleted():
+                  sql = "UPDATE DEMO_TRACKS SET TRACKS_SOLD = COALESCE(TRACKS_SOLD, 0) - \
+                  (SELECT QUANTITY FROM DEMO_INVOICE_TABLE WHERE ID=%s) WHERE ID = %s" % \
+                  (t.id.value, t.track.value)
+              elif t.rec_modified():
+                  sql = "UPDATE DEMO_TRACKS SET TRACKS_SOLD = COALESCE(TRACKS_SOLD, 0) - \
+                  (SELECT QUANTITY FROM DEMO_INVOICE_TABLE WHERE ID=%s) + %s WHERE ID = %s" % \
+                  (t.id.value, t.quantity.value, t.track.value)
+              tracks_sql.append(sql)                
+      sql = delta.apply_sql()
+      return item.task.execute(tracks_sql + [sql])
 
 See also
 ========
 
 :doc:`Server side programming </programming/server/index>`
+
+:doc:`on_apply events </programming/server/on_apply_events>`
 
 :doc:`Modifying datasets </programming/data/modifying_datasets>`
 

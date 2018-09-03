@@ -23,9 +23,7 @@ The ``post`` method
   :doc:`state <at_item_state>`
   , otherwise raises exception
 
-* triggers the 
-  :doc:`on_before_post <on_before_post>` 
-  event handler if one is defined for the item
+* triggers the ``on_before_post`` event handler if one is defined for the item
 
 * checks if a record is valid, if not raises exception
 
@@ -40,9 +38,7 @@ The ``post`` method
 * puts the item into browse 
   :doc:`state <at_item_state>`
 
-* triggers the 
-  :doc:`on_after_post <on_after_post>`
-  event handler if one is defined for the item.
+* triggers the ``on_after_post`` event handler if one is defined for the item.
 
 See also
 ========

@@ -25,8 +25,8 @@ JAM_TYPES = TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, LONGTEXT, K
 FIELD_TYPES = {
     INTEGER: 'INT',
     TEXT: 'NVARCHAR',
-    FLOAT: 'NUMERIC',
-    CURRENCY: 'NUMERIC',
+    FLOAT: 'FLOAT',
+    CURRENCY: 'FLOAT',
     DATE: 'DATE',
     DATETIME: 'DATETIME',
     BOOLEAN: 'INT',
@@ -97,8 +97,11 @@ def cast_datetime(datetime_str):
 def value_literal(index):
     return '%s'
 
-def upper_function():
-    pass
+def convert_like(field_name, val, data_type):
+    if data_type in [INTEGER, FLOAT, CURRENCY]:
+        return 'CAST(CAST(%s AS DECIMAL(20, 10)) AS VARCHAR(20))' % field_name, val
+    else:
+        return field_name, val
 
 def set_identity_insert(table_name, on):
     if on:

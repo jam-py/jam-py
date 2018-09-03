@@ -25,7 +25,8 @@ Similarly, we created other filters:
 	:align: center
 	:alt: All filters
 	
-These filters will be displayed as follows on the project page:
+When we refresh the project page, the **Filters** button will appear in the 
+header of the "Contacts" form. Clicking this button opens the "Filters" dialog box:
 
 .. image:: /intro/_images/contacts_filters.png
 	:align: center

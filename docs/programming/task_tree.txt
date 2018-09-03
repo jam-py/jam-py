@@ -16,25 +16,16 @@ All items of the tree have common ancestor class ``AbstractItem`` (
 	
 * ``owner`` - immediate parent and owner of the item
 	
-* ``task`` — root of the task tree
+* ``task`` - root of the task tree
 	
-* ``items`` — list of child items
+* ``items`` - list of child items
 	
-* ``item_type`` — type of the item — one of the following values:
-
-  * "task", 
-  * "items",
-  * "details", 
-  * "reports",  
-  * "item", 
-  * "detail_item", 
-  * "report", 
-  * "detail"
+* ``item_type`` - type of the item
       
-* ``item_name`` — the name of the item that will be used in programming code 
+* ``item_name`` - the name of the item that will be used in programming code 
   to get access to the item
 	  
-* ``item_caption`` — the item name that appears to users
+* ``item_caption`` - the item name that appears to users
 
 At the root of the tree is the task item. 
 
@@ -97,63 +88,28 @@ A task is a global object on the client. To access it, just type ``task``
 anywhere in the code.
 
 On the server, the task is not global. Jam.py is an event-driven environment.
-Each event has as an parameter the item (or field) that triggered the event.
+Each event has as a parameter the item (or field) that triggered the event.
 Functions defined in the server module of an item that can be executed from 
 the client module using the 
 :doc:`server </refs/client/abstr_item/m_server>`
 method have the corresponding item as the first parameter as well.
-
-
-In the example below, the ``send_email`` function, defined in the client module 
-of the **Mail** item in the 
-:doc:`Demo project </intro/demo_project>`
-executes ``send_email`` function defined in the server module of the **Mail** 
-item:
-
-.. code-block:: js
-
-    function send_email(item) {
-        var customers = task.customers.selections;
-        try {
-            item.post();
-            if (!customers.length) {
-                customers.push(task.customers.id.value);
-            }
-            item.server('send_email', [customers, item.subject.value, item.mess.value], 
-                function(result, err) {
-                    // the code processing the result of function execution
-                }
-            );
-        }
-        catch (e) {}
-    }
-
-The ``send_email`` function on the server have the **Mail** item of the server
-task tree as the first argument and uses its task attribute to access the 
-**Customers** item of the task tree:
-
-.. code-block:: py
-
-    import smtplib
-    
-    def send_email(item, customers, subject, mess):
-        cust = item.task.customers.copy()
-        cust.set_where(id__in=customers)
-        cust.open()
-        # the code sening email
 
 Knowing an item, we can access any other item of the task tree. For example to
 get access to the **customers** catalog we can write
 
 .. code-block:: js
 
-    item.task.catalogs.customers
+  def on_apply(item, delta, params): 
+      customers = item.task.catalogs.customers.copy()
+    
 
 or just
 
 .. code-block:: js
 
-    item.task.customers
+  def on_apply(item, delta, params): 
+      customers = item.task.customers.copy()
+
 
 The hierarchical structure of the project is one of the bases of the DRY 
 (don't repeat yourself) principle of the framework. 

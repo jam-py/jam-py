@@ -92,7 +92,7 @@ def update_langs(task):
         for l in langs:
             langs_list.append(l[0])
         res = execute('SELECT %s FROM JAM_LANGS ORDER BY ID' % ', '.join(FIELDS))
-        index = FIELDS.index('f_d_fmt')
+        #~ index = FIELDS.index('f_d_fmt')
         for r in res:
             if not r[1] in langs_list:
                 fields = ['DELETED']

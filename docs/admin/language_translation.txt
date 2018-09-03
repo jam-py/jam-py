@@ -1,0 +1,31 @@
+====================
+Language translation
+====================
+
+All language translations are stored in the langs.sqlite database in the "jam" 
+folder in the package.
+
+Therefore, if you made some changes to the translation database and installed a 
+new version of the package, you will use the translation database of this package 
+where there will be no changes made by you.
+
+If you want your language translation to be included to Jam.py package,
+export it to a file and send it me, Andrew Yushev. 
+
+Please note that Jam.py is constantly evolving and by submitting your translation 
+you agree to make the necessary changes in the future. If you don't mind 
+you will be included to the contributors list.
+
+.. note::
+
+  Do not change the following symbols **%, %(item)s, %(field)s, %(filters)s**
+  
+  For example
+  
+  **english**:
+  
+  Can't delete the field %(field)s. It's used in field definitions:%(fields)s
+  
+  **russian translation**:
+  
+  Нельзя удалить поле %(field)s. Используется в определении полей:%(fields)s

@@ -13,10 +13,22 @@ This is the recommended way to install Jam.py.
    work.)
 
 2. If you're using Linux, Mac OS X or some other flavor of Unix, enter the
-   command ``sudo pip install jam.py`` at the shell prompt. If you're using
-   Windows, start a command shell with administrator privileges and run
-   the command ``pip install jam.py``. This will install Jam.py in your Python
-   installation's ``site-packages`` directory.
+   command 
+   
+   .. code-block:: console
+   
+    sudo pip install jam.py 
+    
+   at the shell prompt. 
+   
+   If you're using Windows, start a command shell with administrator privileges 
+   and run the command 
+   
+   .. code-block:: console
+   
+    pip install jam.py 
+   
+   This will install Jam.py in your Python installation's ``site-packages`` directory.
 
 
 .. _pip: http://www.pip-installer.org/

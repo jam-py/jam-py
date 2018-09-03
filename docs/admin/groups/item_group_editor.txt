@@ -27,31 +27,32 @@ The upper part of the **Item Group Editor** have the following fields:
   for items that the group will own. You have to create this field first, see below 
   
 In the center part of the **Item Group Editor** dialog there is a table 
-containing a list of fields, defined for the item. Thsese fields are common to 
-all items the group will own. 
+containing a list of fields, defined for the item. Thsese fields are 
+:doc:`common </programming/data/common_fields>`
+to all items the group will own. 
 
 To add, modify or delete a field use the following buttons:
 
-* **New** - click this button to invoke the 
+* **New** - click the button to invoke the 
   :doc:`Field Editor Dialog </admin/items/field_editor_dialog>`
   to create a new field.
 
-* **Edit** - click this button to invoke the 
+* **Edit** - click the button to invoke the 
   :doc:`Field Editor Dialog </admin/items/field_editor_dialog>`
   to modify a selected field.
 
-* **Delete** - click this button to delete a field selected in in the field list.
+* **Delete** - click the button to delete a field selected in in the field list.
 
 In the bottom-right corner of the Dialog form there are two buttons:
 
-* **OK** - click this button to save change you made. 
+* **OK** - click the button to save change you made. 
 
-* **Cancel** - click this buttons to cancel the operation.
+* **Cancel** - click the buttons to cancel the operation.
 
 .. note::
     You can create new or modify existing fields and set **Primary key field** 
     and **Deleted flag field** attributes only when creating a new group or 
-    editing an ampty one.
+    editing an empty one.
     
     For existing item groups, that already own items you can only change 
     **Caption**, **Name** and  **Visible** attributes.

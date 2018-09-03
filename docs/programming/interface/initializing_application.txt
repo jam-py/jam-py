@@ -15,43 +15,29 @@ uses
 event handler to dynamically build the application's main menu and attach the
 on click event handler to menu items using JQuery.
 
-Let's look at 
-:doc:`CRM application </intro/first_project/index>`
-:doc:`on_page_loaded </refs/client/task/on_page_loaded>`
-event handler:
-
 .. code-block:: js
 
-    function on_page_loaded(task) {
-        $("#title").text(task.item_caption);
-        
-        if (task.safe_mode) {
-            $("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
-            $('#log-out')
-            .show() 
-            .click(function(e) {
-                e.preventDefault();
-                task.logout();
-            }); 
-        }
-    
-        task.contacts.view($('#content'));    
-    } 
+  function on_page_loaded(task) {
+      $("title").text(task.item_caption);
+      $("#title").text(task.item_caption);
+       
+      if (task.safe_mode) {
+          $("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
+          $('#log-out')
+          .show() 
+          .click(function(e) {
+              e.preventDefault();
+              task.logout();
+          }); 
+      }
+      
+      task.set_forms_container($("#content"));
+      
+      if (task.full_width) {
+          $('#container').removeClass('container').addClass('container-fluid');
+      }
+  
+      $('#container').show();
+      task.create_menu($("#menu"), {view_first: true});
+  } 
 
-In this event handler, the application, first, sets the text of the div with
-id="title" to the value of the
-:doc:`item_caption </refs/client/abstr_item/at_item_caption>` attribute of the
-task.
-
-After that, if the project is in the
-:doc:`safe mode </admin/project/parameters>`
-, displays the user info and uses JQuery 
-to assign onclick event to the ``a`` tag, decleared in the 
-:doc:`tndex.html <index_html>` file
-, to logout when user clicks it.
-
-Then it calls the 
-:doc:`view </refs/client/item/m_view>`
-method of the **Contacts** item to show the contacts in the ``div``
-with id="content". See
-:doc:`Forms <forms>`.

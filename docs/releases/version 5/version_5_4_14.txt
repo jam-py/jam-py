@@ -4,7 +4,7 @@ Version 5.4.14
 
 Library:
 
-* :doc:`add_button </refs/client/item/m_add_button>` method added
+* add_button method added
 
 * :doc:`select_records </refs/client/item/m_select_records>` method added
 

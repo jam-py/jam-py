@@ -11,11 +11,10 @@ Please follow the steps below:
    new_project
    new_catalog
    lookup_fields
-   event_handlers
-   displayed_fields
+   lookup_list
+   customizing_forms
+   indexes
    filters
-   default_sort_order
-   changing_default_code
-   view_form
-   changing_interface
+   
+
 

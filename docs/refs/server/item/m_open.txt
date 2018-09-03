@@ -21,8 +21,7 @@ table for obtaining a dataset.
 The method initializes the item 
 :doc:`fields <at_fields>`,
 formulates parameters of a request, and triggers the 
-:doc:`on_before_open <on_before_open>` event 
-handler if one is defined for the item.
+``on_before_open`` event handler if one is defined for the item.
 
 If there is a
 :doc:`on_open </refs/server/item/on_open>`
@@ -30,7 +29,7 @@ event handler defined for the item, ``open`` executes this event handler and
 assigns a dataset to the result, returned by it, 
 otherwise generates a SELECT SQL query, based on parameters of the request, 
 executes this query using the
-:doc:`execute_select </refs/server/task/m_execute_select>`
+:doc:`select </refs/server/task/m_select>`
 method of the task and assigns a dataset to the result of the execution.
 
 After that it sets 
@@ -38,8 +37,7 @@ After that it sets
 to true, the
 :doc:`item_state <at_item_state>` 
 to browse mode, goes to the first record of the dataset, triggers 
-:doc:`on_after_open <on_after_open>` 
-, if it is defined for the item.
+``on_after_open``, if it is defined for the item.
 
 Parameters
 ==========

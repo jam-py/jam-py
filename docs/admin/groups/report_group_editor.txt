@@ -2,9 +2,8 @@
 Report Group Editor
 ===================
 
-**Report Group Editor** opens when a developer wants to create a new report group 
-or modify an existing one. See 
-:doc:`Task tree </programming/task_tree>`
+**Report Group Editor** opens when the developer wants to create a new report 
+group or change an existing report group.
 
 The upper part of the **Report Group Editor** have the following fields:
 
@@ -20,9 +19,9 @@ The upper part of the **Report Group Editor** have the following fields:
 
 In the bottom-right corner of the Dialog form there are two buttons:
 
-* **OK** - click this button to save change you made. 
+* **OK** - click the button to save change you made. 
 
-* **Cancel** - click this buttons to cancel the operation.
+* **Cancel** - click the buttons to cancel the operation.
 
 .. image:: /admin/_images/report_group.png
 	:align: center

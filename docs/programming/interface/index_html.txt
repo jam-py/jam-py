@@ -17,7 +17,7 @@ For example
 
 .. code-block:: html
 
-    <link href="/jam/css/jam.css" rel="stylesheet">
+    <link href="jam/css/jam.css" rel="stylesheet">
 
 If needed, other files can be added here. For example some charting library. 
 It is better to place them in the *js* and *css* folders of the *static* 
@@ -27,7 +27,7 @@ For example
 
 .. code-block:: html
 
-    <script src="/static/js/charts.js"></script>
+    <script src="static/js/Chart.min.js"></script>
 
 The *index.html* ``body`` tag have a ``div`` with class ``templates``, that 
 contains html templates of the project forms. See 

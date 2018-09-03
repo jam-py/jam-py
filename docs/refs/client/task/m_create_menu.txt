@@ -1,0 +1,28 @@
+===========
+create_menu
+===========
+
+.. js:function:: create_menu: function(menu, options)
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Task </refs/client/task_api>`
+
+Description
+===========
+
+The ``create_menu`` method created a menu based on the project 
+:doc:`task tree </programming/task_tree>`.
+
+It iterates through the items of the 
+:doc:`task tree </programming/task_tree>`
+and adds items to the menu for which the visible attribute is set to true, 
+and the user has the right to view them.
+
+The method uses to assign on click event to the menu items so that for reports the
+:doc:`print </refs/client/report/m_print>`
+method will be executed when a user clicks it and the
+:doc:`view </refs/client/item/m_view>`
+method will be executed for other items.

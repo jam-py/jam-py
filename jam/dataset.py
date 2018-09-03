@@ -412,6 +412,29 @@ class DBField(object):
 
     display_text = property(get_display_text)
 
+    def assign_default_value(self):
+        if self.default_value:
+            try:
+                if self.data_type == common.INTEGER:
+                    self.value = int(self.default_value)
+                elif self.data_type in [common.FLOAT, common.CURRENCY]:
+                    self.value = float(self.default_value)
+                elif self.data_type == common.DATE:
+                    if self.default_value == 'current date':
+                        self.value = datetime.date.today()
+                elif self.data_type == common.DATETIME:
+                    if self.default_value == 'current datetime':
+                        self.value = datetime.datetime.now()
+                elif self.data_type == common.BOOLEAN:
+                    if self.default_value == 'true':
+                        self.value = True
+                    elif self.default_value == 'false':
+                        self.value = False
+                elif self.data_type in [common.TEXT, common.LONGTEXT]:
+                    self.value = self.default_value
+            except Exception as e:
+                print(e)
+
     def _set_read_only(self, value):
         self._read_only = value
         self.update_controls()
@@ -1578,7 +1601,7 @@ class AbstractDataSet(object):
                 fld = self._field_by_name(field_name)
             except:
                 raise RuntimeError('%s: order_by param error - %s' % (self.item_name, field))
-            result.append([fld.ID, desc])
+            result.append([fld.field_name, desc])
         return result
 
     def set_order_by(self, lst=None, *fields):
@@ -1726,11 +1749,7 @@ class AbstractDataSet(object):
 
     def _do_after_append(self):
         for field in self.fields:
-            if field.default_value:
-                try:
-                    field.text = field.default_value
-                except:
-                    pass
+            field.assign_default_value()
         self._modified = False
         if self.on_after_append:
             self.on_after_append(self)

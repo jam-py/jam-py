@@ -104,8 +104,11 @@ def cast_datetime(datetime_str):
 def value_literal(index):
     return ':f%d' % index
 
-def upper_function():
-    return 'UPPER'
+def convert_like(field_name, val, data_type):
+    if data_type in [INTEGER, FLOAT, CURRENCY]:
+        return 'TO_CHAR(%s, 99999999999990.999999999999)' % field_name, val
+    else:
+        return field_name, val
 
 def create_table_sql(table_name, fields, gen_name=None, foreign_fields=None):
     result = []

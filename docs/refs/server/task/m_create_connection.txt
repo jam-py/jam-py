@@ -24,4 +24,4 @@ See also
 
 :doc:`execute <m_execute>`
 
-:doc:`execute_select <m_execute_select>`
+:doc:`select <m_select>`
