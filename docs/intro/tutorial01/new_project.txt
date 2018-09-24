@@ -1,0 +1,49 @@
+===========
+New project
+===========
+
+We'll assume that jam.py is already installed. If not, see 
+:doc:`Installation </intro/install>`
+guide how to do it.
+
+First we create a folder for the new project and in this folder we execute the 
+*jam-project.py* script to create the project structures.
+
+.. code-block:: console
+
+    $ jam-project.py
+
+After that we run *server.py* script that *jam-project.py* have created:
+
+.. code-block:: console
+
+    $ ./server.py
+
+Now, to complete the creation of the project, open the web browser and go to 
+127.0.0.1:8080/builder.html to open the Application Builder. You should see the language 
+selection dialog.
+
+.. image:: /intro/_images/lang.png
+	:align: center
+	:alt: Select language dialog
+
+Select **English** and click **OK** button. The project parameters dialog box 
+appears.
+
+.. image:: /intro/_images/project_params.png
+	:align: center
+	:alt: Project params
+
+Fill out the form and click "OK". Now you should see the project tree in the 
+left panel.
+
+.. image:: /intro/_images/adm_new_project.png
+	:align: center
+	:alt: Project Application builder
+
+Open a new page, type 127.0.0.1:8080 in the address bar and press Enter. 
+A new project appears with an empty menu.
+
+.. image:: /intro/_images/empty_project.png
+	:align: center
+	:alt: Empty project

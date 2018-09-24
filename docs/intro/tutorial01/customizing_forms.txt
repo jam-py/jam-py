@@ -1,0 +1,45 @@
+=================
+Customizing Forms
+=================
+
+When we refresh the project page we'll see that fields  in the table and 
+in the edit form of the "Contacts" journal are displayed in the order in which 
+they were created. 
+
+.. image:: /intro/_images/contacts_new.png
+	:align: center
+	:alt: Contacts new record
+
+To change how fields are displayed in the table, click the **View Form** 
+button to open the
+:doc:`View Form Dialog </admin/items/view_form_dialog>`
+Let's change the displayed fields using **left**, **right**, **up** 
+and **down** buttons
+
+.. image:: /intro/_images/view_contacts1.png
+	:align: center
+	:alt: View contacts1
+
+Let's click on the button right to the **Sort fields** input and select the 
+fields by which user can sort the contents of the table by clicking in the 
+corresponding column header of the table.
+
+.. image:: /intro/_images/view_contacts_order_by.png
+	:align: center
+	:alt: view_contacts_order_by.png
+
+To change the way the fields are displayed in the edit form click the **Edit Form**
+button to open the
+:doc:`Edit Form Dialog </admin/items/edit_form_dialog>`
+
+.. image:: /intro/_images/edit_contacts2.png
+	:align: center
+	:alt: Edit contacts2
+
+To see the result of our work, go to the project page, refresh it and click 
+the **New** button.
+
+.. image:: /intro/_images/contacts_view.png
+	:align: center
+	:alt: Contacts view
+

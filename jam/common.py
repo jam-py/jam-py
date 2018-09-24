@@ -32,7 +32,8 @@ DEFAULT_SETTINGS = {
     'THEME': 1,
     'SMALL_FONT': False,
     'FULL_WIDTH': False,
-    'FORMS_IN_TABS': True
+    'FORMS_IN_TABS': True,
+    'MAX_CONTENT_LENGTH': 0
 }
 
 DEFAULT_LOCALE = {
@@ -75,9 +76,9 @@ ITEM_TYPES = ["root", "users", "roles", "tasks", "task",
 
 GROUP_TYPES = ["Item group", "Detail group", "Report group"]
 
-TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, LONGTEXT, KEYS = range(1, 10)
-FIELD_TYPES = ('TEXT', 'INTEGER', 'FLOAT', 'CURRENCY', 'DATE', 'DATETIME', 'BOOLEAN', 'LONGTEXT', 'KEYS')
-FIELD_TYPE_NAMES = ('', 'text', 'integer', 'float', 'currency', 'date', 'datetime', 'boolean', 'longtext', 'keys')
+TEXT, INTEGER, FLOAT, CURRENCY, DATE, DATETIME, BOOLEAN, LONGTEXT, KEYS, FILE, IMAGE = range(1, 12)
+FIELD_TYPES = ('TEXT', 'INTEGER', 'FLOAT', 'CURRENCY', 'DATE', 'DATETIME', 'BOOLEAN', 'LONGTEXT', 'KEYS', 'FILE', 'IMAGE')
+FIELD_TYPE_NAMES = ('', 'text', 'integer', 'float', 'currency', 'date', 'datetime', 'boolean', 'longtext', 'keys', 'file', 'image')
 ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT = 1, 2, 3
 ALIGNMENT = ('ALIGN_LEFT', 'ALIGN_CENTER', 'ALIGN_RIGHT')
 ITEM_FIELD, FILTER_FIELD, PARAM_FIELD = range(1, 4)

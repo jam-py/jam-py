@@ -11,7 +11,7 @@ create_inputs
 Description
 ===========
 
-Use ``create_inputs`` to create data-aware visual controls (inputs, cheboxes) 
+Use ``create_inputs`` to create data-aware visual controls (inputs, checkboxes) 
 for editing 
 :doc:`fields <at_fields>`
 of the item.

@@ -100,7 +100,8 @@ detail_client_events = \
         'on_filter_changed': 'filter',
         'on_filter_select_value': 'field, lookup_item',
         'on_field_validate': 'field',
-        'on_field_get_text': 'field'
+        'on_field_get_text': 'field',
+        'on_field_get_html': 'field'
     }
 
 item_client_events = detail_client_events

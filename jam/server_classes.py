@@ -74,11 +74,13 @@ class ServerDataset(Dataset, SQL):
     def get_event(self, caption):
         return getattr(caption)
 
-    def add_field(self, field_id, field_name, field_caption, data_type, required = False,
-        item = None, object_field = None, visible = True, index=0, edit_visible = True, edit_index = 0, read_only = False,
-        expand = False, word_wrap = False, size = 0, default_value=None, default = False, calculated = False, editable = False,
-        master_field = None, alignment=None, lookup_values=None, enable_typeahead=False, field_help=None,
-        field_placeholder=None, lookup_field1=None, lookup_field2=None, db_field_name=None, field_mask=None):
+    def add_field(self, field_id, field_name, field_caption, data_type, required=False,
+        item=None, object_field=None, visible=True, index=0, edit_visible=True, edit_index=0, read_only=False,
+        expand=False, word_wrap=False, size=0, default_value=None, default=False, calculated=False, editable=False,
+        master_field=None, alignment=None, lookup_values=None, enable_typeahead=False, field_help=None,
+        field_placeholder=None, lookup_field1=None, lookup_field2=None, db_field_name=None, field_mask=None,
+        image_edit_width=None, image_edit_height=None, image_view_width=None, image_view_height=None,
+        image_placeholder=None, file_download_btn=None, file_open_btn=None, file_accept=None):
 
         if db_field_name == None:
             db_field_name = field_name.upper()
@@ -86,17 +88,18 @@ class ServerDataset(Dataset, SQL):
         field_def = self.add_field_def(field_id, field_name, field_caption, data_type, required, item, object_field,
             lookup_field1, lookup_field2, visible, index, edit_visible, edit_index, read_only, expand, word_wrap, size,
             default_value, default, calculated, editable, master_field, alignment, lookup_values, enable_typeahead,
-            field_help, field_placeholder, field_mask, db_field_name)
+            field_help, field_placeholder, field_mask, image_edit_width, image_edit_height, image_view_width, image_view_height,
+            image_placeholder, file_download_btn, file_open_btn, file_accept, db_field_name)
         field = DBField(self, field_def)
         self._fields.append(field)
         return field
 
-    def add_filter(self, name, caption, field_name, filter_type = common.FILTER_EQ,
-        multi_select_all=None, data_type = None, visible = True, filter_help=None,
-        filter_placeholder=None):
+    def add_filter(self, name, caption, field_name, filter_type=common.FILTER_EQ,
+        multi_select_all=None, data_type=None, visible=True, filter_help=None,
+        filter_placeholder=None, filter_id = None):
 
         filter_def = self.add_filter_def(name, caption, field_name, filter_type,
-            multi_select_all, data_type, visible, filter_help, filter_placeholder)
+            multi_select_all, data_type, visible, filter_help, filter_placeholder, filter_id)
         fltr = DBFilter(self, filter_def)
         self.filters.append(fltr)
         return fltr

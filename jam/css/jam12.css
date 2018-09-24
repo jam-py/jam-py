@@ -335,6 +335,13 @@ input.input-datetime {
     width: -o-calc(100% - 2 * 24px);
 }
 
+input.input-file {
+    width: calc(100% - 3 * 24px + 5px);
+    width: -moz-calc(100% - 3 * 24px + 5px);
+    width: -webkit-calc(100% - 3 * 24px + 5px);
+    width: -o-calc(100% - 3 * 24px + 5px);
+}
+
 input.input-date {
 /*
     min-width: 70px;
@@ -396,6 +403,14 @@ input.input-text {
         width: -webkit-calc(100% - 2 * 24px);
         width: -o-calc(100% - 2 * 24px);
     }
+
+    input.input-file {
+        width: calc(100% - 3 * 24px + 5px);
+        width: -moz-calc(100% - 3 * 24px + 5px);
+        width: -webkit-calc(100% - 3 * 24px + 5px);
+        width: -o-calc(100% - 3 * 24px + 5px);
+    }
+
 }
 
 .navbar, .nav {
@@ -615,9 +630,13 @@ input.input-text {
 }
 
 .form-header {
-  padding: 6px 0 6px;
+  padding: 14px 15px 0;
   margin-bottom: 0;
   *zoom: 1;
+}
+
+.no-border .form-header {
+    padding: 8px 15px 14px;
 }
 
 .form-header:before,
@@ -696,6 +715,10 @@ input.input-text {
 .logging-info {
     margin-top: 20px;
     text-align: right;
+}
+
+#log-out {
+    margin-left: 4px;
 }
 
 .close-tab-btn:hover,

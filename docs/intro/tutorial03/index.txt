@@ -1,0 +1,87 @@
+=========================
+Tutorial. Part 3. Details 
+=========================
+
+In this part of the tutorial we will explain how to work with details.
+
+
+Let's select the “Details” group in the project tree and and click the **New** 
+button at the bottom right corner of the page
+
+
+.. image:: /intro/_images/detail_group.png
+	:align: center
+	:alt: detail_group.png
+
+In the
+:doc:`Item Editor </admin/items/item_editor_dialog>`
+dialog box, we will name the new item "To do list" and add the two fields 
+"Created" and "To do" in the same way as in the previous tutorial:
+
+.. image:: /intro/_images/new_detail.png
+	:align: center
+	:alt: new_detail.png
+
+
+After saving the "To do list", select the "Contacts" journal and click the 
+**Details** button in the right pane to open the 
+:doc:`Details Dialog </admin/items/details_dialog>`.
+Click the right arrow button to add the "To do list" to the "Contacts" details 
+and the **OK** button to save changes.
+
+.. image:: /intro/_images/details_dialog.png
+	:align: center
+	:alt: details_dialog.png
+
+A new "To do list" item will be created as a child of the "Contacts" journal.
+
+.. image:: /intro/_images/contacts_to_do_list.png
+	:align: center
+	:alt: contacts_to_do_list.png
+
+Select the "Contacts" journal again and  click the **Edit form** button to open the
+:doc:`Edit Form Dialog </admin/items/edit_form_dialog>`. Select **Form** tab,
+click the button to the right of the **Edit details** input and select the 
+"To do list" check box.
+
+.. image:: /intro/_images/details_to_edit.png
+	:align: center
+	:alt: details_to_edit.png
+
+Let's update the project page and dblclick on the contact. Now we can add items 
+to the to-do list of the contact.
+
+.. image:: /intro/_images/new_to_do_item.png
+	:align: center
+	:alt: new_to_do_item.png
+
+
+Click the **Groups** node in the project tree, dblclick the **Details** row and 
+set Visible attribute to true.
+
+.. image:: /intro/_images/detail_group_visible.png
+	:align: center
+	:alt: detail_group_visible.png
+
+When we refresh the project page, we will see the "To do list" item in the main menu.	
+Click on it to see the to do list of all contacts.
+
+.. image:: /intro/_images/todo_all.png
+	:align: center
+	:alt: todo_all.png
+
+Select the "Contacts" journal again and  click the **View form** button to open the
+:doc:`View Form Dialog </admin/items/view_form_dialog>`.
+Select **Form** tab, click the button to the right of the **View detail** input and 
+select the "To do list" check box.
+
+.. image:: /intro/_images/contacts_view_detail.png
+	:align: center
+	:alt: contacts_view_detail.png
+
+In the project page will see that the to-do list changes when the contact changes.
+
+.. image:: /intro/_images/todo_completed.png
+	:align: center
+	:alt: todo_completed.png
+

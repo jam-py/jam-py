@@ -180,11 +180,26 @@ input.input-currency {
 input.input-lookupitem,
 input.input-lookupvalues,
 input.input-date,
-input.input-datetime {
+input.input-datetime,
+input.input-file {
     width: calc(100% - 2 * 40px);
     width: -moz-calc(100% - 2 * 40px);
     width: -webkit-calc(100% - 2 * 40px);
     width: -o-calc(100% - 2 * 40px);
+}
+
+input.input-file2 {
+    width: calc(100% - 3 * 40px + 5px);
+    width: -moz-calc(100% - 3 * 40px + 5px);
+    width: -webkit-calc(100% - 3 * 40px + 5px);
+    width: -o-calc(100% - 3 * 40px + 5px);
+}
+
+input.input-file3 {
+    width: calc(100% - 4 * 40px + 7px);
+    width: -moz-calc(100% - 4 * 40px + 7px);
+    width: -webkit-calc(100% - 4 * 40px + 7px);
+    width: -o-calc(100% - 4 * 40px + 7px);
 }
 
 input.input-date {
@@ -243,6 +258,13 @@ input.input-text {
         width: -moz-calc(100% - 2 * 40px);
         width: -webkit-calc(100% - 2 * 40px);
         width: -o-calc(100% - 2 * 40px);
+    }
+
+    input.input-file {
+        width: calc(100% - 3 * 40px + 5px);
+        width: -moz-calc(100% - 3 * 40px + 5px);
+        width: -webkit-calc(100% - 3 * 40px + 5px);
+        width: -o-calc(100% - 3 * 40px + 5px);
     }
 }
 
@@ -406,9 +428,14 @@ input.input-text {
 }
 
 .form-header {
-  padding: 6px 0 6px;
+  font-size: 0;
+  padding: 14px 15px 0px;
   margin-bottom: 0;
   *zoom: 1;
+}
+
+.no-border .form-header {
+    padding: 8px 15px 14px;
 }
 
 .form-header:before,
@@ -422,7 +449,8 @@ input.input-text {
   clear: both;
 }
 
-.form-header .btn + .btn {
+.form-header .btn + .btn,
+.form-header .btn-group + .btn {
   margin-bottom: 0;
   margin-left: 5px;
 }
@@ -456,7 +484,8 @@ input.input-text {
   clear: both;
 }
 
-.form-footer .btn + .btn {
+.form-footer .btn + .btn,
+.form-footer .btn-group + .btn {
   margin-bottom: 0;
   margin-left: 5px;
 }
@@ -479,6 +508,10 @@ input.input-text {
 .logging-info {
     margin-top: 20px;
     text-align: right;
+}
+
+#log-out {
+    margin-left: 4px;
 }
 
 .close-tab-btn:hover,
@@ -593,6 +626,11 @@ sup {
     min-width: 200px;
 }
 
+/*
+#report-btn {
+    margin-left: 5px;
+}
+*/
 .pulsate {
     text-shadow: 0 -1px rgba(0, 0, 0, .1);
     -webkit-animation: pulsate 1.2s linear infinite;

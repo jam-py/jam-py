@@ -1453,7 +1453,8 @@ function Events3() { // admin.catalogs.sys_items
 			}
 			if (field.field_name === 'f_name' && !item.f_item_name.value) {
 				try {
-					ident = field.text.replace(' ', '_').toLowerCase();
+					ident = field.text.split(' ').join('_');
+					ident = ident.toLowerCase();
 					if (valid_identifier(ident)) {
 						item.f_item_name.value = ident;
 					}
@@ -1591,7 +1592,8 @@ function Events3() { // admin.catalogs.sys_items
 			['close_on_escape', true],
 			['width', 0],
 			['view_detail', []],
-			['detail_height', 0]
+			['detail_height', 0],
+			['buttons_on_top', false]
 		];
 		if (item.table_id.value) {
 			return [];
@@ -2503,14 +2505,13 @@ function Events2() { // admin.catalogs.sys_roles
 	
 	function on_after_apply(item) {
 		item.server('roles_changed');
-		item.refresh_record(function() {
-			if (!item.sys_privileges.rec_count) {
-				item.sys_privileges.open(function() {
-					item.edit();
-					//~ item.sys_privileges.edit();
-				});
-			}
-		});
+		item.refresh_record();
+		if (!item.sys_privileges.rec_count) {
+			item.sys_privileges.open(function() {
+				item.edit();
+				//~ item.sys_privileges.edit();
+			});
+		}
 	}
 	this.on_view_form_created = on_view_form_created;
 	this.select_all_clicked = select_all_clicked;
@@ -4056,7 +4057,7 @@ function Events11() { // admin.catalogs.sys_params
 				fields: ['f_language', 'f_safe_mode', 'f_debugging',
 				'f_con_pool_size', 'f_mp_pool', 'f_persist_con', 'f_compressed_js',
 				'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_timeout',
-				'f_ignore_change_ip', 'f_delete_reports_after', 'f_version'
+				'f_ignore_change_ip', 'f_max_content_length', 'f_delete_reports_after', 'f_version'
 				],
 				in_well: false,
 				label_width: 240
@@ -5110,8 +5111,17 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 				'f_enable_typehead', 'f_lookup_values']});
 		item.create_inputs(item.edit_form.find("#interface"),
 			{fields: ['f_alignment', 'f_mask', 'f_placeholder', 'f_help']});
+		item.create_inputs(item.edit_form.find("#file-interface"),
+			{fields: ['f_file_download_btn', 'f_file_open_btn', 'f_file_accept', 'f_help']});
+		item.create_inputs(item.edit_form.find("#image-interface1"),
+			{fields: ['f_image_view_width', 'f_image_view_height', 'f_image_edit_width', 'f_image_edit_height'], col_count: 2, label_size: 2});
+		item.create_inputs(item.edit_form.find("#image-interface2"),
+			{fields: ['f_image_placeholder']});
+	
+		update_iterface_tab(item);
 	
 		update_default_value(item);
+	
 		item.edit_form.find('textarea.f_help').attr('rows', 3).height(120);
 	
 		item.edit_form.find("#cancel-btn")
@@ -5120,6 +5130,38 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 		item.edit_form.find("#ok-btn")
 			.html(item.task.language.ok + '<small class="muted">&nbsp;[Ctrl+Enter]</small>')
 			.on('click.task', function() {item.apply_record()});
+	}
+	
+	function update_iterface_tab(item) {
+		if (item.f_data_type.value === item.task.consts.FILE) {
+			item.edit_form.find("#interface").hide();
+			item.edit_form.find("#image-interface").hide();
+			item.edit_form.find("#file-interface").show();
+			if (item.is_changing()) {
+				if (!item.f_file_download_btn.value && !item.f_file_open_btn.value) {
+					item.f_file_download_btn.value = true;
+					item.f_file_open_btn.value = true;
+				}
+			}
+		}
+		else if (item.f_data_type.value === item.task.consts.IMAGE) {
+			item.edit_form.find("#interface").hide();
+			item.edit_form.find("#image-interface").show();
+			item.edit_form.find("#file-interface").hide();
+			if (item.is_changing()) {
+				if (!item.f_image_view_width.value && !item.f_image_view_height.value) {
+					item.f_image_view_width.value = 100;
+				}
+				if (!item.f_image_edit_width.value && !item.f_image_edit_height.value) {
+					item.f_image_edit_width.value = 200;
+				}
+			}
+		}
+		else {
+			item.edit_form.find("#interface").show();
+			item.edit_form.find("#image-interface").hide();
+			item.edit_form.find("#file-interface").hide();
+		}
 	}
 	
 	function on_edit_form_shown(item) {
@@ -5398,6 +5440,7 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 					update_default_value(item, true);
 				}
 				else if (field === item.f_data_type) {
+					update_iterface_tab(item);
 					update_default_value(item, true);
 					if (item.f_data_type.value === item.task.consts.TEXT) {
 						item.f_size.value = 100;
@@ -5463,6 +5506,8 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 	
 	function update_fields_read_only(item) {
 		var default_read_only = (item.f_data_type.value === item.task.consts.KEYS) ||
+			(item.f_data_type.value === item.task.consts.FILE) ||
+			(item.f_data_type.value === item.task.consts.IMAGE) ||
 			Boolean(item.f_object.value) ||
 			!(item.f_data_type.value) ||
 			Boolean(item.f_master_field.value);
@@ -5640,6 +5685,7 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 		}
 	}
 	this.on_edit_form_created = on_edit_form_created;
+	this.update_iterface_tab = update_iterface_tab;
 	this.on_edit_form_shown = on_edit_form_shown;
 	this.on_after_open = on_after_open;
 	this.new_field = new_field;

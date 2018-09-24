@@ -30,6 +30,8 @@ The **Field** tab have the following fields:
   * **DATETIME**
   * **BOOLEAN**
   * **LONGTEXT**
+  * **FILE**
+  * **IMAGE**
 
 * **Size** - the size of the field for text fields.
 
@@ -94,6 +96,51 @@ Interface tab
   displayed to the right of the input, so when the user moves the mouse pointer 
   over this mark, a pop-up window appears displaying this message.
 
+Interface tab for FILE field
+============================
+
+
+.. image:: /admin/_images/fields_editr_file_interface.png
+	:align: center
+	:alt: fields_editr_file_interface.png
+
+
+.. image:: /admin/_images/file_btns.png
+	:align: center
+	:alt: file_btns.png
+
+
+* **Download btn** - uncheck the box to hide the download button (middle)
+
+* **Open btn** - uncheck the box to hide the open button (right)
+
+* **Accept** - the attribute specifies the types of files that can be loaded. 
+  This is a string, the same as the html <input> accept attribute.
+  See https://www.w3schools.com/Tags/att_input_accept.asp
+
+
+Interface tab for Image field
+=============================
+
+.. image:: /admin/_images/fields_editr_image_interface.png
+	:align: center
+	:alt: fields_editr_image_interface.png
+	
+* **View width** - specifies the width of an image in pixels when it is displayed
+  in the table of the view form. If it not specified the width is auto
+
+* **View height** - specifies the height of an image in pixels when it is displayed
+  in the table of the view form. If it not specified the height is auto
+	
+* **Edit width**  - specifies the width of an image in pixels when it is displayed
+  in the edit form. If it not specified the width is auto
+
+* **Edit height**  - specifies the heigth of an image in pixels when it is displayed
+  in the edit form. If it not specified the heigth is auto
+
+* **Placeholder image** - double-click the image to set the placeholder image,
+  that will be displayed when field image is not set.
+  Hold Ctrl key and double-click the image to clear the placeholder image.
 
   
   

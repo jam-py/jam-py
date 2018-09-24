@@ -139,6 +139,9 @@ view form
 * **Detail height** - an integer, the height of the details desplayed in the 
   view form, if not set, the height of the detail table is 200px
 
+* **Buttons on top** - if this check box is checked the buttons are displayed on 
+  the top of the view form, when form has a default form template
+
 You can get or change these values programmatically on the client by using the
 :doc:`view_options </refs/client/item/at_view_options>`
 attribute of the item 

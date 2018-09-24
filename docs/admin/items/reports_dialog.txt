@@ -7,8 +7,7 @@ Application builder (see
 :doc:`Items <index>`
 ) and clicks on the **Order** button to specify reports that could printed for 
 the item. 
-:doc:`Default code </intro/default_code>`
-has a function that can be used to print the reports.
+A new project code has a function that can be used to print the reports.
 
 .. image:: /admin/_images/reports_dialog.png
 	:align: center

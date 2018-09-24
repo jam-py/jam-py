@@ -23,8 +23,7 @@ function Events1() { // demo
 		}
 		$('#container').show();
 		
-		task.create_menu($("#menu"), {
-			forms_container: $("#content"),
+		task.create_menu($("#menu"), $("#content"), {
 			splash_screen: '<h1 class="text-center">Jam.py Demo Application</h1>',
 			view_first: true
 		});
@@ -54,13 +53,8 @@ function Events1() { // demo
 			detail_container;
 	
 		item.clear_filters();
-		if (!item.master) {
-			item.paginate = true;	
-		}
-	
 		if (item.view_form.hasClass('modal')) {
 			item.view_options.width = 1060;
-			item.view_form.find("#form-title").hide();
 			table_height = $(window).height() - 300;
 		}
 		else {
@@ -106,8 +100,6 @@ function Events1() { // demo
 			item.on_view_form_created(item);
 		}
 		
-		create_print_btns(item);
-		
 		if (item.view_form.find(".view-table").length) {
 			if (item.view_options.view_detail) {
 				detail_container = item.view_form.find('.view-detail');
@@ -134,6 +126,7 @@ function Events1() { // demo
 				item.open(true);
 			}
 		}
+		create_print_btns(item);
 		return true;
 	}
 	
@@ -148,8 +141,6 @@ function Events1() { // demo
 	}
 	
 	function on_edit_form_created(item) {
-		var detail_container = item.edit_form.find(".edit-detail");
-	
 		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
 		item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
 		
@@ -161,13 +152,9 @@ function Events1() { // demo
 			item.on_edit_form_created(item);
 		}
 			
-		if (item.edit_form.find(".edit-body").length) {
-			item.create_inputs(item.edit_form.find(".edit-body"));
-		}
+		item.create_inputs(item.edit_form.find(".edit-body"));
+		item.create_detail_views(item.edit_form.find(".edit-detail"));
 	
-		if (detail_container.length) {
-			item.create_detail_views(detail_container);
-		}
 		return true;
 	}
 	
@@ -336,6 +323,14 @@ function Events16() { // demo.journals.invoices
 		}
 	}
 	
+	function on_field_get_html(field) {
+		if (field.field_name === 'total') {
+			if (field.value > 10) {
+				return '<strong>' + field.display_text + '</strong>';
+			}
+		}
+	}
+	
 	function on_field_changed(field, lookup_item) {
 		var item = field.owner;
 		if (field.field_name === 'taxrate') {
@@ -356,17 +351,10 @@ function Events16() { // demo.journals.invoices
 		];  
 		item.calc_summary(detail, fields);
 	}
-	
-	function on_field_select_value(field, lookup_item) {
-		if (field.field_name === 'customer') {
-			lookup_item.set_where({lastname__startwith: 'B'});
-			lookup_item.view_options.fields = ['firstname', 'lastname', 'address', 'phone'];
-		}
-	}
 	this.on_field_get_text = on_field_get_text;
+	this.on_field_get_html = on_field_get_html;
 	this.on_field_changed = on_field_changed;
 	this.on_detail_changed = on_detail_changed;
-	this.on_field_select_value = on_field_select_value;
 }
 
 task.events.events16 = new Events16();

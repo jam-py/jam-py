@@ -6,11 +6,7 @@ The
 :doc:`on_page_loaded </refs/client/task/on_page_loaded>`
 event is the first event triggered by an application on the client.
 
-Write this event handler to initialize the application.
-
-The 
-:doc:`Demo project </intro/demo_project>`
-uses 
+The new project uses 
 :doc:`on_page_loaded </refs/client/task/on_page_loaded>`
 event handler to dynamically build the application's main menu and attach the
 on click event handler to menu items using JQuery.
@@ -18,6 +14,7 @@ on click event handler to menu items using JQuery.
 .. code-block:: js
 
   function on_page_loaded(task) {
+      
       $("title").text(task.item_caption);
       $("#title").text(task.item_caption);
        
@@ -31,13 +28,42 @@ on click event handler to menu items using JQuery.
           }); 
       }
       
-      task.set_forms_container($("#content"));
-      
       if (task.full_width) {
           $('#container').removeClass('container').addClass('container-fluid');
       }
-  
       $('#container').show();
-      task.create_menu($("#menu"), {view_first: true});
+      
+      task.create_menu($("#menu"), $("#content"), {view_first: true});
+  
   } 
 
+This event handler uses JQuery to select elements from the 
+:doc:`index.html <index_html>` to set their attributes and assign events. 
+
+.. code-block:: html
+
+  <div id="container" class="container" style="display: none">
+      <div class="row-fluid">
+          <div class="span6">
+              <h3 id="title" class="muted"></h3>
+          </div>
+          <div class="span6 logging-info">
+              <span id="user-info"></span>
+              <a id="log-out" href="#" style="display: none">Log out</a>
+          </div>
+      </div>
+      <div class="container">        
+          <div id="taskmenu" class="navbar">        
+              <div class="navbar-inner">
+                  <ul id="menu" class="nav">
+                  </ul>
+              </div>
+          </div>            
+      </div>
+      <div id="content">
+      </div>
+  </div>
+
+Finally, the 
+:doc:`create_menu </refs/client/task/m_create_menu>`
+method of the task is called to dynamically create the main project menu.

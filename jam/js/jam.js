@@ -20,6 +20,8 @@
             "BOOLEAN": 7,
             "LONGTEXT": 8,
             "KEYS": 9,
+            "FILE": 10,
+            "IMAGE": 11,
 
             "ITEM_FIELD": 1,
             "FILTER_FIELD": 2,
@@ -109,7 +111,9 @@
             "enable_typeahead",
             "field_help",
             "field_placeholder",
-            "field_mask"
+            "field_mask",
+            "field_image",
+            "field_file"
         ],
         filter_attr = [
             "filter_name",
@@ -120,10 +124,11 @@
             "data_type",
             "visible",
             "filter_help",
-            "filter_placeholder"
+            "filter_placeholder",
+            "ID"
         ],
         field_type_names = ["", "text", "integer", "float", 'currency',
-            "date", "datetime", "boolean", "longtext", "keys"
+            "date", "datetime", "boolean", "longtext", "keys", "file", "image"
         ];
 
 
@@ -435,36 +440,6 @@
             }
         },
 
-        _parse_template: function(template) {
-            var index,
-                keyword = '$include(',
-                include,
-                inc_template,
-                html = template.html(),
-                h = '';
-            template.empty();
-            html = html.replace(/<!--(.*?)-->/g, "");
-            while (true) {
-                index = html.indexOf(keyword);
-                if (index !== -1) {
-                    h += html.slice(0, index);
-                    html = html.slice(index + keyword.length);
-                    index = html.indexOf(')');
-                    include = html.slice(0, index + 1)
-                        .replace(/[('")]/g, '')
-                    inc_template = this.task.templates.find(include).clone();
-                    inc_template = this._parse_template(inc_template);
-                    h += inc_template.html();
-                    html = html.slice(index + 1);
-                }
-                else {
-                    h += html;
-                    break;
-                }
-            }
-            return template.append($(h));
-        },
-
         find_template: function(suffix, options) {
             var result,
                 template,
@@ -479,11 +454,11 @@
                     if (!template) {
                         template = this._search_template(item.owner.owner.item_name + "-details", suffix);
                     }
-                    //~ if (!template) {
-                        //~ template = this._search_template("default-details", suffix);
-                    //~ }
+                    if (!template && options && options.buttons_on_top) {
+                        template = this._search_template("default-top", suffix);
+                    }
                     if (!template) {
-                        template = this._search_template("default", suffix);
+                        template = this._search_template('default', suffix);
                     }
                     if (!template) {
                         item = item.owner;
@@ -503,11 +478,13 @@
                     }
                 }
             }
+            if (!template && options && options.buttons_on_top) {
+                template = this._search_template("default-top", suffix);
+            }
             if (!template) {
                 template = this._search_template('default', suffix);
             }
             if (template) {
-//                result = this._parse_template(template.clone());
                 result = template.clone();
             }
             else {
@@ -842,7 +819,7 @@
                 header.css('display', 'flex');
             }
             else {
-                header.css('display', 'none');
+                header.remove();
             }
         },
 
@@ -1819,6 +1796,7 @@
             enable_filters: true,
             view_detail: undefined,
             detail_height: 0,
+            buttons_on_top: false
         });
         this.table_options = {
             multiselect: false,
@@ -1941,119 +1919,102 @@
             }
         },
 
-        _byteLength: function(str) {
-            var s = str.length;
-            for (var i = str.length - 1; i >= 0; i--) {
-                var code = str.charCodeAt(i);
-                if (code > 0x7f && code <= 0x7ff) s++;
-                else if (code > 0x7ff && code <= 0xffff) s += 2;
-                if (code >= 0xDC00 && code <= 0xDFFF) i--;
-            }
-            return s;
-        },
-
-        do_upload: function(path, file_info, options) {
+        upload: function() {
             var self = this,
-                i,
-                file,
-                files = [],
-                content,
-                header = '',
-                body = [],
-                div_chr = ';',
-                xhr = new XMLHttpRequest(),
-                user_info = this.ID + ';' + this.item_name;
-            header += user_info.length + ';' + user_info + div_chr;
-            header += file_info.length + div_chr;
-            header += this._byteLength(path) + div_chr;
-            for (i = 0; i < file_info.length; i++) {
-                file = file_info[i][0];
-                content = file_info[i][1];
-                header += this._byteLength(file.name) + div_chr;
-                header += content.byteLength + div_chr;
-                files.push(file.name);
-            }
-            body.push(header);
-            body.push(path);
-            for (i = 0; i < file_info.length; i++) {
-                file = file_info[i][0];
-                content = file_info[i][1];
-                body.push(file.name);
-                body.push(content);
-            }
-            xhr.open('POST', 'upload', true);
-            if (options.callback) {
-                xhr.onload = function(e) {
-                    if (options.multiple) {
-                        options.callback.call(self, files);
-                    } else {
-                        options.callback.call(self, files[0]);
-                    }
-                };
-            }
-            if (options.on_progress) {
-                xhr.upload.onprogress = function(e) {
-                    options.on_progress.call(self, self, e);
-                };
-            }
-            var blob = new Blob(body, {
-                type: 'application/octet-stream'
-            });
-            xhr.send(blob);
-        },
-
-        upload: function(path, options) {
-            var self = this,
+                args = this._check_args(arguments),
+                options = args['object'],
+                path = args['string'],
                 default_options = {
                     callback: undefined,
-                    on_progress: undefined,
-                    extension: undefined,
-                    multiple: false
+                    show_progress: true,
+                    accept: undefined
                 },
-                button = $('<input type="file" style="position: absolute; top: -100px"/>');
-            options = $.extend({}, default_options, options);
-            if (options.multiple) {
-                button.attr('multiple', 'multiple');
-            }
-            $('body').append(button);
-            button.on('change', function(e) {
-                var files = e.target.files,
-                    i,
-                    parts,
-                    ext,
-                    f,
-                    file,
-                    file_info = [],
-                    reader,
-                    file_list = [];
+                message,
+                accept = '',
+                form,
+                button;
 
-                for (i = 0, f; f = files[i]; i++) {
-                    ext = '';
-                    if (options.extension) {
-                        parts = f.name.split('.');
-                        if (parts.length) {
-                            ext = parts[parts.length - 1];
-                        }
-                        if (ext !== options.extension) {
-                            continue;
-                        }
-                    }
-                    file_list.push(f);
-                }
-                for (i = 0; i < file_list.length; i++) {
-                    file = file_list[i];
-                    reader = new FileReader();
-                    reader.onload = (function(cur_file) {
-                        return function(e) {
-                            file_info.push([cur_file, e.target.result]);
-                            if (file_info.length === file_list.length) {
-                                self.do_upload(path, file_info, options);
+            options = $.extend({}, default_options, options);
+            if (options.accept) {
+                accept = 'accept="' + options.accept + '"';
+            }
+            if (path === undefined) {
+                path = '';
+            }
+            form = $(
+                '<form enctype="multipart/form-data" method="post" style="position: absolute; top: -1000px">' +
+                    '<input id="inp-btn" type="file" name="file" ' + accept + ' required />' +
+                    '<input id="submit-btn" type="submit" value="Submit" />' +
+                '</form>'
+            );
+            button = form.find('#inp-btn');
+            $('body').append(form);
+            button.on('change', function(e) {
+                var file = e.target.files[0],
+                    submit_button = form.find('#submit-btn');
+                submit_button.submit(function(e) {
+                    var xhr = new XMLHttpRequest(),
+                        formData = new FormData(form.get(0));
+
+                    formData.append("file_name", file.name);
+                    formData.append("path", path);
+                    formData.append("task_id", self.ID);
+                    xhr.open('POST', 'upload', true);
+                    if (options.callback) {
+                        xhr.onload = function(e) {
+                            var response,
+                                data;
+                            if (e.currentTarget.status === 200) {
+                                response = JSON.parse(e.currentTarget.response);
+                                if (response.error) {
+                                    self.alert_error(response.error, {duration: 10});
+                                }
+                                else if (options.callback) {
+                                    data = response.result.data;
+                                    options.callback.call(self, data.file_name, file.name, data.path);
+                                }
+                            }
+                            else {
+                                self.alert_error(e.currentTarget.statusText, {duration: 10})
+                                if (message) {
+                                    self.hide_message(message);
+                                }
                             }
                         };
-                    })(file);
-                    reader.readAsArrayBuffer(file);
-                }
-                button.remove();
+                    }
+                    if (options.show_progress) {
+                        xhr.upload.onprogress = function(e) {
+                            var percent,
+                                pb =
+                                '<div class="progress">' +
+                                    '<div class="bar" style="width: 0%;"></div>' +
+
+                                '</div>' +
+                                '<div class="percent text-center"></div>';
+                            if (e.loaded === e.total) {
+                                if (message) {
+                                    self.hide_message(message);
+                                }
+                            }
+                            else {
+                                if (!message) {
+                                    message = self.message(pb,
+                                        {margin: "20px 20px", text_center: true, width: 500});
+                                }
+                                else {
+                                    percent = parseInt(100 * e.loaded / e.total, 10) + '%';
+                                    message.find('.bar').width(percent);
+                                    message.find('.percent').html('<b>' + percent + '</b>');
+                                }
+                            }
+                        }
+                    }
+
+                    e.preventDefault();
+                    xhr.send(formData);
+                    form.remove();
+                })
+                submit_button.submit();
             });
             button.click();
         },
@@ -2360,10 +2321,13 @@
             }
         },
 
-        create_menu: function($menu, options) {
+        create_menu: function() {
             var i,
                 j,
                 self = this,
+                $menu = arguments[0],
+                $forms_container = arguments[1],
+                options = arguments[2],
                 li,
                 ul,
                 menu = [],
@@ -2376,9 +2340,15 @@
                     create_single_group: false,
                     create_group_for_single_item: false
                 };
+
+            if (arguments.length === 2) {
+                options = arguments[1];
+                $forms_container = options.forms_container;
+            }
+
             options = $.extend({}, default_options, options);
 
-            this.set_forms_container(options.forms_container, {splash_screen: options.splash_screen});
+            this.set_forms_container($forms_container, {splash_screen: options.splash_screen});
             task.each_item(function(group) {
                 var items = [];
                 if (group.visible) {
@@ -3794,8 +3764,8 @@
 
         get_keep_history: function() {
             if (this.master) {
-                return this.master._keep_history;
-                            }
+                return task.item_by_ID(this.prototype_ID).keep_history;
+            }
             else {
                 return this._keep_history;
             }
@@ -4349,12 +4319,14 @@
                 after_open = function() {
                     detail_count -= 1;
                     if (detail_count === 0 && callback) {
-                        callback.call(self, self);
+                        callback.call(self);
                     }
                 };
 
             if (options && options.details) {
-                details = options.details;
+                for (i = 0; i < options.details; i++) {
+                    details.push(this.find(options.details[i]));
+                }
             }
 
             if (callback || async) {
@@ -5831,14 +5803,39 @@
             }
         },
 
-        _edit_record: function(container) {
-            if (!this.is_changing()) {
-                this.edit();
-            }
-            if (!this.read_only) {
-                this.read_only = !this.can_edit();
-            }
+        _edit_record: function(container, in_tab) {
+            var self = this,
+                edit = function(error) {
+                    if (!self.is_changing()) {
+                        self.edit();
+                    }
+                    if (error) {
+                        self.alert_error(error);
+                    }
+                };
+            this.read_only = !this.can_edit();
             this.create_edit_form(container);
+            if (self.master) {
+                edit();
+            }
+            else {
+                this.disable_edit_form();
+                if (!in_tab) {
+                    this.refresh_record({details: this.edit_options.edit_details}, function(error) {
+                        self.enable_edit_form();
+                        edit(error);
+                    });
+                }
+                else if (this.edit_options.edit_details.length) {
+                    this.open_details({details: this.edit_options.edit_details}, function(error) {
+                        self.enable_edit_form();
+                        edit(error);
+                    });
+                }
+                else {
+                    edit();
+                }
+            }
         },
 
         _edit_record_in_tab: function(container, tab_name) {
@@ -5871,7 +5868,7 @@
                     copy.open(function() {
                         var on_after_apply = copy.on_after_apply;
                         copy.edit_options.tab_id = tab_id;
-                        copy._edit_record(content);
+                        copy._edit_record(content, true);
                         copy.on_after_apply = function(item) {
                             if (on_after_apply) {
                                 on_after_apply(copy, copy);
@@ -6083,6 +6080,12 @@
                 if (!self._order_by_list.length && self.view_options.default_order) {
                     self.set_order_by(self.view_options.default_order);
                 }
+                if (self.master) {
+                    self.paginate = false;
+                }
+                else {
+                    self.paginate = true;
+                }
                 self.create_view_form(container);
                 if (self.view_options.enable_search) {
                     self.init_search();
@@ -6278,7 +6281,7 @@
                 details_to_open = [],
                 details;
 
-            if (!container.length) {
+            if (!container || !container.length) {
                 return;
             }
 
@@ -6307,31 +6310,35 @@
                         details_to_open.push(detail)
                     }
                 }
-                if (details_to_open.length) {
-                    this.disable_edit_form();
-                    this.open_details({details: details_to_open}, function() {
-                        self.enable_edit_form();
-                    });
-                }
             }
         },
 
         add_view_button: function(text, options) {
-            var container,
-                default_options = {
-                    parent_class_name: 'form-footer'
+            var container;
+            options = $.extend({}, options);
+            if (!options.parent_class_name) {
+                if (this.view_form.find('.default-top-view').length) {
+                    options.parent_class_name = 'form-header';
                 }
-            options = $.extend({}, default_options, options);
+                else {
+                    options.parent_class_name = 'form-footer';
+                }
+            }
             container = this.view_form.find('.' + options.parent_class_name);
             return this.add_button(container, text, options);
         },
 
         add_edit_button: function(text, options) {
-            var container,
-                default_options = {
-                    parent_class_name: 'form-footer'
+            var container;
+            options = $.extend({}, options);
+            if (!options.parent_class_name) {
+                if (this.edit_form.find('.default-topbtn-edit').length) {
+                    options.parent_class_name = 'form-header';
                 }
-            options = $.extend({}, default_options, options);
+                else {
+                    options.parent_class_name = 'form-footer';
+                }
+            }
             container = this.edit_form.find('.' + options.parent_class_name);
             return this.add_button(container, text, options);
         },
@@ -6342,14 +6349,16 @@
                     btn_class: undefined,
                     image: undefined,
                     type: undefined,
-                    pull_left: false,
+                    secondary: false,
                     shortcut: undefined
                 },
+                right_aligned,
                 btn,
                 result;
             if (!container.length) {
-                return;
+                return $();
             }
+            right_aligned = container.hasClass('form-footer');
             options = $.extend({}, default_options, options);
             if (!text) {
                 text = 'Button';
@@ -6361,8 +6370,13 @@
             if (options.btn_class) {
                 result.addClass(options.btn_class);
             }
-            if (options.pull_left) {
-                result.addClass('pull-left');
+            if (options.secondary) {
+                if (right_aligned) {
+                    result.addClass('pull-left');
+                }
+                else {
+                    result.addClass('pull-right');
+                }
             }
             if (options.type) {
                 result.addClass('btn-' + options.type);
@@ -6379,16 +6393,38 @@
             else {
                 result.html(' ' + text)
             }
-            if (options.pull_left) {
-                container.append(result);
-            }
-            else {
-                btn = container.find('> .btn:not(.pull-left):first');
-                if (btn.length) {
-                    btn.before(result);
+            if (right_aligned) {
+                if (options.secondary) {
+                    container.append(result);
                 }
                 else {
-                    container.append(result)
+                    btn = container.find('> .btn:not(.pull-left):first');
+                    if (btn.length) {
+                        btn.before(result);
+                    }
+                    else {
+                        container.append(result)
+                    }
+                }
+            }
+            else {
+                if (options.secondary) {
+                    btn = container.find('> .btn.pull-right:last');
+                    if (btn.length) {
+                        btn.after(result);
+                    }
+                    else {
+                        container.append(result)
+                    }
+                }
+                else {
+                    btn = container.find('> .btn:not(.pull-right):last');
+                    if (btn.length) {
+                        btn.after(result);
+                    }
+                    else {
+                        container.append(result);
+                    }
                 }
             }
             return result;
@@ -6470,6 +6506,9 @@
                 value,
                 text,
                 sums = [];
+            if (detail.paginate) {
+                return;
+            }
             detail._summary = {};
             clone = detail.clone();
             if (this.on_detail_changed) {
@@ -6869,15 +6908,19 @@
         refresh: function(callback) {
         },
 
-        _do_on_refresh_record: function(copy, callback) {
+        _do_on_refresh_record: function(copy, options, callback, async) {
             var i, len;
             if (copy.record_count() === 1) {
                 len = copy._dataset[0].length;
                 for (i = 0; i < len; i++) {
                     this._dataset[this.rec_no][i] = copy._dataset[0][i];
                 }
+                this.change_log.remove_record_log();
                 this.update_controls(consts.UPDATE_CANCEL);
-                if (callback) {
+                if (options && options.details && options.details.length) {
+                    this.open_details(options, callback, async);
+                }
+                else if (callback) {
                     callback.call(this);
                 }
             }
@@ -6887,6 +6930,7 @@
             var args = this._check_args(arguments),
                 callback = args['function'],
                 async = args['boolean'],
+                options = args['object'],
                 self = this,
                 fields = [],
                 primary_key = this._primary_key,
@@ -6907,11 +6951,11 @@
 
                 if (callback || async) {
                     copy.open({expanded: this.expanded, fields: fields, where: where}, function() {
-                        self._do_on_refresh_record(copy, callback);
+                        self._do_on_refresh_record(copy, options, callback, async);
                     });
                 } else {
                     copy.open({expanded: this.expanded, fields: fields, where: where});
-                    this._do_on_refresh_record(copy);
+                    this._do_on_refresh_record(copy, options);
                 }
             }
         },
@@ -7606,6 +7650,9 @@
                         case consts.KEYS:
                             value = [];
                             break;
+                        case consts.FILE:
+                            value = ''
+                            break;
                     }
                 }
                 else if (this.data_type === consts.KEYS) {
@@ -7625,6 +7672,11 @@
                         break;
                     case consts.KEYS:
                         return this._convert_keys(value);
+                        break;
+                    case consts.FILE:
+                        if (value) {
+                            return value.substr(value.indexOf('?') + 1);
+                        }
                         break;
                 }
             }
@@ -7831,6 +7883,11 @@
                             break;
                     }
                 }
+            }
+            else if (this.data_type === consts.FILE) {
+                if (this.data) {
+                    value = this.data.substr(0, this.data.indexOf('?'));
+                }
             } else {
                 value = this.get_value();
             }
@@ -7890,6 +7947,52 @@
                 }
             } catch (e) {}
             return result;
+        },
+
+        get_image: function(edit_image) {
+            var width,
+                height,
+                placeholder;
+            if (this.data_type === consts.IMAGE) {
+                width = this.field_image.view_width;
+                height = this.field_image.view_height;
+                if (edit_image) {
+                    width = this.field_image.edit_width;
+                    height = this.field_image.edit_height;
+                }
+                if (!width) {
+                    width = 'auto';
+                }
+                else {
+                    width += 'px';
+                }
+                if (!height) {
+                    height = 'auto';
+                }
+                else {
+                    height += 'px';
+                }
+                if (this.field_image.placeholder) {
+                    placeholder = 'static/files/' + this.field_image.placeholder;
+                }
+                else {
+                    placeholder = 'jam/img/placeholder.png';
+                }
+                if (this.value) {
+                    return '<img src="static/files/' + this.value + '" alt="Image" style="width:' + width + ';height:' + height + '">';
+                }
+                else {
+                    return '<img src="' + placeholder + '" alt="Image placeholder" style="width:' + width + ';height:' + height + '">';
+                }
+            }
+        },
+
+        get_html: function() {
+            var img_scr;
+            if (this.owner && this.owner.on_field_get_html) {
+                return this.owner.on_field_get_html.call(this.owner, this);
+            }
+            return this.get_image();
         },
 
         get_display_text: function() {
@@ -7991,6 +8094,69 @@
                 }
                 catch (e) {
                     console.error(e)
+                }
+            }
+        },
+
+        upload_image: function() {
+            var self = this;
+            this.owner.task.upload(
+                {
+                    accept: 'image/*',
+                    callback: function(server_file_name, file_name) {
+                        if (self.data_type === consts.FILE) {
+                            self.value = server_file_name + '?' +  file_name;
+                        }
+                        else if (self.data_type === consts.IMAGE) {
+                            self.value = server_file_name;
+                        }
+                    }
+                }
+            );
+        },
+
+        upload: function() {
+            var self = this;
+            this.owner.task.upload(
+                {
+                    accept: this.field_file.accept,
+                    callback: function(server_file_name, file_name) {
+                        if (self.data_type === consts.FILE) {
+                            self.value = server_file_name + '?' +  file_name;
+                        }
+                        else if (self.data_type === consts.IMAGE) {
+                            self.value = server_file_name;
+                        }
+                    }
+                }
+            );
+        },
+
+        open: function() {
+            var url,
+                link = document.createElement('a');
+            if (this.data) {
+                url = [location.protocol, '//', location.host, location.pathname].join('');
+                url += 'static/files/' + this.data;
+                window.open(encodeURI(url));
+            }
+        },
+
+        download: function() {
+            var url,
+                link = document.createElement('a');
+            if (this.data) {
+                url = [location.protocol, '//', location.host, location.pathname].join('');
+                url += 'static/files/';
+                if (typeof link.download === 'string') {
+                    link = document.createElement('a');
+                    link.href = encodeURI(url + this.lookup_value);
+                    link.download = this.value
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } else {
+                    this.open();
                 }
             }
         },
@@ -9335,9 +9501,9 @@
             if (!this.item._paginate) {
                 default_options.striped = false;
             }
-            if (this.options.row_count) {
-                this.options.height = undefined;
-            }
+            //~ if (this.options.row_count) {
+                //~ this.options.height = undefined;
+            //~ }
             if (!this.options.height && !this.options.row_count) {
                 this.options.height = 480;
             }
@@ -10180,7 +10346,7 @@
             if (this.options.row_count && this.item._paginate) {
                 this.row_count = this.options.row_count;
                 this.item._limit = this.options.row_count;
-                this.$scroll_div.height(this.row_height * this.options.row_count);
+                //~ this.$scroll_div.height(this.row_height * this.options.row_count);
                 if (this.options.height) {
                     this.$scroll_div.height(this.options.height - (elementHeight - scrollDivHeight) - $element.find('.paginator').outerHeight(true));
                 }
@@ -10686,6 +10852,7 @@
                     this.update_totals();
                 } else {
                     this.field_width_updated = false;
+                    this.calc_summary();
                 }
             }
             this.refresh();
@@ -10791,67 +10958,72 @@
                 expanded = false,
                 search_field,
                 funcs;
-            if (this.item._paginate) {
-                copy = this.item.copy({handlers: false, details: false});
-                count_field = copy.fields[0].field_name,
-                fields = [];
-                count_fields = [];
-                sum_fields = [];
-                funcs = {};
-                sum_fields.push(count_field);
-                funcs[count_field] = 'count';
-                for (i = 0; i < this.options.summary_fields.length; i++) {
-                    field_name = this.options.summary_fields[i];
-                    field = this.item.field_by_name(field_name);
-                    if (field && this.fields.indexOf(field) !== -1) {
-                        fields.push(field_name);
-                        if (field.numeric_field()) {
-                            sum_fields.push(field_name);
-                            funcs[field_name] = 'sum';
+            if (!this.item.master) {
+                if (!this.item._paginate) {
+                    this.item.calc_summary(this.item);
+                }
+                else {
+                    copy = this.item.copy({handlers: false, details: false});
+                    count_field = copy.fields[0].field_name,
+                    fields = [];
+                    count_fields = [];
+                    sum_fields = [];
+                    funcs = {};
+                    sum_fields.push(count_field);
+                    funcs[count_field] = 'count';
+                    for (i = 0; i < this.options.summary_fields.length; i++) {
+                        field_name = this.options.summary_fields[i];
+                        field = this.item.field_by_name(field_name);
+                        if (field && this.fields.indexOf(field) !== -1) {
+                            fields.push(field_name);
+                            if (field.numeric_field()) {
+                                sum_fields.push(field_name);
+                                funcs[field_name] = 'sum';
+                            }
+                            else {
+                                count_fields.push(field_name);
+                            }
+                        }
+                    }
+                    if (self.item._open_params.__search) {
+                        search_field = this.item._open_params.__search[0];
+                        field = this.item.field_by_name(search_field);
+                        if (field.lookup_item) {
+                            expanded = true;
+                        }
+                        if (sum_fields.indexOf(search_field) === -1) {
+                            sum_fields.push(search_field);
+                            funcs[search_field] = 'count';
                         }
                         else {
-                            count_fields.push(field_name);
+                            search_field = '';
                         }
                     }
-                }
-                if (self.item._open_params.__search) {
-                    search_field = this.item._open_params.__search[0];
-                    field = this.item.field_by_name(search_field);
-                    if (field.lookup_item) {
-                        expanded = true;
+                    if (self.item._open_params.__filters) {
+                        copy._where_list = self.item._open_params.__filters;
                     }
-                    if (sum_fields.indexOf(search_field) === -1) {
-                        sum_fields.push(search_field);
-                        funcs[search_field] = 'count';
-                    }
-                    else {
-                        search_field = '';
-                    }
-                }
-                if (self.item._open_params.__filters) {
-                    copy._where_list = self.item._open_params.__filters;
-                }
-                copy.open({expanded: expanded, fields: sum_fields, funcs: funcs,
-                    params: {__summary: true}},
-                    function() {
-                        var i,
-                            text;
-                        copy.each_field(function(f, i) {
-                            if (i == 0) {
-                                total_records = f.value;
+                    copy.open({expanded: expanded, fields: sum_fields, funcs: funcs,
+                        params: {__summary: true}},
+                        function() {
+                            var i,
+                                text;
+                            copy.each_field(function(f, i) {
+                                if (i == 0) {
+                                    total_records = f.value;
+                                }
+                                else if (f.field_name !== search_field) {
+                                    self.$foot.find('div.' + f.field_name).text(f.display_text);
+                                }
+                            });
+                            for (i = 0; i < count_fields.length; i++) {
+                                self.$foot.find('div.' + count_fields[i]).text(total_records);
                             }
-                            else if (f.field_name !== search_field) {
-                                self.$foot.find('div.' + f.field_name).text(f.display_text);
+                            if (callback) {
+                                callback.call(this, total_records);
                             }
-                        });
-                        for (i = 0; i < count_fields.length; i++) {
-                            self.$foot.find('div.' + count_fields[i]).text(total_records);
                         }
-                        if (callback) {
-                            callback.call(this, total_records);
-                        }
-                    }
-                );
+                    );
+                }
             }
         },
 
@@ -10860,14 +11032,14 @@
                 row = this.itemRow(),
                 update,
                 build,
-                text,
+                html,
                 div;
             if (this.item.active && this.item.controls_enabled() && this.item.record_count()) {
                 div = row.find('div.' + field.field_name);
                 if (div.length) {
-                    text = this.get_field_text(field);
-                    if (text !== div.text()) {
-                        div.text(text);
+                    html = this.get_field_html(field)
+                    if (html !== div.html()) {
+                        div.html(html);
                         if (this.item.record_count() < 3 && (!this.item.paginate || this.item.paginate && this.page_count === 0)) {
                             this.build();
                         }
@@ -11062,14 +11234,18 @@
         },
 
         get_field_html: function(field) {
-            var result = this.get_field_text(field);
-            if (field.field_kind === consts.ITEM_FIELD && this.item._open_params.__search) {
-                if (field.field_name === this.item._open_params.__search[0]) {
-                    var text = this.item._open_params.__search[1];
-                    if (this.item._open_params.__search.length = 4) {
-                        text = this.item._open_params.__search[3];
+            var result;
+            result = field.get_html();
+            if (!result) {
+                result = this.get_field_text(field);
+                if (field.field_kind === consts.ITEM_FIELD && this.item._open_params.__search) {
+                    if (field.field_name === this.item._open_params.__search[0]) {
+                        var text = this.item._open_params.__search[1];
+                        if (this.item._open_params.__search.length === 4) {
+                            text = this.item._open_params.__search[3];
+                        }
+                        result = highlight(result, text);
                     }
-                    result = highlight(result, text);
                 }
             }
             return result;
@@ -11733,6 +11909,7 @@
                 $controls,
                 $btnCtrls,
                 $help,
+                lookup_data_type = field.get_lookup_data_type(),
                 field_type,
                 field_mask,
                 inpit_btn_class = '';
@@ -11762,6 +11939,8 @@
                     .click(function(e) {
                         self.field.value = !self.field.value;
                     });
+            } else if (lookup_data_type === consts.IMAGE) {
+                $input = $('<div>');
             } else if (field.get_lookup_data_type() === consts.LONGTEXT) {
                 $input = $('<textarea>').innerHeight(70);
             } else {
@@ -11815,7 +11994,8 @@
             this.$input.keydown($.proxy(this.keydown, this));
             this.$input.keyup($.proxy(this.keyup, this));
             this.$input.keypress($.proxy(this.keypress, this));
-            if (field.lookup_item && !field.master_field || field.lookup_values) {
+            field_type = field.get_lookup_data_type();
+            if (field.lookup_item && !field.master_field || field.lookup_values || field_type === consts.FILE) {
                 $btnCtrls = $('<div class="input-prepend input-append"></div>');
                 $btn = $('<button class="btn' + inpit_btn_class + '"type="button"><i class="icon-remove-sign"></button>');
                 $btn.attr("tabindex", -1);
@@ -11831,8 +12011,13 @@
                     if (field.lookup_values) {
                         self.dropdown.enter_pressed();
                     }
-                    else {
+                    else if (field.lookup_item){
                         self.selectValue();
+                    }
+                    else {
+                        if (self.field.owner.is_changing() && !self.field.owner.read_only) {
+                            self.field.upload();
+                        }
                     }
                 });
                 this.$lastBtn = $btn;
@@ -11847,7 +12032,7 @@
                         $input.width(36);
                     }
                 }
-                else {
+                else if (field.lookup_item){
                     $btnCtrls.addClass("lookupfield-input-container");
                     $input.addClass("input-lookupitem");
                     this.$lastBtn.find('i').addClass("icon-folder-open");
@@ -11856,8 +12041,46 @@
                             $input, this.field.typeahead_options());
                     }
                 }
+                else {
+                    $btnCtrls.addClass("lookupfield-input-container");
+                    this.$lastBtn.find('i').addClass("icon-file");
+                    this.$uploadBtn = this.$lastBtn
+
+                    if (this.field.field_file.download_btn) {
+                        $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i></button>');
+                        $btn.attr("tabindex", -1);
+                        this.$downloadBtn = $btn;
+                        $btnCtrls.append($btn);
+                        $controls.append($btnCtrls);
+                        $btn.find('i').addClass("icon-download-alt");
+                        $btn.click(function() {
+                            self.field.download();
+                        });
+                        this.$lastBtn = $btn;
+                    }
+
+                    if (this.field.field_file.open_btn) {
+                        $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i></button>');
+                        $btn.attr("tabindex", -1);
+                        $btnCtrls.append($btn);
+                        $controls.append($btnCtrls);
+                        $btn.find('i').addClass("icon-play");
+                        $btn.click(function() {
+                            self.field.open();
+                        });
+                        this.$lastBtn = $btn;
+                    }
+                    if (this.field.field_file.open_btn && this.field.field_file.download_btn) {
+                        $input.addClass("input-file3");
+                    }
+                    else if (this.field.field_file.open_btn || this.field.field_file.download_btn) {
+                        $input.addClass("input-file2");
+                    }
+                    else {
+                        $input.addClass("input-file");
+                    }
+                }
             } else {
-                field_type = field.get_lookup_data_type();
                 switch (field_type) {
                     case consts.TEXT:
                         $input.addClass("input-text");
@@ -11910,10 +12133,24 @@
                         $input.addClass("input-longtext");
                         $controls.append($input);
                         break;
+                    case consts.IMAGE:
+                        $controls.append($input);
+                        $input.dblclick(function(e) {
+                            if (self.field.owner.is_changing() && !self.field.owner.read_only) {
+                                if (e.ctrlKey) {
+                                    self.field.value = null;
+                                }
+                                else {
+                                    self.field.upload_image();
+                                }
+                            }
+                        })
+                        break;
                 }
                 align = field.data_type === consts.BOOLEAN ? 'center' : align_value[field.alignment];
                 this.$input.css("text-align", align);
             }
+
             if (this.label_on_top) {
                 this.$controlGroup = $('<div class="input-container"></div>');
             } else {
@@ -11943,54 +12180,56 @@
             this.$modalForm = this.$input.closest('.modal');
             this.field.controls.push(this);
 
-            this.$input.on('mouseenter', function() {
-                var $this = $(this);
-                if (self.error) {
-                    $this.tooltip('show');
-                }
-            });
-
-            if (!this.grid && this.field.field_placeholder) {
-                this.$input.attr('placeholder', this.field.field_placeholder);
-            }
-
-            if (!this.grid && this.field.field_help) {
-                $help = $('<a href="#" tabindex="-1"><span class="badge help-badge">?</span></a>');
-                $help.click(function(e) {
-                    e.preventDefault();
-                    self.$lastBtn.focus().click();
-                });
-                this.$help = $help;
-                $help.find('span')
-                    .popover({
-                        container: 'body',
-                        placement: 'right',
-                        trigger: 'hover',
-                        html: true,
-                        title: self.field.field_caption,
-                        content: self.field.field_help
-                    })
-                    .click(function(e) {
-                        e.preventDefault();
-                    });
-                if ($btnCtrls) {
-                    $controls.append($help);
-                    $help.find('span').addClass('btns-help-badge')
-                }
-                else {
-                    $controls.append($help);
-                }
-            }
-            this.$input.tooltip({
-                    container: 'body',
-                    placement: 'bottom',
-                    title: ''
-                })
-                .on('hide hidden show shown', function(e) {
-                    if (e.target === self.$input.get(0)) {
-                        e.stopPropagation()
+            if (lookup_data_type !== consts.IMAGE) {
+                this.$input.on('mouseenter', function() {
+                    var $this = $(this);
+                    if (self.error) {
+                        $this.tooltip('show');
                     }
                 });
+
+                if (!this.grid && this.field.field_placeholder) {
+                    this.$input.attr('placeholder', this.field.field_placeholder);
+                }
+
+                if (!this.grid && this.field.field_help) {
+                    $help = $('<a href="#" tabindex="-1"><span class="badge help-badge">?</span></a>');
+                    $help.click(function(e) {
+                        e.preventDefault();
+                        self.$lastBtn.focus().click();
+                    });
+                    this.$help = $help;
+                    $help.find('span')
+                        .popover({
+                            container: 'body',
+                            placement: 'right',
+                            trigger: 'hover',
+                            html: true,
+                            title: self.field.field_caption,
+                            content: self.field.field_help
+                        })
+                        .click(function(e) {
+                            e.preventDefault();
+                        });
+                    if ($btnCtrls) {
+                        $controls.append($help);
+                        $help.find('span').addClass('btns-help-badge')
+                    }
+                    else {
+                        $controls.append($help);
+                    }
+                }
+                this.$input.tooltip({
+                        container: 'body',
+                        placement: 'bottom',
+                        title: ''
+                    })
+                    .on('hide hidden show shown', function(e) {
+                        if (e.target === self.$input.get(0)) {
+                            e.stopPropagation()
+                        }
+                    });
+            }
 
             this.$input.bind('destroyed', function() {
                 self.field.controls.splice(self.field.controls.indexOf(self), 1);
@@ -12019,16 +12258,24 @@
             if (this.$lastBtn) {
                 this.$lastBtn.prop('disabled', value);
             }
+            if (this.$uploadBtn) {
+                this.$uploadBtn.prop('disabled', value);
+            }
+            if (this.$downloadBtn) {
+                this.$downloadBtn.prop('disabled', value);
+            }
             if (this.$input) {
                 this.$input.prop('disabled', value);
+            }
+            if (this.field.get_lookup_data_type() === consts.FILE) {
+                this.$input.prop('disabled', true);
             }
         },
 
         update: function(state) {
-            var placeholder = this.field.field_placeholder,
-                focused = this.$input.get(0) === document.activeElement,
+            var placeholder,
+                focused,
                 is_changing = this.is_changing;
-
             if (this.field.field_kind === consts.ITEM_FIELD) {
                 is_changing = this.field.owner.is_changing();
                 if (!this.field.owner.active || this.field.owner.record_count() === 0) {
@@ -12040,40 +12287,50 @@
                 }
             }
             if (!this.removed && !this.form_closing()) {
-                if (this.read_only !== this.field._get_read_only() || is_changing !== this.is_changing) {
-                    this.read_only = this.field._get_read_only();
-                    this.is_changing = is_changing;
-                    this.set_read_only(this.read_only || !this.is_changing);
-                }
-                if (this.field.master_field) {
-                    this.set_read_only(true);
-                }
-                if (this.field.get_lookup_data_type() === consts.BOOLEAN) {
-                    if (this.field.get_lookup_value()) {
-                        this.$input.prop("checked", true);
-                    } else {
-                        this.$input.prop("checked", false);
+                if (this.field.get_lookup_data_type() === consts.IMAGE) {
+                    if (this.$input.html() != this.field.get_html()) {
+                        this.$input.html(this.field.get_image(true));
                     }
                 }
-                if (this.field.lookup_values) {
-                    this.$input.val(this.field.display_text);
-                } else {
-                    if (focused && this.$input.val() !== this.field.get_text() ||
-                        !focused && this.$input.val() !== this.field.get_display_text()) {
-                        this.errorValue = undefined;
-                        this.error = undefined;
-                        if (focused && !this.field.lookup_item && !this.field.lookup_values) {
-                            this.$input.val(this.field.get_text());
+                else {
+                    placeholder = this.field.field_placeholder;
+                    focused = this.$input.get(0) === document.activeElement;
+
+                    if (this.read_only !== this.field._get_read_only() || is_changing !== this.is_changing) {
+                        this.read_only = this.field._get_read_only();
+                        this.is_changing = is_changing;
+                        this.set_read_only(this.read_only || !this.is_changing);
+                    }
+                    if (this.field.master_field) {
+                        this.set_read_only(true);
+                    }
+                    if (this.field.get_lookup_data_type() === consts.BOOLEAN) {
+                        if (this.field.get_lookup_value()) {
+                            this.$input.prop("checked", true);
                         } else {
-                            this.$input.val(this.field.get_display_text());
+                            this.$input.prop("checked", false);
                         }
                     }
+                    if (this.field.lookup_values) {
+                        this.$input.val(this.field.display_text);
+                    } else {
+                        if (focused && this.$input.val() !== this.field.get_text() ||
+                            !focused && this.$input.val() !== this.field.get_display_text()) {
+                            this.errorValue = undefined;
+                            this.error = undefined;
+                            if (focused && !this.field.lookup_item && !this.field.lookup_values) {
+                                this.$input.val(this.field.get_text());
+                            } else {
+                                this.$input.val(this.field.get_display_text());
+                            }
+                        }
+                    }
+                    if (this.read_only || !this.is_changing || this.field.master_field) {
+                        placeholder = '';
+                    }
+                    this.$input.attr('placeholder', placeholder);
+                    this.updateState(true);
                 }
-                if (this.read_only || !this.is_changing || this.field.master_field) {
-                    placeholder = '';
-                }
-                this.$input.attr('placeholder', placeholder);
-                this.updateState(true);
                 this.changed = false;
             }
             if (state === consts.UPDATE_CLOSE) {
@@ -12761,21 +13018,57 @@
 
     function highlight(text, search) {
         var i = 0,
+            result = text,
             substr,
-            strings;
+            start,
+            str,
+            strings,
+            pos,
+            p = [];
         if (search) {
-            strings = search.split(' ')
+            strings = search.toUpperCase().split(' ')
             for ( i = 0; i < strings.length; i++) {
+                str = text.toUpperCase();
                 substr = strings[i];
-                if (substr.indexOf('strong>') === -1 && substr.length) {
-                    substr = substr.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, '\\$&')
-                    text = text.replace(new RegExp('(' + substr + ')', 'ig'), function($1, match) {
-                        return '<strong>' + match + '</strong>'
-                    })
+                start = 0;
+                while (true) {
+                    pos = str.indexOf(substr);
+                    if (pos === -1) {
+                        break;
+                    }
+                    else {
+                        p.push([start + pos, substr.length]);
+                        str = str.substr(pos + substr.length)
+                        start += pos + substr.length;
+                    }
+                }
+            }
+            if (p.length) {
+                p.sort(function(a, b) {
+                    return a[0] - b[0]
+                });
+                result = '';
+                start = 0
+                for (i = 0; i < p.length; i++) {
+                    if (p[i][0] < start) {
+                        if (p[i][0] + p[i][1] < start) {
+                            continue;
+                        }
+                        else {
+                            p[i][1] = start - p[i][0];
+                            p[i][0] = start;
+                        }
+                    }
+                    result += text.substr(start, p[i][0] - start)
+                    result += '<strong class="search-highlighted">' + text.substr(p[i][0], p[i][1]) + '</strong>';
+                    start = p[i][0] + p[i][1];
+                }
+                if (start) {
+                    result += text.substr(start);
                 }
             }
         }
-        return text
+        return result
     }
 
     $.event.special.destroyed = {

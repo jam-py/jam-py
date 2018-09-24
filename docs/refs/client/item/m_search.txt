@@ -30,35 +30,6 @@ Parameters:
 * ``callback`` - a callback function that will be executed after search is 
   executed
   
-Example
-=======
-
-The following code is used in the Catalogs client module of the 
-:doc:`default code </intro/default_code>`
-and
-:doc:`Demo project </intro/demo_project>`
-
-.. code-block:: js
-
-    search.on('input', function() {
-        var input = $(this);
-        input.css('font-weight', 'normal');
-        clearTimeout(timeOut);
-        timeOut = setTimeout(function() {
-                var field = item.field_by_name(search_field),
-                    search_type = 'contains_all';
-                if (field.lookup_type !== 'text') {
-                    search_type = 'eq';
-                }
-                item.search(search_field, input.val(), search_type, function() {
-                    input.css('font-weight', 'bold');
-                });
-            },
-            500
-        );
-    });
-
-
 See also
 ========
 

@@ -139,6 +139,7 @@ def create_items(task):
     task.sys_params.add_field(21, 'f_small_font', task.language('small_font'), common.BOOLEAN)
     task.sys_params.add_field(22, 'f_full_width', task.language('full_width'), common.BOOLEAN)
     task.sys_params.add_field(23, 'f_forms_in_tabs', task.language('forms_in_tabs'), common.BOOLEAN)
+    task.sys_params.add_field(24, 'f_max_content_length', 'Max content length (MB)', common.INTEGER)
 
     task.sys_items.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_items.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
@@ -236,11 +237,20 @@ def create_items(task):
     task.sys_fields.add_field(22, 'f_default',      task.language('default'), common.BOOLEAN)
     task.sys_fields.add_field(23, 'f_read_only',    task.language('read_only'), common.BOOLEAN)
     task.sys_fields.add_field(24, 'f_alignment',    task.language('alignment'), common.INTEGER, lookup_values=get_value_list(common.ALIGNMENT))
-    task.sys_fields.add_field(25, 'f_default_value', task.language('default_value'), common.TEXT, False,  False, size =256)
+    task.sys_fields.add_field(25, 'f_default_value', task.language('default_value'), common.TEXT, False,  False, size=256)
     task.sys_fields.add_field(26, 'f_help',          task.language('help'), common.LONGTEXT, visible=False)
     task.sys_fields.add_field(27, 'f_placeholder',   task.language('placeholder'), common.TEXT, visible=False, size=256)
     task.sys_fields.add_field(28, 'f_mask',  'Mask', common.TEXT, visible=False, size=30)
     task.sys_fields.add_field(29, 'f_default_lookup_value', task.language('default_value'), common.INTEGER, lookup_values=[[0, '']])
+    task.sys_fields.add_field(30, 'f_image_edit_width', 'Edit width', common.INTEGER)
+    task.sys_fields.add_field(31, 'f_image_edit_height', 'Edit height', common.INTEGER)
+    task.sys_fields.add_field(32, 'f_image_view_width', 'View width', common.INTEGER)
+    task.sys_fields.add_field(33, 'f_image_view_height', 'View height', common.INTEGER)
+    task.sys_fields.add_field(34, 'f_image_placeholder', 'Placeholder image', common.IMAGE, image_edit_width=230)
+    task.sys_fields.add_field(35, 'f_file_download_btn', 'Download btn', common.BOOLEAN)
+    task.sys_fields.add_field(36, 'f_file_open_btn', 'Open btn', common.BOOLEAN)
+    task.sys_fields.add_field(37, 'f_file_accept', 'Accept', common.TEXT, size=512)
+
 
     task.sys_fields.add_filter('id', 'ID', 'id', common.FILTER_EQ, visible=False)
     task.sys_fields.add_filter('owner_rec_id', 'Owner record ID', 'owner_rec_id', common.FILTER_IN, visible=False)
@@ -401,9 +411,10 @@ def create_items(task):
     task.sys_fields_editor.add_field(27, 'edit_details', task.language('edit_details'), common.KEYS, False, task.sys_items, 'id')
     task.sys_fields_editor.add_field(28, 'view_detail', task.language('view_detail'), common.KEYS, False, task.sys_items, 'id')
     task.sys_fields_editor.add_field(29, 'detail_height', 'Detail height', common.INTEGER, False)
-    task.sys_fields_editor.add_field(30, 'height', 'Height', common.INTEGER, False)
-    task.sys_fields_editor.add_field(31, 'modeless', task.language('modeless'), common.BOOLEAN)
-    task.sys_fields_editor.add_field(15, 'search_field', task.language('default_search_field'), common.KEYS, False, task.sys_fields, 'id')
+    task.sys_fields_editor.add_field(30, 'buttons_on_top', 'Buttons on top', common.BOOLEAN)
+    task.sys_fields_editor.add_field(31, 'height', 'Height', common.INTEGER, False)
+    task.sys_fields_editor.add_field(32, 'modeless', task.language('modeless'), common.BOOLEAN)
+    task.sys_fields_editor.add_field(33, 'search_field', task.language('default_search_field'), common.KEYS, False, task.sys_fields, 'id')
 
     task.sys_search = task.sys_catalogs.add_catalog('sys_search', task.language('find_in_task'), '')
 
@@ -636,6 +647,7 @@ def init_admin(task):
         task.task_mp_pool = 4
         task.task_persist_con = True
     task.safe_mode = common.SETTINGS['SAFE_MODE']
+    task.max_content_length = common.SETTINGS['MAX_CONTENT_LENGTH']
     task.timeout = common.SETTINGS['TIMEOUT']
     task.ignore_change_ip = common.SETTINGS['IGNORE_CHANGE_IP']
     task.set_language(common.SETTINGS['LANGUAGE'])
@@ -800,7 +812,7 @@ def load_task(target, app, first_build=True, after_import=False):
                     editable = False
                     edit_visible = False
                     edit_index = -1
-                    field = item.add_field(sys_fields.field_by_name('id').value,
+                    field = item.add_field(sys_fields.id.value,
                         sys_fields.f_field_name.value,
                         sys_fields.f_name.value,
                         sys_fields.f_data_type.value,
@@ -828,7 +840,15 @@ def load_task(target, app, first_build=True, after_import=False):
                         sys_fields.f_object_field1.value,
                         sys_fields.f_object_field2.value,
                         sys_fields.f_db_field_name.value,
-                        sys_fields.f_mask.value
+                        sys_fields.f_mask.value,
+                        sys_fields.f_image_edit_width.value,
+                        sys_fields.f_image_edit_height.value,
+                        sys_fields.f_image_view_width.value,
+                        sys_fields.f_image_view_height.value,
+                        sys_fields.f_image_placeholder.value,
+                        sys_fields.f_file_download_btn.value,
+                        sys_fields.f_file_open_btn.value,
+                        sys_fields.f_file_accept.value
                         )
 
     def create_filters(item, parent_id):
@@ -843,7 +863,8 @@ def load_task(target, app, first_build=True, after_import=False):
                     sys_filters.f_data_type.value,
                     sys_filters.f_visible.value,
                     sys_filters.f_help.value,
-                    sys_filters.f_placeholder.value
+                    sys_filters.f_placeholder.value,
+                    sys_filters.id.value,
                     )
 
     def create_params(item, parent_id):

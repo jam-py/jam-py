@@ -67,8 +67,8 @@ The right panel of the page have following buttons:
 * **Reports** - сlick this button to open the
   :doc:`Reports Dialog <reports_dialog>`
   to specify reports that could printed for the item. 
-  :doc:`Default code </intro/default_code>`
-  has a function that can be used to create a dropup button to print the reports.
+  A new project has a function that can be used to create a dropup 
+  button to print the reports.
   
 * **Privileges** - click this button to open a dialog to configure the 
   privileges assigned to user roles for this item.

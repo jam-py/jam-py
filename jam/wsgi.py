@@ -19,7 +19,7 @@ from werkzeug.wsgi import SharedDataMiddleware, peek_path_info, get_path_info
 from werkzeug.local import Local, LocalManager
 from werkzeug.http import parse_date, http_date
 from werkzeug.contrib.securecookie import SecureCookie
-from werkzeug.utils import cached_property
+from werkzeug.utils import cached_property, secure_filename
 from werkzeug._compat import to_unicode, to_bytes
 
 import jam.common as common
@@ -134,6 +134,7 @@ class App():
             Rule('/upload', endpoint='upload')
         ])
         self.admin = self.create_admin()
+        self.max_content_length = self.admin.max_content_length
 
     def create_admin(self):
         return adm_server.create_admin(self)
@@ -162,6 +163,8 @@ class App():
     def __call__(self, environ, start_response):
         jam.context.environ = environ
         request = JamRequest(environ)
+        if self.max_content_length > 0:
+            request.max_content_length = 1024 * 1024 * self.max_content_length
         adapter = self.url_map.bind_to_environ(request.environ)
         try:
             endpoint, values = adapter.match()
@@ -496,67 +499,41 @@ class App():
             return self.create_post_response(request, r)
 
     def on_upload(self, request):
-
-        def find_param(data):
-            pos = data.find(to_bytes(';', 'utf-8'))
-            return data[:pos], pos + 1
-
-        def read_user_info(data):
-            info_len, pos = find_param(data)
-            info_len = int(info_len)
-            user_info = data[pos:pos+info_len]
-            task_ID, p = find_param(user_info)
-            task_name = user_info[p:]
-            pos = pos + info_len + 1
-            return task_name, int(task_ID), pos
-
         if request.method == 'POST':
-            try:
-                data = request.get_data()
-                header = []
-                header_str = to_bytes('', 'utf-8')
-                length = 0
-                string = to_bytes('', 'utf-8')
-                task_name, task_id, pos = read_user_info(data)
-                if task_id == 0:
-                    task = self.admin
-                else:
-                    task = self.get_task()
-                if self.admin.safe_mode:
-                    if not request.get_session(task).get('info'):
-                        return Response()
-                for i in range(len(data)):
-                    s = data[pos + i:pos+i+1]
-                    header_str += s
-                    if s == to_bytes(';', 'utf-8'):
-                        if len(header) == 0:
-                            length = int(string)
-                        header.append(int(string))
-                        if len(header) == 2 * (length + 1):
-                            break;
-                        string = to_bytes('', 'utf-8')
+            task_id = int(request.form.get('task_id'))
+            path = request.form.get('path')
+            if task_id == 0:
+                task = self.admin
+            else:
+                task = self.get_task()
+            result = {'status': common.RESPONSE, 'data': None, 'version': task.version}
+            r = {'result': result, 'error': None}
+            if not self.check_session(request, task):
+                r['result']['status'] = common.NOT_LOGGED
+                r['result']['data'] = common.NOT_LOGGED
+            else:
+                f = request.files.get('file')
+                file_name = request.form.get('file_name')
+                if f and file_name:
+                    base, ext = os.path.splitext(file_name)
+                    if task_id == 0 and path:
+                        if not (path == 'static/internal' and ext == '.zip'):
+                            r['error'] = 'Invalid import file'
                     else:
-                        string += s
-                start = len(header_str) + pos
-                path = os.path.join(to_unicode(os.getcwd(), 'utf-8'), \
-                    os.path.normpath(to_unicode(data[start: start + header[1]], 'utf-8')))
-                if not os.path.exists(path):
-                    os.makedirs(path)
-                start = start + header[1]
-                for i in range(length):
-                    index = 2 * i + 2
-                    file_name = to_unicode(data[start: start + header[index]], 'utf-8')
-                    start = start + header[index]
-                    index += 1
-                    content = data[start: start + header[index]]
-                    file_name = os.path.join(path, file_name)
-                    with open(file_name, 'wb') as f:
-                        f.write(content)
-                    os.chmod(file_name, 0o666)
-                    start = start + header[index]
-            except:
-                traceback.print_exc()
-            return Response()
+                        path = os.path.join('static', 'files')
+                        file_name = ('%s%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
+                        file_name = secure_filename(file_name)
+                        file_name = file_name.replace('?', '')
+                    if not r['error']:
+                        dir_path = os.path.join(to_unicode(self.work_dir, 'utf-8'), path)
+                        if not os.path.exists(dir_path):
+                            os.makedirs(dir_path)
+                        f.save(os.path.join(dir_path, file_name))
+                        task = self.get_task()
+                        r['result'] = {'status': common.RESPONSE, 'data': {'file_name': file_name, 'path': path}, 'version': task.version}
+                else:
+                    r['error'] = 'File upload invalid parameters';
+            return self.create_post_response(request, r)
 
     def get_client_ip(self, environ):
         x_forwarded_for = environ.get('HTTP_X_FORWARDED_FOR')

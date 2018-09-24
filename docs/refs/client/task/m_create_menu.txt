@@ -2,7 +2,7 @@
 create_menu
 ===========
 
-.. js:function:: create_menu: function(menu, options)
+.. js:function:: create_menu: function(menu, forms_container, options)
 
 **domain**: client 
 
@@ -16,6 +16,10 @@ Description
 The ``create_menu`` method created a menu based on the project 
 :doc:`task tree </programming/task_tree>`.
 
+If display forms in tabs attribute of the 
+:doc:`project parameters </admin/project/parameters>` is set, initializes
+tabs that will be created to display forms.
+
 It iterates through the items of the 
 :doc:`task tree </programming/task_tree>`
 and adds items to the menu for which the visible attribute is set to true, 
@@ -26,3 +30,39 @@ The method uses to assign on click event to the menu items so that for reports t
 method will be executed when a user clicks it and the
 :doc:`view </refs/client/item/m_view>`
 method will be executed for other items.
+
+The following parameters could be passed to the method:
+
+* ``menu`` - a JQuery object of the menu element from index.html file
+
+* ``forms_container`` a JQuery object of the element that will contain the forms 
+  created by the
+  :doc:`view </refs/client/item/m_view>`
+  method
+  
+* ``options`` - an object that can have the following attributes:
+
+  * ``view_first`` - if it is true the view form of the first item in the menu will
+    be displayed after menu is created, the default value is ``false``
+  
+  * ``create_single_group`` - if it is true and only one group in the task tree
+    has items the menu item for the group will be created that have a drop down 
+    menu for group items, otherwise the menuitems for each item will be created, 
+    the default value is ``false``
+
+  * ``splash_screen`` - an html that will be displayed in the forms_container when
+    all tabs are closed
+  
+  
+Example
+=======
+
+.. code-block:: js
+
+    task.create_menu($("#menu"), $("#content"), {
+        splash_screen: '<h1 class="text-center">Jam.py Demo Application</h1>',
+        view_first: true
+    });
+
+
+

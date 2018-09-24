@@ -1,0 +1,23 @@
+=======
+Indexes
+=======
+
+Let's set the default sorting of records of the "Contacts" journal.
+To do so click the 
+:doc:`Order </admin/items/order_dialog>`
+button:
+
+.. image:: /intro/_images/order_dlg.png
+	:align: center
+	:alt: Contacts order
+
+
+And now we create a corresponding index for the “Contacts” journal database table. 
+Click the **Indices** button to open
+:doc:`Indices Dialog </admin/items/indices_dialog>` 
+and then click the **New** button and specify the index:
+
+.. image:: /intro/_images/index_dlg.png
+	:align: center
+	:alt: New index
+

@@ -1,0 +1,20 @@
+===============================
+Tutorial. Part 1. First project
+===============================
+
+Now, we’ll walk you through the creation of a basic CRM application. 
+Please follow the steps below:
+
+.. toctree::
+   :maxdepth: 1
+
+   new_project
+   new_catalog
+   lookup_fields
+   lookup_list
+   customizing_forms
+   indexes
+   filters
+   
+
+

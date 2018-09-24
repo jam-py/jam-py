@@ -1,0 +1,77 @@
+=============
+Lookup fields
+=============
+
+Now we will create the "Contacts" item.
+
+Select the "Journals" group in the project task tree and add a new journal in the 
+same way that we created the "Customers" catalog. 
+
+First we add the "Contact date" field of the "datetime" type and then "Notes" fields of the "text" type.
+
+Let's add the
+:doc:`lookup field </programming/data/lookup_fields>`
+"Customer" field that will store a reference to a record in the "Customers" catalog.
+
+.. image:: /intro/_images/contacs_cutomer_fld.png
+	:align: center
+	:alt: Adding Customer field
+
+To create a lookup field, after specifying its caption and name, we need to 
+select a lookup item. Select **Lookup** tab and click the button to the right of 
+the **Lookup item** input 
+
+
+.. image:: /intro/_images/cutomers_lookup_tab.png
+	:align: center
+	:alt: Cutomer lookup tab
+
+and double click the record to select it.
+
+.. image:: /intro/_images/cutomers_lookup_item.png
+	:align: center
+	:alt: Selecting Customer lookup item
+
+The same way specify a lookup field.
+
+
+.. image:: /intro/_images/lastname_lookup.png
+	:align: center
+	:alt: Lastname lookup field
+
+In the same way we add the "Firstname" and "Phone" lookup fields. For this fields 
+we specify the "Customer" field as their **Master field** attribute. 
+
+.. image:: /intro/_images/contacts_firstname.png
+	:align: center
+	:alt: contacts_firstname.png
+
+.. image:: /intro/_images/phone_lookup.png
+	:align: center
+	:alt: Phone lookup field
+	
+Click the "OK" button to save the "Contacts" item. 
+
+.. image:: /intro/_images/contacts_sql.png
+	:align: center
+	:alt: Contacts sql
+
+As you can see, there is no "FIRSTNAME" and "PHONE" fields in the "CRM_CONTACTS" 
+table. This is due to the fact that we have set **Master field** attribute of these 
+fields to "Customer". The "Customer" field will store a reference to a record in the
+"Customers" catalog and that record have the "Fisrtname" and "Phone" fields.
+
+When we refresh the project page and click the **New** button we'll see that 
+there is a small button to the right of the "Customer" input. 
+
+.. image:: /intro/_images/customer_input.png
+	:align: center
+	:alt: Customer input
+
+When we click on it and select a record in the "Customers" catalog the
+fields "Customer", "Firstname" and "Phone" will be filled.
+
+.. image:: /intro/_images/customer_input_selected.png
+	:align: center
+	:alt: Customer input selected
+

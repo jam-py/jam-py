@@ -2,7 +2,7 @@
 upload
 ======
 
-.. js:function:: upload(path, options)
+.. js:function:: upload(options)
 
 **domain**: client 
 
@@ -13,32 +13,23 @@ upload
 Description
 ===========
 
-Use the ``upload`` method to select in the Open Dialog files or list of files and 
-upload them to the ``path`` directory in the server folder. 
+Use the ``upload`` method to select a file in the File open dialog box and 
+upload it to the *static/files* directory in the server folder. 
+
+When saving the file on the server, the file name is changed by the Werkzeug 
+secure_filename function and then the current date is added to it. See
+http://werkzeug.pocoo.org/docs/0.14/utils/
 
 The ``options`` parameter is an object that may have the following attributes:
 
-* ``multiple`` - if it is ``true`` you can upload multiple files, default value is ``false``
+* ``callback`` - is a callback function that is executed when the file is 
+  downloaded. It is passed, as parameters, the name of the file stored on the 
+  server, the name of the downloaded file and the path to the folder where 
+  the file was saved.
 
-* ``callback`` - is a callback function that is executed when file(s) is(are) 
-   uploaded. It is passed a filename of uploded file if multiple is false, otherwise
-   a list of uploaded files.
+* ``show_progress`` - if true and the uploaded file is large, the progress bar 
+  will be displayed
 
-Example
-=======
-
-.. code-block:: js
-
-    function on_edit_form_created(item) {
-        item.edit_form.find('#upload-btn').click(function() {
-            item.task.upload('static/docs', {callback: function(file_name) {
-                item.document.value = file_name;        
-            }});
-        });
-        item.edit_form.find('#download-btn').click(function() {
-            if (item.document.value) {
-                window.open('static/docs/' + item.document.value, "_blank");
-            }
-        });
-        item.document.read_only = true;
-    }
+* ``accept`` - the attribute specifies the types of files that can be submitted 
+  through a file upload. It is the string the same as the html <input> accept 
+  attribute. See https://www.w3schools.com/Tags/att_input_accept.asp

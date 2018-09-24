@@ -5,7 +5,7 @@
     <meta charset="utf-8">  
     <title>Jam.py demo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="/static/img/j.png" type="image/png">
+    <link rel="icon" href="static/img/j.png" type="image/png">
 
     <link href="jam/css/bootstrap.css" rel="stylesheet">            <!--do not modify-->
     <link href="jam/css/bootstrap-responsive.css" rel="stylesheet">
@@ -22,10 +22,10 @@
             </div>
             <div class="span6 logging-info">
                 <span id="user-info"></span>
-                <a href="#" id="log-out" style="display: none">&nbsp;&nbsp;&nbsp;Log out</a>
+                <a id="log-out" href="#" style="display: none">Log out</a>
             </div>
         </div>
-        <div class="container" style="width: auto">        
+        <div class="container">        
             <div id="taskmenu" class="navbar">        
                 <div class="navbar-inner">
                     <ul id="menu" class="nav">
@@ -44,6 +44,32 @@
 
     <div class="templates" style="display: none">
         
+        <div class="default-top-view">
+            <div class="form-header">
+                <button id="new-btn" class="btn expanded-btn" type="button">
+                    <i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small>
+                </button>
+                <button id="edit-btn" class="btn expanded-btn" type="button">
+                    <i class="icon-edit"></i> Edit
+                </button>
+                <div id="report-btn" class="btn-group dropdown">
+                    <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
+                        <i class="icon-print"></i> Reports
+                        <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu bottom-up">
+                    </ul>
+                </div>
+                <button id="delete-btn" class="btn expanded-btn pull-right" type="button">
+                    <i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small>
+                </button>
+            </div>
+            <div class="form-body">
+                <div class="view-table"></div>
+                <div class="view-detail"></div>
+            </div>
+        </div>
+
         <div class="default-view">
             <div class="form-body">
                 <div class="view-table"></div>
@@ -76,7 +102,7 @@
                 <div class="edit-detail"></div>
             </div>
             <div class="form-footer">
-                <button type="button" id="ok-btn" class="btn btn-ary expanded-btn">
+                <button type="button" id="ok-btn" class="btn expanded-btn">
                     <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
                 </button>
                 <button type="button" id="cancel-btn" class="btn expanded-btn">

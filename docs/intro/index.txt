@@ -10,8 +10,9 @@ develop a web application and deploy it.
 
    install
    new_project
-   default_code
    demo_project
-   first_project/index
+   tutorial01/index
+   tutorial02/index
+   tutorial03/index
    Deployment <deployment>
    

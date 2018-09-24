@@ -1,0 +1,33 @@
+=======
+Filters
+=======
+
+:doc:`Filters </programming/data/filters>`
+are used to select records from the database table according to the specified 
+criteria.
+
+Click the **Filters** button to open
+:doc:`Filters Dialog </admin/items/filters_dialog>`
+
+.. image:: /intro/_images/filters_dlg.png
+	:align: center
+	:alt: Filters dialog
+
+Now click the **New** button and fill out the following form:
+
+.. image:: /intro/_images/new_filter.png
+	:align: center
+	:alt: New filter
+
+Similarly, we created other filters:
+
+.. image:: /intro/_images/all_filters.png
+	:align: center
+	:alt: All filters
+	
+When we refresh the project page, the **Filters** button will appear in the 
+header of the "Contacts" form. Clicking this button opens the "Filters" dialog box:
+
+.. image:: /intro/_images/contacts_filters.png
+	:align: center
+	:alt: Contacts filters

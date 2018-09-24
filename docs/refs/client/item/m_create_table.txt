@@ -35,7 +35,7 @@ method.
 
 The following parameters could be passed to the method:
 
-* ``container`` - an JQuery object that will contain the table, if 
+* ``container`` - a JQuery object that will contain the table, if 
   container length is 0 (no container), the method returns. Before creating 
   the table the application empties the container.
 

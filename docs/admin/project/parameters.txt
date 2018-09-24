@@ -69,6 +69,9 @@ On the General tab, you can specify general parameters of the project:
 * **Session ignore change ip** - if false, the session is only valid when 
   it is accessed from the same ip address that created the session.
   
+* **Max content length (MB)** - use it to limit the total content length of the
+  request to the server, in megabytes.
+  
 * **Delete reports after (hours)** - if a value is specified the generated 
   reports that are located in the static/reports folder will be deleted after
   specified number of hours have passed.

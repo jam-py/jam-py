@@ -106,5 +106,6 @@ such lookup lists.
 See also
 ========
 
-:doc:`First project - Lookup fields </intro/first_project/lookup_fields>`
-:doc:`First project - Lookup value lists </intro/first_project/lookup_list>`
+:doc:`Lookup fields </intro/tutorial01/lookup_fields>`
+
+:doc:`Lookup lists </intro/tutorial01/lookup_list>`
