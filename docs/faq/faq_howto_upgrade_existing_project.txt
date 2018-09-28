@@ -1,0 +1,8 @@
+===================================================================
+Howto upgrade an already created project to a new version of jampy?
+===================================================================
+
+To upgrade an existing project to a new package you must update the package.
+
+Please see the link:
+https://stackoverflow.com/questions/5183672/how-do-i-update-a-python-package

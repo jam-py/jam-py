@@ -17,3 +17,10 @@ Library:
 
 * on_field_get_html event added
 
+Demo application:
+
+* Invoices: on_field_get_html handler added
+
+* Customer: image field "Photo" added
+
+* Tracks: file field "File" added

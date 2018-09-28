@@ -1,0 +1,13 @@
+==============
+Version 5.4.23
+==============
+
+Library:
+
+* :doc:`refresh_record </refs/client/item/m_refresh_record>` bugs fixed
+
+* Image and file fields can be lookup fields now
+
+Application builder:
+
+* creating new group bug fixed

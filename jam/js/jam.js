@@ -5739,6 +5739,7 @@
                 if (!this.is_changing()) {
                     this.append();
                 }
+                this.open_details({details: this.edit_options.edit_details});
                 this.create_edit_form(container);
             }
         },
@@ -5768,6 +5769,7 @@
                     copy._tab_info = {container: container, tab_id: tab_id}
                     copy.open({open_empty: true}, function() {
                         var on_after_apply = copy.on_after_apply;
+                        this.edit_options.edit_details
                         copy.edit_options.tab_id = tab_id;
                         copy._append_record(content);
                         copy.on_after_apply = function(item) {
@@ -5833,6 +5835,7 @@
                     });
                 }
                 else {
+                    this.enable_edit_form();
                     edit();
                 }
             }
@@ -6958,6 +6961,9 @@
                     this._do_on_refresh_record(copy, options);
                 }
             }
+            else if (callback) {
+                callback.call(this);
+            }
         },
 
 
@@ -7941,6 +7947,11 @@
                                 case consts.CURRENCY:
                                     result = this.cur_to_str(result);
                                     break;
+                                case consts.FILE:
+                                    if (result) {
+                                        result = result.substr(result.indexOf('?') + 1)
+                                    }
+                                    break;
                             }
                         }
                     }
@@ -7952,13 +7963,21 @@
         get_image: function(edit_image) {
             var width,
                 height,
+                field_image,
+                value,
                 placeholder;
-            if (this.data_type === consts.IMAGE) {
-                width = this.field_image.view_width;
-                height = this.field_image.view_height;
+            if (this.get_lookup_data_type() === consts.IMAGE) {
+                field_image = this.field_image;
+                value = this.value;
+                if (this.lookup_item) {
+                    field_image = this.lookup_item[this.lookup_field].field_image;
+                    value = this.lookup_value;
+                }
+                width = field_image.view_width;
+                height = field_image.view_height;
                 if (edit_image) {
-                    width = this.field_image.edit_width;
-                    height = this.field_image.edit_height;
+                    width = field_image.edit_width;
+                    height = field_image.edit_height;
                 }
                 if (!width) {
                     width = 'auto';
@@ -7972,14 +7991,14 @@
                 else {
                     height += 'px';
                 }
-                if (this.field_image.placeholder) {
-                    placeholder = 'static/files/' + this.field_image.placeholder;
+                if (field_image.placeholder) {
+                    placeholder = 'static/files/' + field_image.placeholder;
                 }
                 else {
                     placeholder = 'jam/img/placeholder.png';
                 }
                 if (this.value) {
-                    return '<img src="static/files/' + this.value + '" alt="Image" style="width:' + width + ';height:' + height + '">';
+                    return '<img src="static/files/' + value + '" alt="Image" style="width:' + width + ';height:' + height + '">';
                 }
                 else {
                     return '<img src="' + placeholder + '" alt="Image placeholder" style="width:' + width + ';height:' + height + '">';
@@ -11909,8 +11928,7 @@
                 $controls,
                 $btnCtrls,
                 $help,
-                lookup_data_type = field.get_lookup_data_type(),
-                field_type,
+                field_type = field.get_lookup_data_type(),
                 field_mask,
                 inpit_btn_class = '';
             if ($('body').css('font-size') === '12px') {
@@ -11939,7 +11957,7 @@
                     .click(function(e) {
                         self.field.value = !self.field.value;
                     });
-            } else if (lookup_data_type === consts.IMAGE) {
+            } else if (field_type === consts.IMAGE) {
                 $input = $('<div>');
             } else if (field.get_lookup_data_type() === consts.LONGTEXT) {
                 $input = $('<textarea>').innerHeight(70);
@@ -11994,7 +12012,6 @@
             this.$input.keydown($.proxy(this.keydown, this));
             this.$input.keyup($.proxy(this.keyup, this));
             this.$input.keypress($.proxy(this.keypress, this));
-            field_type = field.get_lookup_data_type();
             if (field.lookup_item && !field.master_field || field.lookup_values || field_type === consts.FILE) {
                 $btnCtrls = $('<div class="input-prepend input-append"></div>');
                 $btn = $('<button class="btn' + inpit_btn_class + '"type="button"><i class="icon-remove-sign"></button>');
@@ -12032,7 +12049,7 @@
                         $input.width(36);
                     }
                 }
-                else if (field.lookup_item){
+                else if (field.lookup_item && field_type !== consts.FILE){
                     $btnCtrls.addClass("lookupfield-input-container");
                     $input.addClass("input-lookupitem");
                     this.$lastBtn.find('i').addClass("icon-folder-open");
@@ -12042,11 +12059,17 @@
                     }
                 }
                 else {
+                    var field_file;
+                    if (this.field.data_type === consts.FILE) {
+                        field_file = this.field.field_file;
+                    }
+                    else {
+                        field_file = this.field.lookup_item[this.field.lookup_field].field_file;
+                    }
                     $btnCtrls.addClass("lookupfield-input-container");
                     this.$lastBtn.find('i').addClass("icon-file");
                     this.$uploadBtn = this.$lastBtn
-
-                    if (this.field.field_file.download_btn) {
+                    if (field_file.download_btn) {
                         $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i></button>');
                         $btn.attr("tabindex", -1);
                         this.$downloadBtn = $btn;
@@ -12059,7 +12082,7 @@
                         this.$lastBtn = $btn;
                     }
 
-                    if (this.field.field_file.open_btn) {
+                    if (field_file.open_btn) {
                         $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i></button>');
                         $btn.attr("tabindex", -1);
                         $btnCtrls.append($btn);
@@ -12070,10 +12093,10 @@
                         });
                         this.$lastBtn = $btn;
                     }
-                    if (this.field.field_file.open_btn && this.field.field_file.download_btn) {
+                    if (field_file.open_btn && field_file.download_btn) {
                         $input.addClass("input-file3");
                     }
-                    else if (this.field.field_file.open_btn || this.field.field_file.download_btn) {
+                    else if (field_file.open_btn || field_file.download_btn) {
                         $input.addClass("input-file2");
                     }
                     else {
@@ -12136,7 +12159,8 @@
                     case consts.IMAGE:
                         $controls.append($input);
                         $input.dblclick(function(e) {
-                            if (self.field.owner.is_changing() && !self.field.owner.read_only) {
+                            if (self.field.data_type === consts.IMAGE && self.field.owner.is_changing() &&
+                                !self.field.owner.read_only) {
                                 if (e.ctrlKey) {
                                     self.field.value = null;
                                 }
@@ -12180,7 +12204,7 @@
             this.$modalForm = this.$input.closest('.modal');
             this.field.controls.push(this);
 
-            if (lookup_data_type !== consts.IMAGE) {
+            if (field_type !== consts.IMAGE) {
                 this.$input.on('mouseenter', function() {
                     var $this = $(this);
                     if (self.error) {

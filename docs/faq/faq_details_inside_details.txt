@@ -1,0 +1,63 @@
+===============================================
+Is it supported to have details inside details?
+===============================================
+
+Yes, you can have details inside details.
+
+Suppose we have three objects - "Polls", "Questions" and "Answers." "Answers" 
+is a detail of "Questions". We will make "Questions" a detail of "Polls".
+
+One way to do this is to add an integer field "poll" to the "Questions" and 
+the following code to the "Poll" client module:
+
+
+.. code-block:: js
+
+  function on_edit_form_created(item) {
+      var q = task.questions.copy();
+      
+      item.edit_form.find('.form-footer').hide();
+      
+      q.view_options.form_header = false;
+      
+      q.on_view_form_created = function(quest) {
+          quest.paginate = false;
+      };
+      
+      q.on_before_append = function(quest) {
+          if (!item.id.value) {
+              quest.alert_error('Poll is not specified.');
+              quest.abort();
+          }
+      };
+      
+      q.on_before_post = function(quest) {
+          quest.poll.value = item.id.value;    
+      };
+      
+      q.set_where({poll: item.id.value});
+      q.view(item.edit_form.find('.edit-detail'));
+  }
+  
+  function on_field_changed(field, lookup_item) {
+      var item = field.owner;
+      item.apply();
+      item.edit();
+  }
+  
+  
+  function on_before_delete(item) {
+      var q = task.questions.copy();    
+      q.set_where({poll: item.id.value});
+      q.open();
+      while (!q.eof()) {
+          q.delete();
+      }
+      q.apply();
+  }
+  
+
+.. image:: _images/details.png
+	:align: center
+	:alt: details.png
+  
