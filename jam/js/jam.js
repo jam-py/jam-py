@@ -7965,6 +7965,7 @@
                 height,
                 field_image,
                 value,
+                src,
                 placeholder;
             if (this.get_lookup_data_type() === consts.IMAGE) {
                 field_image = this.field_image;
@@ -7992,13 +7993,19 @@
                     height += 'px';
                 }
                 if (field_image.placeholder) {
-                    placeholder = 'static/files/' + field_image.placeholder;
+                    placeholder = 'static/builder/' + field_image.placeholder;
                 }
                 else {
                     placeholder = 'jam/img/placeholder.png';
                 }
+                if (task.ID) {
+                    src = 'static/files/' + value;
+                }
+                else {
+                    src = 'static/builder/' + value;
+                }
                 if (this.value) {
-                    return '<img src="static/files/' + value + '" alt="Image" style="width:' + width + ';height:' + height + '">';
+                    return '<img src="' + src + '" alt="Image" style="width:' + width + ';height:' + height + '">';
                 }
                 else {
                     return '<img src="' + placeholder + '" alt="Image placeholder" style="width:' + width + ';height:' + height + '">';
@@ -8123,12 +8130,7 @@
                 {
                     accept: 'image/*',
                     callback: function(server_file_name, file_name) {
-                        if (self.data_type === consts.FILE) {
-                            self.value = server_file_name + '?' +  file_name;
-                        }
-                        else if (self.data_type === consts.IMAGE) {
-                            self.value = server_file_name;
-                        }
+                        self.value = server_file_name;
                     }
                 }
             );
@@ -8140,12 +8142,7 @@
                 {
                     accept: this.field_file.accept,
                     callback: function(server_file_name, file_name) {
-                        if (self.data_type === consts.FILE) {
-                            self.value = server_file_name + '?' +  file_name;
-                        }
-                        else if (self.data_type === consts.IMAGE) {
-                            self.value = server_file_name;
-                        }
+                        self.value = server_file_name + '?' +  file_name;
                     }
                 }
             );

@@ -2,7 +2,9 @@ import os
 import sqlite3
 import json
 import datetime
+from shutil import copyfile
 from werkzeug._compat import iteritems, to_bytes, to_unicode
+from jam.third_party.filelock import FileLock
 import jam
 
 LANG_FIELDS = ['id', 'f_name', 'f_language', 'f_country', 'f_abr', 'f_rtl']
@@ -15,26 +17,33 @@ LOCALE_FIELDS = [
 
 FIELDS = LANG_FIELDS + LOCALE_FIELDS
 
-def langs_path():
-    return os.path.join(os.path.dirname(jam.__file__), 'langs.sqlite')
+def lang_con(task):
+    return sqlite3.connect(os.path.join(task.work_dir, 'langs.sqlite'))
 
-def lang_con():
-    return sqlite3.connect(langs_path())
-
-def execute(sql, params=None):
+def execute(task, sql, params=None):
     result = None
-    con = lang_con()
+    con = lang_con(task)
     try:
         cursor = con.cursor()
         if params:
             cursor.execute(sql, params)
         else:
             cursor.execute(sql)
-        if sql.find('SELECT') != -1 or sql.find('select') != -1:
-            result = cursor.fetchall()
-            con.rollback()
-        else:
-            con.commit()
+        con.commit()
+    except Exception as e:
+        print(sql)
+        raise Exception(e)
+    finally:
+        con.close()
+
+def select(task, sql):
+    result = None
+    con = lang_con(task)
+    try:
+        cursor = con.cursor()
+        cursor.execute(sql)
+        result = cursor.fetchall()
+        con.rollback()
     except Exception as e:
         print(sql)
         raise Exception(e)
@@ -42,72 +51,63 @@ def execute(sql, params=None):
         con.close()
     return result
 
-def fill_table(cursor, table_name):
-    if table_name == 'JAM_LANGUAGES':
-        for name, abr, rtl in languages:
-            cursor.execute("INSERT INTO JAM_LANGUAGES (F_NAME, F_ABR, F_RTL, DELETED) values (?, ?, ?, ?)", (name, abr, rtl, 0))
-    if table_name == 'JAM_COUNTRIES':
-        for name, abr in countries:
-            cursor.execute("INSERT INTO JAM_COUNTRIES (F_NAME, F_ABR, DELETED) values (?, ?, ?)", (name, abr, 0))
-
-def check_table(table_name):
-    con = lang_con()
-    try:
-        cursor = con.cursor()
-        sql = 'SELECT name FROM sqlite_master WHERE type="table" AND UPPER(name)="%s"' % table_name
-        cursor.execute(sql)
-        rows = cursor.fetchall()
-        if not rows:
-            if table_name == 'JAM_LANGUAGES':
-                sql = 'CREATE TABLE %s (ID INTEGER PRIMARY KEY, F_NAME TEXT, F_ABR TEXT, F_RTL INTEGER, DELETED INTEGER)' % table_name
-            if table_name == 'JAM_COUNTRIES':
-                sql = 'CREATE TABLE %s (ID INTEGER PRIMARY KEY, F_NAME TEXT, F_ABR TEXT, DELETED INTEGER)' % table_name
-            cursor.execute(sql)
-            fill_table(cursor, table_name)
-        con.commit()
-    finally:
-        con.close()
-
-def init_tables(cursor):
-    cursor.execute('DROP TABLE IF EXISTS SYS_LANGUAGES')
-    cursor.execute('DROP TABLE IF EXISTS SYS_COUNTRIES')
-    cursor.execute('ATTACH DATABASE "%s" AS LANGS' % langs_path())
-    cursor.execute("SELECT sql FROM LANGS.sqlite_master WHERE type='table' AND name='JAM_LANGUAGES'")
-    cursor.execute(cursor.fetchone()[0].replace('JAM_LANGUAGES', 'SYS_LANGUAGES'))
-    cursor.execute('INSERT INTO SYS_LANGUAGES SELECT * FROM LANGS.JAM_LANGUAGES')
-    cursor.execute("SELECT sql FROM LANGS.sqlite_master WHERE type='table' AND name='JAM_COUNTRIES'")
-    cursor.execute(cursor.fetchone()[0].replace('JAM_COUNTRIES', 'SYS_COUNTRIES'))
-    cursor.execute('INSERT INTO SYS_COUNTRIES SELECT * FROM LANGS.JAM_COUNTRIES')
+def copy_table(cursor, name):
+    cursor.execute('DROP TABLE IF EXISTS SYS_%s' % name)
+    cursor.execute("SELECT sql FROM LANGS.sqlite_master WHERE type='table' AND name='JAM_%s'" % name)
+    sql = cursor.fetchone()[0]
+    cursor.execute(sql.replace('JAM_%s' % name, 'SYS_%s' % name))
+    cursor.execute('INSERT INTO SYS_%s SELECT * FROM LANGS.JAM_%s' % (name, name))
 
 def update_langs(task):
-    con = sqlite3.connect(os.path.join(task.work_dir, 'admin.sqlite'))
-    try:
-        #~ check_table('JAM_LANGUAGES')
-        #~ check_table('JAM_COUNTRIES')
-        cursor = con.cursor()
-        init_tables(cursor)
-        cursor.execute('SELECT F_NAME FROM SYS_LANGS')
-        langs = cursor.fetchall()
-        langs_list = []
-        for l in langs:
-            langs_list.append(l[0])
-        res = execute('SELECT %s FROM JAM_LANGS ORDER BY ID' % ', '.join(FIELDS))
-        #~ index = FIELDS.index('f_d_fmt')
-        for r in res:
-            if not r[1] in langs_list:
-                fields = ['DELETED']
-                values = ['?']
-                field_values = [0]
-                for i, value in enumerate(r):
-                    if i > 0:
-                        fields.append(FIELDS[i])
-                        values.append('?')
-                        field_values.append(value)
-                sql = "INSERT INTO SYS_LANGS (%s) VALUES (%s)" % (','.join(fields), ','.join(values))
-                cursor.execute(sql, (field_values))
-        con.commit()
-    finally:
-        con.close()
+    with FileLock('langs.lock'):
+        con = task.create_connection()
+        try:
+            cursor = con.cursor()
+            try:
+                cursor.execute('ALTER TABLE SYS_PARAMS ADD COLUMN F_LANG_VERSION TEXT')
+            except:
+                pass
+            cursor.execute('SELECT F_LANG_VERSION, F_LANGUAGE FROM SYS_PARAMS')
+            res = cursor.fetchall()
+            version = res[0][0]
+            language = res[0][1]
+            langs_path = os.path.join(task.work_dir, 'langs.sqlite')
+            if version != jam.version() or not os.path.exists(langs_path):
+                copyfile(os.path.join(os.path.dirname(jam.__file__), 'langs.sqlite'), langs_path)
+                os.chmod(os.path.join(task.work_dir, 'langs.sqlite'), 0o666)
+                cursor.execute('SELECT ID, F_NAME FROM SYS_LANGS')
+                langs = cursor.fetchall()
+                langs_list = []
+                langs_dict = {}
+                for l in langs:
+                    langs_list.append(l[1])
+                    langs_dict[l[1]] = l[0]
+                res = select(task, 'SELECT %s FROM JAM_LANGS ORDER BY ID' % ', '.join(FIELDS))
+                for r in res:
+                    del langs_dict[r[1]]
+                    if not r[1] in langs_list:
+                        fields = ['DELETED']
+                        values = ['?']
+                        field_values = [0]
+                        for i, value in enumerate(r):
+                            if i > 0:
+                                fields.append(FIELDS[i])
+                                values.append('?')
+                                field_values.append(value)
+                        sql = "INSERT INTO SYS_LANGS (%s) VALUES (%s)" % (','.join(fields), ','.join(values))
+                        cursor.execute(sql, (field_values))
+                del_langs = list(langs_dict.values())
+                if len(del_langs):
+                    if language in del_langs:
+                        language = 1
+                    sql = "DELETE FROM SYS_LANGS WHERE ID IN (%s)" % ','.join([str(d) for d in del_langs])
+                    cursor.execute(sql)
+                if language is None:
+                    language = 'NULL'
+                cursor.execute("UPDATE SYS_PARAMS SET F_LANG_VERSION='%s', F_LANGUAGE=%s" % (jam.version(), language))
+                con.commit()
+        finally:
+            con.close()
 
 def init_locale():
     import locale
@@ -130,8 +130,8 @@ def init_locale():
     result['f_d_t_fmt'] = '%s %s' % (result['f_d_fmt'], '%H:%M')
     return result
 
-def get_lang_dict(language):
-    res = execute('''
+def get_lang_dict(task, language):
+    res = select(task, '''
         SELECT K.F_KEYWORD,
             CASE WHEN TRIM(V1.F_VALUE) <> ''
                 THEN V1.F_VALUE
@@ -148,7 +148,7 @@ def get_lang_dict(language):
 
 def get_locale_dict(task, language):
     result = {}
-    con = sqlite3.connect(os.path.join(task.work_dir, 'admin.sqlite'))
+    con = task.create_connection()
     try:
         cursor = con.cursor()
         cursor.execute('SELECT %s FROM SYS_LANGS WHERE ID=%s' % (', '.join(LOCALE_FIELDS), language))
@@ -165,8 +165,8 @@ def get_locale_dict(task, language):
         con.close()
     return result
 
-def get_lang_translation(lang1, lang2):
-    res = execute('''
+def get_lang_translation(task, lang1, lang2):
+    res = select(task, '''
         SELECT K.ID, K.F_KEYWORD, V1.F_VALUE, V2.F_VALUE
         FROM JAM_LANG_KEYS AS K
         LEFT OUTER JOIN JAM_LANG_VALUES AS V1 ON (K.ID = V1.F_KEY AND V1.F_LANG = %s)
@@ -174,8 +174,8 @@ def get_lang_translation(lang1, lang2):
     ''' % (lang1, lang2))
     return res
 
-def add_lang(item, lang_id, language, country, name, abr, rtl, copy_lang):
-    con = lang_con()
+def add_lang(task, lang_id, language, country, name, abr, rtl, copy_lang):
+    con = lang_con(task)
     try:
         cursor = con.cursor()
         locale = init_locale()
@@ -200,7 +200,7 @@ def add_lang(item, lang_id, language, country, name, abr, rtl, copy_lang):
                 recs.append((key_id, lang_id, value))
             cursor.executemany("INSERT INTO JAM_LANG_VALUES(F_KEY, F_LANG, F_VALUE) VALUES (?,?,?)", recs)
         con.commit()
-        langs = item.copy()
+        langs = task.sys_langs.copy()
         langs.set_where(id=lang_id)
         langs.open()
         if langs.record_count():
@@ -212,29 +212,29 @@ def add_lang(item, lang_id, language, country, name, abr, rtl, copy_lang):
     finally:
         con.close()
 
-def save_lang_field(item, lang_id, field_name, value):
-    execute('UPDATE JAM_LANGS SET %s=? WHERE ID=%s' % (field_name, lang_id), (value,))
-    con = sqlite3.connect(os.path.join(item.task.work_dir, 'admin.sqlite'))
+def save_lang_field(task, lang_id, field_name, value):
+    execute(task, 'UPDATE JAM_LANGS SET %s=? WHERE ID=%s' % (field_name, lang_id), (value,))
+    con = task.create_connection()
     try:
         cursor = con.cursor()
         cursor.execute('UPDATE SYS_LANGS SET %s=? WHERE ID=%s' % (field_name, lang_id), (value,))
         con.commit()
     finally:
         con.close()
-    if item.task.language == lang_id:
-        item.task.update_lang(lang_id)
+    if task.language == lang_id:
+        task.update_lang(lang_id)
 
-def save_lang_translation(item, lang_id, key_id, value):
-    res = execute('SELECT ID FROM JAM_LANG_VALUES WHERE F_LANG=%s AND F_KEY=%s' % (lang_id, key_id))
+def save_lang_translation(task, lang_id, key_id, value):
+    res = select(task, 'SELECT ID FROM JAM_LANG_VALUES WHERE F_LANG=%s AND F_KEY=%s' % (lang_id, key_id))
     if len(res):
-        execute('UPDATE JAM_LANG_VALUES SET F_VALUE=? WHERE ID=%s' % (res[0][0]), (value,))
+        execute(task, 'UPDATE JAM_LANG_VALUES SET F_VALUE=? WHERE ID=%s' % (res[0][0]), (value,))
     else:
-        execute('INSERT INTO JAM_LANG_VALUES (F_LANG, F_KEY, F_VALUE) VALUES (?, ?, ?)', (lang_id, key_id, value))
-    item.task.update_lang(lang_id)
+        execute(task, 'INSERT INTO JAM_LANG_VALUES (F_LANG, F_KEY, F_VALUE) VALUES (?, ?, ?)', (lang_id, key_id, value))
+    task.update_lang(lang_id)
 
-def add_key(key):
+def add_key(task, key):
     result = ''
-    con = lang_con()
+    con = lang_con(task)
     try:
         cursor = con.cursor()
         cursor.execute("SELECT ID FROM JAM_LANG_KEYS WHERE F_KEYWORD='%s'" % key)
@@ -248,9 +248,9 @@ def add_key(key):
         con.close()
     return result
 
-def del_key(key_id):
+def del_key(task, key_id):
     result = False
-    con = lang_con()
+    con = lang_con(task)
     try:
         cursor = con.cursor()
         cursor.execute("DELETE FROM JAM_LANG_VALUES WHERE F_KEY=%s" % key_id)
@@ -261,8 +261,8 @@ def del_key(key_id):
         con.close()
     return result
 
-def get_dict(language):
-    res =  execute('''
+def get_dict(task, language):
+    res =  select(task, '''
             SELECT JAM_LANG_KEYS.F_KEYWORD, F_VALUE
             FROM JAM_LANG_VALUES LEFT OUTER JOIN JAM_LANG_KEYS ON JAM_LANG_KEYS.ID = JAM_LANG_VALUES.F_KEY
             WHERE F_LANG = %s
@@ -272,15 +272,15 @@ def get_dict(language):
         result[key] = value
     return result
 
-def export_lang(work_dir, lang_id, host):
+def export_lang(task, lang_id, host):
     names = FIELDS[1:]
-    lang = execute('SELECT %s FROM JAM_LANGS WHERE ID=%s' % (', '.join(names), lang_id))
+    lang = select(task, 'SELECT %s FROM JAM_LANGS WHERE ID=%s' % (', '.join(names), lang_id))
     if len(lang):
         language = {}
         for i in range(len(lang[0])):
             language[names[i]] = lang[0][i]
 
-        translation = get_dict(lang_id)
+        translation = get_dict(task, lang_id)
         content = json.dumps({'language': language, 'translation': translation})
 
         name = language['f_name'].replace(' ', '_')
@@ -296,7 +296,8 @@ def import_lang(task, file_path):
         language = content['language']
         translation = content['translation']
 
-        con = lang_con()
+        con = lang_con(task)
+        sys_con = task.create_connection()
         try:
             cursor = con.cursor()
             cursor.execute('SELECT ID FROM JAM_LANGS WHERE F_LANGUAGE=%s AND F_COUNTRY=%s' % (language['f_language'], language['f_country']))
@@ -311,17 +312,9 @@ def import_lang(task, file_path):
                 fields = ',' .join(fields)
                 cursor.execute("UPDATE JAM_LANGS SET %s WHERE ID=%s" % (fields, lang_id), field_values)
 
-                sys_con = sqlite3.connect(os.path.join(task.work_dir, 'admin.sqlite'))
-                try:
-                    sys_cursor = sys_con.cursor()
-                    sys_cursor.execute("UPDATE SYS_LANGS SET %s WHERE ID=%s" % (fields, lang_id), field_values)
-                    sys_con.commit()
-                finally:
-                    sys_con.close()
-
-                #~ try:
-                #~ except:
-                    #~ pass
+                sys_cursor = sys_con.cursor()
+                sys_cursor.execute("UPDATE SYS_LANGS SET %s WHERE ID=%s" % (fields, lang_id), field_values)
+                sys_con.commit()
             else:
                 fields = []
                 values = []
@@ -330,12 +323,16 @@ def import_lang(task, file_path):
                     fields.append(key)
                     field_values.append(value)
                     values.append('?')
-                fields = ','.join(fields)
-                values = ','.join(values)
-                cursor.execute('INSERT INTO JAM_LANGS (%s) VALUES (%s)' % (fields, values), field_values)
+                cursor.execute('INSERT INTO JAM_LANGS (%s) VALUES (%s)' % (','.join(fields), ','.join(values)), field_values)
                 cursor.execute('SELECT ID FROM JAM_LANGS WHERE F_LANGUAGE=%s AND F_COUNTRY=%s' % (language['f_language'], language['f_country']))
                 res = cursor.fetchall()
                 lang_id = res[0][0]
+                fields.append('DELETED')
+                values.append('?')
+                field_values.append(0)
+                sys_cursor = sys_con.cursor()
+                sys_cursor.execute('INSERT INTO SYS_LANGS (%s) VALUES (%s)' % (','.join(fields), ','.join(values)), field_values)
+                sys_con.commit()
             if lang_id:
                 cursor.execute('SELECT ID, F_KEYWORD FROM JAM_LANG_KEYS')
                 res = cursor.fetchall()
@@ -355,10 +352,10 @@ def import_lang(task, file_path):
             con.commit()
         finally:
             con.close()
+            sys_con.close()
     except Exception as e:
         print(e)
         error = 'Can not import language'
-    update_langs(task)
 
 languages = [
     ["Abkhazian", "ab", False],

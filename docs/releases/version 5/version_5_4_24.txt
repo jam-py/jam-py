@@ -1,0 +1,13 @@
+==============
+Version 5.4.24
+==============
+
+Library:
+
+* Language support reworked
+
+* Images of image fields of Application builder items are stored in static/builder 
+  folder now to be able to export/import them to/from metadata file
+  
+* MSSQL ALTER TABLE bug fixed  
+

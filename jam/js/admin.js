@@ -99,6 +99,7 @@ function Events0() { // admin
 		open_sys_params(task)
 		if (!task.sys_params.f_language.value) {
 			task.sys_params.edit_options.title = 'Project language';
+			task.sys_params.edit_options.fields = ['f_language'];
 			task.sys_params.edit_record();
 			return;
 		}
@@ -4324,6 +4325,7 @@ function Events22() { // admin.catalogs.sys_langs
 						item.warning(error);
 					}
 					else {
+						item.set_order_by(['f_name']);
 						item.open(true);
 					}
 				})

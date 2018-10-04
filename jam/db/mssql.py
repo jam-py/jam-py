@@ -156,7 +156,7 @@ def delete_foreign_index(table_name, index_name):
     return 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % (table_name, index_name)
 
 def add_field_sql(table_name, field):
-    result = 'ALTER TABLE "%s" ADD COLUMN "%s" %s' % \
+    result = 'ALTER TABLE "%s" ADD "%s" %s' % \
              (table_name, field['field_name'], FIELD_TYPES[field['data_type']])
     if field['size']:
         result += '(%d)' % field['size']

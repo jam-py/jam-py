@@ -252,7 +252,7 @@ class AbstrTask(AbstractItem):
                         self.compile_item(detail)
 
     def update_lang(self, value):
-        self.lang = langs.get_lang_dict(value)
+        self.lang = langs.get_lang_dict(self, value)
         self.locale = langs.get_locale_dict(self, value)
         common.SETTINGS['LANGUAGE'] = value
         common.LOCALE = self.locale

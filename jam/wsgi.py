@@ -516,11 +516,11 @@ class App():
                 file_name = request.form.get('file_name')
                 if f and file_name:
                     base, ext = os.path.splitext(file_name)
-                    if task_id == 0 and path:
-                        if not (path == 'static/internal' and ext == '.zip'):
-                            r['error'] = 'Invalid import file'
-                    else:
-                        path = os.path.join('static', 'files')
+                    if not path:
+                        if task_id == 0:
+                            path = os.path.join('static', 'builder')
+                        else:
+                            path = os.path.join('static', 'files')
                         file_name = ('%s%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
                         file_name = secure_filename(file_name)
                         file_name = file_name.replace('?', '')

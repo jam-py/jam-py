@@ -630,10 +630,10 @@ def init_delete_reports(task):
 
 
 def init_admin(task):
+    langs.update_langs(task)
     task.set_language(read_language(task))
     create_items(task)
     update_admin_fields(task)
-    langs.update_langs(task)
     task.fields_id_lock = Lock()
 
     read_setting(task)
@@ -1177,6 +1177,7 @@ def server_export_task(task, task_id, url=None):
             common.zip_dir(os.path.join('static', 'js'), zip_file)
             common.zip_dir(os.path.join('static', 'css'), zip_file)
             common.zip_dir(os.path.join('static', 'fonts'), zip_file)
+            common.zip_dir(os.path.join('static', 'builder'), zip_file)
             common.zip_dir('utils', zip_file, exclude_ext=['.pyc'])
             common.zip_dir('reports', zip_file, exclude_ext=['.xml', '.ods#'], recursive=False)
         if url:
@@ -3195,25 +3196,25 @@ def privileges_open(item, params):
 ###############################################################################
 
 def add_lang(item, lang_id, language, country, name, abr, rtl, copy_lang):
-    langs.add_lang(item, lang_id, language, country, name, abr, rtl, copy_lang)
+    langs.add_lang(item.task, lang_id, language, country, name, abr, rtl, copy_lang)
 
 def save_lang_field(item, lang_id, field_name, value):
-    langs.save_lang_field(item, lang_id, field_name, value)
+    langs.save_lang_field(item.task, lang_id, field_name, value)
 
 def get_lang_translation(item, lang1, lang2):
-    return langs.get_lang_translation(lang1, lang2)
+    return langs.get_lang_translation(item.task, lang1, lang2)
 
 def save_lang_translation(item, lang_id, key_id, value):
-    langs.save_lang_translation(item, lang_id, key_id, value)
+    langs.save_lang_translation(item.task, lang_id, key_id, value)
 
 def add_key(item, key):
-    return langs.add_key(key)
+    return langs.add_key(item.task, key)
 
 def del_key(item, key_id):
-    return langs.del_key(key_id)
+    return langs.del_key(item.task, key_id)
 
 def export_lang(item, lang_id, host):
-    return langs.export_lang(item.task.work_dir, lang_id, host)
+    return langs.export_lang(item.task, lang_id, host)
 
 def import_lang(item, file_path):
     return langs.import_lang(item.task, os.path.join(item.task.work_dir, file_path))
