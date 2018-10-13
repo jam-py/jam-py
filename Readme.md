@@ -12,7 +12,11 @@ https://jampy.herokuapp.com/
 
 The Postfix email aliases utility Demo:
 
-http://jampy-aliases.herokuapp.com/
+https://jampy-aliases.herokuapp.com/
+
+The RedHat Satellite 5.x Dashboard utility Demo:
+
+https://redhatsatellite.herokuapp.com
 
 With Jam.py you can create, customise, test and share awesome, fast, event-driven applications for SQLite, Oracle, MySQL, PostgreSQL and Firebird. All of that for free and no vendor lock-in!
 
