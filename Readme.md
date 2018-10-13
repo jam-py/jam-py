@@ -6,7 +6,7 @@
 
 Make a stunning database apps for your business really fast, for **free**. 
 
-Here is the invoicing Demo for **Heroku** which you can access from:
+Here is the invoicing Demo on **Heroku** which you can access from:
 
 https://jampy.herokuapp.com/
 
