@@ -26,6 +26,12 @@ The Jam.py Demo you see on Heroku is just a Git repo made from the original Jam.
 
 Then the Heroku account was open, jampy App created, Git repo linked and deployed. In 10 seconds it magically appeared as a live Web site. Enjoy.
 
+Trello Public Board
+------------------------------------
+Please find Public Trello board at:
+
+https://trello.com/jampycom
+
 
 Why using Jam.py?
 ------------------------------------
@@ -86,7 +92,7 @@ sudo pip install jam.py
 ```
 at the shell prompt. If you’re using Windows, start a command shell with administrator privileges and run the command:
 ```
-pip install jam.py. 
+pip install jam.py 
 ```
 This will install Jam.py in your Python installation’s site-packages directory.
 
@@ -112,7 +118,14 @@ Navigate to jam.py installation demo folder, enter the command:
 python server.py
 ```
 
-You'll have the Demo App running at http://localhost:8001
+The Demo App will run at http://localhost:8080
+
+or, provide a port:
+```
+python server.py 8081
+```
+The Demo App will run at http://localhost:8081
+
 
 ## Create a new App
 
@@ -122,7 +135,7 @@ cd newapp
 jam-project.py
 python server.py
 ```
-The new and empty App will run at http://localhost:8001
+The new and empty App will run at http://localhost:8080
 
 Please visit http://jam-py.com/docs/intro/index.html for complete Getting Started Introduction.
 
