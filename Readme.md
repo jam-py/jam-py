@@ -24,7 +24,11 @@ How was the Demo published on Heroku?
 ------------------------------------
 The Jam.py Demo you see on Heroku is just a Git repo made from the original Jam.py Demo with two files added: requirements.txt and Procfile.
 
-Then the Heroku account was open, jampy App created, Git repo linked and deployed. In 10 seconds it magically appeared as a live Web site. Enjoy.
+Then the Heroku account was open, jampy App created, Git repo linked and deployed. In 10 seconds it magically appeared as a live Web site. This short 2.30 minutes video with English and Russian subtitles demonstrates how:
+
+https://youtu.be/pQYer6po820
+
+Enjoy.
 
 Trello Public Board
 ------------------------------------
