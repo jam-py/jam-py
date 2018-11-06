@@ -84,7 +84,8 @@ def update_langs(task):
                     langs_dict[l[1]] = l[0]
                 res = select(task, 'SELECT %s FROM JAM_LANGS ORDER BY ID' % ', '.join(FIELDS))
                 for r in res:
-                    del langs_dict[r[1]]
+                    if langs_dict.get(r[1]):
+                        del langs_dict[r[1]]
                     if not r[1] in langs_list:
                         fields = ['DELETED']
                         values = ['?']

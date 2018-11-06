@@ -17,13 +17,14 @@ DOM, the application triggers the following events (prefix is the type of the fo
 
 * on_prefix_form_keyup - the event is triggered when the keyup event occurs for the form
 
+These events are processed by the ``_process_event`` in th *jam.js* module.
+Below we explain how it works.
 
 .. code-block:: js
 
   _process_event: function(form_type, event_type, e) {
     var event = 'on_' + form_type + '_form_' + event_type,
-        can_close,
-        index;
+        can_close;
     if (event_type === 'close_query') {
         if (this[event]) {
             can_close = this[event].call(this, this);

@@ -32,7 +32,7 @@ assigned a click event:
 
 .. code-block:: js
 
-    item.filter_form.find("#cancel-btn").on('click, 
+    item.filter_form.find("#cancel-btn").on('click', 
         function() {
             item.close_filter()
         }

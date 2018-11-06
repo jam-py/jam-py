@@ -133,8 +133,8 @@ view form
 * **Width** - an integer, the width of the modal form, if not set the value is 
   600 px
 
-* **View detail** - click the button to the right of the input field to select a
-  detail, that will be displayed in the view form
+* **View details** - click the button to the right of the input field to select
+  details, that will be displayed in the view form
 
 * **Detail height** - an integer, the height of the details desplayed in the 
   view form, if not set, the height of the detail table is 200px

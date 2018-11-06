@@ -11,7 +11,7 @@ import zlib
 import base64
 from threading import Thread, Lock
 from operator import itemgetter
-from pyjsparser import PyJsParser, JsSyntaxError
+from esprima import parseScript, nodes
 
 import jam.common as common
 from jam.common import error_message
@@ -247,9 +247,10 @@ def create_items(task):
     task.sys_fields.add_field(32, 'f_image_view_width', 'View width', common.INTEGER)
     task.sys_fields.add_field(33, 'f_image_view_height', 'View height', common.INTEGER)
     task.sys_fields.add_field(34, 'f_image_placeholder', 'Placeholder image', common.IMAGE, image_edit_width=230)
-    task.sys_fields.add_field(35, 'f_file_download_btn', 'Download btn', common.BOOLEAN)
-    task.sys_fields.add_field(36, 'f_file_open_btn', 'Open btn', common.BOOLEAN)
-    task.sys_fields.add_field(37, 'f_file_accept', 'Accept', common.TEXT, size=512)
+    task.sys_fields.add_field(35, 'f_image_camera', 'Capture from camera', common.BOOLEAN)
+    task.sys_fields.add_field(36, 'f_file_download_btn', 'Download btn', common.BOOLEAN)
+    task.sys_fields.add_field(37, 'f_file_open_btn', 'Open btn', common.BOOLEAN)
+    task.sys_fields.add_field(38, 'f_file_accept', 'Accept', common.TEXT, size=512)
 
 
     task.sys_fields.add_filter('id', 'ID', 'id', common.FILTER_EQ, visible=False)
@@ -346,6 +347,7 @@ def create_items(task):
     task.sys_users.add_field(8, 'f_admin', task.language('admin'), common.BOOLEAN)
     task.sys_users.add_field(9, 'f_psw_hash', 'psw_hash', common.TEXT, edit_visible=False, size=10000)
     task.sys_users.add_field(10, 'f_ip', 'ip', common.TEXT, edit_visible=False, size=10000)
+    task.sys_users.add_field(11, 'f_uuid', 'uuid', common.TEXT, edit_visible=False, size=10000)
 
     task.sys_roles.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_roles.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
@@ -650,6 +652,7 @@ def init_admin(task):
     task.max_content_length = common.SETTINGS['MAX_CONTENT_LENGTH']
     task.timeout = common.SETTINGS['TIMEOUT']
     task.ignore_change_ip = common.SETTINGS['IGNORE_CHANGE_IP']
+    task.ignore_change_uuid = True
     task.set_language(common.SETTINGS['LANGUAGE'])
     task.item_caption = task.language('admin')
     register_events(task)
@@ -728,7 +731,7 @@ def get_roles(task):
         roles.append([r.id.value, r.f_name.value])
     return roles, privileges
 
-def login(task, log, password, admin, ip=None):
+def login(task, log, password, admin, ip=None, session_uuid=None):
     user_id = None
     user_info = {}
     if task.safe_mode:
@@ -746,16 +749,22 @@ def login(task, log, password, admin, ip=None):
                         'user_name': u.f_name.value,
                         'admin': u.f_admin.value
                     }
-                    if ip:
-                        task.execute("UPDATE SYS_USERS SET F_IP='%s' WHERE ID=%s" % (ip, u.id.value))
+                    if ip or session_uuid:
+                        task.execute("UPDATE SYS_USERS SET F_IP='%s', F_UUID='%s' WHERE ID=%s" % (ip, session_uuid, u.id.value))
                     break
     return user_info
 
-#~ def user_valid_ip(task, user_id, ip):
-    #~ res = task.select("SELECT F_IP FROM SYS_USERS WHERE ID=%s" % user_id)
-    #~ if res and res[0][0] == ip:
-        #~ return True
-    #~ return False
+def user_valid_ip(task, user_id, ip):
+    res = task.select("SELECT F_IP FROM SYS_USERS WHERE ID=%s" % user_id)
+    if res and res[0][0] == ip:
+        return True
+    return False
+
+def user_valid_uuid(task, user_id, session_uuid):
+    res = task.select("SELECT F_UUID FROM SYS_USERS WHERE ID=%s" % user_id)
+    if res and res[0][0] == session_uuid:
+        return True
+    return False
 
 def create_task(app):
     result = None
@@ -846,6 +855,7 @@ def load_task(target, app, first_build=True, after_import=False):
                         sys_fields.f_image_view_width.value,
                         sys_fields.f_image_view_height.value,
                         sys_fields.f_image_placeholder.value,
+                        sys_fields.f_image_camera.value,
                         sys_fields.f_file_download_btn.value,
                         sys_fields.f_file_open_btn.value,
                         sys_fields.f_file_accept.value
@@ -1917,13 +1927,10 @@ def get_minified_name(file_name):
 def minify(file_name):
     min_file_name = get_minified_name(file_name)
     from jam.third_party.jsmin import jsmin
-
     with open(file_name, 'r') as f:
         text = f.read()
-    text = text.replace('.delete(', '["delete"](')
-    new_text = jsmin(text)
     with open(min_file_name, 'w') as f:
-        f.write(new_text)
+        f.write(jsmin(text))
 
 def get_field_dict(task, item_id, parent_id, type_id, table_id):
     result = {}
@@ -2036,12 +2043,11 @@ def server_item_info(task, item_id, is_server):
     return result
 
 def parse_js(code):
-    p = PyJsParser()
-    tree = p.parse(to_unicode(code, 'utf-8'))
     script = ''
-    for p in tree['body']:
-        if p['type'] == 'FunctionDeclaration':
-            script += '\tthis.%s = %s;\n' % (p['id']['name'], p['id']['name'])
+    ast = parseScript(to_unicode(code, 'utf-8'))
+    for e in ast.body:
+        if isinstance(e, nodes.FunctionDeclaration):
+            script += '\tthis.%s = %s;\n' % (e.id.name, e.id.name)
     if script:
         script = '\n' + script
     return script
@@ -2055,37 +2061,37 @@ def server_save_edit(task, item_id, text, is_server):
     module_type = common.WEB_CLIENT_MODULE
     if is_server:
         module_type = common.SERVER_MODULE
-    try:
-        if is_server:
+    if is_server:
+        try:
             compile(text, 'check_item_code', "exec")
-        else:
-            text = text.replace(to_bytes('.delete('), to_bytes('["delete"]('))
-            js_funcs = parse_js(text)
-    except JsSyntaxError as e:
-        try:
-            err_str = e.args[0]
-            line, err = err_str.split(':')
+        except Exception as e:
             try:
-                line = int(line[5:])
+                line = e.args[1][1]
+                col = e.args[1][2]
+                if line and col:
+                    error = ' %s - line %d col %d' % (e.args[0], line, col)
+                elif line:
+                    error = ' %s - line %d col %d' % (e.args[0], line)
+                else:
+                    error = e.args[0]
             except:
-                pass
-            error = err_str
-        except:
-            error = error_message(e)
-            traceback.print_exc()
-    except Exception as e:
+                error = 'Error'
+                traceback.print_exc()
+    else:
         try:
-            line = e.args[1][1]
-            col = e.args[1][2]
-            if line and col:
-                error = ' %s - line %d col %d' % (e.args[0], line, col)
-            elif line:
-                error = ' %s - line %d col %d' % (e.args[0], line)
-            else:
-                error = e.args[0]
-        except:
-            error = 'Error'
-            traceback.print_exc()
+            js_funcs = parse_js(text)
+        except Exception as e:
+            try:
+                err_str = e.args[0]
+                line, err = err_str.split(':')
+                try:
+                    line = int(line[5:])
+                except:
+                    pass
+                error = err_str
+            except:
+                error = error_message(e)
+                traceback.print_exc()
     if not error:
         try:
             item = task.sys_items.copy()
@@ -2931,6 +2937,25 @@ def server_update_details(item, item_id, dest_list):
         items.open()
         return items.f_name.value, items.f_item_name.value, items.f_table_name.value
 
+    def convert_details(i_list, attr, detail_list):
+        try:
+            for media, options in iteritems(i_list):
+                try:
+                    new = []
+                    details = options[1].get(attr)
+                    if details:
+                        for d in detail_list:
+                            if d in details:
+                                new.append(d)
+                        options[1][attr] = new
+                except:
+                    pass
+        except:
+            pass
+        return i_list
+
+    detail_list = [d[0] for d in dest_list]
+
     items = item.copy(handlers=False)
     items.set_where(parent=item_id)
     items.open()
@@ -2977,6 +3002,28 @@ def server_update_details(item, item_id, dest_list):
             traceback.print_exc()
     item.task.app.task_server_modified = True
 
+    items.set_order_by(['f_index'])
+    items.set_where(parent=item_id)
+    items.open()
+    for it in items:
+        cur_row = [i for i, row in enumerate(detail_list) if row == items.table_id.value]
+        if len(cur_row) == 1:
+            it.edit()
+            it.f_index.value = cur_row[0]
+            it.post()
+    items.apply()
+
+    items.set_order_by(['f_index'])
+    items.set_where(parent=item_id)
+    items.open()
+    detail_list = []
+    for it in items:
+        detail_list.append(it.id.value)
+
+    common.load_interface(item)
+    item._view_list = convert_details(item._view_list, 'view_detail', detail_list)
+    item._edit_list = convert_details(item._edit_list, 'edit_details', detail_list)
+    common.store_interface(item)
 
 ###############################################################################
 #                                 sys_fields                                  #

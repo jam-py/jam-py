@@ -59,12 +59,12 @@ event handler of the item. See example.
   :doc:`close_view_form <m_close_view_form>`
   method to close the form
   
-* ``view_detail`` - the detail name, that will be displayed
+* ``view_detail`` - the list of detail names, that will be displayed
   in the view form, if view form template contains the div with class 
   'view-detail' (the default view form template have this div)
 
 * ``detail_height`` - the height of the details desplayed in the view form,
-  if not specified the height of the detail table is 260px
+  if not specified the height of the detail table is 200px
 
 * ``modeless`` - if true, the form will be displayed as modeless
 

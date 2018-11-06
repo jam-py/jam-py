@@ -97,7 +97,7 @@ class SQL(object):
                 (self.table_name, self._primary_key_db_field_name, id_literal)
         return sql
 
-    def apply_sql(self, safe=False, db_module=None):
+    def apply_sql(self, params=None, db_module=None):
 
         def get_sql(item, safe, db_module):
             info = {}
@@ -241,6 +241,9 @@ class SQL(object):
                     else:
                         generate_sql(detail, safe, db_module, detail_result)
 
+        safe = False
+        if params:
+            safe = params['__safe']
         if db_module is None:
             db_module = self.task.db_module
         result = (self.ID, [])

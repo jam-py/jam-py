@@ -34,9 +34,9 @@ If you are new to Jam.py, we highly recommend that you watch these video tutoria
 
 It is recommended to watch these videos with a resolution of 1080p
 
-Tutorial 1 - `Getting started`_ 
+Tutorial 1 - `First application`_ 
 
-.. _`Getting started`: https://youtu.be/4Sd3YKSUoy4
+.. _`First application`: https://youtu.be/T2lnOVuybGQ
 
 Tutorial 2 - `Jam.py interface setup`_ 
 

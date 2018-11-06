@@ -143,19 +143,7 @@ def execute_list(cursor, db_module, command, delta_result, params, select, ddl, 
             raise Exception('server_classes execute_list: invalid argument - command: %s' % command)
     return res
 
-def execute_sql(db_module, db_server, db_database, db_user, db_password,
-    db_host, db_port, db_encoding, connection, command,
-    params=None, call_proc=False, select=False, ddl=False):
-
-    if connection is None:
-        try:
-            connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding, db_server)
-        except Exception as x:
-            print(str(x))
-            if ddl:
-                return  None, (None, str(x), info_from_error(x))
-            else:
-                return  None, (None, str(x))
+def execute_sql_connection(connection, command, params, call_proc, select, ddl, db_module, close_on_error=False):
     delta_result = {}
     messages = []
     result = None
@@ -190,13 +178,15 @@ def execute_sql(db_module, db_server, db_database, db_user, db_password,
         try:
             if connection:
                 connection.rollback()
-                connection.close()
+                if close_on_error:
+                    connection.close()
             error = str(x)
             if not error:
                 error = 'SQL execution error'
             traceback.print_exc()
         finally:
-            connection = None
+            if close_on_error:
+                connection = None
     finally:
         if ddl:
             if error:
@@ -207,6 +197,21 @@ def execute_sql(db_module, db_server, db_database, db_user, db_password,
         else:
             result = connection, (result, error)
     return result
+
+def execute_sql(db_module, db_server, db_database, db_user, db_password,
+    db_host, db_port, db_encoding, connection, command,
+    params=None, call_proc=False, select=False, ddl=False):
+
+    if connection is None:
+        try:
+            connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding, db_server)
+        except Exception as x:
+            print(str(x))
+            if ddl:
+                return  None, (None, str(x), info_from_error(x))
+            else:
+                return  None, (None, str(x))
+    return execute_sql_connection(connection, command, params, call_proc, select, ddl, db_module, close_on_error=True)
 
 def process_request(parentPID, name, queue, db_type, db_server, db_database, db_user, db_password, db_host, db_port, db_encoding, mod_count):
     con = None

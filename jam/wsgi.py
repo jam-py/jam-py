@@ -254,7 +254,7 @@ class App():
         except KeyError:
             return request.environ['REMOTE_ADDR']
 
-    def create_session(self, request, task, user_info=None):
+    def create_session(self, request, task, user_info=None, session_uuid=None):
         if not user_info:
             user_info = {
                 'user_id': None,
@@ -266,7 +266,7 @@ class App():
         cookie = request.get_session(task)
         session = {}
         session['ip'] = self.get_client_address(request);
-        session['uuid'] = str(uuid.uuid4())
+        session['uuid'] = session_uuid
         session['user_info'] = user_info
         cookie['info'] = session
         cookie.modified = True
@@ -282,7 +282,11 @@ class App():
             if not (user_info and user_info.get('user_id')):
                 return False
             if not self.admin.ignore_change_ip and task != self.admin:
-                if session['ip'] != self.get_client_address(request):
+                ip = self.get_client_address(request);
+                if not adm_server.user_valid_ip(self.admin, user_info['user_id'], ip):
+                    return False
+            if not self.admin.ignore_change_uuid and task != self.admin:
+                if not adm_server.user_valid_uuid(self.admin, user_info['user_id'], session['uuid']):
                     return False
         return True
 
@@ -298,20 +302,29 @@ class App():
             jam.context.session = session
             return True
 
+    def default_login(self, task, login, password, ip, session_uuid):
+        return adm_server.login(self.admin, login, password, self.admin == task, ip, session_uuid)
+
     def login(self, request, task, login, password):
         ip = None
-        if not self.admin.ignore_change_ip:
-            ip = self.get_client_address(request);
+        session_uuid = None
+        ip = self.get_client_address(request);
+        session_uuid = str(uuid.uuid4())
         if self.admin == task or task.on_login is None:
-            user_info = adm_server.login(self.admin, login, password, self.admin == task, ip)
+            user_info = self.default_login(task, login, password, ip, session_uuid)
         elif task.on_login:
             try:
-                user_info = task.on_login(task, login, password)
+                try:
+                    user_info = task.on_login(task, login, password, ip, session_uuid)
+                except:
+                    traceback.print_exc()
+                    user_info = task.on_login(task, login, password)
+                    print('The on_login event params have been changed (see the documentation). Please update the on_login event handler!!!')
             except:
                 user_info = None
                 traceback.print_exc()
         if user_info:
-            self.create_session(request, task, user_info)
+            self.create_session(request, task, user_info, session_uuid)
             return True
 
     def logout(self, request, task):
@@ -534,14 +547,6 @@ class App():
                 else:
                     r['error'] = 'File upload invalid parameters';
             return self.create_post_response(request, r)
-
-    def get_client_ip(self, environ):
-        x_forwarded_for = environ.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[-1].strip()
-        else:
-            ip = environ.get('REMOTE_ADDR')
-        return ip
 
     def stop(self, sigvalue):
         self.kill()

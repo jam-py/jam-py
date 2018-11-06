@@ -41,7 +41,9 @@ The ``options`` parameter is an object that may have following attributes:
   
 * ``image`` - an icon class, one of the icons by Glyphicons from http://getbootstrap.com/2.3.2/base-css.html
 
-* ``pull_left``: if this attribute is set to true, the button will be left aligned
+* ``secondary``: if this attribute is set to true, the button will be right aligned if
+  **Buttons on top** attribute of the 
+  :doc:`View Form Dialog </admin/items/view_form_dialog>` is set, otherwise left aligned.
 
 The method returns a JQuery object of the button. 
 

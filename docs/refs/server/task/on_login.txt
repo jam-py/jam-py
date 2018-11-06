@@ -2,7 +2,7 @@
 on_login
 ========
 
-on_login(task, login, password)
+on_login(task, login, password, ip, session_uuid)
 
 **domain**: server
 
@@ -18,7 +18,9 @@ Builder Users table.
 
 The ``task`` parameter is a reference to the 
 :doc:`task tree </programming/task_tree>`,
-``login`` and ``password`` are the login and password of the user.
+``login`` and ``password`` are the login and password of the user,
+``ip`` is the ip address of the request and ``session_uuid`` is uuid of the 
+session that will be created.
 
 The event handler must return the dictionary with the following attributes:
 
@@ -33,7 +35,7 @@ Example
 
 .. code-block:: py
 
-    def on_login(task, login, password):
+    def on_login(task, login, password, ip, session_uuid):
         result = None
         if login == 'admin' and password == '111': 
             result = {

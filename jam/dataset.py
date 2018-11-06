@@ -442,7 +442,7 @@ class DBField(object):
 
     def _get_read_only(self):
         result = self._read_only
-        if self.owner and self.owner.parent_read_only and self.owner.read_only:
+        if self.owner and self.owner.owner_read_only and self.owner.read_only:
             result = self.owner.read_only
         return result
 
@@ -1016,7 +1016,7 @@ class AbstractDataSet(object):
         self._keep_history = False
         self.lock_on_edit = False
         self.select_all = False
-        self.parent_read_only = True
+        self.owner_read_only = True
         self.on_before_append = None
         self.on_after_append = None
         self.on_before_edit = None
@@ -1054,7 +1054,7 @@ class AbstractDataSet(object):
             lookup_field1, lookup_field2, view_visible, view_index, edit_visible, edit_index, read_only, expand,
             word_wrap, field_size, default_value, is_default, calculated, editable, master_field, alignment,
             lookup_values, enable_typeahead, field_help, field_placeholder, field_mask,
-            image_edit_width, image_edit_height, image_view_width, image_view_height, image_placeholder,
+            image_edit_width, image_edit_height, image_view_width, image_view_height, image_placeholder, image_camera,
             file_download_btn, file_open_btn, file_accept, db_field_name):
         field_def = [None for i in range(len(FIELD_DEF))]
         field_def[FIELD_ID] = field_ID
@@ -1087,7 +1087,8 @@ class AbstractDataSet(object):
         field_def[FIELD_MASK] = field_mask
         if data_type == common.IMAGE:
             field_def[FIELD_IMAGE] = {'edit_width': image_edit_width, 'edit_height': image_edit_height,
-                'view_width': image_view_width, 'view_height': image_view_height, 'placeholder': image_placeholder}
+                'view_width': image_view_width, 'view_height': image_view_height, 'placeholder': image_placeholder,
+                'camera': image_camera}
         if data_type == common.FILE:
             field_def[FIELD_FILE] = {'download_btn': file_download_btn, 'open_btn': file_open_btn, 'accept': file_accept}
         field_def[DB_FIELD_NAME] = db_field_name
@@ -2269,7 +2270,7 @@ class MasterDetailDataset(MasterDataSet):
         return super(MasterDetailDataset, self).is_modified()
 
     def _get_read_only(self):
-        if self.master and self.parent_read_only:
+        if self.master and self.owner_read_only:
             return self.master.read_only
         else:
             return super(MasterDetailDataset, self)._get_read_only()

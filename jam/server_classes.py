@@ -18,7 +18,7 @@ import jam.db.db_modules as db_modules
 from jam.items import *
 from jam.dataset import *
 from jam.sql import *
-from jam.execute import process_request, execute_sql
+from jam.execute import process_request, execute_sql, execute_sql_connection
 from jam.third_party.six import exec_, print_
 from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_bytes, to_unicode
 
@@ -80,7 +80,7 @@ class ServerDataset(Dataset, SQL):
         master_field=None, alignment=None, lookup_values=None, enable_typeahead=False, field_help=None,
         field_placeholder=None, lookup_field1=None, lookup_field2=None, db_field_name=None, field_mask=None,
         image_edit_width=None, image_edit_height=None, image_view_width=None, image_view_height=None,
-        image_placeholder=None, file_download_btn=None, file_open_btn=None, file_accept=None):
+        image_placeholder=None, image_camera=None, file_download_btn=None, file_open_btn=None, file_accept=None):
 
         if db_field_name == None:
             db_field_name = field_name.upper()
@@ -89,7 +89,7 @@ class ServerDataset(Dataset, SQL):
             lookup_field1, lookup_field2, visible, index, edit_visible, edit_index, read_only, expand, word_wrap, size,
             default_value, default, calculated, editable, master_field, alignment, lookup_values, enable_typeahead,
             field_help, field_placeholder, field_mask, image_edit_width, image_edit_height, image_view_width, image_view_height,
-            image_placeholder, file_download_btn, file_open_btn, file_accept, db_field_name)
+            image_placeholder, image_camera, file_download_btn, file_open_btn, file_accept, db_field_name)
         field = DBField(self, field_def)
         self._fields.append(field)
         return field
@@ -147,18 +147,21 @@ class ServerDataset(Dataset, SQL):
             result = count, error_mess
         return result
 
-    def execute_select(self, params):
+    def connection_open(self, params, connection, db_module=None):
+        return self.execute_select(params, connection, db_module)
+
+    def execute_select(self, params, connection=None, db_module=None):
         error_mes = ''
         limit = params['__limit']
         offset = params['__offset']
-        sqls = self.get_select_queries(params)
+        sqls = self.get_select_queries(params, db_module)
         if len(sqls) == 1:
-            rows = self.task.select(sqls[0])
+            rows = self.task.select(sqls[0], connection, db_module)
         else:
             rows = []
             cut = False
             for sql in sqls:
-                rows += self.task.select(sql)
+                rows += self.task.select(sql, connection, db_module)
                 if limit or offset:
                     if len(rows) >= offset + limit:
                         rows = rows[offset:offset + limit]
@@ -181,22 +184,26 @@ class ServerDataset(Dataset, SQL):
             result = self.execute_select(params)
         return result
 
-    def apply_delta(self, delta, safe=False):
-        sql = delta.apply_sql(safe)
-        return self.task.execute(sql)
+    def connection_apply(self, delta, params, connection, db_module=None):
+        return self.apply_delta(delta, params, connection, db_module)
+
+    def apply_delta(self, delta, params=None, connection=None, db_module=None):
+        sql = delta.apply_sql(params)
+        return self.task.execute(sql, None, connection, db_module)
 
     def apply_changes(self, data, safe):
         result = None
         changes, params = data
         if not params:
             params = {}
+        params['__safe'] = safe
         delta = self.delta(changes)
         if self.task.on_apply:
             result = self.task.on_apply(self, delta, params)
         if result is None and self.on_apply:
             result = self.on_apply(self, delta, params)
         if result is None:
-            result = self.apply_delta(delta, safe)
+            result = self.apply_delta(delta, params)
         return result
 
     def update_deleted(self):
@@ -886,8 +893,10 @@ class AbstractServerTask(AbstrTask):
         result = self.send_to_pool(self.mp_queue, result_queue, command, params, call_proc, select)
         return result
 
-    def execute(self, command, params=None, call_proc=False, select=False):
-        if self.mp_pool:
+    def execute(self, command, params=None, connection=None, db_module=None, call_proc=False, select=False):
+        if connection:
+            connection, result = execute_sql_connection(connection, command, params, call_proc, select, False, db_module)
+        elif self.mp_pool:
             if self.persist_con and not self.con_counter.val:
                 self.con_counter.val += 1
                 try:
@@ -905,15 +914,15 @@ class AbstractServerTask(AbstrTask):
         if not error:
             return result_set
 
-    def select(self, command, params=None):
-        result, error = self.execute(command, params, select=True)
+    def select(self, command, connection=None, db_module=None):
+        result, error = self.execute(command, None, connection, db_module, select=True)
         if error:
             raise Exception(error)
         else:
             return result
 
-    def execute_select(self, command, params=None): #depricated
-        return self.select(command, params=None)
+    def execute_select(self, command): #depricated
+        return self.select(command)
 
     def get_module_name(self):
         return str(self.item_name)
@@ -1018,7 +1027,7 @@ class Task(AbstractServerTask):
                 pass
 
     def copy_database(self, dbtype, database=None, user=None, password=None,
-        host=None, port=None, encoding=None, server=None, limit = 4096):
+        host=None, port=None, encoding=None, server=None, limit = 1024):
 
         def convert_sql(item, sql, db_module):
             new_case = item.task.db_module.identifier_case
@@ -1075,7 +1084,21 @@ class Task(AbstractServerTask):
                                             j = 0
                                             for field in item.fields:
                                                 if not field.master_field:
-                                                    field.set_data(r[j])
+                                                    value = r[j]
+                                                    if not value is None:
+                                                        #~ try:
+                                                        if field.data_type == common.INTEGER:
+                                                            value = int(value)
+                                                        elif field.data_type in (common.FLOAT, common.CURRENCY):
+                                                            value = float(value)
+                                                        elif field.data_type == common.BOOLEAN:
+                                                            if value:
+                                                                value = True
+                                                            else:
+                                                                value = False
+                                                        #~ except:
+                                                            #~ pass
+                                                    field.set_data(value)
                                                     j += 1
                                             if item._primary_key and item._primary_key_field.value > max_id:
                                                 max_id = item._primary_key_field.value

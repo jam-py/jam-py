@@ -64,6 +64,17 @@ Now on the project page we will have:
 	:align: center
 	:alt: image_edit.png
 	
+Capturing image from camera
+===========================
+
+You can capture the image from the camera. To do so check the **Capture from camera**
+check box. In this case when the image is not set the video from camera will 
+be displayed instead of the image placeholder. 
+
+Double-click the video to capture the image. To clear an image, hold down the Ctrl 
+key and double-click the image, after that the video will be displayed.
+
+
 Adding file field
 =================
 

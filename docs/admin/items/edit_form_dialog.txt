@@ -92,6 +92,12 @@ edit form
 * **Detail height** - an integer, the height of the details desplayed in the 
   edit form, if not set, the height of the detail table is 260px
 
+* **Buttons on top** - if this check box is checked the buttons are displayed on 
+  the top of the view form, when form has a default form template
+
+* **Modeless form** - if this check box is checked the form will be modeless,
+  otherwise - modal.
+
 
 Click the **OK** button to save to result or **Cancel** to cancel the operation.
 

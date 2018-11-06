@@ -138,6 +138,9 @@ Interface tab for Image field
 * **Edit height**  - specifies the heigth of an image in pixels when it is displayed
   in the edit form. If it not specified the heigth is auto
 
+* **Capture from camera** - if this checkbox is set, the user will be able to 
+  capture image from camera.
+
 * **Placeholder image** - double-click the image to set the placeholder image,
   that will be displayed when field image is not set.
   Hold Ctrl key and double-click the image to clear the placeholder image.
