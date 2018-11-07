@@ -6,14 +6,11 @@ Jam.py framework
 From an idea of a web database application to a live website in no time, for free
 =================================================================================
 
-.. figure:: http://jam-py.com/img/monitor_project.png
-	:width: 400px
+.. figure:: http://jam-py.com/img/jam-github.png
+	:width: 100%
 	:align: center
 	:alt: Online demo
 	:target: http://ms71.pro:1083/
-	:figclass: align-center
-
-	`Online demo <http://ms71.pro:1083/>`_
 
 If you are not a professional programmer or an expert in databases, you can use 
 Jam.py to store, share and analyze your data.
