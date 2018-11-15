@@ -37,7 +37,7 @@ FIELD_TYPES = {
 }
 
 def connect(database, user, password, host, port, encoding, server):
-    return psycopg2.connect(database=database, user=user, password=password, host=host, port=port)
+    return psycopg2.connect(dbname=database, user=user, password=password, host=host, port=port)
 
 get_lastrowid = None
 
