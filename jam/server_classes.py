@@ -12,6 +12,7 @@ import datetime, time
 import traceback
 import inspect
 import json
+from jam.third_party.filelock import FileLock
 
 import jam.common as common
 import jam.db.db_modules as db_modules
@@ -872,6 +873,10 @@ class AbstractServerTask(AbstrTask):
         return self.db_module.connect(self.db_database, self.db_user, \
             self.db_password, self.db_host, self.db_port, self.db_encoding, self.db_server)
 
+    def create_connection_ex(self, db_module, database, user=None, password=None, \
+        host=None, port=None, encoding=None, server=None):
+        return db_module.connect(database, user, password, host, port, encoding, server)
+
     def send_to_pool(self, queue, result_queue, command, params=None, call_proc=False, select=False):
         request = {}
         request['queue'] = result_queue
@@ -926,6 +931,13 @@ class AbstractServerTask(AbstrTask):
 
     def get_module_name(self):
         return str(self.item_name)
+
+    def lock(self, lock_name, timeout=-1):
+        lock_file = os.path.join(self.work_dir, 'locks', lock_name + '.lock')
+        locks_dir = os.path.dirname(lock_file)
+        if not os.path.exists(locks_dir):
+            os.makedirs(locks_dir)
+        return FileLock(lock_file, timeout)
 
     def compile_item(self, item):
         item.module_name = None

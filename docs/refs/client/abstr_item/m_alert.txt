@@ -38,3 +38,12 @@ The ``options`` parameter is an object with the following attributes:
 
 The methods ``alert_error`` and ``alert_success`` are the same as ``alert``
 with the corresponding ``type`` options.
+
+Example
+=======
+
+.. code-block:: js
+
+  item.alert_error('Failed to send the mail: ' + err);
+  item.alert('Successfully sent the mail');	
+

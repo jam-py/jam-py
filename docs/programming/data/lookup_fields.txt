@@ -72,7 +72,9 @@ open method is called, uses one ``JOIN`` clause for all this fields.
 	:alt: Master field example
 	
 When user clicks on the button to the right of the field input or uses typeahead,
-the application creates a copy of the lookup item of the field and
+the application creates a copy of the lookup item of the field, sets its
+:doc:`lookup_field </refs/client/item/at_lookup_field>`
+attribute to the field. and
 triggers 
 :doc:`on_field_select_value </refs/client/item/on_field_select_value>`
 event. Write this event handler to specify fields that will be displayed, 

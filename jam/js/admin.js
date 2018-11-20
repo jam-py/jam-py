@@ -857,7 +857,7 @@ function Events3() { // admin.catalogs.sys_items
 					'f_lookup_values'];//, 'f_alignment', 'f_default'];
 			}
 			else {
-				item.sys_fields.view_options.fields = ['f_name', 'f_field_name',
+				item.sys_fields.view_options.fields = ['f_name', 'f_field_name', 'f_db_field_name',
 					'f_data_type', 'f_size', 'f_required', 'f_read_only', 'f_object',
 					'f_object_field', 'f_master_field', 'f_enable_typehead',
 					'f_lookup_values'];//, 'f_alignment', 'f_default'];
@@ -876,7 +876,7 @@ function Events3() { // admin.catalogs.sys_items
 					'f_lookup_values'];//, 'f_alignment', 'f_default'];
 			}
 			else {
-				item.sys_fields.view_options.fields = ['f_name', 'f_field_name',
+				item.sys_fields.view_options.fields = ['f_name', 'f_field_name', 'f_db_field_name',
 					'f_data_type', 'f_size', 'f_required', 'f_read_only', 'f_object',
 					'f_object_field', 'f_master_field', 'f_enable_typehead',
 					'f_lookup_values'];//, 'f_alignment', 'f_default'];

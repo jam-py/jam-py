@@ -1,3 +1,5 @@
+from __future__ import division
+
 import sys, os
 import datetime
 import traceback
@@ -216,6 +218,7 @@ def execute_sql(db_module, db_server, db_database, db_user, db_password,
 def process_request(parentPID, name, queue, db_type, db_server, db_database, db_user, db_password, db_host, db_port, db_encoding, mod_count):
     con = None
     counter = 0
+    last_date = datetime.datetime.now()
     db_module = db_modules.get_db_module(db_type)
     while True:
         if parentPID and hasattr(os, 'getppid') and os.getppid() != parentPID:
@@ -228,13 +231,19 @@ def process_request(parentPID, name, queue, db_type, db_server, db_database, db_
             call_proc = request['call_proc']
             select = request['select']
             cur_mod_count = request['mod_count']
-            if cur_mod_count != mod_count or counter > 1000:
+            date = datetime.datetime.now()
+            hours = (date - last_date).total_seconds() // 3600
+            if cur_mod_count != mod_count or counter > 1000 or hours >= 1:
                 if con:
-                    con.rollback()
-                    con.close()
+                    try:
+                        con.rollback()
+                        con.close()
+                    except:
+                        pass
                 con = None
                 mod_count = cur_mod_count
                 counter = 0
+            last_date = date
             con, result = execute_sql(db_module, db_server, db_database, db_user, db_password,
                 db_host, db_port, db_encoding, con, command, params, call_proc, select)
             counter += 1

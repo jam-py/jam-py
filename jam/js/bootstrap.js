@@ -749,19 +749,32 @@
 
   function getParent($this) {
     var selector = $this.attr('data-target')
-      , $parent
 
     if (!selector) {
       selector = $this.attr('href')
-      selector = selector && /#/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') //strip for ie7
+      selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
     }
 
-    $parent = selector && $(selector)
+    var $parent = selector && $(selector)
 
-    if (!$parent || !$parent.length) $parent = $this.parent()
-
-    return $parent
+    return $parent && $parent.length ? $parent : $this.parent()
   }
+
+  //~ function getParent($this) {
+    //~ var selector = $this.attr('data-target')
+      //~ , $parent
+
+    //~ if (!selector) {
+      //~ selector = $this.attr('href')
+      //~ selector = selector && /#/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') //strip for ie7
+    //~ }
+
+    //~ $parent = selector && $(selector)
+
+    //~ if (!$parent || !$parent.length) $parent = $this.parent()
+
+    //~ return $parent
+  //~ }
 
 
   /* DROPDOWN PLUGIN DEFINITION

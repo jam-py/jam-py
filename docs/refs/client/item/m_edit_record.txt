@@ -20,9 +20,6 @@ for visuall editing of the record.
 If ``container`` parameter (Jquery object of the DOM element) is specified the
 edit form html template is inserted in the container.
 
-If the :doc:`init_tabs </refs/client/task/m_init_tabs>` method of the task is 
-called for this conainer the tab is created for this form.
-
 The ``edit_record`` method 
 
 * calls the 

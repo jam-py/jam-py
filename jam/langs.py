@@ -59,7 +59,7 @@ def copy_table(cursor, name):
     cursor.execute('INSERT INTO SYS_%s SELECT * FROM LANGS.JAM_%s' % (name, name))
 
 def update_langs(task):
-    with FileLock('langs.lock'):
+    with task.lock('langs'):
         con = task.create_connection()
         try:
             cursor = con.cursor()

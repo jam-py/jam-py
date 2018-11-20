@@ -1,0 +1,131 @@
+=============================================
+How can I use data from other database tables
+=============================================
+
+I can use data from other database tables.
+
+First you must specify table name and fields information.
+You can do it the following way:
+
+* Select project node in the task tree and click **Database** button.
+
+* Set DB manual mode and specify the database connection attributes.
+
+* Import tables information as described in the
+  :doc:`Intergation with existing database </admin/intergation_with_existing_database>`
+  
+* Select project node in the task tree, click **Database** button restore previos values.
+
+Then in the server module of the new items you must add code to read and write 
+the data to the database
+
+Below is the code for MySQL database (auto increameted primary field):
+
+.. code-block:: py
+
+  import MySQLdb
+  from jam.db import mysql
+  
+  def on_open(item, params):
+      connection = item.task.create_connection_ex(mysql, database='demo', \
+          user='root', password='111', host='localhost', encoding='UTF8')
+      try:
+          sql = item.get_select_query(params, mysql)
+          rows = item.task.select(sql, connection, mysql)
+      finally:
+          connection.close()
+      return rows, ''
+  
+  def on_apply(item, delta, params):
+      connection = item.task.create_connection_ex(mysql, database='demo', \
+          user='root', password='111', host='localhost', encoding='UTF8')
+      try:
+          sql = delta.apply_sql(params, mysql)
+          result = item.task.execute(sql, None, connection, mysql)
+      finally:
+          connection.close()
+      return result
+
+If database use generators to get primary field values you must specify them
+for new records (Firebird):
+
+.. code-block:: py
+
+  import fdb
+  from jam.db import firebird
+  
+  def on_open(item, params):
+      connection = item.task.create_connection_ex(firebird, database='demo.fdb', \
+          user='SYSDBA', password='masterkey', encoding='UTF8')
+      try:
+          sql = item.get_select_query(params, firebird)
+          rows = item.task.select(sql, connection, firebird)
+      finally:
+          connection.close()
+      return rows, ''
+  
+  def get_id(table_name, connection):
+      cursor = connection.cursor()
+      cursor.execute('SELECT NEXT VALUE FOR "%s" FROM RDB$DATABASE' % (table_name + '_SEQ'))
+      r = cursor.fetchall()
+      return r[0][0]
+  
+  def on_apply(item, delta, params):
+      connection = item.task.create_connection_ex(firebird, database='demo.fdb', \
+          user='SYSDBA', password='masterkey', encoding='UTF8')
+      for d in delta:
+          if not d.id.value:
+              d.edit()
+              d.id.value = get_id(item.table_name, connection)
+              for detail in d.details:
+                  for r in detail:
+                      if not r.id.value:
+                          r.edit()
+                          r.id.value = get_id(r.table_name, connection)
+                          r.post()
+              d.post()
+      try:
+          sql = delta.apply_sql(params, firebird)
+          result = item.task.execute(sql, None, connection, firebird)
+      finally:
+          connection.close()
+      return result
+
+You can use the task ``on_open`` and ``on_apply`` events. Below is the code
+from task client module:
+
+.. code-block:: py
+
+  import MySQLdb
+  from jam.db import mysql
+  
+  def on_open(item, params):
+      if item.item_name in ['table1', 'table2']: # or
+      #if item.table_name in ['table1', 'table2']:
+        connection = item.task.create_connection_ex(mysql, database='demo', \
+            user='root', password='111', host='localhost', encoding='UTF8')
+        try:
+            sql = item.get_select_query(params, mysql)
+            rows = item.task.select(sql, connection, mysql)
+        finally:
+            connection.close()
+        return rows, ''
+  
+  def on_apply(item, delta, params):
+      if item.item_name in ['table1', 'table2']:  
+        connection = item.task.create_connection_ex(mysql, database='demo', \
+            user='root', password='111', host='localhost', encoding='UTF8')
+        try:
+            sql = delta.apply_sql(params, mysql)
+            result = item.task.execute(sql, None, connection, mysql)
+        finally:
+            connection.close()
+        return result
+
+.. note::
+  Do not set History attribute to True for this tables. If you do so you'll get
+  the exception. History table must be one for all databases that you use in 
+  the project.
+  You can try to create the history table in the other database and write the
+  ``on_open`` and ``on_apply`` event handlers for it.
+

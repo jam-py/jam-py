@@ -1,0 +1,94 @@
+====
+lock
+====
+
+.. py:method:: lock(self, lock_name, timeout=-1)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Task class </refs/server/task_api>`
+
+Description
+===========
+
+Use ``lock`` to implement a platform independent file lock in Python, which 
+provides a simple way of inter-process communication.
+
+This method is a wrapper around Python filelock library:
+https://github.com/benediktschmitt/py-filelock
+
+Once lock has been acquired, subsequent attempts to acquire it block execution, 
+until it is released.
+
+``lock_name`` parameter is the name of the lock. It must be unic in the 
+application. The filelock library creates a file in the *locks* folder with 
+this name and *.lock* extention that it uses to implement the lock.
+
+``timeout`` parameter - if the lock cannot be acquired within timeout seconds, a 
+Timeout exception is raised.
+
+Example
+=======
+
+The code 
+
+.. code-block:: py
+
+  def calculate(item):
+      lock = item.task.lock('calculation'):
+      lock.acquire()
+      try:
+          #some code 
+      finally:
+          lock.release()
+
+is equivalent to
+
+.. code-block:: py
+
+  def calculate(item):
+      with item.task.lock('calculation'):
+          #some code 
+
+The example with timeout:
+
+.. code-block:: py
+
+  from jam.third_party.filelock import Timeout
+
+  def calculate(item):
+    try
+      with item.task.lock('calculation', timeout=10):
+          #some code 
+    except Timeout:
+      print("Another instance of this application currently holds the lock.")    
+          
+
+In the following example when saving invoice the app calculates sold tracks.
+Before doing this it acquires a lock:
+
+.. code-block:: py
+
+  def on_apply(item, delta, params): 
+      with item.task.lock('invoice_saved'):
+          tracks_sql = []
+          delta.update_deleted()    
+          for d in delta:
+              for t in d.invoice_table:
+                  if t.rec_inserted():
+                      sql = "UPDATE DEMO_TRACKS SET TRACKS_SOLD = COALESCE(TRACKS_SOLD, 0) + \
+                      %s WHERE ID = %s" % \
+                      (t.quantity.value, t.track.value)                
+                  elif t.rec_deleted():
+                      sql = "UPDATE DEMO_TRACKS SET TRACKS_SOLD = COALESCE(TRACKS_SOLD, 0) - \
+                      (SELECT QUANTITY FROM DEMO_INVOICE_TABLE WHERE ID=%s) WHERE ID = %s" % \
+                      (t.id.value, t.track.value)
+                  elif t.rec_modified():
+                      sql = "UPDATE DEMO_TRACKS SET TRACKS_SOLD = COALESCE(TRACKS_SOLD, 0) - \
+                      (SELECT QUANTITY FROM DEMO_INVOICE_TABLE WHERE ID=%s) + %s WHERE ID = %s" % \
+                      (t.id.value, t.quantity.value, t.track.value)
+                  tracks_sql.append(sql)                
+          sql = delta.apply_sql()
+          return item.task.execute(tracks_sql + [sql])

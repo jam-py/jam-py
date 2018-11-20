@@ -2,7 +2,7 @@
 Jam.py documentation
 ====================
 
-How the documentation is organized 
+How the documentation is organized
 ==================================
 
 Here is an overview of how the documentation is organized, that 

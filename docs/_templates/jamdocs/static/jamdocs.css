@@ -149,4 +149,7 @@ ul.simple li {
     margin: 0;
 }
 
-
+table.colwidths-given tr,
+table.colwidths-given td {
+    padding: 4px;
+}

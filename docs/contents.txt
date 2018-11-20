@@ -16,4 +16,3 @@ Jam.py documentation contents
     admin/index
     refs/index
     releases/index
-    

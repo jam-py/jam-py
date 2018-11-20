@@ -143,6 +143,9 @@ function Events1() { // demo
 	function on_edit_form_created(item) {
 		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
 		item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
+		if (!item.is_new() && !item.can_modify) {
+			item.edit_form.find("#ok-btn").prop("disabled", true);
+		}
 		
 		if (!item.master && item.owner.on_edit_form_created) {
 			item.owner.on_edit_form_created(item);
@@ -359,6 +362,7 @@ function Events15() { // demo.catalogs.tracks
 		invoices.set_where({id: invoice_table.master_rec_id.value});
 		invoices.open(function(i) {
 			i.edit_options.modeless = false;
+			i.can_modify = false;
 			i.invoice_table.on_after_open = function(t) {
 				t.locate('id', invoice_table.id.value);
 			};
@@ -445,9 +449,14 @@ function Events18() { // demo.journals.invoices.invoice_table
 	
 	function on_view_form_created(item) {
 		var btn = item.add_view_button('Select', {type: 'primary', btn_id: 'select-btn'});
-		btn.click(function() {
-			item.select_records('track');
-		});
+		if (!item.is_new() && !item.can_modify) {
+			btn.prop("disabled", true);
+		}
+		else {
+			btn.click(function() {
+				item.select_records('track');
+			});
+		}
 	}
 	
 	function on_after_append(item) {
@@ -542,7 +551,7 @@ function Events24() { // demo.analytics.dashboard
 				tracks.name.field_caption = 'Track';
 				draw_chart(item, ctx, labels, data, colors, 'Ten most popular tracks');
 				tracks.create_table(item.view_form.find('#tracks-table'), 
-					{row_count: 10, dblclick_edit: false});
+					{row_count: 10, row_line_count: 1, expand_selected_row: 0, dblclick_edit: false});
 			}
 		);
 		return tracks;

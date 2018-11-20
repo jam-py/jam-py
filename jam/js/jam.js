@@ -584,7 +584,6 @@
                             '<div class="header-close-btn"></div>' +
                         '</div>'
                     );
-                    form_header.find('.header-search').show();
                 }
             }
             if (form_type) {
@@ -3195,7 +3194,7 @@
         this.details = [];
         this.controls = [];
         this.change_log = new ChangeLog(this);
-        this._paginate = false;
+        this._paginate = undefined;
         this.disabled = false;
         this.expanded = true;
         this._log_changes = true;
@@ -3209,6 +3208,7 @@
         this._modified = null;
         this._state = 0;
         this._read_only = false;
+        this._can_modify = true;
         this._active = false;
         this._disabled_count = 0;
         this._open_params = {};
@@ -3254,6 +3254,14 @@
             },
             set: function(new_value) {
                 this._set_read_only(new_value);
+            }
+        });
+        Object.defineProperty(this, "can_modify", {
+            get: function() {
+                return this._get_can_modify();
+            },
+            set: function(new_value) {
+                this._can_modify = new_value;
             }
         });
         Object.defineProperty(this, "filtered", {
@@ -3314,7 +3322,7 @@
                 return this.get_keep_history();
             },
         });
-        Object.defineProperty(this, "paginate", { //depricated
+        Object.defineProperty(this, "paginate", {
             get: function() {
                 return this._paginate
             },
@@ -3372,15 +3380,15 @@
         },
 
         can_create: function() {
-            return this.task.has_privilege(this, 'can_create');
+            return this.task.has_privilege(this, 'can_create') && this.can_modify;
         },
 
         can_edit: function() {
-            return this.task.has_privilege(this, 'can_edit');
+            return this.task.has_privilege(this, 'can_edit') && this.can_modify;
         },
 
         can_delete: function() {
-            return this.task.has_privilege(this, 'can_delete');
+            return this.task.has_privilege(this, 'can_delete') && this.can_modify;
         },
 
         _prepare_fields: function() {
@@ -3918,7 +3926,8 @@
                 defaultOptions = {
                     filters: true,
                     details: true,
-                    handlers: true
+                    handlers: true,
+                    paginate: false
                 };
             result = new Item(this.owner, this.ID, this.item_name,
                 this.item_caption, this.visible, this.item_type_id);
@@ -3980,6 +3989,9 @@
             result.edit_options = $.extend({}, this._edit_options);
             result.view_options = $.extend({}, this._view_options);
             result.table_options = $.extend({}, this._table_options);
+            if (options.paginate) {
+                result._paginate = this._paginate;
+            }
             if (options.details) {
                 this.each_detail(function(detail, i) {
                     copyTable = detail._copy(options);
@@ -3987,6 +3999,9 @@
                     copyTable.expanded = detail.expanded;
                     copyTable.master = result;
                     copyTable.item_type = detail.item_type;
+                    if (options.paginate) {
+                        copyTable._paginate = detail._paginate;
+                    }
                     result.details.push(copyTable);
                     result.items.push(copyTable);
                     if (!(copyTable.item_name in result)) {
@@ -5381,6 +5396,14 @@
             });
         },
 
+        _get_can_modify: function() {
+            var result = this._can_modify;
+            if (this.master && !this.master._can_modify) {
+                result = false;
+            }
+            return result;
+        },
+
         _get_read_only: function() {
             if (this.can_edit()) {
                 return this._read_only;
@@ -5815,7 +5838,7 @@
             var tab_id = this.item_name + 0,
                 tab,
                 self = this,
-                copy = this.copy(),
+                copy = this.copy({paginate: true}),
                 content;
             container = this._check_container(container);
             if (this.can_create()) {
@@ -5874,35 +5897,33 @@
         },
 
         _edit_record: function(container, in_tab) {
-            var self = this;
-            if (!this.can_edit()) {
-                this.read_only = true;
+            var self = this,
+                create_form = function() {
+                    if (!self.can_edit()) {
+                        self.read_only = true;
+                    }
+                    if (!self.is_changing()) {
+                        self.edit();
+                    }
+                    self.create_edit_form(container);
+                };
+            if (this.master) {
+                create_form();
             }
-            this.create_edit_form(container);
-            if (!this.is_changing()) {
-                this.edit();
-            }
-            this._focus_form(this.edit_form);
-            if (!this.master) {
-                this.disable_edit_form();
+            else {
+
                 if (!in_tab) {
                     this.refresh_record({details: this.edit_options.edit_details}, function(error) {
-                        self.enable_edit_form();
-                        if (error) {
-                            self.alert_error(error);
-                        }
+                        create_form();
                     });
                 }
                 else if (this.edit_options.edit_details.length) {
                     this.open_details({details: this.edit_options.edit_details}, function(error) {
-                        self.enable_edit_form();
-                        if (error) {
-                            self.alert_error(error);
-                        }
+                        create_form();
                     });
                 }
                 else {
-                    this.enable_edit_form();
+                    create_form();
                 }
             }
         },
@@ -5914,7 +5935,7 @@
                 tab_id = this.item_name + pk_value,
                 tab,
                 self = this,
-                copy = this.copy(),
+                copy = this.copy({paginate: true}),
                 content;
             if (!tab_name) {
                 tab_name = '<i class="icon-edit"></i> ' + this.item_caption;
@@ -5932,6 +5953,7 @@
             });
             if (content) {
                 copy._tab_info = {container: container, tab_id: tab_id}
+                copy.can_modify = this.can_modify;
                 where[pk] = pk_value;
                 copy.set_where(where);
                 copy.open(function() {
@@ -6148,11 +6170,13 @@
                 if (!self._order_by_list.length && self.view_options.default_order) {
                     self.set_order_by(self.view_options.default_order);
                 }
-                if (self.master) {
-                    self.paginate = false;
-                }
-                else {
-                    self.paginate = true;
+                if (self.paginate === undefined) {
+                    if (self.master) {
+                        self.paginate = false;
+                    }
+                    else {
+                        self.paginate = true;
+                    }
                 }
                 self.create_view_form(container);
                 if (self.view_options.enable_search) {
@@ -9581,8 +9605,8 @@
 
             this.sync_freezed();
 
-            if (item._get_active()) {
-                self.do_after_open();
+            if (item.active) {
+                setTimeout(function() { self.do_after_open() }, 0);
             }
         },
 
@@ -10380,7 +10404,7 @@
                         }
                     }
                     self._sorted_fields = sorted_fields.slice();
-                    if (self.item.master || !self.item._paginate) {
+                    if (!self.item._paginate) {
                         self.item._sort(self._sorted_fields);
                     } else {
                         if (self.options.sort_add_primary) {
@@ -11103,85 +11127,93 @@
                 search_field,
                 funcs,
                 params = {};
-            if (!this.item.master) {
-                if (!this.item._paginate) {
-                    this.item.calc_summary(this.item, undefined, undefined, this.options.summary_fields);
+            if (!this.item._paginate) {
+                this.item.calc_summary(this.item, undefined, undefined, this.options.summary_fields);
+            }
+            else {
+                if (this.item.record_count() === 0) {
+                    if (callback) {
+                        callback.call(this, 0);
+                    }
                 }
                 else {
-                    if (this.item.record_count() === 0) {
-                        if (callback) {
-                            callback.call(this, 0);
-                        }
+                    if (this.item.master) {
+                        copy = task.item_by_ID(this.item.prototype_ID).copy({handlers: false, details: false});
                     }
                     else {
                         copy = this.item.copy({handlers: false, details: false});
-                        count_field = copy.fields[0].field_name,
-                        fields = [];
-                        count_fields = [];
-                        sum_fields = [];
-                        funcs = {};
-                        sum_fields.push(count_field);
-                        funcs[count_field] = 'count';
-                        for (i = 0; i < this.options.summary_fields.length; i++) {
-                            field_name = this.options.summary_fields[i];
-                            field = this.item.field_by_name(field_name);
-                            if (field && this.fields.indexOf(field) !== -1) {
-                                fields.push(field_name);
-                                if (field.numeric_field()) {
-                                    sum_fields.push(field_name);
-                                    funcs[field_name] = 'sum';
-                                }
-                                else {
-                                    count_fields.push(field_name);
-                                }
-                            }
-                        }
-                        if (self.item._open_params.__search) {
-                            search_field = this.item._open_params.__search[0];
-                            field = this.item.field_by_name(search_field);
-                            if (field.lookup_item) {
-                                expanded = true;
-                            }
-                            if (sum_fields.indexOf(search_field) === -1) {
-                                sum_fields.push(search_field);
-                                funcs[search_field] = 'count';
+                    }
+                    count_field = copy.fields[0].field_name,
+                    fields = [];
+                    count_fields = [];
+                    sum_fields = [];
+                    funcs = {};
+                    sum_fields.push(count_field);
+                    funcs[count_field] = 'count';
+                    for (i = 0; i < this.options.summary_fields.length; i++) {
+                        field_name = this.options.summary_fields[i];
+                        field = this.item.field_by_name(field_name);
+                        if (field && this.fields.indexOf(field) !== -1) {
+                            fields.push(field_name);
+                            if (field.numeric_field()) {
+                                sum_fields.push(field_name);
+                                funcs[field_name] = 'sum';
                             }
                             else {
-                                search_field = '';
+                                count_fields.push(field_name);
                             }
                         }
-                        for (var key in self.item._open_params) {
-                            if (self.item._open_params.hasOwnProperty(key)) {
-                                if (key.substring(0, 2) !== '__') {
-                                    params[key] = self.item._open_params[key];
-                                }
-                            }
-                        }
-                        params.__summary = true;
-                        if (self.item._open_params.__filters) {
-                            copy._where_list = self.item._open_params.__filters;
-                        }
-                        copy.open({expanded: expanded, fields: sum_fields, funcs: funcs, params: params},
-                            function() {
-                                var i,
-                                    text;
-                                copy.each_field(function(f, i) {
-                                    if (i == 0) {
-                                        total_records = f.value;
-                                    }
-                                    else if (f.field_name !== search_field) {
-                                        self.$foot.find('div.' + f.field_name).text(f.display_text);
-                                    }
-                                });
-                                for (i = 0; i < count_fields.length; i++) {
-                                    self.$foot.find('div.' + count_fields[i]).text(total_records);
-                                }
-                                if (callback) {
-                                    callback.call(this, total_records);
-                                }
-                            }
-                        );
                     }
+                    if (self.item._open_params.__search) {
+                        search_field = this.item._open_params.__search[0];
+                        field = this.item.field_by_name(search_field);
+                        if (field.lookup_item) {
+                            expanded = true;
+                        }
+                        if (sum_fields.indexOf(search_field) === -1) {
+                            sum_fields.push(search_field);
+                            funcs[search_field] = 'count';
+                        }
+                        else {
+                            search_field = '';
+                        }
+                    }
+                    for (var key in self.item._open_params) {
+                        if (self.item._open_params.hasOwnProperty(key)) {
+                            if (key.substring(0, 2) !== '__') {
+                                params[key] = self.item._open_params[key];
+                            }
+                        }
+                    }
+                    params.__summary = true;
+                    if (self.item._open_params.__filters) {
+                        copy._where_list = self.item._open_params.__filters;
+                    }
+                    if (this.item.master) {
+                        copy.ID = this.item.ID
+                        params.__master_id = this.item.master.ID;
+                        params.__master_rec_id = this.item.master.field_by_name(this.item.master._primary_key).value;
+                    }
+                    copy.open({expanded: expanded, fields: sum_fields, funcs: funcs, params: params},
+                        function() {
+                            var i,
+                                text;
+                            copy.each_field(function(f, i) {
+                                if (i == 0) {
+                                    total_records = f.value;
+                                }
+                                else if (f.field_name !== search_field) {
+                                    self.$foot.find('div.' + f.field_name).text(f.display_text);
+                                }
+                            });
+                            for (i = 0; i < count_fields.length; i++) {
+                                self.$foot.find('div.' + count_fields[i]).text(total_records);
+                            }
+                            if (callback) {
+                                callback.call(this, total_records);
+                            }
+                        }
+                    );
                 }
             }
         },
@@ -12302,7 +12334,7 @@
                         $input.dblclick(function(e) {
                             if (self.field.data_type === consts.IMAGE && self.field.owner.is_changing() &&
                                 !self.field.owner.read_only) {
-                                if (e.ctrlKey) {
+                                if (e.ctrlKey || e.metaKey) {
                                     self.field.value = null;
                                 }
                                 else {
@@ -12466,7 +12498,10 @@
                                 self.$input.bind('destroyed', function() {
                                     try {
                                         self.$video[0].srcObject.getVideoTracks().forEach(
-                                            video_track => video_track.stop()
+                                            function(video_track) {
+                                                return video_track.stop();
+                                            }
+                                            //~ video_track => video_track.stop()
                                         );
                                     }
                                     catch (e) {}
@@ -12493,7 +12528,10 @@
                                                     self.$video.hide();
                                                     self.$input.show();
                                                     vid.srcObject.getVideoTracks().forEach(
-                                                        video_track => video_track.stop()
+                                                        function(video_track) {
+                                                            return video_track.stop();
+                                                        }
+                                                        //~ video_track => video_track.stop()
                                                     );
                                                     self.$video.remove();
                                                     self.$video = undefined;

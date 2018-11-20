@@ -2075,7 +2075,7 @@ def server_save_edit(task, item_id, text, is_server):
                 else:
                     error = e.args[0]
             except:
-                error = 'Error'
+                error = str(e).replace('check_item_code, ', '')
                 traceback.print_exc()
     else:
         try:

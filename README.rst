@@ -1,3 +1,22 @@
+
+.. image:: https://img.shields.io/pypi/v/jam.py.svg
+   :target: https://pypi.org/project/jam.py/
+   :alt: Package on PyPI
+
+.. image:: https://img.shields.io/pypi/pyversions/jam.py.svg
+   :target: https://pypi.python.org/pypi/jam.py
+   :alt: Supported Python Versions
+
+.. image:: https://readthedocs.org/projects/jam-py/badge/?version=stable
+   :target: http://jam-py.com/docs/
+   :alt: Documentation Status
+
+.. image:: https://api.travis-ci.org/platipusica/jam-py.png?branch=master
+   :target: http://travis-ci.org/platipusica/jam-py
+   :alt: Build Status (Travis CI)
+
+
+
 ================
 Jam.py framework
 ================
@@ -6,7 +25,9 @@ Jam.py framework
 From an idea of a web database application to a live website in no time, for free
 =================================================================================
 
-.. figure:: http://jam-py.com/img/jam-github.png
+Click on the image to see the online demo
+
+.. figure:: http://jam-py.com/img/monitor_face.png 
 	:width: 100%
 	:align: center
 	:alt: Online demo
@@ -37,21 +58,6 @@ More demos on Heroku:
 
 `Here <https://youtu.be/pQYer6po820>`_ is a video showing how to publish a 
 Jam.py application from GitHub repo on Heroku
-
-User comments
--------------
-
-*Thank you for a very complete and professional product. The fact that it is free 
-is still unbelievable. Your recent updates are fantastic. I use your product 
-daily for providing solutions to clients.*
-
-*Jam.py is really GREAT! Simple, powerful, beautiful.
-It's what I was looking for, for years.
-I was able to  make my personal CRM in no time with it.
-I love the way it works, the browser administration and the code editor.
-This project deserves to become long-living open, a big community and a lot of fame !
-Please, please, tell me that you gonna do everything so that it will be broadly adopted.
-Wish the best and a lot of success to you and to Jam.py!*
 
 Main features
 =============

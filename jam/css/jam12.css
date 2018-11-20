@@ -469,6 +469,10 @@ input.input-text {
     border-left: 0;
 }
 
+.inner-table tr:first-child td {
+    border-top: 0;
+}
+
 .dbtable.freezed thead,
 .dbtable.freezed tfoot {
     background-color: white;
@@ -777,7 +781,6 @@ input.input-text {
 }
 
 .header-search {
-    display: none;
     flex-grow: 0;
 }
 

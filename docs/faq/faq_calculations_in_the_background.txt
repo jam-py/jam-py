@@ -1,0 +1,44 @@
+================================================
+How can I perform calculations in the background
+================================================
+
+You can use this code in the task server module to run a background thread in 
+the web application once a 3 minutes (can be changed by setting interval) 
+to perform some calculations:
+
+.. code-block:: py
+
+  import threading
+  import time
+  import traceback
+  
+  def background(task):
+      interval = 3 * 60
+      time.sleep(interval)
+      while True:
+          if not time:
+              return
+          with task.lock('background'):
+              try:
+                  print('background')            
+                  # some code to execute in background for example:
+                  # tracks = task.tracks.copy()
+                  # tracks.open()
+                  # for t in tracks:
+                  #     t.edit()
+                  #     t.sold.value = #some value
+                  #     t.post()
+                  # tracks.apply()    
+              except Exception as e:
+                  traceback.print_exc()
+          time.sleep(interval)
+  
+  def on_created(task):
+      bg = threading.Thread(target=background, args=(task,))
+      bg.daemon = True
+      bg.start()
+
+.. note::
+  When multiple web applications are running in parallel processes, the background 
+  function will be executed in each process. To prevent simultaneous execution 
+  of this function, we use the lock method of the task.

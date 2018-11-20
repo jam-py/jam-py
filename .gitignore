@@ -21,7 +21,7 @@ docs/_build/
 !/setup.py
 /*.html
 dist/
-aux/
+tools/
 doc/_build/
 os
 jam*.zip
