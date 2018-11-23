@@ -454,7 +454,7 @@ input.input-text {
 }
 
 .form-header .btn + .btn,
-.form-header .btn-group + .btn {
+.form-header .btn + .btn-group {
   margin-bottom: 0;
   margin-left: 5px;
 }

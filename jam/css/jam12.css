@@ -654,7 +654,8 @@ input.input-text {
   clear: both;
 }
 
-.form-header .btn + .btn {
+.form-header .btn + .btn,
+.form-header .btn + .btn-group {
   margin-bottom: 0;
   margin-left: 5px;
 }
@@ -688,7 +689,8 @@ input.input-text {
   clear: both;
 }
 
-.form-footer .btn + .btn {
+.form-footer .btn + .btn,
+.form-footer .btn-group + .btn {
   margin-bottom: 0;
   margin-left: 5px;
 }

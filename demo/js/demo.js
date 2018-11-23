@@ -47,50 +47,60 @@ function Events1() { // demo
 	} 
 	
 	function on_view_form_created(item) {
-		var table_height = item.table_options.height, 
-			height,
-			detail,
-			detail_container;
+		var table_options_height = item.table_options.height,
+			table_container;
 	
 		item.clear_filters();
+		
+		item.view_options.table_container_class = 'view-table';
+		item.view_options.detail_container_class = 'view-detail';
+		item.view_options.open_item = true;
+		if (item.virtual_table) {
+			item.view_options.open_item = true;
+		}
 		if (item.view_form.hasClass('modal')) {
 			item.view_options.width = 1060;
-			table_height = $(window).height() - 300;
+			item.table_options.height = $(window).height() - 300;
 		}
 		else {
-			if (!table_height) {
-				table_height = $(window).height() - $('body').height() - 20;
+			if (!item.table_options.height) {
+				item.table_options.height = $(window).height() - $('body').height() - 20;
 			}
 		}
+		
 		if (item.can_create()) {
-			item.view_form.find("#new-btn").on('click.task', function(e) { 
+			item.view_form.find("#new-btn").on('click.task', function(e) {
 				e.preventDefault();
 				if (item.master) {
 					item.append_record();
 				}
 				else {
-					item.insert_record();				
+					item.insert_record();
 				}
 			});
 		}
 		else {
 			item.view_form.find("#new-btn").prop("disabled", true);
 		}
-		
-		item.view_form.find("#edit-btn").on('click.task', function(e) { 
+	
+		item.view_form.find("#edit-btn").on('click.task', function(e) {
 			e.preventDefault();
 			item.edit_record();
 		});
-		
+	
 		if (item.can_delete()) {
-			item.view_form.find("#delete-btn").on('click.task', function(e) { 
+			item.view_form.find("#delete-btn").on('click.task', function(e) {
 				e.preventDefault();
-				item.delete_record(); 
+				item.delete_record();
 			});
 		}
 		else {
 			item.view_form.find("#delete-btn").prop("disabled", true);
 		}
+		
+		create_print_btns(item);
+	
+		task.view_form_created(item);
 		
 		if (!item.master && item.owner.on_view_form_created) {
 			item.owner.on_view_form_created(item);
@@ -100,33 +110,14 @@ function Events1() { // demo
 			item.on_view_form_created(item);
 		}
 		
-		if (item.view_form.find(".view-table").length) {
-			if (item.view_options.view_detail) {
-				detail_container = item.view_form.find('.view-detail');
-				if (detail_container) {
-					height = item.view_options.detail_height;
-					if (!height) {
-						height = 200;
-					}
-					item.create_detail_table(detail_container, {height: height});
-					table_height -= height;
-				}
-			}
-			if (item.master) {
-				table_height = item.master.edit_options.detail_height;
-				if (!table_height) {
-					table_height = 260;
-				}
-			}
-			if (!item.table_options.height) {
-				item.table_options.height = table_height;
-			}
-			item.create_table(item.view_form.find(".view-table"));
-			if (!item.master && !item.virtual_table) {
-				item.open(true);
-			}
+		item.create_view_tables();
+		if (!item.master && item.view_options.open_item) {
+			item.open(true);
 		}
-		create_print_btns(item);
+	
+		if (!table_options_height) {
+			item.table_options.height = undefined;
+		}
 		return true;
 	}
 	
@@ -135,17 +126,22 @@ function Events1() { // demo
 	}
 	
 	function on_view_form_closed(item) {
-		if (!item.master && !item.virtual_table) {
+		if (item.view_options.open_item) {
 			item.close();
 		}
 	}
 	
 	function on_edit_form_created(item) {
+		item.edit_options.inputs_container_class = 'edit-body';
+		item.edit_options.detail_container_class = 'edit-detail';
+		
 		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
 		item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
 		if (!item.is_new() && !item.can_modify) {
 			item.edit_form.find("#ok-btn").prop("disabled", true);
 		}
+		
+		task.edit_form_created(item);
 		
 		if (!item.master && item.owner.on_edit_form_created) {
 			item.owner.on_edit_form_created(item);
@@ -155,8 +151,8 @@ function Events1() { // demo
 			item.on_edit_form_created(item);
 		}
 			
-		item.create_inputs(item.edit_form.find(".edit-body"));
-		item.create_detail_views(item.edit_form.find(".edit-detail"));
+		item.create_inputs(item.edit_form.find('.' + item.edit_options.inputs_container_class));
+		item.create_detail_views(item.edit_form.find('.' + item.edit_options.detail_container_class));
 	
 		return true;
 	}
@@ -184,7 +180,6 @@ function Events1() { // demo
 	
 	function on_filter_form_created(item) {
 		item.filter_options.title = item.item_caption + ' - filters';
-		// item.filter_options.close_focusout = true;
 		item.create_filter_inputs(item.filter_form.find(".edit-body"));
 		item.filter_form.find("#cancel-btn").on('click.task', function() {
 			item.close_filter_form(); 
@@ -322,7 +317,7 @@ function Events15() { // demo.catalogs.tracks
 
 	function on_view_form_created(item) {
 		if (!item.lookup_field) {
-			item.table_options.height = $(window).height() - $('body').height() - 220;
+			item.table_options.height -= 200;
 			item.invoice_table = task.invoice_table.copy();
 			item.invoice_table.paginate = false;
 			item.invoice_table.create_table(item.view_form.find('.view-detail'), {

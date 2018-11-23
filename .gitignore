@@ -22,6 +22,8 @@ docs/_build/
 /*.html
 dist/
 tools/
+locks/
+tests/
 doc/_build/
 os
 jam*.zip
