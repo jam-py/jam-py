@@ -2,7 +2,7 @@
 select_records
 ==============
 
-.. js:function:: select_records(source, fields)
+.. js:function:: select_records(field_name, all_records)
 
 **domain**: client 
 
@@ -19,7 +19,11 @@ lookup item of a field.
 For example, this method is used in the Demo application to add tracks to an 
 invoice by selecting them from Tracks catalog.
 
-The ``field`` parameter is a field name of a lookup field of the item
+Parameters:
+
+* The ``field_name`` parameter is a field name of a lookup field of the item
+* If the ``all_records`` parameter is set to true, all selected records are added, 
+  otherwise the method omits existing records (they were selected earlier).
 
 Example
 =======

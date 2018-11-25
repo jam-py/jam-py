@@ -230,7 +230,7 @@ class DBField(object):
                         value = 0
                     elif self.data_type == common.BOOLEAN:
                         value = False
-                    elif self.data_type == common.TEXT:
+                    elif self.data_type in [common.TEXT, common.LONGTEXT]:
                         value = ''
                     elif self.data_type == common.KEYS:
                         value = [];

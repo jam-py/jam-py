@@ -6590,48 +6590,64 @@
             return result;
         },
 
-        select_records: function(field, fields) {
+        select_records: function(field_name, all_records) {
             var self = this,
-                field = this.field_by_name(field),
+                field = this.field_by_name(field_name),
                 source;
-            source = field.lookup_item.copy()
-            source.selections = [];
-            source.on_view_form_close_query = function() {
-                var copy = source.copy(),
-                    pk_in = copy._primary_key + '__in',
-                    where = {};
-                if (source.selections.length) {
-                    where[pk_in] = source.selections;
-                    copy.set_where(where);
-                    copy.lookup_field = field
-                    copy.open(function() {
-                        var rec_no = self.rec_no;
-                        self.disable_controls();
-                        try {
-                            copy.each(function(c){
-                                self.append();
-                                copy.set_lookup_field_value();
-                                self.post();
-                            });
-                        }
-                        catch (e) {
-                            console.error(e);
-                        }
-                        finally {
-                            if (rec_no === null) {
-                                self.first();
+            if (this.can_modify) {
+                source = field.lookup_item.copy()
+                source.selections = [];
+                source.on_view_form_close_query = function() {
+                    var copy = source.copy(),
+                        pk_in = copy._primary_key + '__in',
+                        where = {};
+                    if (source.selections.length) {
+                        where[pk_in] = source.selections;
+                        copy.set_where(where);
+                        copy.lookup_field = field
+                        copy.open(function() {
+                            var rec_no = self.rec_no,
+                                last_rec_no,
+                                found,
+                                pk_field = copy.field_by_name(copy._primary_key),
+                                clone = self.clone();
+                            self.disable_controls();
+                            self.last();
+                            last_rec_no = self.rec_no;
+                            try {
+                                copy.each(function(c){
+                                    if (all_records || !clone.locate(field_name, pk_field.value)) {
+                                        found = true;
+                                        self.append();
+                                        c.set_lookup_field_value();
+                                        self.post();
+                                    }
+                                });
                             }
-                            else {
-                                self.rec_no = rec_no;
+                            catch (e) {
+                                console.error(e);
                             }
-                            self.enable_controls();
-                            self.update_controls();
-                        }
-                    })
+                            finally {
+                                if (found) {
+                                    if (last_rec_no) {
+                                        self.rec_no = last_rec_no + 1;
+                                    }
+                                    else {
+                                        self.first();
+                                    }
+                                }
+                                else {
+                                    self.rec_no = rec_no;
+                                }
+                                self.enable_controls();
+                                self.update_controls();
+                            }
+                        })
+                    }
                 }
+                source.lookup_field = field;
+                source.view();
             }
-            source.lookup_field = field;
-            source.view();
         },
 
         _detail_changed: function(detail, modified) {
@@ -7804,6 +7820,9 @@
                             value = 0;
                             break;
                         case consts.TEXT:
+                            value = '';
+                            break;
+                        case consts.LONGTEXT:
                             value = '';
                             break;
                         case consts.BOOLEAN:
