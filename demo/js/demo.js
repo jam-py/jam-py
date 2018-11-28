@@ -111,6 +111,7 @@ function Events1() { // demo
 		}
 		
 		item.create_view_tables();
+		
 		if (!item.master && item.view_options.open_item) {
 			item.open(true);
 		}
