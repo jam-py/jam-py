@@ -4955,8 +4955,8 @@
             this._set_item_state(consts.STATE_INSERT);
             this._dataset.push(this.new_record());
             this._cur_row = this._dataset.length - 1;
-            this._set_record_status();
-            this.update_controls();
+            this._set_record_status(consts.RECORD_INSERTED);
+            this.update_controls(consts.UPDATE_APPEND);
             this._do_after_scroll();
             this._do_after_append();
         },
@@ -4982,7 +4982,7 @@
             this._cur_row = 0;
             this._modified = false;
             this._set_record_status(consts.RECORD_INSERTED);
-            this.update_controls();
+            this.update_controls(consts.UPDATE_INSERT);
             this._do_after_scroll();
             this._do_after_append();
         },
@@ -5052,13 +5052,14 @@
                 }
             } else if (this._get_item_state() === consts.STATE_INSERT) {
                 this.change_log.remove_record_log();
+                this.update_controls(consts.UPDATE_DELETE);
                 this._dataset.splice(this.rec_no, 1);
             } else {
                 throw language.cancel_invalid_state.replace('%s', this.item_name);
             }
 
             prev_state = this._get_item_state();
-            this._canceling = true;
+            this._disabled_count += 1;
             try {
                 this._set_item_state(consts.STATE_BROWSE);
                 if (prev_state === consts.STATE_INSERT) {
@@ -5078,10 +5079,9 @@
                         self._detail_changed(d);
                     });
                 }
-                this.update_controls();
             }
             finally {
-                this._canceling = false;
+                this._disabled_count -= 1;
             }
         },
 
@@ -5133,6 +5133,7 @@
             try {
                 this._do_before_delete();
                 this._do_before_scroll();
+                this.update_controls(consts.UPDATE_DELETE);
                 this.change_log.log_change();
                 if (this.master) {
                     this.master._set_modified(true);
@@ -5150,7 +5151,6 @@
             } finally {
                 this._set_item_state(consts.STATE_BROWSE);
             }
-            this.update_controls();
         },
 
         detail_by_ID: function(ID) {
@@ -5247,6 +5247,12 @@
                 }
             }
             else if (callback) {
+                //~ if (this.on_before_apply) {
+                    //~ this.on_before_apply.call(this, this);
+                //~ }
+                //~ if (this.on_after_apply) {
+                    //~ this.on_after_apply.call(this, this);
+                //~ }
                 if (callback) {
                     callback.call(this);
                 }
@@ -9590,7 +9596,6 @@
             }
             this.item = item;
             this.id = item.task._grid_id++;
-            this.datasource = [];
             this.$container = container;
             this.form = container.closest('.jam-form');
             this.$container.css('position', 'relative');
@@ -9917,7 +9922,7 @@
                         $tf.width(cell_width);
                         $tf.find('div').width(cell_width);
                     }
-                    this.sync_col_width();
+                    this.syncColWidth();
                 }
             }
         },
@@ -10341,7 +10346,7 @@
                     $th.find('div').width(cellWidth);
                     $tf.width(cellWidth);
                     $tf.find('div').width(cellWidth);
-                    self.master_table.sync_col_width();
+                    self.master_table.syncColWidth();
                     self.master_table.sync_freezed();
                 }
                 else {
@@ -10351,7 +10356,7 @@
                     $title.find('div').width(cellWidth);
                     $tf.width(cellWidth);
                     $tf.find('div').width(cellWidth);
-                    self.sync_col_width();
+                    self.syncColWidth();
                 }
                 self.sync_freezed();
             }
@@ -10793,7 +10798,7 @@
                 editor,
                 $div,
                 $td,
-                $row = this.row_by_record();
+                $row = this.itemRow();
             if ($row && this.can_edit() && !this.editing && this.selectedField &&
                 this.selected_field_visible() && this.item.record_count()) {
                 if (!this.item.is_changing()) {
@@ -11112,6 +11117,27 @@
                 case consts.UPDATE_PAGE_CHANGED:
                     this.do_after_open(true);
                     break;
+                case consts.UPDATE_CANCEL:
+                    this.refreshRow();
+                    break;
+                case consts.UPDATE_APPEND:
+                    row = this.addNewRow();
+                    this.$table.append(row);
+                    this.syncronize();
+                    this.syncColWidth();
+                    if (this.item.controls_enabled() && this.item.record_count() === 1) {
+                        this.build();
+                    }
+                    break;
+                case consts.UPDATE_INSERT:
+                    row = this.addNewRow();
+                    this.$table.prepend(row);
+                    this.syncronize();
+                    this.syncColWidth();
+                    break;
+                case consts.UPDATE_DELETE:
+                    this.deleteRow();
+                    break;
                 case consts.UPDATE_SCROLLED:
                     this.syncronize();
                     break;
@@ -11246,7 +11272,7 @@
 
         update_field: function(field, refreshingRow) {
             var self = this,
-                row = this.row_by_record(),
+                row = this.itemRow(),
                 update,
                 build,
                 html,
@@ -11270,49 +11296,33 @@
 
         update_selected: function(row) {
             if (!row) {
-                row = this.row_by_record();
+                row = this.itemRow();
             }
             if (this.options.row_callback) {
                 this.options.row_callback(row, this.item);
             }
         },
 
-        delete_row: function() {
-            var index,
-                row;
-            for (var i = 0; i < this.datasource.length; i++) {
-                if (this.datasource[i][0] === this.item.rec_no) {
-                    index = i;
-                    break;
-                }
-            }
-            row = this.datasource[index][1]
-            row.remove();
-            for (var i = index; i < this.datasource.length; i++) {
-                this.datasource[i][0] -= 1;
-            }
-            this.sync_col_width();
+        deleteRow: function() {
+            var $row = this.itemRow();
+            $row.remove();
+            this.syncColWidth();
         },
 
-        record_by_row: function(row) {
-            for (var i = 0; i < this.datasource.length; i++) {
-                if (this.datasource[i][1] === row[0]) {
-                    return this.datasource[i][0]
+        itemRow: function() {
+            if (this.item.record_count()) {
+                try {
+                    var info = this.item.rec_controls_info(),
+                        row = $(info[this.id]);
+                    this.update_selected(row);
+                    return row;
+                } catch (e) {
+                    console.log(e);
                 }
             }
         },
 
-        row_by_record: function() {
-            if (this.item.rec_count) {
-                for (var i = 0; i < this.datasource.length; i++) {
-                    if (this.datasource[i][0] === this.item.rec_no) {
-                        return $(this.datasource[i][1])
-                    }
-                }
-            }
-        },
-
-        refresh_row: function() {
+        refreshRow: function() {
             var self = this;
             this.each_field(function(field, i) {
                 self.update_field(field, true);
@@ -11343,7 +11353,7 @@
             if (this.can_edit()) {
                 this.setSelectedField(this.item.field_by_name(td.data('field_name')));
             }
-            rec = this.record_by_row($row);
+            rec = this.item._dataset.indexOf($row.data("record"));
             if (this.editMode && rec !== this.item.rec_no) {
                 if (!this.item.is_edited()) {
                     this.item.edit();
@@ -11433,13 +11443,13 @@
                 rowChanged,
                 $row;
             if (this.item.controls_enabled() && this.item.record_count() > 0) {
-                $row = this.row_by_record();
+                $row = this.itemRow();
                 rowChanged = !this.selected_row || (this.selected_row && $row && this.selected_row.get(0) !== $row.get(0));
                 if (rowChanged && this.can_edit()) {
                     this.hide_editor();
                 }
                 try {
-                    this.select_row(this.row_by_record());
+                    this.select_row(this.itemRow());
                 } catch (e) {}
 
                 if (rowChanged && this.can_edit() && this.editMode) {
@@ -11575,7 +11585,7 @@
                     case 32:
                         e.preventDefault();
                         if (this.options.multiselect) {
-                            multi_sel = this.row_by_record().find('input.multi-select');
+                            multi_sel = this.itemRow().find('input.multi-select');
                             this.selections_set_selected(!multi_sel[0].checked);
                             multi_sel.prop('checked', this.selections_get_selected());
                         }
@@ -11775,7 +11785,20 @@
             }
         },
 
-        new_column: function(columnName, align, text, index, setFieldWidth) {
+        addNewRow: function() {
+            var $row = $(this.newRow()),
+                rec = this.item._get_rec_no(),
+                info;
+            $row.data("record", this.item._dataset[rec]);
+            info = this.item.rec_controls_info();
+            info[this.id] = $row.get(0);
+            if (this.options.row_callback) {
+                this.options.row_callback($row, this.item);
+            }
+            return $row;
+        },
+
+        newColumn: function(columnName, align, text, index, setFieldWidth) {
             var cellWidth = this.getCellWidth(columnName),
                 classStr = 'class="' + columnName + '"',
                 dataStr = 'data-field_name="' + columnName + '"',
@@ -11795,7 +11818,7 @@
                 '</td>';
         },
 
-        new_row: function() {
+        newRow: function() {
             var f,
                 i,
                 len,
@@ -11812,7 +11835,7 @@
                 if (this.selections_get_selected()) {
                     checked = 'checked';
                 }
-                rowStr += this.new_column('multi-select', 'center', '<input class="multi-select" type="checkbox" ' + checked + ' tabindex="-1">', -1, setFieldWidth);
+                rowStr += this.newColumn('multi-select', 'center', '<input class="multi-select" type="checkbox" ' + checked + ' tabindex="-1">', -1, setFieldWidth);
             }
             for (i = 0; i < len; i++) {
                 field = this.fields[i];
@@ -11822,7 +11845,7 @@
                 }
                 text = this.get_field_html(f);
                 align = f.data_type === consts.BOOLEAN ? 'center' : align_value[f.alignment]
-                rowStr += this.new_column(f.field_name, align, text, i, setFieldWidth);
+                rowStr += this.newColumn(f.field_name, align, text, i, setFieldWidth);
             }
             rowStr += '<td class="fake-column" style="display: None;"></td>'
             return '<tr class="inner">' + rowStr + '</tr>';
@@ -11839,7 +11862,7 @@
             }
         },
 
-        sync_col_width: function(all_cols) {
+        syncColWidth: function(all_cols) {
             var $row,
                 field,
                 $th,
@@ -11880,13 +11903,13 @@
                         this.$head.find('th.' + 'fake-column').show();
                         this.$table.find('td.' + 'fake-column').show();
                         this.set_saved_width($row, true);
-                        this.sync_col_width(true);
+                        this.syncColWidth(true);
                     }
                     else {
                         this.$head.find('th.' + 'fake-column').hide();
                         this.$table.find('td.' + 'fake-column').hide();
                         //~ this.set_saved_width($row, true);
-                        //~ this.sync_col_width(true);
+                        //~ this.syncColWidth(true);
                     }
                 }
             }
@@ -11914,39 +11937,40 @@
             }
         },
 
-        fill_datasource: function() {
-            var self = this,
-                clone = this.item.clone(true);
-            this.datasource = [];
-            clone.each(function(c) {
-                self.datasource.push([c.rec_no, null]);
-            });
-        },
-
         fill_rows: function() {
             var i,
                 len,
                 row,
                 rows,
                 rec,
-                item_rec_no;
+                item_rec_no,
+                rec_nos = [],
+                info,
+                clone = this.item.clone(true);
+            clone.on_field_get_text = this.item.on_field_get_text;
             rows = ''
             item_rec_no = this.item.rec_no;
             try {
-                len = this.datasource.length;
-                for (i = 0; i < len; i++) {
-                    this.item._cur_row = this.datasource[i][0];
-                    row = this.new_row();
-                    rows += row;
-                    this.datasource[i][1] = row;
-                    if (this.options.row_callback) {
-                        this.options.row_callback(row, this.item);
-                    }
+                while (!clone.eof()) {
+                    this.item._cur_row = clone._cur_row;
+                    rows += this.newRow();
+                    rec_nos.push(clone._get_rec_no());
+                    clone.next();
                 }
                 this.$table.html(rows);
                 rows = this.$table.find("tr");
+                len = rows.length;
                 for (i = 0; i < len; i++) {
-                    this.datasource[i][1] = rows[i];
+                    row = rows.eq(i);
+                    rec = rec_nos[i]
+                    clone._set_rec_no(rec);
+                    this.item._cur_row = rec;
+                    row.data("record", clone._dataset[rec]);
+                    info = clone.rec_controls_info();
+                    info[this.id] = row.get(0);
+                    if (this.options.row_callback) {
+                        this.options.row_callback(row, this.item);
+                    }
                 }
             } finally {
                 this.item._cur_row = item_rec_no;
@@ -11972,7 +11996,7 @@
                 is_focused,
                 is_visible = this.$table.is(':visible'),
                 editable_val,
-                //~ clone = this.item.clone(true),
+                clone = this.item.clone(true),
                 container = $('<div>');
 
             if (fill_rows === undefined) {
@@ -12004,7 +12028,6 @@
                 this.$foot.hide();
                 this.$outer_table.find('#top-td').attr('colspan', this.colspan);
 
-                this.fill_datasource();
                 this.fill_rows();
             }
 
@@ -12054,7 +12077,7 @@
             } else {
                 this.fill_title(container);
                 this.fill_footer(container);
-                this.sync_col_width();
+                this.syncColWidth();
             }
 
             if (this.options.show_footer) {
@@ -12083,7 +12106,7 @@
             this.init_fields();
             this.field_width_updated = false;
             this.refresh();
-            this.sync_col_width();
+            this.syncColWidth();
             this.$scroll_div.scrollTop(scroll_top);
             this.syncronize();
         },
@@ -12594,9 +12617,6 @@
                 self = this,
                 is_changing = this.is_changing;
             if (this.field.field_kind === consts.ITEM_FIELD) {
-                if (this.field.owner._canceling) {
-                    return;
-                }
                 is_changing = this.field.owner.is_changing();
                 if (!this.field.owner.active || this.field.owner.record_count() === 0) {
                     this.read_only = true;

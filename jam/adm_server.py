@@ -14,7 +14,7 @@ from operator import itemgetter
 from esprima import parseScript, nodes
 
 import jam.common as common
-from jam.common import error_message
+from jam.common import error_message, file_read, file_write
 import jam.db.db_modules as db_modules
 from jam.server_classes import *
 from jam.events import get_events
@@ -1111,8 +1111,7 @@ def server_set_project_langage(task, lang):
     it.apply()
 
     file_name = 'index.html'
-    with open(file_name, 'r') as f:
-        data = to_unicode(f.read(), 'utf-8')
+    data = file_read(file_name)
     start = data.find('__$_')
     label_list = []
     while start > -1:
@@ -1127,8 +1126,7 @@ def server_set_project_langage(task, lang):
             data = data.replace(search, task.language(replace))
         except:
             pass
-    with open(file_name, 'wb') as f:
-        f.write(to_bytes(data, 'utf8'))
+    file_write(file_name, data)
     register_events(task)
 
 def server_update_has_children(task):
@@ -1202,8 +1200,7 @@ def server_export_task(task, task_id, url=None):
             os.rename(to_unicode(file_name, 'utf-8'), os.path.join(to_unicode(result_path, 'utf-8'), to_unicode(result_file, 'utf-8')))
             result = '%s/static/_internal/%s' % (url, result_file)
         else:
-            with open(file_name, 'r') as f:
-                result = f.read()
+            result = file_read(file_name)
     finally:
         if os.path.exists(task_file):
             os.remove(task_file)
@@ -1242,8 +1239,7 @@ def import_metadata(task, task_id, file_name, from_client=False):
 
     def get_items(dir):
         file_name = os.path.join(dir, 'task.dat')
-        with open(file_name, 'r' ) as f:
-            data = f.read()
+        data = file_read(file_name)
         data_lists = json.loads(data)
         new_items = {}
         old_items = {}
@@ -1894,8 +1890,7 @@ def update_events_code(task):
                 else:
                     script = script_start + script + script_end
                     cur_js_filename = js_filename
-                    with open(file_name, 'wb') as f:
-                        f.write(to_bytes(script, 'utf-8'))
+                    file_write(file_name, script)
                     if common.SETTINGS['COMPRESSED_JS']:
                         minify(file_name)
             js_filenames[it.id.value] = cur_js_filename
@@ -1905,8 +1900,7 @@ def update_events_code(task):
         js_filenames[it.id.value] = js_file_name
         script = script_start + script_common + script_end
         file_name = os.path.join(to_unicode(os.getcwd(), 'utf-8'), 'js', js_file_name)
-        with open(file_name, 'wb') as f:
-            f.write(to_bytes(script, 'utf-8'))
+        file_write(file_name, script)
         if common.SETTINGS['COMPRESSED_JS']:
             minify(file_name)
     sql = []
@@ -1927,10 +1921,8 @@ def get_minified_name(file_name):
 def minify(file_name):
     min_file_name = get_minified_name(file_name)
     from jam.third_party.jsmin import jsmin
-    with open(file_name, 'r') as f:
-        text = f.read()
-    with open(min_file_name, 'w') as f:
-        f.write(jsmin(text))
+    text = file_read(file_name)
+    file_write(min_file_name, jsmin(text))
 
 def get_field_dict(task, item_id, parent_id, type_id, table_id):
     result = {}
@@ -2126,8 +2118,7 @@ def server_file_info(task, file_name):
         ext = 'css'
         file_path = os.path.join('css', 'project.css')
     if os.path.exists(file_path):
-        with open(file_path, 'r') as f:
-            result['doc'] = f.read()
+        result['doc'] = file_read(file_path)
     result['name'] = file_name
     result['ext'] = ext
     result['type'] = ''
@@ -2135,15 +2126,14 @@ def server_file_info(task, file_name):
     return result
 
 def server_save_file(task, file_name, code):
-    code = to_bytes(code, 'utf-8')
+    #~ code = to_bytes(code, 'utf-8')
     result = {}
     error = ''
     if file_name == 'project.css':
         file_name = os.path.join('css', 'project.css')
     file_name = os.path.normpath(file_name)
     try:
-        with open(file_name, 'wb') as f:
-            f.write(to_bytes(code, 'utf-8'))
+        file_write(file_name, code)
     except Exception as e:
         traceback.print_exc()
         error = error_message(e)
@@ -2256,12 +2246,10 @@ def change_theme(task):
     else:
         rlist.append(('jam12.css', 'jam.css'))
     file_name = os.path.join(task.work_dir, 'index.html')
-    with open(file_name, 'r') as f:
-        content = f.read()
-        for r1, r2 in rlist:
-            content = content.replace(prefix + r1, prefix + r2)
-    with open(file_name, 'wb') as f:
-        f.write(to_bytes(content, 'utf-8'))
+    content = file_read(file_name)
+    for r1, r2 in rlist:
+        content = content.replace(prefix + r1, prefix + r2)
+    file_write(file_name, content)
 
 def do_on_apply_param_changes(item, delta, params):
     task = item.task

@@ -1,0 +1,9 @@
+==============
+Version 5.4.30
+==============
+
+* Bug when creating a new project on some systems, related to encoding, fixed
+
+* Greek language added
+
+* Some minor bugs fixed 

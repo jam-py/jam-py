@@ -8,12 +8,13 @@ import locale
 import decimal
 import zipfile
 import gzip
+import io
 try:
     from cStringIO import StringIO
 except ImportError:
     from io import BytesIO as StringIO
 
-from werkzeug._compat import to_unicode, to_bytes
+from werkzeug._compat import to_unicode, to_bytes, PY2
 
 DEFAULT_SETTINGS = {
     'LANGUAGE': 1,
@@ -487,6 +488,22 @@ def compressBuf(buf):
     zfile.write(buf.encode())
     zfile.close()
     return zbuf.getvalue()
+
+def file_read(filename):
+    if PY2:
+        with io.open(filename, 'r') as f:
+            return f.read()
+    else:
+        with open(filename, 'r') as f:
+            return f.read()
+
+def file_write(filename, data):
+    if PY2:
+        with io.open(filename, 'w') as f:
+            f.write(data)
+    else:
+        with open(filename, 'w') as f:
+            f.write(data)
 
 def profileit(func):
     import cProfile

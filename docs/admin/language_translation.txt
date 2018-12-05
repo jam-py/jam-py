@@ -5,9 +5,15 @@ Language translation
 All language translations are stored in the langs.sqlite database in the "jam" 
 folder in the package.
 
-Therefore, if you made some changes to the translation database and installed a 
-new version of the package, you will use the translation database of this package 
-where there will be no changes made by you.
+.. note::
+
+  .. role:: red
+  
+  Therefore, if you made some changes to the translation database and installed a 
+  new version of the package, you will use the translation database of this package 
+  where **there will be no changes made by you**.
+  
+  **Please, export you translation to a file!!!**
 
 If you want your language translation to be included to Jam.py package,
 export it to a file and send it me, Andrew Yushev. 
