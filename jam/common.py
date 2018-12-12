@@ -14,7 +14,7 @@ try:
 except ImportError:
     from io import BytesIO as StringIO
 
-from werkzeug._compat import to_unicode, to_bytes, PY2
+from werkzeug._compat import to_unicode, to_bytes
 
 DEFAULT_SETTINGS = {
     'LANGUAGE': 1,
@@ -490,20 +490,12 @@ def compressBuf(buf):
     return zbuf.getvalue()
 
 def file_read(filename):
-    if PY2:
-        with io.open(filename, 'r') as f:
-            return f.read()
-    else:
-        with open(filename, 'r') as f:
-            return f.read()
+    with open(filename, 'rb') as f:
+        return to_unicode(f.read(), 'utf-8', errors='ignore')
 
 def file_write(filename, data):
-    if PY2:
-        with io.open(filename, 'w') as f:
-            f.write(data)
-    else:
-        with open(filename, 'w') as f:
-            f.write(data)
+    with open(filename, 'wb') as f:
+        f.write(to_bytes(data, 'utf-8', errors='ignore'))
 
 def profileit(func):
     import cProfile
