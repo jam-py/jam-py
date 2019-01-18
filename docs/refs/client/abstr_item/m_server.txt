@@ -13,13 +13,13 @@ server
 Description
 ===========
 
-Use **sever** method to execute a function defined in the server module of an item.
+Use ``sever`` method to execute a function defined in the server module of an item.
 
-**Sever** method executes a function with a name **func_name** defined in the server 
-module of an item with parameters specified in **params**. 
+``Sever`` method executes a function with a name ``func_name`` defined in the server 
+module of an item with parameters specified in ``params``. 
 
 If callback is specified, the function on the server is executed asynchronously, 
-after which the **callback** is executed with parameter that is the result of 
+after which the ``callback`` is executed with parameter that is the result of 
 the server function execution, otherwise the function is executed synchronously 
 and returns the result of the server function. 
 
@@ -28,13 +28,13 @@ parameter is not passed (synchronous execution), the client throws an exception.
 If the callback parameter is present, it is passed to the callback as parameter.
 
 When exception is raised during the server function execution, the application 
-on the client throws exception with the server exception text. The first 
-parameter of the function on the server must be **item**, it must be followed by 
-the parameters specified in the function on the client.
+on the client throws exception with the server exception text. 
 
-**Params** is a list of parameters. If there is only one parameter it can be 
-passed as it is (not a list). If there are not parameters, the **params** can be 
-omitted. 
+The first parameter of the function on the server must be ``item``, it must be 
+followed by the parameters specified in the function on the client.
+
+``params`` is a list of parameters. If there are not parameters, the ``params`` 
+can be omitted. 
 
 
 Example

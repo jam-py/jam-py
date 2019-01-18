@@ -112,7 +112,7 @@ class DBField(object):
                 elif self.data_type == common.FLOAT:
                     result = self.float_to_str(result)
                 elif self.data_type == common.CURRENCY:
-                    result = self.cur_to_str(result)
+                    result = self.float_to_str(result)
                 elif self.data_type == common.DATE:
                     result = self.date_to_str(result)
                 elif self.data_type == common.DATETIME:

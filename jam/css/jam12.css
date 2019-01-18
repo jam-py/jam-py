@@ -837,6 +837,11 @@ sup {
     min-width: 200px;
 }
 
+.paginate-scroll {
+    opacity: 0.8;
+    filter: alpha(opacity=80);
+}
+
 .pulsate {
     text-shadow: 0 -1px rgba(0, 0, 0, .1);
     -webkit-animation: pulsate 1.2s linear infinite;

@@ -10,7 +10,7 @@ import mimetypes
 import jam
 import base64
 
-sys.path.insert(1, os.path.join(os.path.dirname(jam.__file__), 'third_party'))
+sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(jam.__file__), 'third_party')))
 
 from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Map, Rule
@@ -60,9 +60,9 @@ class JamRequest(Request):
 
     def get_session(self, task):
         if not hasattr(self, '_cookie') and task:
-            secret_key = to_bytes('', 'utf-8')
+            # ~ secret_key = to_bytes('', 'utf-8')
             key = self.session_key(task)
-            self._cookie = JamSecureCookie.load_cookie(self, key=key, secret_key=secret_key)
+            self._cookie = JamSecureCookie.load_cookie(self, key=key, secret_key=task.app.admin.secret_key)
             expires = self._cookie.get('session_expires')
             if expires and time.time() > expires:
                 self._cookie = {}
@@ -80,9 +80,10 @@ class JamRequest(Request):
 
 def create_application(from_file=None):
     if from_file:
-        work_dir = os.path.dirname(os.path.abspath(from_file))
+        work_dir = os.path.dirname(from_file)
     else:
         work_dir = os.getcwd()
+    work_dir = os.path.realpath(work_dir)
     os.chdir(work_dir)
     static_files = {
         '/static':  os.path.join(work_dir, 'static')
@@ -112,7 +113,7 @@ class App():
         self.task_server_modified = False
         self.task_client_modified = True
         self.under_maintenance = False
-        self.jam_dir = os.path.dirname(jam.__file__)
+        self.jam_dir = os.path.realpath(os.path.dirname(jam.__file__))
         self.jam_version = jam.version()
         self.__task_locked = False
         self.application_files = {

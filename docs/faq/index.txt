@@ -9,7 +9,6 @@ Jam.py FAQ
     faq_howto_upgrade_existing_project
     faq_can_i_use_jam_py_with_existing_database
     faq_data_from_other_database_tables
-    faq_execute_script_on_the_server
     faq_request_from_other_application
     faq_calculations_in_the_background
     faq_foreign_keys

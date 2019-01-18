@@ -224,7 +224,7 @@ function Events0() { // admin
 	
 	function resize_elements(task) {
 		var height = $(window).height() -
-			($('#task-tabs').offset().top + $('#task-tabs').outerHeight(true)) - 10;
+			($('#task-tabs').offset().top + $('#task-tabs').outerHeight(true)) - 15;
 		resize_panels(task, height);
 		resize_editor(task, height);
 		if ($('ul#task-tabs li.active').attr('id') === 'admin') {
@@ -402,7 +402,7 @@ function Events0() { // admin
 				task_db = res[3];
 			task.task_name = res[0];
 			task.server_started = res[4];
-			task.cur_task_info = '<h4><span class="editor-title">' +
+			task.cur_task_info = '<h4 class="editor-title"><span>' +
 					task_caption + '</span> <span class="muted">' + task_db + '</span> v. ' + task_version + '</h4>';
 			$('.admin-task-info').html(task.cur_task_info);
 		});
@@ -457,7 +457,7 @@ function Events0() { // admin
 			item.view_options.close_on_escape = false;
 			task.cur_item = item;
 			item.view_form.find(".modal-body").css('padding', 0);
-			item.view_form.find("#title-left").html('<h4>' + '<span class="editor-title">' + task.cur_item_title + '</span>' + '</h4>');
+			item.view_form.find("#title-left").html('<h4 class="editor-title">' + '<span>' + task.cur_item_title + '</span>' + '</h4>');
 			item.view_form.find("#select-btn").hide()
 			table_height = task.center_panel.height() - 104;
 			item.view_form.find("#title-right").addClass('admin-task-info');
@@ -1066,9 +1066,12 @@ function Events3() { // admin.catalogs.sys_items
 	
 		item.cur_record_count = undefined;
 	
+		item.view_options.enable_search = true;
+		item.view_options.search_field = 'f_item_name';
 		item.set_order_by(['f_index']);
 	
 		if (parent_type_id === types.TASKS_TYPE) {
+			item.view_options.enable_search = false;
 			item.view_form.find('#new-btn').hide();
 			item.view_form.find('#delete-btn').hide();
 			item.view_form.find('#up-btn').hide();
@@ -4045,7 +4048,7 @@ function Events11() { // admin.catalogs.sys_params
 			intface = task.add_tab(edit_body, task.language.interface);
 	
 			item.create_inputs(general, {
-				fields: ['f_language', 'f_safe_mode', 'f_debugging',
+				fields: ['f_safe_mode', 'f_debugging', 'f_language',
 				'f_con_pool_size', 'f_mp_pool', 'f_persist_con', 'f_compressed_js',
 				'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_timeout',
 				'f_ignore_change_ip', 'f_max_content_length', 'f_delete_reports_after', 'f_version'
@@ -4058,6 +4061,20 @@ function Events11() { // admin.catalogs.sys_params
 				in_well: false,
 				label_width: 240
 			});
+	//		item.edit_form.find('#sk-btn').text(task.language.secret_key_btn).click(function() {
+	//		item.question(task.language.secret_key_question,
+	//		function() {
+	//			if (task.server('server_change_secret_key')) {
+	//						item.warning(task.language.secret_key_changed,
+	//							function() {
+	//								location.reload();
+	//							}
+	//						);
+	//
+	//					}
+	//		}
+	//			);
+	//		});
 		}
 	}
 	
@@ -4368,7 +4385,8 @@ function Events22() { // admin.catalogs.sys_langs
 		item.transl_table.create_table(translation.find("#table-div"), {
 			fields: ['f_key_str', 'f_eng_str', 'f_value'],
 			height: 520,
-			row_line_count: 0,
+			row_line_count: 1,
+			expand_selected_row: 2,
 			sortable: true,
 			editable: true,
 			editable_fields: ['f_value'],

@@ -1,4 +1,4 @@
-VERSION = (5, 4, 31)
+VERSION = (5, 4, 36)
 
 def version():
     global VERSION

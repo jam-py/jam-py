@@ -140,6 +140,7 @@ def create_items(task):
     task.sys_params.add_field(22, 'f_full_width', task.language('full_width'), common.BOOLEAN)
     task.sys_params.add_field(23, 'f_forms_in_tabs', task.language('forms_in_tabs'), common.BOOLEAN)
     task.sys_params.add_field(24, 'f_max_content_length', 'Max content length (MB)', common.INTEGER)
+    task.sys_params.add_field(25, 'f_secret_key', 'Secret key', common.TEXT, size = 256)
 
     task.sys_items.add_field(1, 'id', 'ID', common.INTEGER, visible=True, edit_visible=False)
     task.sys_items.add_field(2, 'deleted', 'Deleted flag', common.INTEGER, visible=False, edit_visible=False)
@@ -630,6 +631,20 @@ def init_delete_reports(task):
     t.daemon = True
     t.start()
 
+def read_secret_key(task):
+    result = None
+    con = task.create_connection()
+    try:
+        cursor = con.cursor()
+        cursor.execute('SELECT f_secret_key FROM SYS_PARAMS')
+        rec = cursor.fetchall()
+    finally:
+        con.rollback()
+        con.close()
+    result = rec[0][0]
+    if result is None:
+        result = ''
+    return result
 
 def init_admin(task):
     langs.update_langs(task)
@@ -648,6 +663,7 @@ def init_admin(task):
     except:
         task.task_mp_pool = 4
         task.task_persist_con = True
+    task.secret_key = read_secret_key(task)
     task.safe_mode = common.SETTINGS['SAFE_MODE']
     task.max_content_length = common.SETTINGS['MAX_CONTENT_LENGTH']
     task.timeout = common.SETTINGS['TIMEOUT']
@@ -1129,6 +1145,24 @@ def server_set_project_langage(task, lang):
     file_write(file_name, data)
     register_events(task)
 
+# ~ def server_change_secret_key(task):
+    # ~ from base64 import b64encode
+    # ~ result = False
+    # ~ key = b64encode(os.urandom(20)).decode('utf-8')
+    # ~ con = task.create_connection()
+    # ~ try:
+        # ~ cursor = con.cursor()
+        # ~ cursor.execute("UPDATE SYS_PARAMS SET F_SECRET_KEY='%s'" % key)
+        # ~ con.commit()
+        # ~ task.secret_key = key
+        # ~ task.app.task_server_modified = True
+        # ~ result = True
+    # ~ except:
+        # ~ con.rollback()
+    # ~ finally:
+        # ~ con.close()
+    # ~ return result
+
 def server_update_has_children(task):
     has_children = {}
     items = task.sys_items.copy(handlers=False)
@@ -1178,7 +1212,7 @@ def server_export_task(task, task_id, url=None):
             json.dump(result, f)
         with zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             zip_file.write(task_file)
-            zip_file.write('index.html')
+            common.zip_html(zip_file)
             common.zip_dir('js', zip_file)
             common.zip_dir('css', zip_file)
             common.zip_dir(os.path.join('static', 'img'), zip_file)
@@ -3258,6 +3292,7 @@ def register_events(task):
     task.register(server_check_connection)
     task.register(server_set_task_name)
     task.register(server_set_project_langage)
+    # ~ task.register(server_change_secret_key)
     task.register(server_update_has_children)
     task.register(server_export_task)
     task.register(server_import_task)

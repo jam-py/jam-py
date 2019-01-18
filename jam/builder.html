@@ -136,9 +136,14 @@
 
         <div class="sys_items-view">
             <div class="modal-body">
-                <div class="row-fluid title">
-                    <div id="title-left" class="span4"></div>
-                    <div id="title-right" class="text-right span8"></div>
+                <div class="title">
+                    <div class="row-fluid title">
+                        <div id="title-left" class="span4"></div>
+                        <div id="title-right" class="text-right span8"></div>
+                    </div>
+                    <div class="row-fluid">
+                        <div class="header-search span12"></div>
+                    </div>
                 </div>
                 <div class="view-table">
                 </div>
@@ -404,6 +409,20 @@
                 </div>
             </div>
             <div class="modal-footer">
+                <button type="button" id="ok-btn" class="btn expanded-btn"><i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small></button>
+                <button type="button" id="cancel-btn" class="btn expanded-btn"><i class="icon-remove"></i> Cancel<small class="muted">&nbsp;[Esc]</small></button>
+            </div>
+        </div>
+
+        <div class="sys_params-edit">
+            <div class="modal-body">
+                <div class="edit-body">
+                </div>
+            </div>
+            <div class="modal-footer">
+<!--
+                <button type="button" id="sk-btn" class="btn expanded-btn pull-left"> Change secret key</button>
+-->
                 <button type="button" id="ok-btn" class="btn expanded-btn"><i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small></button>
                 <button type="button" id="cancel-btn" class="btn expanded-btn"><i class="icon-remove"></i> Cancel<small class="muted">&nbsp;[Esc]</small></button>
             </div>

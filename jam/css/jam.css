@@ -112,6 +112,17 @@ input.dropdown-toggle {
     background: #fff;
 }
 
+.small-pager {
+    display: inline-block;
+    font-size: 11.844px;
+    font-weight: bold;
+    line-height: 14px;
+    white-space: nowrap;
+    vertical-align: baseline;
+    opacity: 0.7;
+    filter: alpha(opacity=70);
+}
+
 #pager form {
     padding: 4px;
 }
@@ -459,6 +470,7 @@ input.input-text {
   margin-left: 5px;
 }
 
+/*
 .form-header .btn-group .btn + .btn {
   margin-left: -1px;
 }
@@ -466,6 +478,7 @@ input.input-text {
 .form-header .btn-block + .btn-block {
   margin-left: 0;
 }
+*/
 
 .form-footer {
   padding: 14px 15px 15px;
@@ -626,11 +639,11 @@ sup {
     min-width: 200px;
 }
 
-/*
-#report-btn {
-    margin-left: 5px;
+.paginate-scroll {
+    opacity: 0.8;
+    filter: alpha(opacity=80);
 }
-*/
+
 .pulsate {
     text-shadow: 0 -1px rgba(0, 0, 0, .1);
     -webkit-animation: pulsate 1.2s linear infinite;

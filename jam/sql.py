@@ -564,6 +564,7 @@ class SQL(object):
         for order in order_list:
             field = self._field_by_name(order[0])
             if field:
+                func = functions.get(field.field_name.upper())
                 if not query['__expanded'] and field.lookup_item1:
                    orders = []
                    break
@@ -571,9 +572,11 @@ class SQL(object):
                     if field.data_type == common.KEYS:
                         ord_str = '%s."%s"' % (self.table_alias(), field.db_field_name)
                     else:
-                        ord_str = self.lookup_field_sql(field, db_module)
+                        if func:
+                            ord_str = self.field_alias(field, db_module)
+                        else:
+                            ord_str = self.lookup_field_sql(field, db_module)
                 else:
-                    func = functions.get(field.field_name.upper())
                     if func:
                         if db_module.DATABASE == 'MSSQL' and limit:
                             ord_str = '%s(%s."%s")' %  (func, self.table_alias(), field.db_field_name)

@@ -7,6 +7,7 @@ dist/
 build/
 docs/_build/
 *.xml
+*.lock
 /admin/
 /jam_docs/
 /css/

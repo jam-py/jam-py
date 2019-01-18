@@ -824,7 +824,7 @@ class AbstractServerTask(AbstrTask):
         self.on_open = None
         self.on_apply = None
         self.on_count = None
-        self.work_dir = os.getcwd()
+        self.work_dir = app.work_dir
         self.con_pool_size = 0
         self.mod_count = 0
         self.modules = []
@@ -840,6 +840,8 @@ class AbstractServerTask(AbstrTask):
             self.create_mp_connection_pool(self.con_pool_size)
         else:
             self.create_connection_pool(self.con_pool_size)
+        if self.db_type == db_modules.SQLITE:
+            self.db_database = os.path.join(self.work_dir, self.db_database)
 
     def get_version(self):
         return common.SETTINGS['VERSION']
@@ -1140,9 +1142,6 @@ class AdminTask(AbstractServerTask):
         host='', port='', encoding=''):
         AbstractServerTask.__init__(self, app, name, caption, js_filename,
             db_type, db_server, db_database, db_user, db_password, host, port, encoding, 2)
-        filepath, filename = os.path.split(__file__)
-        self.cur_path = filepath
-        self.edited_docs = []
 
     def create_task(self):
         from jam.adm_server import create_task

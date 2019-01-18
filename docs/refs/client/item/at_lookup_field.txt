@@ -14,7 +14,7 @@ Description
 ===========
 
 Use ``lookup_field`` to check if the item was created to select a value for
-the lookup field.
+the lookup field. See :doc:`Lookup fields </programming/data/lookup_fields>`
 
 Example
 =======
@@ -32,7 +32,3 @@ Example
       }
   }  
 
-See also
-========
-
-:doc:`Lookup fields </programming/data/lookup_fields>`

@@ -19,7 +19,7 @@ background information and explanation.
 the Application Builder used for application development and database 
 administration.
 
-:doc:`Сlass reference guides <refs/index>` contain technical reference for 
+:doc:`Class reference guides <refs/index>` contain technical reference for 
 Jam.py classes APIs
 
 :doc:`FAQ <faq/index>` topics covers most frequently asked questions.

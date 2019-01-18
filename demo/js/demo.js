@@ -7,7 +7,7 @@ function Events1() { // demo
 		
 		$("title").text(task.item_caption);
 		$("#title").text(task.item_caption);
-		 
+		  
 		if (task.safe_mode) {
 			$("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
 			$('#log-out')
@@ -17,6 +17,12 @@ function Events1() { // demo
 				task.logout();
 			}); 
 		}
+		task.server('can_change_password', [], function(res) {
+			if (res) {
+				$("#menu-right #pass").show();
+			}
+		});
+	
 		
 		if (task.full_width) {
 			$('#container').removeClass('container').addClass('container-fluid');
@@ -42,6 +48,12 @@ function Events1() { // demo
 			);
 		});
 	
+		$("#menu-right #pass a").click(function(e) {
+			e.preventDefault();
+			task.change_password.open({open_empty: true});
+			task.change_password.append_record();
+		});
+	
 		// $(document).ajaxStart(function() { $("html").addClass("wait"); });
 		// $(document).ajaxStop(function() { $("html").removeClass("wait"); });
 	} 
@@ -50,14 +62,16 @@ function Events1() { // demo
 		var table_options_height = item.table_options.height,
 			table_container;
 	
+		// item.paginate = false;
+		// item.table_options.show_paginator = false;
+		// item.table_options.show_scrollbar = true;
+		
 		item.clear_filters();
 		
 		item.view_options.table_container_class = 'view-table';
 		item.view_options.detail_container_class = 'view-detail';
-		item.view_options.open_item = true;
-		if (item.virtual_table) {
-			item.view_options.open_item = true;
-		}
+		item.view_options.open_item = !item.virtual_table;
+		
 		if (item.view_form.hasClass('modal')) {
 			item.view_options.width = 1060;
 			item.table_options.height = $(window).height() - 300;
@@ -127,7 +141,7 @@ function Events1() { // demo
 	}
 	
 	function on_view_form_closed(item) {
-		if (item.view_options.open_item) {
+		if (!item.master && item.view_options.open_item) {	
 			item.close();
 		}
 	}
@@ -365,9 +379,44 @@ function Events15() { // demo.catalogs.tracks
 			i.edit_record();
 		});
 	}
+	
+	function on_edit_form_shown(item) {
+		item.each_field( function(field) {
+			var input = item.edit_form.find('input.' + field.field_name);
+			input.blur( function(e) {
+				var err;
+				if ($(e.relatedTarget).attr('id') !== "cancel-btn") {
+					err = check_field_value(field);
+					if (err) {
+						item.alert_error(err);
+						input.focus();			 
+					}
+				}
+			});
+		});
+	}
+	
+	function check_field_value(field) {
+		if (field.field_name === 'unitprice' && field.value <= 0) {
+			return 'Unit price must be greater that 0';
+		}
+	}
+	
+	function on_before_post(item) {
+		item.each_field( function(field) {
+			var err = check_field_value(field);
+			if (err) {
+				item.edit_form.find('input.' + field.field_name).focus();
+				throw err;
+			}
+		});
+	}
 	this.on_view_form_created = on_view_form_created;
 	this.on_after_scroll = on_after_scroll;
 	this.show_invoice = show_invoice;
+	this.on_edit_form_shown = on_edit_form_shown;
+	this.check_field_value = check_field_value;
+	this.on_before_post = on_before_post;
 }
 
 task.events.events15 = new Events15();
@@ -416,6 +465,46 @@ function Events16() { // demo.journals.invoices
 			t.post();
 		});	
 	}
+	
+	
+	// function on_edit_form_created(item) {
+		// item.read_only = item.id.value % 2 === 1;
+	// }
+	
+	// function add_invoice() {
+	//	 var invoices = task.invoices.copy();
+	//	 invoices.open({ open_empty: true });
+	//	 invoices.append_record();
+	// }
+	
+	// function edit_invoice(invoice_id) {
+	//	 var invoices = task.invoices.copy();
+	//	 invoices.edit_options.modeless = false;
+	//	 invoices.open({ where: {id: invoice_id} }, function() {
+	//		 if (invoices.rec_count) {
+	//			 invoices.edit_record();
+	//		 }
+	//		 else {
+	//			 invoices.alert_error('Invoices: record not found.');
+	//		 }
+	//	 });
+	// }
+	
+	
+	// function on_after_scroll(item) {
+	//	 item.view_options.can_edit = false;
+	//	 item.view_options.can_delete = false;
+	//	 if (item.rec_count) {
+	//		 if (item.id.value % 2 !== 1) {
+	//			 item.view_options.can_edit = true;		
+	//			 item.view_options.can_delete = true;
+	//		 }
+	//	 }
+	//	 if (item.view_form) {
+	//		 item.view_form.find("#delete-btn").prop("disabled", !item.view_options.can_delete);
+	//		 // item.view_form.find("#edit-btn").prop("disabled", !item.view_options.can_edit);
+	//	 }
+	// }
 	this.on_field_get_text = on_field_get_text;
 	this.on_field_get_html = on_field_get_html;
 	this.on_field_changed = on_field_changed;
@@ -445,14 +534,10 @@ function Events18() { // demo.journals.invoices.invoice_table
 	
 	function on_view_form_created(item) {
 		var btn = item.add_view_button('Select', {type: 'primary', btn_id: 'select-btn'});
-		if (!item.is_new() && !item.can_modify) {
-			btn.prop("disabled", true);
-		}
-		else {
-			btn.click(function() {
-				item.select_records('track');
-			});
-		}
+		btn.click(function() {
+			item.alert('Select the records to add to the invoice');
+			item.select_records('track');
+		});
 	}
 	
 	function on_after_append(item) {
@@ -547,7 +632,7 @@ function Events24() { // demo.analytics.dashboard
 				tracks.name.field_caption = 'Track';
 				draw_chart(item, ctx, labels, data, colors, 'Ten most popular tracks');
 				tracks.create_table(item.view_form.find('#tracks-table'), 
-					{row_count: 10, row_line_count: 1, expand_selected_row: 0, dblclick_edit: false});
+					{row_count: 10, dblclick_edit: false});
 			}
 		);
 		return tracks;
@@ -647,5 +732,46 @@ function Events25() { // demo.catalogs.mail
 }
 
 task.events.events25 = new Events25();
+
+function Events29() { // demo.catalogs.change_password 
+
+	function on_edit_form_created(item) {
+		item.edit_form.find("#ok-btn")
+			.off('click.task')
+			.on('click', function() { change_password(item) });
+	}
+	
+	function change_password(item) {
+		item.post();
+		item.server('change_password', [item.old_password.value, item.new_password.value], function(res) {
+			if (res) {
+				item.warning('Password has been changed. <br> The application will be reloaded.', function() {
+					task.logout();
+					location.reload(); 
+				});
+			}
+			else {
+				item.alert_error("Can't change the password.");	
+				item.edit();
+			}
+		});
+	}
+	
+	function on_field_changed(field, lookup_item) {
+		var item = field.owner;
+		if (field.field_name === 'old_password') {
+			item.server('check_old_password', [field.value], function(error) {
+				if (error) {
+					item.alert_error(error);	
+				}
+			});
+		}
+	}
+	this.on_edit_form_created = on_edit_form_created;
+	this.change_password = change_password;
+	this.on_field_changed = on_field_changed;
+}
+
+task.events.events29 = new Events29();
 
 })(jQuery, task)

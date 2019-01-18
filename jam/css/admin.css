@@ -218,6 +218,12 @@ form.row-fluid.form-horizontal {
 .editor-title {
     color: #0088cc;
     margin-left: 2px;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.header-search {
+    margin-bottom: 4px;
 }
 
 p.search {
