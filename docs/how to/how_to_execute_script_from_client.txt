@@ -1,0 +1,41 @@
+=================================
+how to execute script from client
+=================================
+
+
+You can use 
+:doc:`server </refs/client/abstr_item/m_server>`
+method to send a request to the server to execute a function defined in the 
+server module of an item.
+
+En the example below we create the ``btn`` button that is a JQuery object. 
+Then we use its click method to attach a function that calls the 
+:doc:`server </refs/client/abstr_item/m_server>`
+method of the item to run the ``calculate`` function defined in the server module
+of the item.
+
+The code in the client module:
+
+.. code-block:: js
+
+  function on_view_form_created(item) {
+      var btn = item.add_view_button('Calculate', {type: 'primary'});
+      btn.click(function() {
+          item.server('calulate', [1, 2, 3], function(result, error) {
+            if (error) {
+              item.alert_error(error);
+            }
+            else {
+              console.log(result);
+            }
+          })
+      });
+  }
+  
+
+The code in the server module:
+
+.. code-block:: py
+
+  def calculate(item, a, b, c):
+      return a + b + c

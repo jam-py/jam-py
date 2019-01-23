@@ -1,0 +1,21 @@
+========
+work_dir
+========
+
+.. py:attribute:: work_dir
+
+**domain**: server
+
+**language**: python
+
+**class**: :doc:`Task class </refs/server/task_api>` 
+
+Description
+===========
+
+Returns the real absolute path to the project directory.
+
+See also
+========
+
+:doc:`Workflow </programming/workflow>`

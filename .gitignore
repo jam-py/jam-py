@@ -7,7 +7,6 @@ dist/
 build/
 docs/_build/
 *.xml
-*.lock
 /admin/
 /jam_docs/
 /css/
@@ -29,4 +28,5 @@ doc/_build/
 os
 jam*.zip
 wsgi.conf
+langs.lock
 xchanges.txt

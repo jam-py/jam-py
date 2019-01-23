@@ -1,0 +1,37 @@
+==================================================
+How do I write functions which have a global scope
+==================================================
+
+Each function defined in the server or client module of an item becomes an 
+attribute of the item.
+
+Thus, using the 
+:doc:`task tree </programming/task_tree>`,
+you can access any function declared in the client or server module in any 
+project module.
+
+For example, if we have a function ``some_func`` declared in the Customers client 
+module, we can execute it in any module of the project. 
+Note that the task is a global variable on the client.
+
+.. code-block:: js
+
+  task.customers.some_func()
+
+On the server, the task is not global, but an item that triggered / called it is 
+passed to each event handler and function called by the 
+:doc:`server </refs/client/abstr_item/m_server>`
+method. Therefore, if the ``some_func`` function is declared in the Customers 
+server module, it can be executed in a function or event handler as follows:
+
+.. code-block:: js
+
+  def on_apply(item, delta, params): 
+    item.task.customers.some_func()
+
+
+Note that event handlers are just functions and can also be called from other 
+modules.
+
+
+  

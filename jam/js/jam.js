@@ -1066,12 +1066,38 @@
         },
 
         _active_form: function(form_type) {
-            var form_name = form_type + '_form',
+            var self = this,
+                form_name = form_type + '_form',
                 form = this[form_name],
-                cur_form = $(document.activeElement).closest('.jam-form.' + form_type + '-form')
-            if (form.get(0) === cur_form.get(0)) {
-                return true;
+                cur_form = $(document.activeElement).closest('.jam-form.' + form_type + '-form'),
+                result = false;
+            if (cur_form.length) {
+                if (form.get(0) === cur_form.get(0)) {
+                    result = true;
+                }
             }
+            else {
+                $('.jam-form').each(function() {
+                    var form = $(this),
+                        options;
+                    if (form.is(':visible') && form.hasClass(form_type + '-form') &&
+                        form.hasClass(self.item_name)) {
+                        options = form.data('options');
+                        if (self._tab_info) {
+                            if (self._tab_info.tab_id === options.item_options.tab_id) {
+                                result = true;
+                                return false;
+                            }
+                        }
+                        else {
+                            result = true;
+                            return false;
+                        }
+
+                    }
+                })
+            }
+            return result;
         },
 
         _create_form: function(form_type, container) {
@@ -1108,6 +1134,8 @@
                         if (e.which === 27 && item_options.close_on_escape) {
                             if (self._active_form(form_type)) {
                                 self._close_form(form_type);
+                                e.stopPropagation();
+                                e.stopImmediatePropagation();
                             }
                         }
                         else {
@@ -6273,6 +6301,7 @@
             });
             if (content) {
                 this._tab_info = {container: container, tab_id: tab_id}
+                this.view_options.tab_id = tab_id;
                 this._view(content);
             }
         },

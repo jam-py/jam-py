@@ -595,10 +595,10 @@ function Events0() { // admin
 	function set_project_params(task, caption) {
 		open_sys_params(task);
 		task.sys_params.params = true;
-		task.sys_params.edit_options.fields = [
-			'f_language', 'f_safe_mode', 'f_debugging', 'f_theme', 'f_con_pool_size',
-			'f_mp_pool', 'f_persist_con', 'f_compressed_js', 'f_single_file_js', 'f_dynamic_js',
-			'f_history_item', 'f_timeout', 'f_ignore_change_ip', 'f_delete_reports_after', 'f_version'];
+	//	task.sys_params.edit_options.fields = [
+	//		'f_language', 'f_safe_mode', 'f_debugging', 'f_theme', 'f_persist_con', 'f_con_pool_size',
+	//		'f_compressed_js', 'f_single_file_js', 'f_dynamic_js',
+	//		'f_history_item', 'f_timeout', 'f_ignore_change_ip', 'f_delete_reports_after', 'f_version'];
 		task.sys_params.edit_options.title = caption;
 		task.sys_params.edit_record();
 	}
@@ -4047,9 +4047,18 @@ function Events11() { // admin.catalogs.sys_params
 			general = task.add_tab(edit_body, task.language.general);
 			intface = task.add_tab(edit_body, task.language.interface);
 	
+	//		item.create_inputs(general, {
+	//			fields: ['f_safe_mode', 'f_debugging', 'f_language',
+	//			'f_con_pool_size', 'f_mp_pool', 'f_persist_con', 'f_compressed_js',
+	//			'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_timeout',
+	//			'f_ignore_change_ip', 'f_max_content_length', 'f_delete_reports_after', 'f_version'
+	//			],
+	//			in_well: false,
+	//			label_width: 240
+	//		});
 			item.create_inputs(general, {
-				fields: ['f_safe_mode', 'f_debugging', 'f_language',
-				'f_con_pool_size', 'f_mp_pool', 'f_persist_con', 'f_compressed_js',
+				fields: ['f_safe_mode', 'f_debugging', 'f_language', 'f_persist_con',
+				'f_con_pool_size', 'f_compressed_js',
 				'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_timeout',
 				'f_ignore_change_ip', 'f_max_content_length', 'f_delete_reports_after', 'f_version'
 				],

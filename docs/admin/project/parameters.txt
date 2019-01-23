@@ -27,19 +27,12 @@ On the General tab, you can specify general parameters of the project:
   
 * **Debugging** - if this button is checked, the Werkzeug libarary bebugger will
   be invoked when an error on the server occurs.
+
+* **Persistent connection** - if this checkbox is checked the application creates 
+  a connection pool otherwise a connection is created before executing sql query.
   
 * **Connection pool size** — the size of the server database connection pool. 
 
-* **Multiprocessing connection pool** - if this checkbox is checked the framework 
-  creates connection pool by using multiprocessing python module - the 
-  connections will be created in different processes.
-  
-* **Persistent connection** - if this checkbox is checked and multiprocessing 
-  connection pool is selected, the framework creates connection in the main 
-  process. Before executing any statement, the framework checks if this 
-  connection is busy, if not, the statment is executed by this connection, 
-  otherwise multiprocessing connection pool is used.
-  
 * **Compressed JS, CSS files** - If this button is checked the server returns 
   compressed *js* and *css* files when *index.html* page is loaded.
 
@@ -79,9 +72,8 @@ On the General tab, you can specify general parameters of the project:
 * **Version** — specify the version of the project here.
 
 .. note::
-   When **Connection pool size**, **Multiprocessing connection pool** or
-   **Persistent connection** parameters are changed, the server applicaton must be 
-   restarted for changes to take effect.
+   When **Connection pool size** or **Persistent connection** parameters are 
+   changed, the server applicaton must be restarted for changes to take effect.
 
 
 Interface tab

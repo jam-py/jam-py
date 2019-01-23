@@ -1,0 +1,128 @@
+=================================
+Export to / import from csv files
+=================================
+
+First, in the client module of the item we create two buttons that execute the 
+corresponding functions when you click on them:
+
+.. code-block:: js
+
+  function on_view_form_created(item) {
+    var csv_import_btn = item.add_view_button('Import csv file'),
+        csv_export_btn = item.add_view_button('Export csv file');
+    csv_import_btn.click(function() { csv_import(item) });
+    csv_export_btn.click(function() { csv_export(item) });
+  }
+
+  function  csv_export(item) {
+      item.server('export_scv', function(file_name, error) {
+          if (error) {
+              item.alert_error(error);
+          }
+          else {
+              var url = [location.protocol, '//', location.host, location.pathname].join('');
+              url += 'static/files/' + file_name;
+              window.open(encodeURI(url));
+          }
+      });
+  }
+
+  function csv_import(item) {
+      task.upload('static/files', {callback: function(file_name) {
+          item.server('import_scv', [file_name], function(error) {
+              if (error) {
+                  item.warning(error);
+              }
+              item.refresh_page(true);
+          });
+      }});
+  }
+  
+These functions execute the following functions defined in the server module. 
+In this module we use the Python csv module. We do not export system fields - 
+primary key field and deletion flag field.
+
+Below is the code for Python 3: 
+
+.. code-block:: py
+
+  import os
+  import csv
+
+  def export_scv(item):
+      copy = item.copy()
+      copy.open()
+      file_name = item.item_name + '.csv'
+      path = os.path.join(item.task.work_dir, 'static', 'files', file_name)
+      with open(path, 'w', encoding='utf-8') as csvfile:
+          fieldnames = []
+          for field in copy.fields:
+              if not field.system_field():
+                  fieldnames.append(field.field_name)
+          writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+          writer.writeheader()
+          for c in copy:
+              dic = {}
+              for field in copy.fields:
+                  if not field.system_field():
+                      dic[field.field_name] = field.text
+              writer.writerow(dic)
+      return file_name
+  
+  def import_scv(item, file_name):
+      copy = item.copy()
+      path = os.path.join(item.task.work_dir, 'static', 'files', file_name)
+      with open(path, 'r', encoding='utf-8') as csvfile:
+          copy.open(open_empty=True)
+          reader = csv.DictReader(csvfile)
+          for row in reader:
+              print(row)
+              copy.append()          
+              for field in copy.fields:
+                  if not field.system_field():
+                      field.text = row[field.field_name]
+              copy.post() 
+          copy.apply()          
+
+For Python 2, this code looks like this:
+
+.. code-block:: py
+
+  import os
+  import csv
+  
+  def export_scv2(item):
+      copy = item.copy()
+      copy.open()
+      file_name = item.item_name + '.csv'
+      path = os.path.join(item.task.work_dir, 'static', 'files', file_name)
+      with open(path, 'wb') as csvfile:
+          fieldnames = []
+          for field in copy.fields:
+              if not field.system_field():
+                  fieldnames.append(field.field_name.encode('utf8'))
+          writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+          writer.writeheader()
+          for c in copy:
+              dic = {}
+              for field in copy.fields:
+                  if not field.system_field():
+                      dic[field.field_name.encode('utf8')] = field.text.encode('utf8')
+              writer.writerow(dic)
+      return file_name
+  
+  def import_scv2(item, file_name):
+      copy = item.copy()
+      path = os.path.join(item.task.work_dir, 'static', 'files', file_name)
+      with open(path, 'rb') as csvfile:
+          item.task.execute('delete from %s' % item.table_name)
+          copy.open(open_empty=True)
+          reader = csv.DictReader(csvfile)
+          for row in reader:
+              print(row)
+              copy.append()          
+              for field in copy.fields:
+                  if not field.system_field():
+                      field.text = row[field.field_name.encode('utf8')].decode('utf8')
+              copy.post() 
+          copy.apply()          

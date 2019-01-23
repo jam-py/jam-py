@@ -1221,7 +1221,7 @@ def server_export_task(task, task_id, url=None):
             common.zip_dir(os.path.join('static', 'fonts'), zip_file)
             common.zip_dir(os.path.join('static', 'builder'), zip_file)
             common.zip_dir('utils', zip_file, exclude_ext=['.pyc'])
-            common.zip_dir('reports', zip_file, exclude_ext=['.xml', '.ods#'], recursive=False)
+            common.zip_dir('reports', zip_file, exclude_ext=['.xml', '.ods#'], recursive=True)
         if url:
             items = task.sys_items.copy()
             items.set_where(id=task_id)
@@ -1887,6 +1887,9 @@ def update_events_code(task):
         js_filename = js_filenames.get(item.ID, '')
         item.js_filename = js_filename
 
+    def get_js_file_name(js_path):
+        return js_path + '.js'
+
     single_file = common.SETTINGS['SINGLE_FILE_JS']
     name_dict = {}
     js_filenames = {}
@@ -1903,7 +1906,7 @@ def update_events_code(task):
     script_common = ''
     for it in it:
         js_path = get_js_path(it)
-        js_filename = js_path + '.js'
+        js_filename = get_js_file_name(js_path)
         file_name = os.path.join(to_unicode(os.getcwd(), 'utf-8'), 'js', js_filename)
         if os.path.exists(file_name):
             os.remove(file_name)
@@ -1930,7 +1933,7 @@ def update_events_code(task):
             js_filenames[it.id.value] = cur_js_filename
     if single_file:
         it.first()
-        js_file_name = it.f_item_name.value + '.js'
+        js_file_name = get_js_file_name(it.f_item_name.value)
         js_filenames[it.id.value] = js_file_name
         script = script_start + script_common + script_end
         file_name = os.path.join(to_unicode(os.getcwd(), 'utf-8'), 'js', js_file_name)
@@ -1943,6 +1946,11 @@ def update_events_code(task):
     it.task.execute(sql)
     if it.task.app.task:
         it.task.app.task.all(update_task)
+    try:
+        from utils.js_code import update_js
+        update_js(task)
+    except:
+        pass
 
 def get_minified_name(file_name):
     result = file_name

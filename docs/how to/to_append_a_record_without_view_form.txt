@@ -1,0 +1,63 @@
+======================================================================
+How to append a record using an edit form without opening a view form?
+======================================================================
+
+You must first call the 
+:doc:`open </refs/client/item/m_open>`
+method of the item to initiate its dataset. For example, if you want to add a 
+new record to invoices in the Demo application, you can do so as follows:
+
+.. code-block:: js
+
+  var invoices = task.invoices.copy();
+  invoices.open({ open_empty: true });
+  invoices.append_record();
+
+In this code, we create a copy of the item using the 
+:doc:`copy </refs/client/item/m_copy>`
+method so that this operation does not affect the Invoices view form if it is 
+open in a tab.
+
+You can also change the record, but before you do this, you must get it from 
+the server. Below is the code that modifies the record with id 411. 
+We check that the record exists using the rec_count property, 
+otherwise we display a warning.
+
+.. code-block:: js
+
+  var invoices = task.invoices.copy();
+  invoices.open({ where: {id: 411} });
+  if (invoices.rec_count) {
+      invoices.edit_record();
+  }
+  else {
+      invoices.alert_error('Invoices: record not found.');
+  }
+
+In the example above the open method is not executed syncroniously.
+
+The code below does it asyncroniously:
+
+.. code-block:: js
+
+  var invoices = task.invoices.copy();
+  invoices.open({ where: {id: 411} }, function() {
+      if (invoices.rec_count) {
+          invoices.edit_record();
+      }
+      else {
+          invoices.alert_error('Invoices: record not found.');
+      }
+  });
+
+Invoices has the Modeless attribute set in the Edit form dialog, so the 
+the edit form with be opened in a tab. You can change it by setting
+modeless attribute of
+:doc:`edit_options </refs/client/item/at_edit_options>`
+to make the edit form modal:
+
+.. code-block:: js
+
+  var invoices = task.invoices.copy();
+  invoices.edit_options.modeless = false;
+

@@ -80,7 +80,10 @@ class JamRequest(Request):
 
 def create_application(from_file=None):
     if from_file:
-        work_dir = os.path.dirname(from_file)
+        if os.path.isfile(from_file):
+            work_dir = os.path.dirname(from_file)
+        else:
+            work_dir = from_file
     else:
         work_dir = os.getcwd()
     work_dir = os.path.realpath(work_dir)

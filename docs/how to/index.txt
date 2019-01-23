@@ -1,0 +1,15 @@
+======
+How to
+======
+
+Here is a useful code that you can use in your applications:
+
+.. toctree::
+    :maxdepth: 2
+
+    global_scripts
+    how_to_add_a_button_to_a_form
+    how_to_execute_script_from_client
+    to_append_a_record_without_view_form
+    export_import_csv_files    
+    how_to_deploy_project_on_pythonanywhere
