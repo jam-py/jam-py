@@ -28,7 +28,7 @@ corresponding functions when you click on them:
   }
 
   function csv_import(item) {
-      task.upload('static/files', {callback: function(file_name) {
+      task.upload('static/files', {accept: '.csv', callback: function(file_name) {
           item.server('import_scv', [file_name], function(error) {
               if (error) {
                   item.warning(error);

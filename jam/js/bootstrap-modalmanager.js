@@ -111,6 +111,7 @@
                         var complete = function () {
                             that.setFocus(modal.$element);
                             modal.$element.trigger('shown');
+                            modal.layout();
                         };
 
                         transition ?

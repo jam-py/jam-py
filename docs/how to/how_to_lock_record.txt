@@ -1,0 +1,108 @@
+==================================================================
+How to lock a record so that users cannot edit it at the same time
+==================================================================
+
+To implement the lock that described in this topic create ``record_locks`` item 
+with the following fields:
+
+* item_id - INTEGER
+* item_rec_id - INTEGER
+* user_id - INTEGER
+* user_name - TEXT
+
+Below is the ``lock_record`` function that when executed in the 
+``on_edit_form_created`` event handler checks if record is being edited (not is new) and 
+then looks for the record in the ``record_locks`` table with the same item
+:doc:`ID </refs/client/abstr_item/at_id>`
+and the value of the primary key field of the record:
+
+.. code-block:: js
+
+  locks.set_where({item_id: item.ID, item_rec_id: item.id.value});
+  
+if such record exists it changes it, otherwise adds a new record,
+and sets the the following values to its fields:
+
+* item_id value is :doc:`ID </refs/client/abstr_item/at_id>` of the item that is edited,
+* item_rec_id - value of the primary key field of the record,
+* user_id - ID of the user (see :doc:`Roles </admin/roles>`),
+* user_name - name of the user
+
+This function also overrides the ``on_before_apply`` event of the item, so that
+it looks for the record with current user ID and record id and checks whether 
+user_id field value is equals this user ID and if it is not gives a warning that
+saving is prohibited, the record is being edited by another user.
+
+The ``on_edit_form_closed`` event handler of the item is also overriden to
+return event handlers to the previous state.
+
+If this code is placed to item client module these checks will be performed only
+for this item. To make these checks for all items place this code to the task 
+client module.
+
+.. code-block:: js
+
+  function on_edit_form_created(item) {
+      task.lock_record(item);
+      // some other code
+  }
+
+  function lock_record(item, repeated) {
+      if (!item.master && item.is_edited() && task.user_info.user_id) {
+          var item = item,
+              locks = task.record_locks.copy(),
+              on_before_apply = item.on_before_apply,
+              on_edit_form_closed = item.on_edit_form_closed;
+          
+          locks.set_where({item_id: item.ID, item_rec_id: item.id.value});
+          locks.open();
+          if (locks.rec_count) {
+              locks.edit()
+          }
+          else {
+              locks.append();
+          }
+          locks.item_id.value = item.ID;
+          locks.item_rec_id.value = item.id.value;
+          locks.user_id.value = task.user_info.user_id;
+          locks.user_name.value = task.user_info.user_name;
+          locks.lock_date.value = new Date();
+          locks.post();
+          locks.apply();
+          
+          if (!repeated) {
+              item.on_before_apply = function(locked_item) {
+                  var mess;
+                  locks.set_where({item_id: locked_item.ID, item_rec_id: locked_item.id.value});
+                  locks.open();
+                  if (locks.rec_count && locks.user_id.value !== task.user_info.user_id) {
+                      mess = 'Saving is prohibited. The record is being edited by the user ' + 
+                          locks.user_name.value + '.'
+                      item.question(mess + ' Continue editing?',
+                          function() {
+                              if (!locked_item.is_edited()) {
+                                  locked_item.edit();
+                              }
+                              lock_record(locked_item, true);
+                          },
+                          function() {
+                              item.cancel_edit();
+                          }
+                      );
+                      throw mess;
+                  }
+                  if (on_before_apply) {
+                      on_before_apply(locked_item)
+                  }
+              };
+  
+              item.on_edit_form_closed = function(locked_item) {
+                  if (on_edit_form_closed) {
+                      on_edit_form_closed(locked_item);
+                  }
+                  locked_item.on_edit_form_closed = on_edit_form_closed;
+                  locked_item.on_before_apply = on_before_apply;                
+              }
+          };
+      }
+  }

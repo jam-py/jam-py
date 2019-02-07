@@ -4034,13 +4034,13 @@
                 for (i = 0; i < len; i++) {
                     result[this._events[i][0]] = this._events[i][1];
                 }
-                for (var name in this) {
-                    if (this.hasOwnProperty(name)) {
-                        if ((name.substring(0, 3) === "on_") && (typeof this[name] === "function")) {
-                            result[name] = this[name];
-                        }
-                    }
-                }
+                //~ for (var name in this) {
+                    //~ if (this.hasOwnProperty(name)) {
+                        //~ if ((name.substring(0, 3) === "on_") && (typeof this[name] === "function")) {
+                            //~ result[name] = this[name];
+                        //~ }
+                    //~ }
+                //~ }
                 result.edit_options = $.extend({}, this._edit_options);
                 result.view_options = $.extend({}, this._view_options);
                 result.table_options = $.extend({}, this._table_options);
@@ -5299,13 +5299,13 @@
             }
             this.change_log.get_changes(changes);
             if (!this.change_log.is_empty_obj(changes.data)) {
-                this._applying = true;
                 if (this.on_before_apply) {
                     result = this.on_before_apply.call(this, this);
                     if (result) {
                         params = $.extend({}, params, result);
                     }
                 }
+                this._applying = true;
                 if (callback || async) {
                     this.send_request('apply', [changes, params], function(data) {
                         self._process_apply(data, callback);
@@ -7093,9 +7093,11 @@
             }
         },
 
-         _find_lookup_value: function(field, lookup_field) {
+        _find_lookup_value: function(field, lookup_field) {
+            console.log(lookup_field.field_name, field.field_name)
             if (lookup_field.field_kind === consts.ITEM_FIELD) {
-                if (field.lookup_field && field.lookup_field1) {
+                if (field.lookup_field && field.lookup_field1 &&
+                    lookup_field.lookup_item1 && lookup_field.lookup_item2) {
                     if (field.owner.ID === lookup_field.lookup_item.ID &&
                         field.lookup_item.ID === lookup_field.lookup_item1.ID &&
                         field.lookup_field === lookup_field.lookup_field1 &&
@@ -7105,8 +7107,7 @@
                     }
                 }
                 else if (field.lookup_field) {
-                    if (field.field_name === lookup_field.lookup_field &&
-                        field.owner.ID === lookup_field.lookup_item.ID &&
+                    if (field.owner.ID === lookup_field.lookup_item.ID &&
                         field.lookup_field === lookup_field.lookup_field1 &&
                         field.lookup_item.ID === lookup_field.lookup_item1.ID) {
                         return field.lookup_value;
@@ -7206,7 +7207,6 @@
                     this._dataset[this.rec_no][i] = copy._dataset[0][i];
                 }
                 this.change_log.change_old_record();
-                //~ this.change_log.remove_record_log();
                 this.update_controls(consts.UPDATE_RECORD);
                 if (options && options.details && options.details.length) {
                     this.open_details(options, callback, async);
@@ -7832,6 +7832,7 @@
                         break;
                     case consts.CURRENCY:
                         this.set_value(this.str_to_float(value));
+                        //~ this.set_value(this.str_to_cur(value));
                         break;
                     case consts.DATE:
                         this.set_value(this.str_to_date(value));
@@ -8794,9 +8795,9 @@
 
         str_to_cur: function(val) {
             var result = '';
-            if (value) {
+            if (val) {
                 result = $.trim(val);
-                if (locale.MON_THOUSANDS_SEP) {
+                if (locale.MON_THOUSANDS_SEP.length) {
                     result = result.replace(locale.MON_THOUSANDS_SEP, '');
                 }
                 if (locale.CURRENCY_SYMBOL) {
@@ -11067,8 +11068,8 @@
                         '<li id="mshow-selected"><a tabindex="-1" href="#">' + shown_title + '</a></li>';
                     this.$element.find('#mselect-block').empty();
                     bl = $(
-                        '<div style="height: 0; position: relative;">' +
-                            '<div id="mselect-block" class="btn-group" style="position: absolute">' +
+                        //~ '<div style="height: 0; position: relative;">' +
+                            '<div id="mselect-block" class="btn-group" style="position: relative">' +
                                 '<button type="button" class="btn mselect-btn" tabindex="-1">' +
                                     '<input class="multi-select-header" type="checkbox" tabindex="-1" style="margin: 0" ' + checked + '>' +
                                 '</button>' +
@@ -11078,8 +11079,8 @@
                                 '<ul class="dropdown-menu">' +
                                     select_menu +
                                 '</ul>' +
-                            '</div>' +
-                        '</div>'
+                            '</div>'
+                        //~ '</div>'
                     );
                     input = bl.find('#mselect-block')
                     bl.find("#mselect-all").click(function(e) {
@@ -11101,7 +11102,6 @@
                         });
                     });
                     this.selection_block = bl;
-                    this.$element.prepend(bl)
                     cell = $('<th class="multi-select"></th>').append(div);
                     cellWidth = this.get_cell_width('multi-select');
                     if (cellWidth && this.fields.length) {
@@ -11109,10 +11109,10 @@
                         div.width('auto');
                     }
                     heading.append(cell);
-                    div.css('min-height', 50);
                     cell.css('padding-top', 0);
                     input.css('top', sel_count.outerHeight() + sel_count.position().top + 4);
                     input.css('left', (cell.outerWidth() - input.width()) / 2 + 1);
+                    cell.append(bl);
                 }
             }
             len = this.fields.length;
@@ -12735,7 +12735,7 @@
                     case consts.IMAGE:
                         $controls.append($input);
                         $input.dblclick(function(e) {
-                            if (self.field.data_type === consts.IMAGE && self.field.owner.is_changing() &&
+                            if (!self.field.read_only && self.field.data_type === consts.IMAGE && self.field.owner.is_changing() &&
                                 !self.field.owner.read_only) {
                                 if (e.ctrlKey || e.metaKey) {
                                     self.field.value = null;

@@ -13,6 +13,7 @@ import traceback
 import inspect
 import json
 from jam.third_party.filelock import FileLock
+import jam.third_party.sqlalchemy.pool as pool
 
 import jam.common as common
 import jam.db.db_modules as db_modules
@@ -800,7 +801,7 @@ class ConCounter(object):
 class AbstractServerTask(AbstrTask):
     def __init__(self, app, name, caption, js_filename, db_type, db_server = '',
         db_database = '', db_user = '', db_password = '', host='', port='',
-        encoding='', con_pool_size=1, mp_pool=False, persist_con=False):
+        encoding='', con_pool_size=1, mp_pool=False, persist_con=True):
         AbstrTask.__init__(self, None, None, None, None)
         self.app = app
         self.consts = Consts()
@@ -834,11 +835,15 @@ class AbstractServerTask(AbstrTask):
         self.persist_con = persist_con
         self.con_counter = ConCounter()
         if self.persist_con:
-            if self.mp_pool:
-                self.create_connection_pool(1)
-                self.create_mp_connection_pool(self.con_pool_size)
+            if self.db_type == db_modules.SQLITE:
+                self.pool = pool.NullPool(self.getconn)
             else:
-                self.create_connection_pool(self.con_pool_size)
+                self.pool = pool.QueuePool(self.getconn, pool_size=self.con_pool_size, \
+                    max_overflow=self.con_pool_size*2, recycle=60*60)
+            if self.mp_pool:
+                self.create_mp_connection_pool(self.con_pool_size)
+        else:
+            self.pool = pool.NullPool(self.getconn)
         if self.db_type == db_modules.SQLITE:
             self.db_database = os.path.join(self.work_dir, self.db_database)
 
@@ -847,16 +852,19 @@ class AbstractServerTask(AbstrTask):
 
     version = property (get_version)
 
-    def create_connection_pool(self, con_count):
-        self.queue = Queue.Queue()
-        pid = None
-        for i in range(con_count):
-            p = threading.Thread(target=process_request, args=(pid, self.item_name,
-                self.queue, self.db_type, self.db_server, self.db_database, self.db_user,
-                self.db_password, self.db_host, self.db_port,
-                self.db_encoding, self.mod_count))
-            p.daemon = True
-            p.start()
+    def create_connection(self):
+        return self.db_module.connect(self.db_database, self.db_user, \
+            self.db_password, self.db_host, self.db_port, self.db_encoding, self.db_server)
+
+    def create_connection_ex(self, db_module, database, user=None, password=None, \
+        host=None, port=None, encoding=None, server=None):
+        return db_module.connect(database, user, password, host, port, encoding, server)
+
+    def getconn(self):
+        return self.create_connection()
+
+    def connect(self):
+        return self.pool.connect()
 
     def create_mp_connection_pool(self, con_count):
         self.mp_queue = multiprocessing.Queue()
@@ -870,14 +878,6 @@ class AbstractServerTask(AbstrTask):
             p.daemon = True
             p.start()
 
-    def create_connection(self):
-        return self.db_module.connect(self.db_database, self.db_user, \
-            self.db_password, self.db_host, self.db_port, self.db_encoding, self.db_server)
-
-    def create_connection_ex(self, db_module, database, user=None, password=None, \
-        host=None, port=None, encoding=None, server=None):
-        return db_module.connect(database, user, password, host, port, encoding, server)
-
     def send_to_pool(self, queue, result_queue, command, params=None, call_proc=False, select=False):
         request = {}
         request['queue'] = result_queue
@@ -889,14 +889,17 @@ class AbstractServerTask(AbstrTask):
         queue.put(request)
         return  result_queue.get()
 
-    def execute_in_pool(self, command, params=None, call_proc=False, select=False):
-        result_queue = Queue.Queue()
-        result = self.send_to_pool(self.queue, result_queue, command, params, call_proc, select)
-        return result
-
     def execute_in_mp_poll(self, command, params=None, call_proc=False, select=False):
         result_queue = self.mp_manager.Queue()
         result = self.send_to_pool(self.mp_queue, result_queue, command, params, call_proc, select)
+        return result
+
+    def pool_execute(self, command, params=None, call_proc=False, select=False):
+        con = self.create_connection()
+        try:
+            connection, result = execute_sql_connection(con, command, params, call_proc, select, False, self.db_module)
+        finally:
+            con.close()
         return result
 
     def execute(self, command, params=None, connection=None, db_module=None, call_proc=False, select=False):
@@ -907,19 +910,15 @@ class AbstractServerTask(AbstrTask):
                 if not self.con_counter.val:
                     self.con_counter.val += 1
                     try:
-                        result = self.execute_in_pool(command, params, call_proc, select)
+                        result = self.pool_execute(command, params, call_proc, select)
                     finally:
                         self.con_counter.val -= 1
                 else:
                     result = self.execute_in_mp_poll(command, params, call_proc, select)
             else:
-                result = self.execute_in_pool(command, params, call_proc, select)
+                result = self.pool_execute(command, params, call_proc, select)
         else:
-            connection = self.create_connection()
-            try:
-                connection, result = execute_sql_connection(connection, command, params, call_proc, select, False, self.db_module)
-            finally:
-                connection.close()
+            result = self.pool_execute(command, params, call_proc, select)
         return result
 
     def callproc(self, command, params=None):
@@ -1047,7 +1046,7 @@ class Task(AbstractServerTask):
                 pass
 
     def copy_database(self, dbtype, database=None, user=None, password=None,
-        host=None, port=None, encoding=None, server=None, limit = 1024):
+        host=None, port=None, encoding=None, server=None, limit = 999):
 
         def convert_sql(item, sql, db_module):
             new_case = item.task.db_module.identifier_case
@@ -1062,11 +1061,97 @@ class Task(AbstractServerTask):
                         sql = sql.replace(field_name, old_case(field_name))
             return sql
 
+        def drop_indexes():
+            con = self.connect()
+            try:
+                cursor = con.cursor()
+                from jam.adm_server import drop_indexes_sql
+                sqls = drop_indexes_sql(self.app.admin)
+                for s in sqls:
+                    try:
+                        cursor.execute(s)
+                        con.commit()
+                    except Exception as e:
+                        con.rollback()
+                        pass
+            finally:
+                con.close()
+
+        def restore_indexes():
+            con = self.connect()
+            try:
+                cursor = con.cursor()
+                from jam.adm_server import restore_indexes_sql
+                sqls = restore_indexes_sql(self.app.admin)
+                for s in sqls:
+                    try:
+                        cursor.execute(s)
+                        con.commit()
+                    except Exception as e:
+                        con.rollback()
+                        pass
+            finally:
+                con.close()
+
+        def get_rows(item, db_module, con, loaded, limit):
+            params = {'__expanded': False, '__offset': loaded, '__limit': limit, '__fields': [], '__filters': []}
+            sql = item.get_select_statement(params, db_module)
+            sql = convert_sql(item, sql, db_module)
+            con, (rows, error) = execute_sql(db_module, server, database, user, password,
+                host, port, encoding, con, sql, params=None, select=True)
+            return rows
+
+        def copy_sql(item):
+            fields = []
+            values = []
+            index = 0
+            for field in item.fields:
+                if not field.master_field:
+                    index += 1
+                    fields.append('"%s"' % field.db_field_name)
+                    values.append('%s' % self.db_module.value_literal(index))
+            fields = ', '.join(fields)
+            values = ', '.join(values)
+            return 'INSERT INTO "%s" (%s) VALUES (%s)' % (item.table_name, fields, values)
+
+
+
+        def copy_rows(item, con, sql, rows):
+            for i, r in enumerate(rows):
+                j = 0
+                for field in item.fields:
+                    if not field.master_field:
+                        if not r[j] is None:
+                            if field.data_type == common.INTEGER:
+                                r[j] = int(r[j])
+                            elif field.data_type in (common.FLOAT, common.CURRENCY):
+                                r[j] = float(r[j])
+                            elif field.data_type == common.BOOLEAN:
+                                if r[j]:
+                                    r[j] = 1
+                                else:
+                                    r[j] = 0
+                        j += 1
+            cursor = con.cursor()
+            try:
+                if hasattr(cursor, 'executemany'):
+                    cursor.executemany(sql, rows)
+                else:
+                    for r in rows:
+                        cursor.execute(sql, r)
+                con.commit()
+            except Exception as e:
+                print(e)
+                traceback.print_exc()
+                con.rollback()
+
+
         print('copying started')
-        connection = None
+        source_con = None
+        con = self.connect()
         db_module = db_modules.get_db_module(dbtype)
         print('copying droping indexes')
-        self.drop_indexes()
+        drop_indexes()
         if hasattr(self.db_module, 'set_foreign_keys'):
             self.execute(self.db_module.set_foreign_keys(False))
         try:
@@ -1075,68 +1160,44 @@ class Task(AbstractServerTask):
                     if it.item_type != 'report':
                         item = it.copy(handlers=False, filters=False, details=False)
                         if item.table_name and not item.virtual_table:
-                            print('copying table %s' % item.item_name)
                             params = {'__expanded': False, '__offset': 0, '__limit': 0, '__filters': []}
                             rec_count, mess = item.get_record_count(params)
                             sql = item.get_record_count_query(params, db_module)
                             sql = convert_sql(item, sql, db_module)
-                            connection, (result, error) = \
-                            execute_sql(db_module, server, database, user, password,
-                                host, port, encoding, connection, sql,
-                                params=None, select=True)
+                            source_con, (result, error) = execute_sql(db_module, server, database, user, password,
+                                host, port, encoding, source_con, sql, params=None, select=True)
                             record_count = result[0][0]
                             loaded = 0
-                            max_id = 0
-                            item.open(expanded=False, open_empty=True)
+                            print('copying table %s records: %s' % (item.item_name, record_count))
                             if record_count and rec_count != record_count:
                                 self.execute('DELETE FROM "%s"' % item.table_name)
+                                sql = copy_sql(item)
                                 while True:
-                                    params = {'__expanded': False, '__offset': loaded, '__limit': limit, '__fields': [], '__filters': []}
-                                    sql = item.get_select_statement(params, db_module)
-                                    sql = convert_sql(item, sql, db_module)
-                                    connection, (result, error) = \
-                                    execute_sql(db_module, server, database, user, password,
-                                        host, port, encoding, connection, sql,
-                                        params=None, select=True)
+                                    now = datetime.datetime.now()
+                                    rows = get_rows(item, db_module, source_con, loaded, limit)
                                     if not error:
-                                        for i, r in enumerate(result):
-                                            item.append()
-                                            j = 0
-                                            for field in item.fields:
-                                                if not field.master_field:
-                                                    value = r[j]
-                                                    if not value is None:
-                                                        #~ try:
-                                                        if field.data_type == common.INTEGER:
-                                                            value = int(value)
-                                                        elif field.data_type in (common.FLOAT, common.CURRENCY):
-                                                            value = float(value)
-                                                        elif field.data_type == common.BOOLEAN:
-                                                            if value:
-                                                                value = True
-                                                            else:
-                                                                value = False
-                                                        #~ except:
-                                                            #~ pass
-                                                    field.set_data(value)
-                                                    j += 1
-                                            if item._primary_key and item._primary_key_field.value > max_id:
-                                                max_id = item._primary_key_field.value
-                                            item.post()
-                                        item.apply()
+                                        copy_rows(item, con, sql, rows)
                                     else:
                                         raise Exception(error)
-                                    records = len(result)
+                                    records = len(rows)
                                     loaded += records
                                     print('copying table %s: %d%%' % (item.item_name, int(loaded * 100 / record_count)))
                                     if records == 0 or records < limit:
                                         break
                                 if item.gen_name:
-                                    sql = self.db_module.restart_sequence_sql(item.gen_name, max_id + 1)
-                                    self.execute(sql)
+                                    cursor = con.cursor()
+                                    cursor.execute('SELECT MAX(%s) FROM %s' % (item._primary_key, item.table_name))
+                                    res = cursor.fetchall()
+                                    max_pk = res[0][0]
+                                    sql = self.db_module.restart_sequence_sql(item.gen_name, max_pk + 1)
+                                    cursor.execute(sql)
+                                    con.commit()
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
         finally:
             print('copying restoring indexes')
-            self.restore_indexes()
+            restore_indexes()
             if hasattr(self.db_module, 'set_foreign_keys'):
                 self.execute(self.db_module.set_foreign_keys(True))
         print('copying finished')

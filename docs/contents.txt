@@ -2,7 +2,7 @@
 Jam.py documentation contents
 =============================
 
-.. toctree::
+.. toctree:: 
     :hidden:
 
     index

@@ -147,6 +147,9 @@ function Events1() { // demo
 	}
 	
 	function on_edit_form_created(item) {
+		
+		task.lock_record(item);
+		
 		item.edit_options.inputs_container_class = 'edit-body';
 		item.edit_options.detail_container_class = 'edit-detail';
 		
@@ -278,6 +281,65 @@ function Events1() { // demo
 			item.view_form.find("#report-btn").hide();
 		}
 	}
+	
+	function lock_record(item, repeated) {
+		if (!item.master && item.is_edited() && task.user_info.user_id) {
+			var item = item,
+				locks = task.record_locks.copy(),
+				on_before_apply = item.on_before_apply,
+				on_edit_form_closed = item.on_edit_form_closed;
+			
+			locks.set_where({item_id: item.ID, item_rec_id: item.id.value});
+			locks.open();
+			if (locks.rec_count) {
+				locks.edit()
+			}
+			else {
+				locks.append();
+			}
+			locks.item_id.value = item.ID;
+			locks.item_rec_id.value = item.id.value;
+			locks.user_id.value = task.user_info.user_id;
+			locks.user_name.value = task.user_info.user_name;
+			locks.lock_date.value = new Date();
+			locks.post();
+			locks.apply();
+			
+			if (!repeated) {
+				item.on_before_apply = function(locked_item) {
+					var mess;
+					locks.set_where({item_id: locked_item.ID, item_rec_id: locked_item.id.value});
+					locks.open();
+					if (locks.user_id.value !== task.user_info.user_id) {
+						mess = 'Saving is prohibited. The record is edited by the user ' + 
+							locks.user_name.value + '.'
+						item.question(mess + ' Continue editing?',
+							function() {
+								locked_item._applying = false;
+								if (!locked_item.is_edited()) {
+									locked_item.edit();
+								}
+								lock_record(locked_item, true);
+							},
+							function() {
+								item.cancel_edit();
+							}
+						);
+						throw mess;
+					}
+				};
+	
+				item.on_edit_form_closed = function(locked_item) {
+					if (on_before_apply) {
+						locked_item.on_before_apply = on_before_apply;
+					}
+					if (on_edit_form_closed) {
+						on_edit_form_closed(locked_item);
+					}
+				}
+			};
+		}
+	}
 	this.on_page_loaded = on_page_loaded;
 	this.on_view_form_created = on_view_form_created;
 	this.on_view_form_shown = on_view_form_shown;
@@ -290,6 +352,7 @@ function Events1() { // demo
 	this.on_view_form_keyup = on_view_form_keyup;
 	this.on_edit_form_keyup = on_edit_form_keyup;
 	this.create_print_btns = create_print_btns;
+	this.lock_record = lock_record;
 }
 
 task.events.events1 = new Events1();
@@ -321,9 +384,16 @@ function Events10() { // demo.catalogs.customers
 		task.customers_report.customers.value = item.selections;
 		task.customers_report.print(false);
 	}
+	
+	function on_edit_form_created(item) {
+		if (task.user_info.user_id === 1) {
+			item.photo.read_only = false;
+		}
+	}
 	this.on_view_form_created = on_view_form_created;
 	this.send_email = send_email;
 	this.print = print;
+	this.on_edit_form_created = on_edit_form_created;
 }
 
 task.events.events10 = new Events10();
@@ -466,7 +536,6 @@ function Events16() { // demo.journals.invoices
 		});	
 	}
 	
-	
 	// function on_edit_form_created(item) {
 		// item.read_only = item.id.value % 2 === 1;
 	// }
@@ -505,11 +574,18 @@ function Events16() { // demo.journals.invoices
 	//		 // item.view_form.find("#edit-btn").prop("disabled", !item.view_options.can_edit);
 	//	 }
 	// }
+	
+	
+	
+	function on_before_apply(item) {
+	
+	}
 	this.on_field_get_text = on_field_get_text;
 	this.on_field_get_html = on_field_get_html;
 	this.on_field_changed = on_field_changed;
 	this.on_detail_changed = on_detail_changed;
 	this.on_before_post = on_before_post;
+	this.on_before_apply = on_before_apply;
 }
 
 task.events.events16 = new Events16();

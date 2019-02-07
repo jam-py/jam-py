@@ -237,7 +237,7 @@ def currency_to_str(val):
 
 def str_to_currency(val):
     result = val.strip()
-    if MON_THOUSANDS_SEP:
+    if len(MON_THOUSANDS_SEP):
         result = result.replace(MON_THOUSANDS_SEP, '')
     if CURRENCY_SYMBOL:
         result = result.replace(CURRENCY_SYMBOL, '')

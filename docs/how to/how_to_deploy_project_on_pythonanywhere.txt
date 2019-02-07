@@ -6,9 +6,6 @@ How to deploy project on PythonAnywhere
   :doc:`Project parameters </admin/project/parameters>`
   to ``false``. 
   
-  You can do this later in the Application Builder after deployment.
-  In this case, you must restart the server.
-
 * Use pip to install Jam.py. To do this, open the bash console and run the 
   following command (for Python 3.7):
 

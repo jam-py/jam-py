@@ -1,0 +1,17 @@
+==============
+Version 5.4.39
+==============
+
+Library:
+
+* Jam.py now uses SQLAlchemy connection poll
+
+* when image field read_only attribute is set user can not change the image by 
+  double-clicking on it
+
+* Some bugs fixed
+
+Documentation:
+
+:doc:`How to lock a record so that users cannot edit it at the same time </how to/how_to_lock_record>`
+topic added
