@@ -13725,6 +13725,7 @@
             pos,
             p = [];
         if (search) {
+            text += '';
             strings = search.toUpperCase().split(' ')
             for ( i = 0; i < strings.length; i++) {
                 str = text.toUpperCase();

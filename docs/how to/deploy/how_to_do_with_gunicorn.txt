@@ -1,0 +1,145 @@
+========================
+How to do with gunicorn?
+========================
+
+Green Unicorn (gunicorn) is an HTTP/WSGI server designed to serve fast clients 
+or sleepy applications. That is to say; behind a buffering front-end server 
+such as nginx or lighttpd. 
+
+By default, gunicorn will listen on 127.0.0.1. Navigate to jam app folder, 
+or use (ie in scripts, cron job, etc)
+
+.. code-block:: console
+
+  python /usr/bin/gunicorn --chdir /path/to/jam/app wsgi 
+    
+or from /path/to/jam/App:
+
+.. code-block:: console
+
+  gunicorn wsgi
+  [2018-04-13 15:01:44 +0000] [8650] [INFO] Starting gunicorn 19.4.5
+  [2018-04-13 15:01:44 +0000] [8650] [INFO] Listening at: http://127.0.0.1:8000 (8650)
+  [2018-04-13 15:01:44 +0000] [8650] [INFO] Using worker: sync
+  [2018-04-13 15:01:44 +0000] [8654] [INFO] Booting worker with pid: 8654
+
+To start jam.py on all interfaces and port 8081:
+
+.. code-block:: console
+
+  gunicorn -b 0.0.0.0:8081 wsgi
+  [2018-04-13 15:03:34 +0000] [8680] [INFO] Starting gunicorn 19.4.5
+  [2018-04-13 15:03:34 +0000] [8680] [INFO] Listening at: http://0.0.0.0:8081 (8680)
+  [2018-04-13 15:03:34 +0000] [8680] [INFO] Using worker: sync
+  [2018-04-13 15:03:34 +0000] [8684] [INFO] Booting worker with pid: 8684
+  
+Spin up 5 workers if u like with --workers=5
+
+Nginx: 
+
+comment out default location in /etc/nginx/sites-enabled/default (Linux Mint):
+
+.. code-block:: nginx
+
+  #location / {
+  # First attempt to serve request as file, then
+  # as directory, then fall back to displaying a 404.
+  #  try_files $uri $uri/ =404;
+  #}
+  
+and add:
+
+.. code-block:: nginx
+
+  # Proxy connections to the application servers
+  # app_servers
+  location / {
+    proxy_pass         http://app_servers;
+    proxy_redirect     off;
+    proxy_set_header   Host $host;
+    proxy_set_header   X-Real-IP $remote_addr;
+    proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Host $server_name;
+  }
+  
+add in /etc/nginx/nginx.conf 127.0.0.1:8081 if this is your Gunicorn server address and port:
+
+.. code-block:: nginx
+
+  # Configuration containing list of application servers
+  upstream app_servers {
+  server 127.0.0.1:8081;
+  }
+  
+This also enables to have different App servers on different ports
+
+.. code-block:: console
+
+  Client Request ----> Nginx (Reverse-Proxy)
+                          |
+                         /|\                           
+                        | | `-> App. Server I.   127.0.0.1:8081
+                        |  `--> App. Server II.  127.0.0.1:8082
+                         `----> App. Server III. 127.0.0.1:8083
+                         
+Restart nginx and viola!
+
+Congratulations! We can now test Nginx with Jam.py.
+
+Now, certs:
+
+in /etc/nginx/sites-enabled/jam we can have something like this to pass everything 
+from http to https to 8001 port (or any other as per above):
+
+.. code-block:: nginx
+
+  server {
+    listen 80;
+    server_name YOUR_SERVER;
+    access_log off;
+  
+    location /static/ {
+      alias /path/to/jam/app/static/;
+    }
+  
+    location / {
+      proxy_pass http://127.0.0.1:8001;
+      proxy_set_header X-Forwarded-Host $server_name;
+      proxy_set_header X-Real-IP $remote_addr;
+      add_header P3P 'CP="ALL DSP COR PSAa PSDa OUR NOR ONL UNI COM NAV"';
+    }
+  
+    return 301 https://$server_name$request_uri;
+  }
+  
+  server {
+    listen 443;
+    server_name YOUR_SERVER_FQDN;
+    access_log off;
+  
+    location /static/ {
+      alias /path/to/jam/app/static/;
+    }
+  
+    location = /favicon.ico {
+      alias /path/to/jam/app/favicon.ico;
+    }
+   
+    ssl on;
+    ssl_certificate /etc/nginx/ssl/YOUR_SERVER.crt;
+    ssl_certificate_key /etc/nginx/ssl/YOUR_SERVER.key;
+    add_header Strict-Transport-Security "max-age=31536000";
+  
+    location / {
+      client_max_body_size 10M;
+      proxy_pass http://127.0.0.1:8001;
+      proxy_set_header X-Forwarded-Host $server_name;
+      proxy_set_header X-Real-IP $remote_addr;
+      add_header P3P 'CP="ALL DSP COR PSAa PSDa OUR NOR ONL UNI COM NAV"';
+  }
+
+That's it!
+
+Congratulations! We can now test Nginx with Jam.py on https port!
+
+*This was initialy published by Dražen Babić on* https://github.com/jam-py/jam-py/issues/67

@@ -1,0 +1,181 @@
+=====================================================
+How to deploy jam-py app at Linux Apache http server?
+=====================================================
+
+So basically deploying straight into the ie an cloud server with open 22, 80 
+and 443 port. Prerequisite is a signed certificate for the DNS server name 
+(YOUR_SERVER DNS entry from below). One can use a self signed, etc, not covering 
+those. Also, Python installed and sudo access (or root for Linux). 
+I have no idea at all about the MS Servers, sorry.
+
+The App is in read only mode. You can access admin.html page, but can't change 
+anything. Took me some fiddling with Google Cloud server, this is a micro Ubuntu 
+instance, plain apache2 install with apt-get.
+
+* Install wsgi module for Apache : 
+  
+    .. code-block:: console
+  
+      apt-get install libapache2-mod-wsgi
+    
+* Enable ssl, wsgi module for apache:
+
+  .. code-block:: console
+  
+    a2enmod ssl wsgi
+    
+* Create a custom file for jam-py app, ie /etc/apache2/sites-available/test.conf, 
+  for example (still wip):
+  
+  .. code-block:: apache
+  
+    <IfModule mod_ssl.c>
+      <VirtualHost YOUR_IP:443>
+        ServerName YOUR_SERVER
+        ServerAlias
+        ServerAdmin YOUR_EMAIL
+        ErrorLog ${APACHE_LOG_DIR}/test-error-sec.log
+        CustomLog ${APACHE_LOG_DIR}/test-access-sec.log combined
+        
+        #below is for cx_Oracle
+        SetEnv LD_LIBRARY_PATH /u01/app/oracle/product/11.2.0/xe/lib
+        SetEnv ORACLE_SID XE
+        SetEnv ORACLE_HOME /u01/app/oracle/product/11.2.0/xe
+        #finish cx_Oracle
+        
+        DocumentRoot /var/www/html/simpleassets
+        
+        SSLEngine on
+        SSLCertificateFile  "/etc/ssl/private/your.crt"
+        SSLCertificateKeyFile  "/etc/ssl/private/your.key"
+        SSLCertificateChainFile "/etc/ssl/private/your_chain.crt"
+        SSLCACertificateFile   "/etc/ssl/private/your_CA.crt"
+    
+        WSGIDaemonProcess  web user=www-data group=www-data processes=1 threads=5
+        WSGIScriptAlias / /var/www/html/simpleassets/wsgi.py
+        
+        <Directory /var/www/html/simpleassets>
+          Options +ExecCGI
+          SetHandler wsgi-script
+          AddHandler wsgi-script .py
+    
+          Order deny,allow
+          Allow from all
+          Require all granted
+        
+          <Files wsgi.py>
+            Order deny,allow
+            Allow from all
+    
+            # comment the following for ubuntu <13
+            Require all granted
+          </Files>
+        </Directory>
+        
+        <Directory /var/www/html/simpleassets/static>
+          # comment the following for ubuntu < 13
+          Require all granted
+        </Directory>
+      </VirtualHost>
+    </IfModule>
+    
+  The above file is using signed certificate your.crt with your.key, and CA, 
+  chain file obtained from CA. Please review resources on the net about 
+  certificates and the dns. You'll need to obtain and copy those files 
+  in /etc/ssl/private folder. Change YOUR_xyz with your preference.
+  
+  The /var/www/html is the default Ubuntu folder for serving web pages.     
+  
+* Install jam-py as usual.  
+
+  I created the /var/www/html/simpleassets folder where unzipped jam-py 
+  SimpleAssets project. Follow procedure explained there how to deploy these: 
+  
+  Basically, Export your project, save the zip file and copy it to your web 
+  hosting server desired folder. Copy admin.sqlite and your database as well 
+  (providing you're using sqlite3 database). If using some other database ie 
+  mysql, you'll need to export/import the database.
+  
+* Enable test.conf  (the above file name with no extension):  
+
+  .. code-block:: console
+    
+    a2ensite test; systemctl restart apache2
+    
+  That is it. At the moment, I've left port 80 as is, and jam-py is running only 
+  on https port. To debug problems, I would start with SeLinux or apparmor. 
+  With Ubuntu this might help:
+  
+  .. code-block:: console
+  
+    sudo /etc/init.d/apparmor stop
+
+
+Now, here is the question of how to run TWO jam-py instances on one https server?
+
+One possible answer to this problem is the DNS. You might decide to set your 
+DNS to ie second_instance.YOUR_SERVER name (the above live example would be 
+jam2.research...).
+
+So the above test.conf file would be almost the same except YOUR_SERVER is now 
+called second_instance.YOUR_SERVER
+
+The /etc/apache2/sites-available/test3.conf file:
+
+.. code-block:: apache
+
+  <IfModule mod_ssl.c>
+    <VirtualHost YOUR_IP:443>
+      ServerName second_instance.YOUR_SERVER
+      ServerAlias
+      ServerAdmin YOUR_EMAIL
+      ErrorLog ${APACHE_LOG_DIR}/test3-error-sec.log
+      CustomLog ${APACHE_LOG_DIR}/test3-access-sec.log combined
+      #below is for cx_Oracle
+      SetEnv LD_LIBRARY_PATH /u01/app/oracle/product/11.2.0/xe/lib
+      SetEnv ORACLE_SID XE
+      SetEnv ORACLE_HOME /u01/app/oracle/product/11.2.0/xe
+      #finish cx_Oracle
+      DocumentRoot /var/www/html/simpleassets3
+      SSLEngine on
+      SSLCertificateFile  "/etc/ssl/private/your.crt"
+      SSLCertificateKeyFile  "/etc/ssl/private/your.key"
+      SSLCertificateChainFile "/etc/ssl/private/your_chain.crt"
+      SSLCACertificateFile   "/etc/ssl/private/your_CA.crt"
+  
+      WSGIDaemonProcess  assets3 user=www-data group=www-data processes=1 threads=5
+      WSGIScriptAlias / /var/www/html/simpleassets3/wsgi.py
+  
+      <Directory /var/www/html/simpleassets3>
+        Options +ExecCGI
+        SetHandler wsgi-script
+        AddHandler wsgi-script .py
+  
+        Order deny,allow
+        Allow from all
+        Require all granted
+        
+        <Files wsgi.py>
+          Order deny,allow
+          Allow from all
+  
+          # comment the following for ubuntu <13
+          Require all granted
+        </Files>
+      </Directory>
+  
+      <Directory /var/www/html/simpleassets3/static>
+        # comment the following for ubuntu < 13
+        Require all granted
+      </Directory>
+    </VirtualHost>
+  </IfModule>
+  
+The jam-py application second_instance lives now in ie /var/www/html/simpleassets3, 
+and WSGIDaemonProcess is adjusted to new daemon, called assets3. Everything else 
+is almost the same.
+
+This is possible because the SSL certificate is a * (star, or wildcard) 
+certificate, enabling you to run multiple services on one DNS domain.  
+  
+*This was initialy published by Dražen Babić on* https://github.com/jam-py/jam-py/issues/35

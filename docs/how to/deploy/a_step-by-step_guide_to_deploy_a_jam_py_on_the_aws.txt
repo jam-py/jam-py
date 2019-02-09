@@ -1,0 +1,149 @@
+==================================================
+A step-by-step guide to deploy a Jam.py on the AWS
+==================================================
+
+
+This is adapted from 
+https://devops.profitbricks.com/tutorials/install-and-configure-mod_wsgi-on-ubuntu-1604-1/ 
+
+I hope someone finds it useful.
+
+* Create an AWS account and login
+* Go to EC2, create an instance (in this case an Ubuntu 16.04 t2.micro)
+* Download the private key when prompted
+* Convert pem to ppk using Puttygen (see: https://stackoverflow.com/questions/3190667/convert-pem-to-ppk-file-format)
+* Get EC2 instance public DNS from AWS dashboard
+* SSH into EC2 instance using Putty (pointed to the Public DNS and your ppk)
+* Username is ubuntu
+* Refresh package library: 
+
+  .. code-block:: console
+  
+    sudo apt-get update
+
+* Install pip: 
+
+  .. code-block:: console
+  
+    sudo apt-get install python3-pip
+
+* Install jam.py: 
+
+  .. code-block:: console
+  
+    sudo pip3 install jam.py
+
+* Install Apache: 
+  
+  .. code-block:: console
+  
+    sudo apt-get install apache2 apache2-utils libexpat1 ssl-cert
+
+* Install mod-wsgi: 
+  
+  .. code-block:: console
+  
+    sudo apt-get install libapache2-mod-wsgi-py3
+
+* Restart Apache: 
+
+  .. code-block:: console
+  
+    sudo /etc/init.d/apache2 restart
+
+* Move here: 
+
+  .. code-block:: console
+  
+    cd /var/www/html/
+
+* Create directory: 
+
+  .. code-block:: console
+  
+    sudo mkdir [appname]
+
+* Move here:
+
+  .. code-block:: console
+  
+     cd [appname]
+
+* Create app: 
+
+  .. code-block:: console
+  
+    sudo jam-project.py
+
+* Check it's there: 
+
+  .. code-block:: console
+  
+    ls
+
+* Create the config: 
+
+  .. code-block:: console
+  
+    sudo nano /etc/apache2/conf-available/wsgi.conf
+
+* Paste the following
+
+  .. code-block:: apache
+  
+    WSGIScriptAlias / /var/www/html/[appname]/wsgi.py
+    WSGIPythonPath /var/www/html/[appname]
+    
+    <Directory /var/www/html/[appname]>
+      <Files wsgi.py>
+        Require all granted
+      </Files>
+    </Directory>
+    
+    Alias /static/ /var/www/html/[appname]/static/
+    
+    <Directory /var/www/html/[appname]/static>
+      Require all granted
+    </Directory>
+
+* Exit and save
+
+* Give file permissions to apache: 
+
+  .. code-block:: console
+
+    sudo chmod 777 /var/www/html/[appname]
+
+* Give ownership to apache: 
+
+  .. code-block:: console
+  
+    sudo chown -R www-data:www-data /var/www
+
+* Enable wsgi: 
+
+  .. code-block:: console
+  
+    sudo a2enconf wsgi
+
+* Restart apache: 
+
+  .. code-block:: console
+  
+    sudo /etc/init.d/apache2 restart
+
+* Create security group on AWS to allow you to connect HTTP on port 80
+
+* Assign instance to security group
+
+* Test
+
+* If it's not working, check the error logs to see what's going on: 
+
+  .. code-block:: console
+  
+    nano /var/log/apache2/error.log
+
+
+*This was initialy published by Simon Cox on*
+https://groups.google.com/forum/#!msg/jam-py/Zv5JfkLRFy4/22tolZ-hAQAJ

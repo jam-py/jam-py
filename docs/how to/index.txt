@@ -13,4 +13,4 @@ Here is a useful code that you can use in your applications:
     to_append_a_record_without_view_form
     export_import_csv_files    
     how_to_lock_record
-    how_to_deploy_project_on_pythonanywhere
+    deploy/index
