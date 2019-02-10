@@ -37,46 +37,50 @@ If you are new to Jam.py, we highly recommend that you watch these video tutoria
 
 It is recommended to watch these videos with a resolution of 1080p
 
-Tutorial 1 - `First application`_ 
+`CRM web database application in 7 minutes <https://youtu.be/vY6FTdpABa4>`_
 
-.. _`First application`: https://youtu.be/T2lnOVuybGQ
+`Setting up interface of Jam.py application <https://youtu.be/hvNZ0-a_HHw>`_
 
-Tutorial 2 - `Jam.py interface setup`_ 
+`Working with files and images. <https://youtu.be/9rFXPyfN0Hg>`_
 
-.. _`Jam.py interface setup`: https://youtu.be/XxPmqrZFtqQ
+`Working with details <https://youtu.be/sbvxE-vEfsM>`_
 
-Tutorial 3 - `Task tree`_ 
+`Users, roles, audit trail/change history <https://youtu.be/60LiWZa0CpY>`_
+
+`Debugging Jam.py applications <https://youtu.be/Dk9GfwigVdg>`_
+
+`Task tree`_ 
 
 .. _`Task tree`: https://youtu.be/hsSKqEh6vL4
 
-Tutorial 4 - Forms_
+Forms_
 
 .. _Forms: https://youtu.be/3sh-TSt52P0
 
-Tutorial 5 - `Form events`_
+`Form events`_
  
 .. _`Form events`: https://youtu.be/DY463lcv0R4
 
-Tutorial 6 - `Data aware controls`_
+`Data aware controls`_
  
 .. _`Data aware controls`: https://youtu.be/fMTq8P4XdGw
 
-Tutorial 7 - `Datasets`_
+`Datasets`_
  
 .. _`Datasets`: https://youtu.be/gHTYj7h9ljI
 
-Tutorial 8 - `Datasets Part 2`_
+`Datasets Part 2`_
  
 .. _`Datasets Part 2`: https://youtu.be/1bUGmgBfrNw
 
-Tutorial 9 - `Fields and filters`_
+`Fields and filters`_
  
 .. _`Fields and filters`: https://youtu.be/ahXqlZrA0fQ
 
-Tutorial 10 - `Client-server interactions`_
+`Client-server interactions`_
  
 .. _`Client-server interactions`: https://youtu.be/nLOhdA2FX0I
 
-Tutorial 11 - `Working with data on the server`_
+`Working with data on the server`_
  
 .. _`Working with data on the server`: https://youtu.be/dDK78lIjHHY
