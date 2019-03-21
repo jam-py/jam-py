@@ -126,8 +126,7 @@ task_server_events = \
         'on_created': 'task',
         'on_login': 'task, login, password, ip, session_uuid',
         'on_open': 'item, params',
-        #~ 'on_count': 'item, params',
-        'on_apply': 'item, delta, params',
+        'on_apply': 'item, delta, params, connection',
         'on_ext_request': 'task, request, params'
         #~ 'on_before_request': 'item, request, params'
         #~ 'on_after_request': 'item, request, params, duration'
@@ -145,12 +144,11 @@ reports_server_events = \
 detail_server_events = \
     {
         'on_open': 'item, params',
-        #~ 'on_count': 'item, params',
 #        'on_field_get_text': 'field'
     }
 
 item_server_events = detail_server_events
-item_server_events['on_apply'] = 'item, delta, params'
+item_server_events['on_apply'] = 'item, delta, params, connection'
 
 report_server_events = \
     {

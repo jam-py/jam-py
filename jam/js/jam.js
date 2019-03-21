@@ -825,8 +825,7 @@
         init_filters: function() {
             var self = this;
             this._on_filters_applied_internal = function() {
-                if (self.view_form.length) {
-                    //~ self.view_form.find(".filters-text").text(self.get_filter_text());
+                if (self.view_form) {
                     self.view_form.find(".filters-text").html(self.get_filter_html());
                 }
             };
@@ -1645,6 +1644,7 @@
                     field,
                     field_name,
                     changes,
+                    operation,
                     field_arr;
                 changes = h.changes.value;
                 if (changes && changes[0] === '0') {
@@ -1698,8 +1698,19 @@
                 if (h.user.value) {
                     user = self.task.language.by_user + ' ' + h.user.value;
                 }
+                if (h.operation.value === consts.RECORD_INSERTED) {
+                    operation = self.task.language.created;
+                }
+                else if (h.operation.value === consts.RECORD_MODIFIED ||
+                    h.operation.value === consts.RECORD_DETAILS_MODIFIED) {
+                    operation = self.task.language.modified;
+                }
+                else if (h.operation.value === consts.RECORD_DELETED) {
+                    operation = self.task.language.deleted;
+                }
+
                 acc.find('.accordion-toggle').html(h.date.format_date_to_string(h.date.value, '%d.%m.%Y %H:%M:%S') + ': ' +
-                    h.operation.display_text + ' ' + user);
+                    operation + ' ' + user);
                 acc.find('.accordion-inner').html(content);
                 if (h.rec_no === 0) {
                     acc.find('.accordion-body').addClass('in');
@@ -1766,7 +1777,7 @@
             }
             hist.set_where({item_id: item_id, item_rec_id: this.field_by_name(this._primary_key).value})
             hist.set_order_by(['-date']);
-            hist.open(function() {
+            hist.open({limit: 100}, function() {
                 self.display_history(hist);
             });
         },
@@ -2115,7 +2126,6 @@
             $form.find("#login-btn").click(function(e) {
                 var login = $form.find("#inputLoging").val(),
                     passWord = $form.find("#inputPassword").val();
-                    //~ pswHash = hex_md5(passWord);
                 e.preventDefault();
                 if (login && passWord) {
                     self.send_request('login', [login, passWord], function(success) {
@@ -2325,7 +2335,7 @@
 
         has_privilege: function(item, priv_name) {
             var priv_dic;
-            if (!task.safe_mode || item.task.ID === 0) {
+            if (item.task.ID === 0) {
                 return true;
             }
             if (item.master) {
@@ -2864,13 +2874,14 @@
             if (this.item.item_state === consts.STATE_EDIT) {}
         },
 
-        change_old_record: function() {
+        record_refreshed: function() {
             var record_log,
                 change_id = this.item._get_rec_change_id();
             if (change_id) {
                 record_log = this.logs[change_id]
                 if (record_log) {
                     record_log.old_record = this.copy_record(this.cur_record(), false);
+                    record_log.details = {};
                 }
             }
         },
@@ -3263,7 +3274,7 @@
         this._modified = null;
         this._state = 0;
         this._read_only = false;
-        this.parent_read_only = true;
+        this.owner_read_only = true;
         this._can_modify = true;
         this._active = false;
         this._disabled_count = 0;
@@ -4034,25 +4045,15 @@
                 for (i = 0; i < len; i++) {
                     result[this._events[i][0]] = this._events[i][1];
                 }
-                //~ for (var name in this) {
-                    //~ if (this.hasOwnProperty(name)) {
-                        //~ if ((name.substring(0, 3) === "on_") && (typeof this[name] === "function")) {
-                            //~ result[name] = this[name];
-                        //~ }
-                    //~ }
-                //~ }
-                result.edit_options = $.extend({}, this._edit_options);
-                result.view_options = $.extend({}, this._view_options);
-                result.table_options = $.extend({}, this._table_options);
+                result.edit_options = $.extend(true, {}, this._edit_options);
+                result.view_options = $.extend(true, {}, this._view_options);
+                result.table_options = $.extend(true, {}, this._table_options);
             }
             else {
-                result.edit_options = $.extend({}, this.task.edit_options);
-                result.view_options = $.extend({}, this.task.view_options);
+                result.edit_options = $.extend(true, {}, this.task.edit_options);
+                result.view_options = $.extend(true, {}, this.task.view_options);
                 result.table_options = {};
             }
-            //~ result.edit_options = $.extend({}, this._edit_options);
-            //~ result.view_options = $.extend({}, this._view_options);
-            //~ result.table_options = $.extend({}, this._table_options);
             if (options.paginate) {
                 result._paginate = this._paginate;
             }
@@ -5455,21 +5456,47 @@
         },
 
         _set_read_only: function(value) {
+            var self = this;
             this._read_only = value;
-            this.each_field(function(field) {
-                field._read_only = value;
-                field.update_controls();
-            });
-            this.each_detail(function(detail) {
-                detail._set_read_only(value);
-            });
+            if (task.old_forms) {
+                this.each_field(function(field) {
+                    field.update_controls();
+                });
+                this.each_detail(function(detail) {
+                    detail.update_controls();
+                });
+            }
+            else {
+                this.each_field(function(field) {
+                    if (!this.owner_read_only) {
+                        field._read_only = value;
+                    }
+                    field.update_controls();
+
+                });
+                this.each_detail(function(detail) {
+                    if (!this.owner_read_only) {
+                        details.read_only = value;
+                    }
+                    detail.update_controls();
+                });
+            }
         },
 
         _get_read_only: function() {
-            if (this.master && this.parent_read_only) {
-                return this.master._get_read_only();
-            } else {
-                return this._read_only;
+            if (task.old_forms) {
+                if (this.master && this.master.owner_read_only) {
+                    return this.master.read_only
+                } else {
+                    return this._read_only;
+                }
+            }
+            else {
+                if (this.master && this.master.owner_read_only && this.master.read_only) {
+                    return this.master.read_only
+                } else {
+                    return this._read_only;
+                }
             }
         },
 
@@ -6511,7 +6538,7 @@
                     }
                 }
                 this._on_after_scroll_internal = function() {
-                    if (self.view_form.length) {
+                    if (self.view_form) {
                         clearTimeout(scroll_timeout);
                         scroll_timeout = setTimeout(
                             function() {
@@ -7094,7 +7121,6 @@
         },
 
         _find_lookup_value: function(field, lookup_field) {
-            console.log(lookup_field.field_name, field.field_name)
             if (lookup_field.field_kind === consts.ITEM_FIELD) {
                 if (field.lookup_field && field.lookup_field1 &&
                     lookup_field.lookup_item1 && lookup_field.lookup_item2) {
@@ -7192,7 +7218,7 @@
         },
 
         round: function(num, dec) {
-            //        return Math.round(num * Math.pow(10, dec)) / Math.pow(10, dec);
+            //~ return Math.round(num * Math.pow(10, dec)) / Math.pow(10, dec);
             return Number(num.toFixed(dec));
         },
 
@@ -7200,15 +7226,29 @@
         },
 
         _do_on_refresh_record: function(copy, options, callback, async) {
-            var i, len;
+            var i,
+                len,
+                default_options = {
+                    details: [],
+                    default_order: true
+                },
+            options = $.extend(true, {}, default_options, options);
             if (copy.record_count() === 1) {
                 len = copy._dataset[0].length;
                 for (i = 0; i < len; i++) {
                     this._dataset[this.rec_no][i] = copy._dataset[0][i];
                 }
-                this.change_log.change_old_record();
+                this.each_detail(function(d) {
+                    if (d.active) {
+                        //~ d.close();
+                        if ($.inArray(d.item_name, options.details) === -1)  {
+                            options.details.push(d.item_name);
+                        }
+                    }
+                });
+                this.change_log.record_refreshed();
                 this.update_controls(consts.UPDATE_RECORD);
-                if (options && options.details && options.details.length) {
+                if (options.details.length) {
                     this.open_details(options, callback, async);
                 }
                 else if (callback) {
@@ -8501,8 +8541,8 @@
 
         _get_read_only: function() {
             var result = this._read_only;
-            if (this.owner && this.owner.parent_read_only && this.owner._get_read_only()) {
-                result = this.owner._get_read_only();
+            if (this.owner && this.owner.owner_read_only && this.owner.read_only) {
+                result = this.owner.read_only;
             }
             return result;
         },
@@ -9756,7 +9796,6 @@
             this.$element.appendTo(this.$container);
             this.create_table();
             this.create_pager();
-            //~ this.resize();
 
             this.sync_freezed();
 
@@ -9778,22 +9817,6 @@
                 },
                 100
             );
-        },
-
-        ids_to_field_names: function(ids) {
-            var i,
-                field,
-                result;
-            if (ids && ids.length) {
-                result = [];
-                for (i = 0; i < ids.length; i++) {
-                    field = this.item._field_by_ID(ids[i]);
-                    if (field) {
-                        result.push(field.field_name);
-                    }
-                }
-            }
-            return result;
         },
 
         init_options: function(options) {
@@ -9953,7 +9976,7 @@
             this.freezed_table = new DBTable(this.item, container, options, this)
             this.freezed_table.$element.detach()
             this.freezed_table.$element.css('position', 'absolute');
-            this.freezed_table.$element.css('left', '0');
+            this.freezed_table.$element.css('left', '1px');
             this.freezed_table.$element.css('top', '0');
             this.freezed_table.$element.css('overflow', 'hidden');
             this.freezed_table.$table_container.css('overflow', 'hidden');
@@ -10021,20 +10044,12 @@
             }
             else {
                 if (this.master_table) {
-                    this.$outer_table.find('thead tr').height(this.master_table.$outer_table.find('thead tr').height());
-                    for (i = 0; i < this.fields.length - 1; i++) {
+                    this.$head.height(this.master_table.$head.height());
+                    this.$foot.height(this.master_table.$foot.height());
+                    for (i = 0; i < this.fields.length; i++) {
                         field_name = this.fields[i].field_name;
-                        cell_width = this.master_table.get_cell_width(field_name);
+                        cell_width = this.master_table.$head.find('th.' + field_name).outerWidth();
                         this.set_сell_width(field_name, cell_width);
-                        $td = this.$table.find('td.' + field_name);
-                        $th = this.$element.find("thead tr:first th." + field_name);
-                        $tf = this.$element.find("tfoot tr:first th." + field_name);
-                        $td.width(cell_width);
-                        $td.find('div').width(cell_width);
-                        $th.width(cell_width);
-                        $th.find('div').width(cell_width);
-                        $tf.width(cell_width);
-                        $tf.find('div').width(cell_width);
                     }
                     this.sync_col_width();
                 }
@@ -10270,15 +10285,17 @@
                 this.colspan += 1;
             }
             this.$element.find('.table-container').append($(
-                '<table class="outer-table" style="width: 100%;">' +
+                '<table class="outer-table table table-condensed table-bordered" style="width: 100%;">' +
                 '   <thead>' +
                 '       <tr><th>&nbsp</th></tr>' +
                 '   </thead>' +
                 '   <tr>' +
-                '       <td id="top-td" style="padding: 0;" colspan=' + this.colspan + '>' +
-                '           <div class="overlay-div" style="position: relative; width: 100%; overflow-y: auto; overflow-x: hidden;">' +
+                '       <td id="top-td" style="padding: 0; border: 0;" colspan=' + this.colspan + '>' +
+                '           <div class="overlay-div" style="position: relative; width: 100%; height: 100%; overflow-y: auto; overflow-x: hidden;">' +
                 '               <div class="scroll-div" style="position: relative; height: 0;">' +
-                '                   <table class="inner-table" style="position: absolute; width: 100%"></table>' +
+                '                   <table class="inner-table table table-condensed table-bordered" style="position: absolute; width: 100%">' +
+                '                       <tbody></tbody>' +
+                '                   </table>' +
                 '               </div>' +
                 '           </div>' +
                 '       </td>' +
@@ -10317,13 +10334,12 @@
                 }
             });
 
-            this.$element.find('table.outer-table')
-                .addClass("table table-condensed table-bordered")
-                .css("margin", 0);
+            this.$outer_table.css("margin", 0)
 
-            this.$table.addClass("table table-condensed")
+            this.$table.css("outline", "none")
                 .css("margin", 0)
-                .attr("disabled", false);
+                .css("border", 0)
+
             if (this.options.striped) {
                 this.$table.addClass("table-striped");
             }
@@ -10615,7 +10631,8 @@
         },
 
         calculate: function() {
-            var i,
+            var self = this,
+                i,
                 row_line_count,
                 $element,
                 $table,
@@ -10673,6 +10690,7 @@
                 row_height += Math.round(fix);
                 margin = row_height * 10 - $table.innerHeight();
             }
+            this.row_margin = margin;
             this.row_height = row_height + (row_line_count - 1) * this.text_height;
             this.selected_row_height = 0;
             elementHeight = $element.outerHeight();
@@ -10690,28 +10708,42 @@
                 }
             }
             else {
-                overlay_div_height = this.$overlay_div.innerHeight() + margin;
-                selected_row_height = this.selected_row_height;
-                if (this.options.expand_selected_row) {
-                    overlay_div_height = this.$overlay_div.height() - selected_row_height + margin;
-                }
-                else {
-                    selected_row_height = this.row_height;
-                }
-                this.row_count = Math.floor(overlay_div_height / this.row_height);
-                if (this.options.expand_selected_row) {
-                    this.row_count += 1;
-                }
-                if (this.row_count <= 0) {
-                    this.row_count = 1;
-                }
-                if (this.options.exact_height) {
-                    this.$overlay_div.innerHeight((this.row_count - 1) * this.row_height + selected_row_height);
-                }
+                this.calc_row_count();
             }
             if (this.item._paginate) {
                 this.item._limit = this.row_count;
             }
+            else if (this.form.hasClass('modal')) {
+                setTimeout(
+                    function() {
+                        if (self.row_count !== self.calc_row_count()) {
+                            self.field_width_updated = false;
+                            self.datasource = [];
+                            self.refresh();
+                        }
+                    },
+                    300
+                );
+            }
+        },
+
+        calc_row_count: function() {
+            var overlay_div_height = this.$overlay_div.innerHeight() + this.row_margin,
+                selected_row_height = this.selected_row_height;
+            if (this.options.expand_selected_row) {
+                overlay_div_height = this.$overlay_div.height() - selected_row_height + this.row_margin;
+            }
+            else {
+                selected_row_height = this.row_height;
+            }
+            this.row_count = Math.floor(overlay_div_height / this.row_height);
+            if (this.options.expand_selected_row) {
+                this.row_count += 1;
+            }
+            if (this.row_count <= 0) {
+                this.row_count = 1;
+            }
+            return this.row_count;
         },
 
         create_pager: function($element) {
@@ -11007,8 +11039,7 @@
                 desc,
                 order_fields = {},
                 shown_title,
-                select_menu = '',
-                cellWidth;
+                select_menu = '';
             if ($element === undefined) {
                 $element = this.$element
             }
@@ -11041,11 +11072,6 @@
                     input = $('<input class="multi-select-header" type="checkbox" ' + checked + ' tabindex="-1">');
                     div.append(input);
                     cell = $('<th class="multi-select-header"></th>').append(div);
-                    cellWidth = this.get_cell_width('multi-select');
-                    if (cellWidth && this.fields.length) {
-                        cell.width(cellWidth);
-                        div.width('auto');
-                    }
                     heading.append(cell);
                 }
                 else {
@@ -11066,9 +11092,7 @@
                     }
                     select_menu +=
                         '<li id="mshow-selected"><a tabindex="-1" href="#">' + shown_title + '</a></li>';
-                    this.$element.find('#mselect-block').empty();
                     bl = $(
-                        //~ '<div style="height: 0; position: relative;">' +
                             '<div id="mselect-block" class="btn-group" style="position: relative">' +
                                 '<button type="button" class="btn mselect-btn" tabindex="-1">' +
                                     '<input class="multi-select-header" type="checkbox" tabindex="-1" style="margin: 0" ' + checked + '>' +
@@ -11080,7 +11104,6 @@
                                     select_menu +
                                 '</ul>' +
                             '</div>'
-                        //~ '</div>'
                     );
                     input = bl.find('#mselect-block')
                     bl.find("#mselect-all").click(function(e) {
@@ -11101,13 +11124,7 @@
                             self.$table.focus();
                         });
                     });
-                    this.selection_block = bl;
                     cell = $('<th class="multi-select"></th>').append(div);
-                    cellWidth = this.get_cell_width('multi-select');
-                    if (cellWidth && this.fields.length) {
-                        cell.width(cellWidth);
-                        div.width('auto');
-                    }
                     heading.append(cell);
                     cell.css('padding-top', 0);
                     input.css('top', sel_count.outerHeight() + sel_count.position().top + 4);
@@ -11119,16 +11136,11 @@
             for (i = 0; i < len; i++) {
                 field = this.fields[i];
                 div = $('<div class="text-center ' + field.field_name +
-                    '" style="overflow: hidden"><p>' + field.field_caption + '</p></div>');
+                    '" style="overflow: hidden"><p style="margin: 0">' + field.field_caption + '</p></div>');
                 cell = $('<th class="' + field.field_name + '" data-field_name="' + field.field_name + '"></th>').append(div);
                 if (!this.options.title_word_wrap) {
                     div.css('height', this.text_height);
                     cell.css('height', this.text_height);
-                }
-                cellWidth = this.get_cell_width(field.field_name);
-                if (cellWidth && (i < this.fields.length - 1)) {
-                    cell.width(cellWidth);
-                    div.width('auto');
                 }
                 if (order_fields[field.field_name]) {
                     cell.find('p').append('<i class="' + order_fields[field.field_name] + '"></i>');
@@ -11949,7 +11961,8 @@
         },
 
         show_next_record: function() {
-            var row = this.row_by_record();
+            var self = this,
+                row = this.row_by_record();
             if (!row) {
                 row = this.datasource[0][1];
                 row.remove();
@@ -11960,7 +11973,7 @@
                 }
                 this.$table.append(row);
                 this.datasource.push([this.item.rec_no, row[0]]);
-                this.sync_col_width();
+                //~ this.sync_col_width();
             }
 
         },
@@ -12013,7 +12026,7 @@
                     }
                     this.$table.prepend(row);
                     this.datasource.splice(0, 0, [this.item.rec_no, row[0]]);
-                    this.sync_col_width();
+                    //~ this.sync_col_width();
                 }
             }
         },
@@ -12134,9 +12147,6 @@
             if (this.text_height && this.options.row_line_count) {
                 divStyleStr += '; height: ' + this.options.row_line_count * this.text_height + 'px; width: auto';
             }
-            if (setFieldWidth && cellWidth && (index < this.fields.length - 1)) {
-                tdStyleStr += '; width: ' + cellWidth + 'px';
-            }
             tdStyleStr +=  '""';
             divStyleStr += '"';
             return '<td ' + classStr + ' ' + dataStr + ' ' + tdStyleStr + '>' +
@@ -12192,41 +12202,15 @@
         sync_col_width: function(all_cols) {
             var $row,
                 field,
-                $th,
-                $td,
-                i,
-                count,
-                width,
-                total_width = 0,
-                widths = [],
-                len = this.fields.length;
+                $th;
             if (this.item.record_count()) {
                 $row = this.$table.find("tr:first-child");
-                if (this.options.multiselect) {
-                    $th = this.$head.find('th.' + 'multi-select');
-                    $td = $row.find('td.' + 'multi-select');
-                    width = $td.width();
-                    $th.width(width);
-                    $td.width(width);
-                }
-                count = len - 1;
-                if (all_cols) {
-                    count = len;
-                }
-                widths = [];
-                for (i = 0; i < count; i++) {
-                    field = this.fields[i];
-                    $td = $row.find('td.' + field.field_name);
-                    $th = this.$head.find('th.' + field.field_name);
-                    width = Math.round(this.get_cell_width(field.field_name))
-                    $td.width(width);
-                    $th.width(width);
-                }
+                this.set_saved_width($row, all_cols)
                 if (all_cols) {
                     return;
                 }
                 if (this.fields.length && this.$table.is(':visible')) {
-                    field = this.fields[len - 1];
+                    field = this.fields[this.fields.length - 1];
                     $th = this.$head.find('th.' + field.field_name);
                     if ($th.width() <= 0) {
                         this.$head.find('th.' + 'fake-column').show();
@@ -12242,16 +12226,21 @@
             }
         },
 
+        remove_saved_width: function() {
+            this.$outer_table.find('colgroup').remove();
+            this.$table.find('colgroup').remove();
+        },
+
         set_saved_width: function(row, all_cols) {
             var i,
+                col_group = '<colgroup>',
                 len = this.fields.length,
                 count = len - 1,
                 field,
                 width;
+            this.remove_saved_width();
             if (this.options.multiselect) {
-                width = this.get_cell_width('multi-select');
-                row.find("td." + 'multi-select').width(width);
-                this.$head.find("th." + 'multi-select').width(width);
+                col_group += '<col style="width: 48px">'
             }
             if (all_cols) {
                 count = len;
@@ -12259,9 +12248,11 @@
             for (i = 0; i < count; i++) {
                 field = this.fields[i];
                 width = this.get_cell_width(field.field_name);
-                row.find("td." + field.field_name).width(width);
-                this.$head.find("th." + field.field_name).width(width);
+                col_group += '<col style="width: ' + width + 'px">';
             }
+            col_group += '</colgroup>',
+            this.$outer_table.prepend(col_group)
+            this.$table.prepend(col_group);
         },
 
         fill_datasource: function(start_rec) {
@@ -12347,6 +12338,9 @@
             }
 
             if (!this.item.paginate) {
+                if (this.options.row_count !== this.row_count) {
+                    this.calc_row_count();
+                }
                 this.$scroll_div.height(this.scroll_height())
             }
             this.$table.empty();
@@ -12362,8 +12356,8 @@
             if (this.auto_field_width && !this.field_width_updated) {
                 container = $('<div>');
                 container.css("position", "absolute")
-                    //~ .css("top", 0)
-                    .css("top", -1000)
+                    .css("top", 0)
+                    //~ .css("top", -1000)
                     .width(this.getElementWidth(this.$element));
                 $('body').append(container);
                 this.$element.detach();
@@ -12389,15 +12383,13 @@
                         tmpRow.find("." + field_name).css("width", this.options.column_width[field_name]);
                     }
                 }
-                if (this.options.multiselect) {
-                    cell = row.find("td." + 'multi-select');
-                    this.set_сell_width('multi-select', 38);
-                }
                 for (i = 0; i < len; i++) {
                     field = this.fields[i];
                     cell = row.find("td." + field.field_name);
-                    this.set_сell_width(field.field_name, cell.width());
+                    this.set_сell_width(field.field_name, cell.outerWidth());
                 }
+
+                tmpRow.remove();
 
                 this.$element.detach();
                 this.$container.append(this.$element);
@@ -12408,16 +12400,15 @@
                 this.$outer_table.css('table-layout', 'fixed');
 
 
-                this.fill_title(this.$container);
-                this.fill_footer(this.$container);
-                this.set_saved_width(row);
+                this.fill_title(this.$element);
+                this.fill_footer(this.$element);
+                this.set_saved_width();
                 if (this.item.record_count() > 0 && is_visible) {
                     this.field_width_updated = true;
                 }
-                tmpRow.remove();
             } else {
-                this.fill_title(this.$container);
-                this.fill_footer(this.$container);
+                this.fill_title(this.$element);
+                this.fill_footer(this.$element);
             }
 
             if (this.options.show_footer) {
@@ -12436,6 +12427,9 @@
             this.update_summary();
             this.sync_col_width();
             this.$table_container.scrollLeft(scroll_left);
+            if (!this.item.rec_count) {
+                this.$head.find('th').css('border-bottom', this.$outer_table.css('border-top'));
+            }
         },
 
         check_datasource: function() {

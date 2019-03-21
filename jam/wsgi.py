@@ -487,7 +487,10 @@ class App():
             data = request.get_data()
             if type(data) != str:
                 data = to_unicode(data, 'utf-8')
-            params = json.loads(data)
+            try:
+                params = json.loads(data)
+            except:
+                params = None
             task = self.get_task()
             try:
                 data = None

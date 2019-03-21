@@ -6832,6 +6832,10 @@ a.thumbnail:hover {
 jam.py css
 */
 
+.dbtable .table-bordered {
+    border-left: 1px solid #dddddd;
+}
+
 .table tbody tr.selected > td:not(.field-selected) {
     color: #fff;
     background-color: #b4b4b4;
@@ -6841,15 +6845,6 @@ jam.py css
     color: #ffffff;
     text-decoration: none;
     background-color: #007af5;
-/*
-    background-image: -moz-linear-gradient(top, #007fff, #0072e6);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#007fff), to(#0072e6));
-    background-image: -webkit-linear-gradient(top, #007fff, #0072e6);
-    background-image: -o-linear-gradient(top, #007fff, #0072e6);
-    background-image: linear-gradient(to bottom, #007fff, #0072e6);
-    background-repeat: repeat-x;
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff007fff', endColorstr='#ff0072e6', GradientType=0);
-*/
 }
 .table tbody td.field-selected {
     color: #fff;
@@ -6859,6 +6854,11 @@ jam.py css
 .table tbody td.field-selected-focused {
     color: #fff;
     background-color: #0059b3;
+}
+
+.dbtable.freezed thead,
+.dbtable.freezed tfoot {
+    background-color: white;
 }
 
 .input-append .btn.btn12,

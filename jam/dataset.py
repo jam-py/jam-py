@@ -2055,7 +2055,7 @@ class MasterDataSet(AbstractDataSet):
     def do_apply(self, params, safe):
         pass
 
-    def apply(self, params=None, safe=False):
+    def apply(self, connection=None, params=None, safe=False):
         result = None
         if self.is_changing():
             self.post()
@@ -2063,7 +2063,7 @@ class MasterDataSet(AbstractDataSet):
             result = self.on_before_apply(self)
             if result:
                 params = result
-        self.do_apply(params, safe)
+        self.do_apply(params, safe, connection)
         if self.on_after_apply:
             self.on_after_apply(self)
 

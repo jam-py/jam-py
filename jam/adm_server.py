@@ -1026,6 +1026,8 @@ def load_task(target, app, first_build=True, after_import=False):
     def history_on_apply(item, delta, params):
         raise Exception('Changing of history is not allowed.')
 
+    target.pool.dispose()
+    target.pool.recreate()
     task = app.admin
     remove_attr(target)
     target.items = []

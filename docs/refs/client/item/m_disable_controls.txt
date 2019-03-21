@@ -13,7 +13,7 @@ disable_controls
 Description
 ===========
 
-Call ``disable_controls`` to "turn off" data-aware, so they will not refrect 
+Call ``disable_controls`` to "turn off" data-aware controls, so they will not refrect 
 changes to the item dataset data.
 
 Call 

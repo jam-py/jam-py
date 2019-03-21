@@ -6219,6 +6219,10 @@ jam.py css
     margin-bottom: 10px;
 }
 
+.dbtable .table-bordered {
+    border-left: 1px solid #dddddd;
+}
+
 .table tbody tr.selected > td:not(.field-selected) {
     background-color: #ececec;
 }
@@ -6239,6 +6243,11 @@ jam.py css
 
 .table th{
     color: #7F7F7F;
+}
+
+.dbtable.freezed thead,
+.dbtable.freezed tfoot {
+    background-color: #f6f6f6;
 }
 
 .input-append .btn.btn12,

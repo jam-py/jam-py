@@ -21,7 +21,7 @@ from jam.items import *
 from jam.dataset import *
 from jam.sql import *
 from jam.execute import process_request, execute_sql, execute_sql_connection
-from jam.third_party.six import exec_, print_
+from jam.third_party.six import exec_, print_, get_function_code
 from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_bytes, to_unicode
 
 class ServerDataset(Dataset, SQL):
@@ -109,12 +109,12 @@ class ServerDataset(Dataset, SQL):
     def do_internal_open(self, params):
         return self.select_records(params)
 
-    def do_apply(self, params=None, safe=False):
+    def do_apply(self, params=None, safe=False, connection=None):
         if not self.master and self.log_changes:
             changes = {}
             self.change_log.get_changes(changes)
             if changes['data']:
-                data, error = self.apply_changes((changes, params), safe)
+                data, error = self.apply_changes((changes, params), safe, connection)
                 if error:
                     raise Exception(error)
                 else:
@@ -148,9 +148,6 @@ class ServerDataset(Dataset, SQL):
                 count += rows[0][0]
             result = count, error_mess
         return result
-
-    def connection_open(self, params, connection, db_module=None):
-        return self.execute_select(params, connection, db_module)
 
     def execute_select(self, params, connection=None, db_module=None):
         error_mes = ''
@@ -186,26 +183,49 @@ class ServerDataset(Dataset, SQL):
             result = self.execute_select(params)
         return result
 
-    def connection_apply(self, delta, params, connection, db_module=None):
-        return self.apply_delta(delta, params, connection, db_module)
-
-    def apply_delta(self, delta, params=None, connection=None, db_module=None):
+    def apply_delta(self, delta, params=None, connection=None, db_module=None, autocommit=True):
+        if not db_module:
+            db_module = self.task.db_module
         sql = delta.apply_sql(params)
-        return self.task.execute(sql, None, connection, db_module)
+        return self.task.execute(sql, None, connection=connection, db_module=db_module, autocommit=autocommit)
 
-    def apply_changes(self, data, safe):
+    def apply_changes(self, data, safe, connection=None):
         result = None
         changes, params = data
         if not params:
             params = {}
         params['__safe'] = safe
         delta = self.delta(changes)
-        if self.task.on_apply:
-            result = self.task.on_apply(self, delta, params)
-        if result is None and self.on_apply:
-            result = self.on_apply(self, delta, params)
-        if result is None:
-            result = self.apply_delta(delta, params)
+        if connection:
+            autocommit = False
+        else:
+            autocommit = True
+            if not self.task.mp_pool:
+                connection = self.task.connect()
+        try:
+            if self.task.on_apply:
+                try:
+                    result = self.task.on_apply(self, delta, params, connection)
+                except:
+                    # for compatibility with previous versions
+                    if get_function_code(self.task.on_apply).co_argcount == 3:
+                        result = self.task.on_apply(self, delta, params)
+                    else:
+                        raise
+            if result is None and self.on_apply:
+                try:
+                    result = self.on_apply(self, delta, params, connection)
+                except:
+                    # for compatibility with previous versions
+                    if get_function_code(self.on_apply).co_argcount == 3:
+                        result = self.on_apply(self, delta, params)
+                    else:
+                        raise
+            if result is None:
+                result = self.apply_delta(delta, params, connection, autocommit=autocommit)
+        finally:
+            if connection and autocommit:
+                connection.close()
         return result
 
     def update_deleted(self):
@@ -895,16 +915,18 @@ class AbstractServerTask(AbstrTask):
         return result
 
     def pool_execute(self, command, params=None, call_proc=False, select=False):
-        con = self.create_connection()
+        con = self.connect()
         try:
             connection, result = execute_sql_connection(con, command, params, call_proc, select, False, self.db_module)
         finally:
             con.close()
         return result
 
-    def execute(self, command, params=None, connection=None, db_module=None, call_proc=False, select=False):
+    def execute(self, command, params=None, connection=None, db_module=None, \
+        call_proc=False, select=False, autocommit=True):
         if connection:
-            connection, result = execute_sql_connection(connection, command, params, call_proc, select, False, db_module)
+            connection, result = execute_sql_connection(connection, command, \
+                params, call_proc, select, False, db_module, autocommit=autocommit)
         elif self.persist_con:
             if self.mp_pool:
                 if not self.con_counter.val:

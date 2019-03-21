@@ -11,6 +11,6 @@ Here is a useful code that you can use in your applications:
     how_to_add_a_button_to_a_form
     how_to_execute_script_from_client
     to_append_a_record_without_view_form
+    how_to_save_edit_form_without_closing_it
     export_import_csv_files    
-    how_to_lock_record
     deploy/index

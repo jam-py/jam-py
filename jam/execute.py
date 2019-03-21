@@ -145,7 +145,7 @@ def execute_list(cursor, db_module, command, delta_result, params, select, ddl, 
             raise Exception('server_classes execute_list: invalid argument - command: %s' % command)
     return res
 
-def execute_sql_connection(connection, command, params, call_proc, select, ddl, db_module, close_on_error=False):
+def execute_sql_connection(connection, command, params, call_proc, select, ddl, db_module, close_on_error=False, autocommit=True):
     delta_result = {}
     messages = []
     result = None
@@ -170,10 +170,11 @@ def execute_sql_connection(connection, command, params, call_proc, select, ddl, 
                 result = execute_list(cursor, db_module, command, delta_result, params, select, ddl, messages)
             else:
                 result = execute_command(cursor, db_module, command, params, select, ddl, messages)
-        if select:
-            connection.rollback()
-        else:
-            connection.commit()
+        if autocommit:
+            if select:
+                connection.rollback()
+            else:
+                connection.commit()
         if delta_result:
             result = delta_result
     except Exception as x:

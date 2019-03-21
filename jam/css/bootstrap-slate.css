@@ -7087,6 +7087,11 @@ textarea[readonly] {
     color: #52575c;
 }
 
+
+.dbtable .table-bordered {
+    border-left: 1px solid #1c1e22;
+}
+
 .table thead th {
     background-color: #151719;
     background-image: -webkit-gradient(linear,0 0,0 100%,from(#202328),color-stop(70%,#151719),to(#151719));
@@ -7132,6 +7137,10 @@ textarea[readonly] {
 
 .table tbody td.field-selected-focused {
     background-color: #0b0c0e;
+}
+
+.dbtable.freezed tfoot {
+    background-color: #272b30;
 }
 
 .input-append .btn.btn12,

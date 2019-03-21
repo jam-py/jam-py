@@ -6605,6 +6605,10 @@ textarea[readonly] {
     font-size: 14px;
 }
 
+.dbtable .table-bordered {
+    border-left: 1px solid #dddddd;
+}
+
 .table tbody tr.selected > td:not(.field-selected) {
     color: #000000;
     background-color: #f2f2f2;
@@ -6651,6 +6655,11 @@ textarea[readonly] {
     background-image: linear-gradient(to bottom, #e6e6e6, #cccccc);
     background-repeat: repeat-x;
     filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffe6e6e6', endColorstr='#ffcccccc', GradientType=0);
+}
+
+.dbtable.freezed thead,
+.dbtable.freezed tfoot {
+    background-color: white;
 }
 
 .input-append .btn.btn12,

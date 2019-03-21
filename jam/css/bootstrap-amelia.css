@@ -7343,6 +7343,10 @@ body {
     background-color: #17909b;
 }
 
+.dbtable .table-bordered {
+    border-left: 1px solid #1cafbd;
+}
+
 .dbtable th {
     background-color: #003f4d;
 }

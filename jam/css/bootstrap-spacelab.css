@@ -6644,6 +6644,10 @@ div.subnav-fixed {
 jam.py css
 */
 
+.dbtable .table-bordered {
+    border-left: 1px solid #dddddd;
+}
+
 .table tbody tr.selected > td:not(.field-selected) {
     color: #000000;
     background-color: #e9e9e9;
@@ -6662,6 +6666,11 @@ jam.py css
 .table tbody td.field-selected-focused {
     color: #fff;
     background-color: #007db3;
+}
+
+.dbtable.freezed thead,
+.dbtable.freezed tfoot {
+    background-color: #ffffff;
 }
 
 .input-append .btn.btn12,

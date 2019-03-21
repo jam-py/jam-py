@@ -6354,6 +6354,10 @@ jam.py css
     filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff862e5e',endColorstr='#ff772953',GradientType=0);
 }
 
+.dbtable .table-bordered {
+    border-left: 1px solid #dddddd;
+}
+
 .table tbody tr.selected > td:not(.field-selected) {
     color: #fff;
     background-color: #ef7143;
@@ -6363,15 +6367,6 @@ jam.py css
   color: #ffffff;
   text-decoration: none;
   background-color: #d44513;
-/*
-  background-image: -moz-linear-gradient(top, #dd4814, #c64012);
-  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#dd4814), to(#c64012));
-  background-image: -webkit-linear-gradient(top, #dd4814, #c64012);
-  background-image: -o-linear-gradient(top, #dd4814, #c64012);
-  background-image: linear-gradient(to bottom, #dd4814, #c64012);
-  background-repeat: repeat-x;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffdd4814', endColorstr='#ffc64012', GradientType=0);
-*/
 }
 
 .table tbody td.field-selected {
@@ -6382,6 +6377,10 @@ jam.py css
 .table tbody td.field-selected-focused {
     color: #fff;
     background-color: #8d2f0c;
+}
+
+.dbtable.freezed tfoot {
+    background-color: #ffffff;
 }
 
 .input-append .btn.btn12,

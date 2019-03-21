@@ -6500,24 +6500,10 @@ i[class^="icon-"] {
 jam.py css
 */
 
-/*
-.modal-header {
-    color: #ffffff;
-    text-decoration: none;
-    background-color: #27a0e5;
-    background-image: -moz-linear-gradient(top, #2fa4e7, #1a99e2);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#2fa4e7), to(#1a99e2));
-    background-image: -webkit-linear-gradient(top, #2fa4e7, #1a99e2);
-    background-image: -o-linear-gradient(top, #2fa4e7, #1a99e2);
-    background-image: linear-gradient(to bottom, #2fa4e7, #1a99e2);
-    background-repeat: repeat-x;
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff2fa4e7', endColorstr='#ff1a99e2', GradientType=0);
-}
 
-.modal-header .modal-title {
-    color: #ffffff;
+.dbtable .table-bordered {
+    border-left: 1px solid #dddddd;
 }
-*/
 
 .table thead th,
 .table tfoot th {

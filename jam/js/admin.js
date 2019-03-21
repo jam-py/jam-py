@@ -5222,6 +5222,7 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 			fields,
 			id_value,
 			parent;
+		lookup_item.table_options.sortable = true;
 		if (lookup_item.item_name === 'sys_items') {
 			lookup_item.set_view_fields(['id', 'f_item_name', 'f_name']);
 			}

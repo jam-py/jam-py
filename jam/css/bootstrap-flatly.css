@@ -6898,6 +6898,10 @@ textarea[readonly] {
     color: #333333;
 }
 
+.dbtable .table-bordered {
+    border-left: 1px solid #dddddd;
+}
+
 .table thead th {
     color: #ffffff;
     background-color: #18bc9c;
