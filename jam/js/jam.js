@@ -890,7 +890,7 @@
                 }
             }
             if (search_field) {
-                this.view_form.find('#search-form').remove() // for compatibility with previous projects
+                this.view_form.find('#search-form').remove() // for compatibility with previous verdions
                 this.view_form.find('.header-search').append(
                     '<form id="search-form" class="form-inline pull-right">' +
                         '<div class="btn-group">' +
@@ -1498,7 +1498,9 @@
                                             buttons[key].call(self);
                                         }
                                     }
-                                    catch (e) {}
+                                    catch (e) {
+                                        console.error(e);
+                                    }
                                     $element.modal('hide');
                                 },
                                 100
@@ -2111,63 +2113,94 @@
         login: function() {
             var self = this,
                 info,
-                $form;
+                form;
             if (this.templates) {
-                $form = this.templates.find("#login-form").clone();
+                form = this.templates.find("#login-form").clone();
             } else {
-                $form = $("#login-form").clone();
+                form = $("#login-form").clone();
             }
 
-            $form = this._create_form_header($form, {
-                title: $form.data('caption'),
+            form = this._create_form_header(form, {
+                title: form.data('caption'),
                 form_header: true
             });
 
-            $form.find("#login-btn").click(function(e) {
-                var login = $form.find("#inputLoging").val(),
-                    passWord = $form.find("#inputPassword").val();
+            form.find("#login-btn").click(function(e) {
+                var form_data = {},
+                    ready = false;
                 e.preventDefault();
-                if (login && passWord) {
-                    self.send_request('login', [login, passWord], function(success) {
+                if (form.find("#inputPassword").length) { // for compatibility with previous verdions
+                    form_data.login = form.find("#inputLoging").val();
+                    form_data.password = form.find("#inputPassword").val();
+                    ready = form_data.login && form_data.password;
+                }
+                else {
+                    form.find("input").each(function() {
+                        var input = $(this),
+                            name = input.attr('name'),
+                            type = input.attr('type'),
+                            required = input.prop('required');
+                        ready = true;
+                        if (name && (type === 'text' || type === 'password')) {
+                            if (!input.val() && required) {
+                                ready = false;
+                                return false;
+                            }
+                            else {
+                                form_data[name] = input.val();
+                            }
+                        }
+                    });
+                }
+                if (ready) {
+                    self.send_request('login', [form_data], function(success) {
                         if (success) {
-                            if ($form) {
-                                $form.modal('hide');
+                            if (form) {
+                                form.modal('hide');
                             }
                             self.load_task();
+                        }
+                        else {
+                            form.addClass("error-modal-border")
                         }
                     });
                 }
             });
 
-            $form.find("#close-btn").click(function(e) {
-                $form.modal('hide');
+            form.find("input").focus(function() {
+                form.removeClass("error-modal-border")
             });
 
-            $form.on("shown", function(e) {
-                $form.find("#inputLoging").focus();
+            form.find("#close-btn").click(function(e) {
+                form.modal('hide');
+            });
+
+            form.on("shown", function(e) {
+                form.find("#inputLoging, input[name=login]").focus();
                 e.stopPropagation();
             });
 
-            $form.find('input').keydown(function(e) {
+            form.find('input').keydown(function(e) {
                 var $this = $(this),
                     code = (e.keyCode ? e.keyCode : e.which);
                 if (code === 40) {
                     if ($this.attr('id') === 'inputLoging') {
-                        $form.find('#inputPassword').focus();
+                        form.find('#inputPassword').focus();
                     } else {
-                        $form.find('#login-btn').focus();
+                        form.find('#login-btn').focus();
                     }
                 }
             });
 
-            $form.modal({
+            form.modal({
                 width: 500
             });
         },
 
         logout: function() {
-            this.send_request('logout');
-            location.reload();
+            this.send_request('logout', undefined, function() {
+                location.reload();
+            });
         },
 
         load_task: function() {
@@ -2946,9 +2979,10 @@
                     info = this.item.get_rec_info(undefined, record);
                     if (info[consts.REC_STATUS] !== consts.RECORD_UNCHANGED) {
                         details = record_log.details;
-                        if (this.item.keep_history) {
-                            old_record = record_log.old_record;
-                        }
+                        old_record = record_log.old_record;
+                        //~ if (this.item.keep_history) {
+                            //~ old_record = record_log.old_record;
+                        //~ }
                         new_record = this.copy_record(record, false)
                         new_details = {};
                         for (var detail_id in details) {
@@ -4439,9 +4473,9 @@
             this._open_params = params;
         },
 
-        _do_after_open: function() {
+        _do_after_open: function(err) {
             if (this.on_after_open) {
-                this.on_after_open.call(this, this);
+                this.on_after_open.call(this, this, err);
             }
             if (this.master) {
                 this.master._detail_changed(this);
@@ -4747,7 +4781,7 @@
                         this.item_state = consts.STATE_BROWSE;
                         this._cur_row = null;
                         this.first();
-                        this._do_after_open();
+                        this._do_after_open(error_mes);
                         if (!this._paginate || this._paginate && offset === 0) {
                             if (this.on_filters_applied) {
                                 this.on_filters_applied.call(this, this);
@@ -4946,28 +4980,6 @@
                     this.open({params: params}, callback);
                 }
                 return [field_name, text, filter_value[filter_type - 1]];
-            }
-        },
-
-        total_records: function(callback) {
-            var self = this;
-            if (this._open_params.__open_empty && callback) {
-                return 0;
-            } else {
-                if (this.on_count) {
-                    this.on_count.call(this, this, this._open_params, function(data) {
-                        if (data && callback) {
-                            callback.call(self, data[0]);
-                        }
-                    });
-                }
-                else {
-                    this.send_request('total_records', this._open_params, function(data) {
-                        if (data && callback) {
-                            callback.call(self, data[0]);
-                        }
-                    });
-                }
             }
         },
 
@@ -5300,11 +5312,9 @@
             }
             this.change_log.get_changes(changes);
             if (!this.change_log.is_empty_obj(changes.data)) {
+                params = $.extend({}, params);
                 if (this.on_before_apply) {
-                    result = this.on_before_apply.call(this, this);
-                    if (result) {
-                        params = $.extend({}, params, result);
-                    }
+                    this.on_before_apply.call(this, this, params);
                 }
                 this._applying = true;
                 if (callback || async) {
@@ -5338,7 +5348,7 @@
                 } else {
                     this.change_log.update(res)
                     if (this.on_after_apply) {
-                        this.on_after_apply.call(this, this);
+                        this.on_after_apply.call(this, this, err);
                     }
                     if (callback) {
                         callback.call(this);
@@ -9846,7 +9856,7 @@
                 selected_field: undefined,
                 append_on_lastrow_keydown: false,
                 sortable: false,
-                sort_fields: undefined,
+                sort_fields: {},
                 sort_add_primary: false,
                 row_callback: undefined,
                 title_callback: undefined,
@@ -9976,7 +9986,7 @@
             this.freezed_table = new DBTable(this.item, container, options, this)
             this.freezed_table.$element.detach()
             this.freezed_table.$element.css('position', 'absolute');
-            this.freezed_table.$element.css('left', '1px');
+            this.freezed_table.$element.css('left', '0');
             this.freezed_table.$element.css('top', '0');
             this.freezed_table.$element.css('overflow', 'hidden');
             this.freezed_table.$table_container.css('overflow', 'hidden');
@@ -10034,7 +10044,7 @@
                     }
                     $th = this.$head.find('th').eq(col);
                     scroll_left = this.$element.find('.table-container')[0].scrollLeft;
-                    width = scroll_left + ($th.position().left + $th.outerWidth(true) + 1);
+                    width = scroll_left + ($th.position().left + $th.outerWidth(true) + 2);
 
                     this.freezed_table.$element.width(width);
                 }
@@ -10433,7 +10443,7 @@
                 if ($this.outerWidth() - e.offsetX < 8 && !mouseX && (this !== lastCell || self.master_table)) {
                     $this.css('cursor', 'col-resize');
                 } else if (self.options.sortable && //!self.item.master &&
-                    (!self.options.sort_fields || self.options.sort_fields.indexOf(field_name) !== -1)) {
+                    (!self.options.sort_fields.length || self.options.sort_fields.indexOf(field_name) !== -1)) {
                     $this.css('cursor', 'pointer');
                 } else {
                     $this.css('cursor', 'default');
@@ -10454,46 +10464,20 @@
             }
 
             function changeFieldWidth($title, delta) {
-                var i,
-                    field_name,
-                    fields,
-                    $td,
-                    $th,
-                    $tf,
-                    lastCell = self.$element.find("thead tr:first th:last").get(0),
-                    width,
-                    oldCellWidth,
+                var field_name,
                     cellWidth;
                 field_name = $title.data('field_name');
-                $td = self.$table.find('td.' + field_name);
-                $tf = self.$element.find("tfoot tr:first th." + field_name);
-                oldCellWidth = self.get_cell_width(field_name);
-                cellWidth = oldCellWidth + delta;
+                cellWidth = self.get_cell_width(field_name) + delta;
 
                 self.set_сell_width(field_name, cellWidth);
 
                 if (self.master_table) {
                     self.$element.width(self.$element.width() + delta)
                     self.master_table.set_сell_width(field_name, cellWidth);
-                    $td = self.master_table.$table.find('td.' + field_name);
-                    $th = self.master_table.$element.find("thead tr:first th." + field_name);
-                    $tf = self.master_table.$element.find("tfoot tr:first th." + field_name);
-                    $td.width(cellWidth);
-                    $td.find('div').width(cellWidth);
-                    $th.width(cellWidth);
-                    $th.find('div').width(cellWidth);
-                    $tf.width(cellWidth);
-                    $tf.find('div').width(cellWidth);
                     self.master_table.sync_col_width();
                     self.master_table.sync_freezed();
                 }
                 else {
-                    $td.width(cellWidth);
-                    $td.find('div').width(cellWidth);
-                    $title.width(cellWidth);
-                    $title.find('div').width(cellWidth);
-                    $tf.width(cellWidth);
-                    $tf.find('div').width(cellWidth);
                     self.sync_col_width();
                 }
                 self.sync_freezed();
@@ -10974,8 +10958,6 @@
                 this.editor = new DBTableInput(this, this.selectedField);
                 this.editor.$controlGroup.find('.controls, .input-prepend, .input-append, input').css('margin', 0);
                 this.editor.$controlGroup.css('margin', 0);
-                //~ this.editor.$controlGroup.find('.controls, .input-prepend, .input-append, input').css('margin-bottom', 0);
-                //~ this.editor.$controlGroup.css('margin-bottom', 0);
 
                 $div = $row.find('div.' + this.editor.field.field_name);
                 $div.hide();
@@ -10983,7 +10965,7 @@
 
                 this.editor.$input.css('font-size', $td.css('font-size'));
 
-                height = $td.innerHeight()// - parseInt($td.css('border-top-height'), 10) - parseInt($td.css('border-bottom-height'), 10);
+                height = $td.innerHeight()
                 width = $td.outerWidth();
                 this.editor.paddingLeft = $td.css("padding-left");
                 this.editor.paddingTop = $td.css("padding-top");
@@ -11025,9 +11007,9 @@
 
         fill_title: function($element) {
             var i,
-                len,
                 self = this,
                 field,
+                caption,
                 heading,
                 div,
                 cell,
@@ -11038,6 +11020,7 @@
                 sel_count,
                 desc,
                 order_fields = {},
+                sortable_fields = {},
                 shown_title,
                 select_menu = '';
             if ($element === undefined) {
@@ -11046,15 +11029,22 @@
             if (!this._sorted_fields) {
                 this._sorted_fields = [];
             }
-            len = this._sorted_fields.length;
-            for (i = 0; i < len; i++) {
+            for (i = 0; i < this.fields.length; i++) {
+                if (this.options.sortable) {
+                    field = this.fields[i];
+                    if (!this.options.sort_fields.length || this.options.sort_fields.indexOf(field.field_name) !== -1) {
+                        sortable_fields[field.field_name] = '<span style="font-size: xx-small;">&varr;</span>';
+                    }
+                }
+            }
+            for (i = 0; i < this._sorted_fields.length; i++) {
                 try {
                     desc = this._sorted_fields[i][1];
                     field = this.item.field_by_name(this._sorted_fields[i][0])
                     if (desc) {
-                        order_fields[field.field_name] = 'icon-arrow-down';
+                        order_fields[field.field_name] = '<span style="font-size: large;">&darr;</span>';
                     } else {
-                        order_fields[field.field_name] = 'icon-arrow-up';
+                        order_fields[field.field_name] = '<span style="font-size: large;">&uarr;</span>';
                     }
                 } catch (e) {}
             }
@@ -11132,19 +11122,21 @@
                     cell.append(bl);
                 }
             }
-            len = this.fields.length;
-            for (i = 0; i < len; i++) {
+            for (i = 0; i < this.fields.length; i++) {
                 field = this.fields[i];
+                caption = field.field_caption;
+                if (order_fields[field.field_name]) {
+                    caption = order_fields[field.field_name] + caption;
+                }
+                else if (sortable_fields[field.field_name]) {
+                    caption = sortable_fields[field.field_name] + caption;
+                }
                 div = $('<div class="text-center ' + field.field_name +
-                    '" style="overflow: hidden"><p style="margin: 0">' + field.field_caption + '</p></div>');
+                    '" style="overflow: hidden"><p style="margin: 0">' + caption + '</p></div>');
                 cell = $('<th class="' + field.field_name + '" data-field_name="' + field.field_name + '"></th>').append(div);
                 if (!this.options.title_word_wrap) {
                     div.css('height', this.text_height);
                     cell.css('height', this.text_height);
-                }
-                if (order_fields[field.field_name]) {
-                    cell.find('p').append('<i class="' + order_fields[field.field_name] + '"></i>');
-                    cell.find('i').css('margin-right', 2)
                 }
                 heading.append(cell);
             }
@@ -12428,7 +12420,10 @@
             this.sync_col_width();
             this.$table_container.scrollLeft(scroll_left);
             if (!this.item.rec_count) {
-                this.$head.find('th').css('border-bottom', this.$outer_table.css('border-top'));
+                this.$head.find('th')
+                    .css('borderBottomWidth', this.$outer_table.css('borderTopWidth'))
+                    .css('borderBottomStyle', this.$outer_table.css('borderTopStyle'))
+                    .css('borderBottomColor', this.$outer_table.css('borderTopColor'));
             }
         },
 
@@ -12793,10 +12788,6 @@
 
                 if (!this.grid && this.field.field_help) {
                     $help = $('<a href="#" tabindex="-1"><span class="badge help-badge">?</span></a>');
-                    $help.click(function(e) {
-                        e.preventDefault();
-                        self.$lastBtn.focus().click();
-                    });
                     this.$help = $help;
                     $help.find('span')
                         .popover({
@@ -12811,6 +12802,7 @@
                             e.preventDefault();
                         });
                     if ($btnCtrls) {
+                        $controls.append($('<span class="help-badge-divider">'));
                         $controls.append($help);
                         $help.find('span').addClass('btns-help-badge')
                     }

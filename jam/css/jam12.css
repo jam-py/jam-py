@@ -216,9 +216,9 @@ form {
     cursor: pointer;
 }
 
-.btns-help-badge {
-    margin-left: 18px;
-}
+.help-badge-divider {
+    margin-left: 14px;
+ }
 
 .pager {
     padding: 0px;

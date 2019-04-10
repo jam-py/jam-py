@@ -7,7 +7,7 @@ import base64
 import jam.common as common
 import jam.db.db_modules as db_modules
 from jam.dataset import *
-from werkzeug._compat import iteritems, text_type, string_types, to_bytes, to_unicode
+from werkzeug._compat import iteritems, text_type, integer_types, string_types, to_bytes, to_unicode
 
 class SQL(object):
 
@@ -411,7 +411,7 @@ class SQL(object):
                 result = db_module.cast_datetime(result)
                 return result
             elif data_type == common.INTEGER:
-                if type(value) == int or type(value) in string_types and value.isdigit():
+                if type(value) in integer_types or type(value) in string_types and value.isdigit():
                     return str(value)
                 else:
                     return "'" + value + "'"

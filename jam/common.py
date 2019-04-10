@@ -94,7 +94,7 @@ FILTER_SIGN = ('', '=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN',
     'BETWEEN', 'ISNULL', '=', 'LIKE', 'LIKE', 'LIKE', 'CONTAINS_ALL')
 FILTER_STRING = ('EQ', 'NE', 'LT', 'LE', 'GT', 'GE', 'IN', 'NOT IN',
     'RANGE', 'ISNULL', 'EXACT', 'CONTAINS', 'STARTWITH', 'ENDWITH', 'CONTAINS_ALL')
-REC_STATUS, REC_CONTROLS_INFO, REC_CHANGE_ID = range(3)
+REC_STATUS, REC_CONTROLS_INFO, REC_CHANGE_ID, REC_OLD_REC = range(4)
 
 ORDER_ASC, ORDER_DESC = range(2)
 STATE_INACTIVE, STATE_BROWSE, STATE_INSERT, STATE_EDIT, STATE_DELETE = range(5)
@@ -352,13 +352,16 @@ def get_funcs_info(text, is_server):
         trimed_line = line.strip()
         if len(trimed_line) > 0:
             if not (trimed_line[:len(comment_sign)] == comment_sign):
-                indent = line.find(func_literal)
-                if indent >= 0:
-                    def_end = line.find('(')
-                    if def_end > indent:
-                        func_name = line[indent+len(func_literal):def_end].strip()
-                        if func_name:
-                            return (indent, func_name)
+                for fl in func_literal:
+                    indent = line.find(fl)
+                    if indent >= 0:
+                        def_end = line.find('(')
+                        if def_end == -1 and is_server and fl == 'class':
+                            def_end = line.find(':')
+                        if def_end > indent:
+                            func_name = line[indent+len(fl):def_end].strip()
+                            if func_name:
+                                return (indent, func_name)
 
     def add_child_funcs(i, parent_indent, parent_dic, parent_key):
         dic = {}
@@ -391,10 +394,10 @@ def get_funcs_info(text, is_server):
     if text:
         if is_server:
             comment_sign = '#'
-            func_literal = 'def'
+            func_literal = ['def', 'class']
         else:
             comment_sign = '//'
-            func_literal = 'function'
+            func_literal = ['function']
         text = remove_comments(text, is_server, comment_sign)
         lines = text.splitlines()
         funcs_list = []

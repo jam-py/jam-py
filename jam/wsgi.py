@@ -9,6 +9,7 @@ from types import MethodType
 import mimetypes
 import jam
 import base64
+from jam.third_party.six import get_function_code
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(jam.__file__), 'third_party')))
 
@@ -309,21 +310,24 @@ class App():
     def default_login(self, task, login, password, ip, session_uuid):
         return adm_server.login(self.admin, login, password, self.admin == task, ip, session_uuid)
 
-    def login(self, request, task, login, password):
+    def login(self, request, task, form_data):
         ip = None
         session_uuid = None
         ip = self.get_client_address(request);
         session_uuid = str(uuid.uuid4())
         if self.admin == task or task.on_login is None:
-            user_info = self.default_login(task, login, password, ip, session_uuid)
+            user_info = self.default_login(task, form_data['login'], form_data['password'], ip, session_uuid)
         elif task.on_login:
             try:
                 try:
-                    user_info = task.on_login(task, login, password, ip, session_uuid)
+                    user_info = task.on_login(task, form_data, {'ip': ip, 'session_uuid': session_uuid})
                 except:
-                    traceback.print_exc()
-                    user_info = task.on_login(task, login, password)
-                    print('The on_login event params have been changed (see the documentation). Please update the on_login event handler!!!')
+                    # for compatibility with previous versions
+                    if get_function_code(task.on_login).co_argcount == 5:
+                        user_info = task.on_login(task, form_data['login'], form_data['password'], ip, session_uuid)
+                    else:
+                        raise
+
             except:
                 user_info = None
                 traceback.print_exc()
@@ -413,7 +417,7 @@ class App():
                     self.connect(request, task)
                     result['data'] = self.connect(request, task)
                 elif method == 'login':
-                    result['data'] = self.login(request, task, params[0], params[1])
+                    result['data'] = self.login(request, task, params[0])
                 elif method == 'logout':
                     self.logout(request, task);
                     result['status'] = common.NOT_LOGGED
@@ -463,8 +467,6 @@ class App():
             return item.apply_changes(params, safe=True)
         elif method == 'server':
             return self.server_func(item, params[0], params[1])
-        elif method == 'total_records':
-            return item.get_record_count(params, safe=True)
         elif method == 'print':
             return item.print_report(*params, safe=True), ''
         elif method == 'load':

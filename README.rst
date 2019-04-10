@@ -27,22 +27,20 @@ From an idea of a web database application to a live website in no time, for fre
 
 Click on the image to see the online demo
 
-.. figure:: http://jam-py.com/img/monitor_face.png 
-	:width: 100%
-	:align: center
-	:alt: Online demo
-	:target: http://ms71.pro:1083/
+.. figure:: http://jam-py.com/img/monitor_face.png
+    :width: 100%
+    :align: center
+    :alt: Online demo
+    :target: http://ms71.pro:1083/
 
-If you are not a professional programmer or an expert in databases, you can use 
+If you are not a professional programmer or an expert in databases, you can use
 Jam.py to store, share and analyze your data.
 
-Please watch these videos to see how easy it is to create and setup Jam.py 
+Please watch these videos to see how easy it is to create and setup Jam.py
 applications.
 
-* `First application (7 min) <https://youtu.be/T2lnOVuybGQ>`_
-* `Files and images (3 min) <https://youtu.be/9rFXPyfN0Hg>`_
-* `Master details (3 min) <https://youtu.be/sbvxE-vEfsM>`_
-* `Users, roles, audit trail (2.5 min) <https://youtu.be/60LiWZa0CpY>`_
+* `Creating CRM web database applications from start to finish in 7 minutes with Jam.py framework <https://youtu.be/vY6FTdpABa4>`_
+* `Setting up interface of Jam.py application using Forms Dialogs <https://youtu.be/hvNZ0-a_HHw>`_
 
 If you are a professional, you can use Jam.py to create various tools, dashboards,
 as well as large-scale business applications with complex internal logic.
@@ -54,10 +52,9 @@ More demos on Heroku:
 
 * `The RedHat Satellite 5.x Dashboard utility Demo <https://redhatsatellite.herokuapp.com>`_
 * `The Postfix email aliases utility Demo <https://jampy-aliases.herokuapp.com/>`_
-* `The Samba Shares utility Demo <https://sambashares.herokuapp.com//>`_
 * `Jam.py Demo Application <https://jampy.herokuapp.com/>`_
 
-`Here <https://youtu.be/pQYer6po820>`_ is a video showing how to publish a 
+`Here <https://youtu.be/pQYer6po820>`_ is a video showing how to publish a
 Jam.py application from GitHub repo on Heroku
 
 Main features
@@ -68,18 +65,18 @@ and very tight DB/GUI coupling. The server side of Jam.py is written in `Python 
 the client utilizes `JavaScript <https://developer.mozilla.org/en/docs/Web/JavaScript">`_,
 `jQuery <https://jquery.com">`_ and `Bootstrap <http://getbootstrap.com/2.3.2">`_.
 
-* Simple, clear and efficient IDE. The development takes place in the 
+* Simple, clear and efficient IDE. The development takes place in the
   Application builder, an application written completely in Jam.py.
-  
-* “All in the browser” framework. With Jam.py, all you need are two pages 
-  in the browser, one for the project, the other for the Application builder. 
-  Make changes in the Application builder, go to the project, refresh the page, 
-  and see the results.  
-  
-* Supports SQLite, PostgreSQL, MySQL, Firebird, MSSQL and 
-  Oracle databases. The concept of the framework allows you to migrate from 
+
+* “All in the browser” framework. With Jam.py, all you need are two pages
+  in the browser, one for the project, the other for the Application builder.
+  Make changes in the Application builder, go to the project, refresh the page,
+  and see the results.
+
+* Supports SQLite, PostgreSQL, MySQL, Firebird, MSSQL and
+  Oracle databases. The concept of the framework allows you to migrate from
   one database to another without changing the project.
-  
+
 * Authentication, authorization, session management, roles and permissions.
 
 * Automatic creation and modification of database tables and SQL queries generation.
@@ -88,34 +85,34 @@ the client utilizes `JavaScript <https://developer.mozilla.org/en/docs/Web/JavaS
 
 * Open framework. You can use any Javascript/Python libraries.
 
-* Rich, informative reports. Band-oriented report generation based on 
+* Rich, informative reports. Band-oriented report generation based on
   `LibreOffice <https://www.libreoffice.org/">`_ templates.
 
 * Charts. You can use free `jsCharts <http://www.jscharts.com/>`_ library
   or any javascript charting library to create charts to represent and analyze your application data.
-  
+
 * Allows to save audit trail/change history made by users
 
 * Predifined css themes.
 
-* Develop and test locally update remotely. Jam.py has Export and Import 
+* Develop and test locally update remotely. Jam.py has Export and Import
   utilities that allow developer to store all metadata (database structures,
-  project parameters and code) in a file that can be loaded by another 
+  project parameters and code) in a file that can be loaded by another
   application to apply all the changes.
 
 Documentation
 =============
 
-All documentation is in the "docs" directory and online at 
+All documentation is in the "docs" directory and online at
 http://jam-py.com/docs/.
 
-Go to http://jam-py.com/docs/intro/install.html to learn how to install Python and 
+Go to http://jam-py.com/docs/intro/install.html to learn how to install Python and
 the framework.
 
-Go to http://jam-py.com/docs/intro/new_project.html to learn how to create a 
+Go to http://jam-py.com/docs/intro/new_project.html to learn how to create a
 new project.
 
-The framework has a demo application: http://jam-py.com/docs/intro/demo_project.html. 
+The framework has a demo application: http://jam-py.com/docs/intro/demo_project.html.
 
 License
 =======
@@ -127,7 +124,7 @@ Author
 
 Andrew Yushev
 
-See also the list of `contributors <http://jam-py.com/contributors.html>`_ 
+See also the list of `contributors <http://jam-py.com/contributors.html>`_
 who participated in this project.
 
 

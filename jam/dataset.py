@@ -312,6 +312,20 @@ class DBField(object):
 
     value = property (get_value, set_value)
 
+    def get_old_value(self):
+        if isinstance(self.owner, AbstractDataSet) and  self.owner._is_delta:
+            row = self.get_row()
+            if row and self.bind_index >= 0:
+                try:
+                    rec_info = row[len(row) - 1]
+                    return rec_info[common.REC_OLD_REC][self.bind_index]
+                except:
+                    pass
+        else:
+            raise Exception('Only delta can have old value property.')
+
+    old_value = property (get_old_value)
+
     def _set_modified(self, value):
         if not self.calculated:
             if self.owner:
@@ -1488,6 +1502,8 @@ class AbstractDataSet(object):
         else:
             return 0
 
+    rec_count = property (record_count)
+
     def update_controls(self, state):
         pass
 
@@ -2049,6 +2065,7 @@ class MasterDataSet(AbstractDataSet):
                 if not hasattr(result.details, copy_table.item_name):
                     setattr(result.details, copy_table.item_name, copy_table)
                 copy_table.owner = result
+                copy_table.prototype = detail.prototype
 
         return result
 

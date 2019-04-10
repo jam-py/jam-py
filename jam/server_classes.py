@@ -14,6 +14,8 @@ import inspect
 import json
 from jam.third_party.filelock import FileLock
 import jam.third_party.sqlalchemy.pool as pool
+from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_bytes, to_unicode
+from werkzeug.security import generate_password_hash, check_password_hash
 
 import jam.common as common
 import jam.db.db_modules as db_modules
@@ -22,7 +24,6 @@ from jam.dataset import *
 from jam.sql import *
 from jam.execute import process_request, execute_sql, execute_sql_connection
 from jam.third_party.six import exec_, print_, get_function_code
-from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_bytes, to_unicode
 
 class ServerDataset(Dataset, SQL):
     def __init__(self, table_name='', soft_delete=True):
@@ -122,6 +123,7 @@ class ServerDataset(Dataset, SQL):
 
     def add_detail(self, table):
         detail = Detail(self.task, self, table.item_name, table.item_caption, table.table_name)
+        detail.prototype = table
         self.details.append(detail)
         detail.owner = self
         detail.init_fields()
@@ -149,7 +151,7 @@ class ServerDataset(Dataset, SQL):
             result = count, error_mess
         return result
 
-    def execute_select(self, params, connection=None, db_module=None):
+    def execute_open(self, params, connection=None, db_module=None):
         error_mes = ''
         limit = params['__limit']
         offset = params['__offset']
@@ -180,7 +182,7 @@ class ServerDataset(Dataset, SQL):
         if result is None and self.on_open:
             result = self.on_open(self, params)
         if result is None:
-            result = self.execute_select(params)
+            result = self.execute_open(params)
         return result
 
     def apply_delta(self, delta, params=None, connection=None, db_module=None, autocommit=True):
@@ -238,7 +240,7 @@ class ServerDataset(Dataset, SQL):
                             fields = []
                             for field in detail.fields:
                                 fields.append(field.field_name)
-                            det = self.task.item_by_name(detail.item_name).copy()
+                            det = self.task.item_by_ID(detail.prototype.ID).copy()
                             where = {
                                 det._master_id: self.ID,
                                 det._master_rec_id: self._primary_key_field.value
@@ -351,31 +353,6 @@ class Report(AbstrReport):
         self.on_after_generate = None
         self.on_parsed = None
         self.on_before_save_report = None
-
-        self.on_before_append = None
-        self.on_after_append = None
-        self.on_before_edit = None
-        self.on_after_edit = None
-        self.on_before_open = None
-        self.on_after_open = None
-        self.on_before_post = None
-        self.on_after_post = None
-        self.on_before_delete = None
-        self.on_after_delete = None
-        self.on_before_cancel = None
-        self.on_after_cancel = None
-        self.on_before_apply = None
-        self.on_after_apply = None
-        self.on_before_scroll = None
-        self.on_after_scroll = None
-        self.on_filter_record = None
-        self.on_field_changed = None
-        self.on_filters_applied = None
-        self.on_before_field_changed = None
-        self.on_filter_value_changed = None
-        self.on_field_validate = None
-        self.on_field_get_text = None
-
 
     def add_param(self, caption='', name='', data_type=common.INTEGER,
             obj=None, obj_field=None, required=True, visible=True, alignment=None,
@@ -507,7 +484,7 @@ class Report(AbstrReport):
                         self.on_convert_report(self)
                         converted = True
                     except:
-                        pass
+                        traceback.print_exc()
                 if not converted:
                     converted = self.task.convert_report(self, ext)
                 converted_file = self.report_filename.replace('.ods', '.' + ext)
@@ -898,55 +875,49 @@ class AbstractServerTask(AbstrTask):
             p.daemon = True
             p.start()
 
-    def send_to_pool(self, queue, result_queue, command, params=None, call_proc=False, select=False):
+    def send_to_pool(self, queue, result_queue, command, params=None, select=False):
         request = {}
         request['queue'] = result_queue
         request['command'] = command
         request['params'] = params
-        request['call_proc'] = call_proc
         request['select'] = select
         request['mod_count'] = self.mod_count
         queue.put(request)
         return  result_queue.get()
 
-    def execute_in_mp_poll(self, command, params=None, call_proc=False, select=False):
+    def execute_in_mp_poll(self, command, params=None, select=False):
         result_queue = self.mp_manager.Queue()
-        result = self.send_to_pool(self.mp_queue, result_queue, command, params, call_proc, select)
+        result = self.send_to_pool(self.mp_queue, result_queue, command, params, select)
         return result
 
-    def pool_execute(self, command, params=None, call_proc=False, select=False):
+    def pool_execute(self, command, params=None, select=False):
         con = self.connect()
         try:
-            connection, result = execute_sql_connection(con, command, params, call_proc, select, False, self.db_module)
+            connection, result = execute_sql_connection(con, command, params, select, False, self.db_module)
         finally:
             con.close()
         return result
 
     def execute(self, command, params=None, connection=None, db_module=None, \
-        call_proc=False, select=False, autocommit=True):
+        select=False, autocommit=True):
         if connection:
             connection, result = execute_sql_connection(connection, command, \
-                params, call_proc, select, False, db_module, autocommit=autocommit)
+                params, select, False, db_module, autocommit=autocommit)
         elif self.persist_con:
             if self.mp_pool:
                 if not self.con_counter.val:
                     self.con_counter.val += 1
                     try:
-                        result = self.pool_execute(command, params, call_proc, select)
+                        result = self.pool_execute(command, params, select)
                     finally:
                         self.con_counter.val -= 1
                 else:
-                    result = self.execute_in_mp_poll(command, params, call_proc, select)
+                    result = self.execute_in_mp_poll(command, params, select)
             else:
-                result = self.pool_execute(command, params, call_proc, select)
+                result = self.pool_execute(command, params, select)
         else:
-            result = self.pool_execute(command, params, call_proc, select)
+            result = self.pool_execute(command, params, select)
         return result
-
-    def callproc(self, command, params=None):
-        result_set, error = self.execute(command, params, call_proc=True)
-        if not error:
-            return result_set
 
     def select(self, command, connection=None, db_module=None):
         result, error = self.execute(command, None, connection, db_module, select=True)
@@ -957,6 +928,12 @@ class AbstractServerTask(AbstrTask):
 
     def execute_select(self, command): #depricated
         return self.select(command)
+
+    def generate_password_hash(self, password, method='pbkdf2:sha256', salt_length=8):
+        return generate_password_hash(password, method, salt_length)
+
+    def check_password_hash(self, pwhash, password):
+        return check_password_hash(pwhash, password)
 
     def get_module_name(self):
         return str(self.item_name)
@@ -1274,7 +1251,6 @@ class Detail(AbstrDetail, ServerDataset):
     def __init__(self, task, owner, name, caption, table_name):
         AbstrDetail.__init__(self, task, owner, name, caption, True)
         ServerDataset.__init__(self, table_name)
-        self.prototype = self.task.item_by_name(self.item_name)
         self.master = owner
 
     def init_fields(self):

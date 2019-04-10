@@ -145,7 +145,7 @@ def execute_list(cursor, db_module, command, delta_result, params, select, ddl, 
             raise Exception('server_classes execute_list: invalid argument - command: %s' % command)
     return res
 
-def execute_sql_connection(connection, command, params, call_proc, select, ddl, db_module, close_on_error=False, autocommit=True):
+def execute_sql_connection(connection, command, params, select, ddl, db_module, close_on_error=False, autocommit=True):
     delta_result = {}
     messages = []
     result = None
@@ -153,23 +153,15 @@ def execute_sql_connection(connection, command, params, call_proc, select, ddl, 
     info = ''
     try:
         cursor = connection.cursor()
-        if call_proc:
-            try:
-                cursor.callproc(command, params)
-                result = cursor.fetchone()
-            except Exception as x:
-                print('\nError: %s in command: %s' % (str(x), command))
-                raise
+        command_type = type(command)
+        if command_type in string_types:
+            result = execute_command(cursor, db_module, command, params, select, ddl, messages)
+        elif command_type == dict:
+            res = execute_delta(cursor, db_module, command, params, delta_result)
+        elif command_type == list:
+            result = execute_list(cursor, db_module, command, delta_result, params, select, ddl, messages)
         else:
-            command_type = type(command)
-            if command_type in string_types:
-                result = execute_command(cursor, db_module, command, params, select, ddl, messages)
-            elif command_type == dict:
-                res = execute_delta(cursor, db_module, command, params, delta_result)
-            elif command_type == list:
-                result = execute_list(cursor, db_module, command, delta_result, params, select, ddl, messages)
-            else:
-                result = execute_command(cursor, db_module, command, params, select, ddl, messages)
+            result = execute_command(cursor, db_module, command, params, select, ddl, messages)
         if autocommit:
             if select:
                 connection.rollback()
@@ -203,7 +195,7 @@ def execute_sql_connection(connection, command, params, call_proc, select, ddl, 
 
 def execute_sql(db_module, db_server, db_database, db_user, db_password,
     db_host, db_port, db_encoding, connection, command,
-    params=None, call_proc=False, select=False, ddl=False):
+    params=None, select=False, ddl=False):
 
     if connection is None:
         try:
@@ -214,7 +206,7 @@ def execute_sql(db_module, db_server, db_database, db_user, db_password,
                 return  None, (None, str(x), info_from_error(x))
             else:
                 return  None, (None, str(x))
-    return execute_sql_connection(connection, command, params, call_proc, select, ddl, db_module, close_on_error=True)
+    return execute_sql_connection(connection, command, params, select, ddl, db_module, close_on_error=True)
 
 def process_request(parentPID, name, queue, db_type, db_server, db_database, db_user, db_password, db_host, db_port, db_encoding, mod_count):
     con = None
@@ -229,7 +221,6 @@ def process_request(parentPID, name, queue, db_type, db_server, db_database, db_
             result_queue = request['queue']
             command = request['command']
             params = request['params']
-            call_proc = request['call_proc']
             select = request['select']
             cur_mod_count = request['mod_count']
             date = datetime.datetime.now()
@@ -246,7 +237,7 @@ def process_request(parentPID, name, queue, db_type, db_server, db_database, db_
                 counter = 0
             last_date = date
             con, result = execute_sql(db_module, db_server, db_database, db_user, db_password,
-                db_host, db_port, db_encoding, con, command, params, call_proc, select)
+                db_host, db_port, db_encoding, con, command, params, select)
             counter += 1
             result_queue.put(result)
 

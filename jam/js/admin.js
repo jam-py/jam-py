@@ -2048,8 +2048,8 @@ function Events3() { // admin.catalogs.sys_items
 		item.cur_record_count = item.record_count();
 	}
 	
-	function on_before_apply(item) {
-		return {'manual_update': item.task._manual_update};
+	function on_before_apply(item, params) {
+		params.manual_update = item.task._manual_update;
 	}
 	
 	function add_import_indexes(item, indexes) {
@@ -4914,8 +4914,8 @@ function Events10() { // admin.tables.sys_indices
 		}
 	}
 	
-	function on_before_apply(item) {
-		return {'manual_update': item.task._manual_update};
+	function on_before_apply(item, params) {
+		params.manual_update = item.task._manual_update;
 	}
 	this.on_view_form_created = on_view_form_created;
 	this.on_view_form_keydown = on_view_form_keydown;

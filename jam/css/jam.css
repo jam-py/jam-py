@@ -146,9 +146,9 @@ input.dropdown-toggle {
     cursor: pointer;
 }
 
-.btns-help-badge {
-    margin-left: 18px;
-}
+.help-badge-divider {
+    margin-left: 14px;
+ }
 
 .expanded-btn {
     min-width: 120px;
