@@ -5,7 +5,7 @@ Version 5.4.37
 Library:
 
 * Jam.py can now be deployed on `PythonAnywhere <https://www.pythonanywhere.com>`_.
-  See :doc:`How to deploy project on PythonAnywhere </how to/deploy/how_to_deploy_project_on_pythonanywhere>`
+  See :doc:`How to deploy project on PythonAnywhere </how_to/deploy/how_to_deploy_project_on_pythonanywhere>`
 
 * Directory of the project can be passed to the create_application function now 
   (jam/wsgi.py module).
@@ -19,6 +19,6 @@ Library:
 
 Documentation:
 
-* :doc:`How to </how to/index>` section created. That section will contain code 
+* :doc:`How to </how_to/index>` section created. That section will contain code 
   examples that can be useful to quickly accomplish common tasks.
 

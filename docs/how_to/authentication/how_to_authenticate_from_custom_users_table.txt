@@ -1,0 +1,81 @@
+===========================================
+How to authenticate from custom users table
+===========================================
+
+In this section, we describe how to authenticate a user using data from the 
+custom users table, implement a registration form and allow users to change the 
+password.
+
+First we create the "Users" catalog and add to it the following fields
+
+.. image:: /how_to/_images/users_fields.png
+	:align: center
+	:alt: users_fields.png
+
+
+We won't store in the table the user password and use this field in the interface.
+We will store the password salted hash in the password_hash field.
+
+We also created the 
+:doc:`lookup list </admin/lookup_lists>`
+"Roles" that we used in the "Roles" field definition.
+
+We added to it the same roles (ids and names) as in the table
+:doc:`Roles </admin/roles>`
+We 'll have to sycronize this roles in the future.
+
+
+.. image:: /how_to/_images/roles_lookup_list.png
+	:align: center
+	:alt: roles_lookup_list.png
+
+We removed password_hash field from field lists in the
+:doc:`View Form Dialog </admin/items/view_form_dialog>`
+and
+:doc:`Edit Form Dialog </admin/items/edit_form_dialog>`
+
+In the User server module we define the following
+:doc:`on_apply </refs/server/item/on_apply>`
+event handler:
+
+
+.. code-block:: py
+
+  def on_apply(item, delta, params, connection):
+      for d in delta:
+          if not (d.rec_deleted() or d.rec_modified() and d.login.value == d.login.old_value):
+              users = d.task.users.copy(handlers=False)
+              users.set_where(login=d.login.value)
+              users.open(fields=['login'])
+              if users.rec_count:
+                  raise Exception('There is a user with this login - %s' % d.login.value)
+          if d.password.value:
+              d.edit();
+              d.password_hash.value = delta.task.generate_password_hash(d.password.value)
+              d.password.value = None
+              d.post();
+
+In this event handler we check if there is a users with the same login and
+raise the exception if such user exists, otherwise we generate hash using the
+:doc:`generate_password_hash </refs/server/task/m_generate_password_hash>`
+method of the task and set the password value to None.
+
+In the client module we defined the following on_field_get_text event handler:
+
+.. code-block:: js
+
+  function on_field_get_text(field) {
+      var item = field.owner;
+      if (field.field_name === 'password') {
+          if (item.id.value || field.value) {
+              return '**********';
+          }
+      }
+  }
+
+
+
+
+
+
+

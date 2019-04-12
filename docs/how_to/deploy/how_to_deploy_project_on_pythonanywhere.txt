@@ -2,10 +2,6 @@
 How to deploy project on PythonAnywhere
 =======================================
 
-* In Application Builder, set the **Persistent connection** attribute in the
-  :doc:`Project parameters </admin/project/parameters>`
-  to ``false``. 
-  
 * Use pip to install Jam.py. To do this, open the bash console and run the 
   following command (for Python 3.7):
 

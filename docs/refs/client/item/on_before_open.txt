@@ -2,7 +2,7 @@
 on_before_open
 ==============
 
-on_before_open(item)
+on_before_open(item, params)
 
 **domain**: client 
 
@@ -18,9 +18,17 @@ dataset.
 
 The ``item`` parameter is an item that triggered the event.
 
+The ``params`` parameter is an object that has been passed to the
+:doc:`open <m_open>`
+method or an empty object if this object is undefined. 
+This object is passed to the server and can be used in the 
+:doc:`on_open </refs/server/item/on_open>`
+event handler to perform some actions when obtaining a dataset
+
 Write an on_before_open event handler to take specific action immediately 
-before an application obtains an dataset from the server. on_before_open is 
-called by :doc:`open <m_open>` method. 
+before an application obtains an dataset from the server. 
+
+on_before_open is called by :doc:`open <m_open>` method. 
 
 See also 
 ========

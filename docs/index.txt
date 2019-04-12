@@ -24,7 +24,7 @@ Jam.py classes APIs
 
 :doc:`FAQ <faq/index>` topics covers most frequently asked questions.
 
-:doc:`How to <how to/index>` contains code examples that can be useful to quickly
+:doc:`How to <how_to/index>` contains code examples that can be useful to quickly
 accomplish common tasks
 
 Or you can go to the

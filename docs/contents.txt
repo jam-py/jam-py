@@ -13,7 +13,7 @@ Jam.py documentation contents
     intro/index
     programming/index
     faq/index
-    how to/index
+    how_to/index
     admin/index
     refs/index
     releases/index

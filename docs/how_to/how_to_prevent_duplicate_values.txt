@@ -1,0 +1,27 @@
+=================================================
+How to prevent duplicate values in a table field 
+=================================================
+
+One of the ways to do it is to write the
+:doc:`on_apply </refs/server/item/on_apply>`
+event handler.
+
+In the example below, the delta parameter is a dataset that contains the changes 
+that will be stored in the users table. 
+
+We go through the records of changes and if the record was not deleted or the 
+login field didn't change we look for a record in the table with the same login 
+and if it exists raise the exception. If the user is editing the record 
+on the client using an edit form he won't be able to save it and will see the 
+corresponding alert message. 
+
+.. code-block:: py
+
+  def on_apply(item, delta, params, connection):
+      for d in delta:
+          if not (d.rec_deleted() or d.rec_modified() and d.login.value == d.login.old_value):
+              users = d.task.users.copy(handlers=False)
+              users.set_where(login=d.login.value)
+              users.open(fields=['login'])
+              if users.rec_count:
+                  raise Exception('There is a user with this login - %s' % d.login.value)

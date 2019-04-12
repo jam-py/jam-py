@@ -28,7 +28,7 @@ The ``options`` parameter is an object that may have the following attributes:
   the file was saved.
 
 * ``show_progress`` - if true and the uploaded file is large, the progress bar 
-  will be displayed
+  will be displayed. the defaul value is true
 
 * ``accept`` - the attribute specifies the types of files that can be submitted 
   through a file upload. It is the string the same as the html <input> accept 

@@ -23,6 +23,12 @@ has just been created. See
 The ``task`` parameter is a reference to the 
 :doc:`task tree </programming/task_tree>`
 
+
+.. note::
+
+	The execution time of the code in this handler must be very short because of 
+	detrimental effects to the end user's experience. 
+	
 Example
 =======
 

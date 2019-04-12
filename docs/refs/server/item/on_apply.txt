@@ -2,7 +2,7 @@
 on_apply
 ========
 
-on_apply(self, delta, params)
+on_apply(self, delta, params, connection)
 
 **domain**: server
 

@@ -1,5 +1,0 @@
-==============
-Version 5.4.48
-==============
-
-Bugs related to moving to SQLAlchemy and tables with virtual scroll are fixed.

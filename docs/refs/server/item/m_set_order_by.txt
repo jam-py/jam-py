@@ -33,7 +33,7 @@ sorted in decreasing order.
 Example
 =======
 
-The result of the execution of following code snippets wil be the same:
+The result of the execution of following code snippets will be the same:
 
 .. code-block:: py
 

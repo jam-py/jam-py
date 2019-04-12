@@ -65,7 +65,7 @@ The ``apply`` method
   
 * writes changes to the database  
 
-* after writing changes to the database, server sends to to the client results
+* after writing changes to the database, server sends to the client results
   of the execution
 
 * if exception was raised during the operation on the server and the callback 
