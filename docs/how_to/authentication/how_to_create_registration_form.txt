@@ -1,0 +1,147 @@
+===============================
+How to create registration form
+===============================
+
+In this topic we'll assume that you have created a **Users** item from the 
+previous topic.
+
+Now we create a *register.html* file. 
+
+It contains a registration form:
+
+.. code-block:: html
+
+  <form id="login-form" target="dummy" class="form-horizontal" style="margin: 0;">
+      <div class="control-group">
+          <label class="control-label" for="name">Name</label>
+          <div class="controls">
+              <input type="text" id="name" placeholder="Login">
+          </div>
+      </div>
+      <div class="control-group">
+          <label class="control-label" for="login">Login</label>
+          <div class="controls">
+              <input type="text" id="login" placeholder="Login">
+          </div>
+      </div>
+      <div class="control-group">
+          <label class="control-label" for="password1">Password</label>
+          <div class="controls">
+              <input type="password" id="password1" 
+              placeholder="Password" autocomplete="on">
+          </div>
+      </div>
+      <div class="control-group">
+          <label class="control-label" for="password2">Repeat password</label>
+          <div class="controls">
+              <input type="password" id="password2" 
+              placeholder="Repeat password" autocomplete="on">
+          </div>
+      </div>
+      <div class="alert alert-success" style="margin: 0; display: none">
+          You have been successfully registered.
+      </div>
+      <div class="alert alert-error" style="margin: 0; display: none">
+      </div>
+      <div class="form-footer">
+          <input type="button" class="btn expanded-btn pull-right" 
+          id="register-btn" value="OK" tabindex="3">
+      </div>
+  </form>
+
+and a javascript code:
+
+.. code-block:: js
+
+  $(document).ready(function(){
+
+      function register(name, login, password) {
+          $.ajax({
+              url: "ext/register",
+              type: "POST",
+              contentType: "application/json;charset=utf-8",
+              data: JSON.stringify([name, login, password]),
+              success: function(response, textStatus, jQxhr) {
+                  if (response.result.data) {
+                      show_alert(response.result.data);
+                  }
+                  else {
+                      $("div.alert-success").show();
+                      setTimeout(
+                          function() {
+                              window.location.href = "index.html";
+                          },
+                          1000
+                      );
+                  }
+              },
+              error: function(jqXhr, textStatus, errorThrown) {
+                  console.log(errorThrown);
+              }
+          });
+      }
+      function show_alert(message) {
+          $("div.alert-error")
+              .text(message)
+              .show();
+      }
+
+      $('input').focus(function() {
+          $("div.alert").hide();
+      });
+
+      $("#register-btn").click(function() {
+          var name = $("#name").val(),
+              login = $("#login").val(),
+              password1 = $("#password1").val(),
+              password2 = $("#password2").val();
+          if (!name) {
+              show_alert('Name is not specified');
+          }
+          else if (!login) {
+              show_alert('Login is not specified');
+          }
+          else if (!password1) {
+              show_alert('Password is not specified');
+          }
+          else if (password1 !== password2) {
+              show_alert('Passwords do not match');
+          }
+          else {
+              register(name, login, password1)
+          }
+      })
+  })
+
+When the user clicks on the **OK** button, the javascript will send to the 
+server the ajax post request with url "ext/register" and parameters 
+"name, login, password".
+
+When server receives the request starting with 'ext/' it triggers the 
+:doc:`on_ext_request </refs/server/task/on_ext_request>`
+event.
+
+The task server module has the following ``on_ext_request`` event handler:
+
+.. code-block:: py
+
+  def on_ext_request(task, request, params):
+      reqs = request.split('/')
+      if reqs[2] == 'register':
+          name, login, password = params
+          users = task.users.copy(handlers=False)
+          users.set_where(login=login)
+          users.open()
+          if users.rec_count:
+              return 'Existing login, please use different login'
+          users.append()
+          users.name.value = name
+          users.login.value = login
+          users.password_hash.value = task.generate_password_hash(password)
+          users.role.value = 2
+          users.post()
+          users.apply()
+
+It checks if there is 'register' in url and then looks if there is no user 
+with the login and then register the user.
+

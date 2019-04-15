@@ -318,7 +318,12 @@ class DBField(object):
             if row and self.bind_index >= 0:
                 try:
                     rec_info = row[len(row) - 1]
-                    return rec_info[common.REC_OLD_REC][self.bind_index]
+                    old_row = rec_info[common.REC_OLD_REC]
+                    if old_row:
+                        result = old_row[self.bind_index]
+                    elif self.owner.rec_deleted():
+                        result = self.value
+                    return result
                 except:
                     pass
         else:

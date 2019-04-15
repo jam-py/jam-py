@@ -2,7 +2,7 @@
 How can I use data from other database tables
 =============================================
 
-I can use data from other database tables.
+You can use data from other database tables.
 
 First you must specify table name and fields information.
 You can do it the following way:

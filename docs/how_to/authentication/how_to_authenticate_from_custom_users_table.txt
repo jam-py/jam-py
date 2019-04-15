@@ -3,10 +3,10 @@ How to authenticate from custom users table
 ===========================================
 
 In this section, we describe how to authenticate a user using data from the 
-custom users table, implement a registration form and allow users to change the 
-password.
+custom users table.
 
-First we create the "Users" catalog and add to it the following fields
+First, we create an item group **Authentication** select it and add an item 
+**Users** that has thefollowing fields:
 
 .. image:: /how_to/_images/users_fields.png
 	:align: center
@@ -24,10 +24,14 @@ We added to it the same roles (ids and names) as in the table
 :doc:`Roles </admin/roles>`
 We 'll have to sycronize this roles in the future.
 
-
 .. image:: /how_to/_images/roles_lookup_list.png
 	:align: center
 	:alt: roles_lookup_list.png
+
+In the 
+:doc:`Roles </admin/roles>`
+it is necessary to allow view the **Users** item only people that will be 
+responsible for it
 
 We removed password_hash field from field lists in the
 :doc:`View Form Dialog </admin/items/view_form_dialog>`
@@ -60,7 +64,8 @@ raise the exception if such user exists, otherwise we generate hash using the
 :doc:`generate_password_hash </refs/server/task/m_generate_password_hash>`
 method of the task and set the password value to None.
 
-In the client module we defined the following on_field_get_text event handler:
+In the client module we defined the following on_field_get_text event handler.
+It displays '**********' string insted of the password.
 
 .. code-block:: js
 
@@ -73,7 +78,28 @@ In the client module we defined the following on_field_get_text event handler:
       }
   }
 
+Finally, we define the 
+:doc:`on_login </refs/server/task/on_login>`
+event handler in the task server module:
 
+.. code-block:: py
+
+  def on_login(task, form_data, info): 
+      users = task.users.copy(handlers=False)
+      users.set_where(login=form_data['login'])
+      users.open()
+      if users.rec_count == 1:
+          if task.check_password_hash(users.password_hash.value, form_data['password']):
+              return {
+                  'user_id': users.id.value,
+                  'user_name': users.name.value,
+                  'role_id': users.role.value,
+                  'role_name': users.role.display_text
+              }
+
+Now we must add an admin to **Users** that has rights to work with users.
+After that we can set Safe mode in the project
+:doc:`Parameters </admin/project/parameters>` 
 
 
 

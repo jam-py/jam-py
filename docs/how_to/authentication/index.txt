@@ -1,0 +1,23 @@
+==============
+Authentication
+==============
+
+In the Jam.py repository there is the "Authentication" project 
+:doc:`export </admin/project/export>`
+file.
+This project demonstrates the first three topics of this section. 
+
+http://jam-py.com/repository/auth.zip
+
+You can download it, create a new project and 
+:doc:`import </admin/project/import>`
+this file. 
+
+
+.. toctree::
+    :maxdepth: 1
+
+    how_to_authenticate_from_custom_users_table
+    how_to_create_registration_form
+    how_give_user_ability_to_change_password
+    

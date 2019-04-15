@@ -22,7 +22,9 @@ Library:
 
 Documentation:
 
-* How to section bug fixed
+* latest docs changes
+
+* how to section bug fixed
 
 * 'How to lock a record so that users cannot edit it at the same time' topic
   removed - other algorithm will be used

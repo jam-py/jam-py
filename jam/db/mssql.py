@@ -207,7 +207,7 @@ def restart_sequence_sql(gen_name, value):
     return ""
 
 def get_table_names(connection):
-    sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo'"
+    sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = SCHEMA_NAME()"
     try:
         cursor = connection.cursor()
         cursor.execute(sql)

@@ -120,11 +120,9 @@ HISTORY_FIELDS = [
 HISTORY_INDEX_FIELDS = ['item_id', 'item_rec_id']
 
 LOCKS_FIELDS = [
-    ['id', INTEGER, None],
     ['item_id', INTEGER, None],
     ['item_rec_id', INTEGER, None],
-    ['user', TEXT, 30],
-    ['date', DATETIME, None]
+    ['modified', DATETIME, None]
 ]
 LOCKS_INDEX_FIELDS = ['item_id', 'item_rec_id']
 
