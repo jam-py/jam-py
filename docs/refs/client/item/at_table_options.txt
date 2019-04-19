@@ -43,11 +43,6 @@ The ``table_options`` parameter is an object that may have the following attribu
   :doc:`view_options <at_view_options>`
   will be used 
 
-* ``striped`` —   If the
-  :doc:`paginate <at_paginate>`
-  attribute of the item is set,
-  the grid is striped if this value is true.
-
 * ``row_line_count`` - specifies the number of lines of text displayed in a 
   table row, if it is 0, the height of the row is determined by the contents of 
   the cells
@@ -73,7 +68,7 @@ The ``table_options`` parameter is an object that may have the following attribu
   specified (default), a user can sort records on any field, otherwise, only on 
   the fields whose names are listed in this option.
 
-* ``sort_fields`` - the list of field name on which the table can be sorted,
+* ``sort_fields`` - the list of field names on which the table can be sorted,
   by clicking on the corresponding table column header.
   If an item is a detail the operation is performed on the client, otherwise 
   sorting is performed on the server (the 
@@ -88,6 +83,14 @@ The ``table_options`` parameter is an object that may have the following attribu
   number of first columns that become frozen - they will not scroll when the table
   is scrolled horizontally.
  
+* ``show_hints`` - if true, the tooltip will be displayed when the user hovers 
+  the mouse over a table cell, and the cell text does not fit in the cell size.
+  The default value is true.
+  
+* ``hint_fields`` - a list of field names. If it is specified, the tooltip will 
+  be displayed only for fields from this list, regardless of the value of 
+  ``show_hints`` option value.
+
 * ``on_click`` - specifies the function, that will be executed when a user click
   on a table row. The item will be passed as a parameter to the function. 
 
@@ -96,7 +99,7 @@ The ``table_options`` parameter is an object that may have the following attribu
   the function. 
 
 * ``dblclick_edit`` - if the value of the option is set to true and the 
-  ``on_dblclick`` options is not set, the edit form will be shown when a user 
+  ``on_dblclick`` option is not set, the edit form will be shown when a user 
   double click on a table row. 
 
 * ``multiselect`` - if this option is set, a leftmost 
@@ -106,7 +109,7 @@ The ``table_options`` parameter is an object that may have the following attribu
   :doc:`selections <at_selections>`
   attribute.
   
-  ``select_all`` if  true,
+* ``select_all`` if  true,
   the menu will appear in the leftmost column of the table header, which will allow
   the user selects all records that match the current filters and the search value.
 

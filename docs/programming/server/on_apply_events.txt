@@ -43,5 +43,5 @@ For more information see :doc:`on_apply </refs/server/item/on_apply>`
 Example
 =======
 
-:doc:`Here is an example how server events can be used </faq/faq_multitenancy>`
+:doc:`Here is an example how on_apply can be used </how_to/how_to_multitenancy>`
 

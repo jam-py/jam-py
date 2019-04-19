@@ -100,7 +100,7 @@ Example
     rows = item.task.select(sql)
     return rows, ''
 
-:doc:`Here is an example how server events can be used </faq/faq_multitenancy>`
+:doc:`Here is an example how server events can be used </how_to/how_to_multitenancy>`
 
 See also
 ========

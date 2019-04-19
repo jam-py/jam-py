@@ -41,4 +41,4 @@ For more information see :doc:`on_open </refs/server/item/on_open>`
 Example
 =======
 
-:doc:`Here is an example how server events can be used </faq/faq_multitenancy>`
+:doc:`Here is an example how on_open can be used </how_to/how_to_multitenancy>`

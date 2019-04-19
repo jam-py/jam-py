@@ -7,12 +7,6 @@ Jam.py FAQ
 
     faq_catalogs_vs_journals
     faq_howto_upgrade_existing_project
-    faq_can_i_use_jam_py_with_existing_database
-    faq_data_from_other_database_tables
-    faq_request_from_other_application
-    faq_calculations_in_the_background
     faq_foreign_keys
     faq_using_other_libraries
-    faq_multitenancy
-    faq_details_inside_details
     faq_print_ods_pdf

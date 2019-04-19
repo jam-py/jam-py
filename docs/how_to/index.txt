@@ -14,6 +14,12 @@ Here is a useful code that you can use in your applications:
     to_append_a_record_without_view_form
     how_to_save_edit_form_without_closing_it
     how_to_prevent_duplicate_values
+    how_to_multitenancy
+    how_to_use_jam_py_with_existing_database
+    how_to_data_from_other_database_tables
+    how_to_request_from_other_application
+    how_to_calculations_in_the_background
+    how_to_details_inside_details
     export_import_csv_files    
     authentication/index
     deploy/index

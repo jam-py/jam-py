@@ -15,5 +15,4 @@ Documentation:
 
 deployment section added to :doc:`How to </how_to/index>`
 
-:doc:`How to lock a record so that users cannot edit it at the same time </how_to/how_to_lock_record>`
-topic added
+How to lock a record so that users cannot edit it at the same time topic added

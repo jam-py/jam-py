@@ -4490,12 +4490,25 @@
                 options = args['object'],
                 async = args['boolean'],
                 details = this.details,
+                d,
                 detail_count = 0,
-                after_open = function() {
+                store_rec_no = function(d) {
+                    if (options.restore_rec_no && d.active) {
+                        d._prev_rec_no = d.rec_no
+                    }
+                },
+                restore_rec_no = function(d) {
+                    if (d._prev_rec_no) {
+                        d.rec_no = d._prev_rec_no
+                        d._prev_rec_no = undefined;
+                    }
+                },
+                after_open = function(d) {
                     detail_count -= 1;
                     if (detail_count === 0 && callback) {
                         callback.call(self);
                     }
+                    restore_rec_no(d);
                 };
             if (!options) {
                 options = {};
@@ -4514,20 +4527,29 @@
                     }
                 }
                 for (i = 0; i < details.length; i++) {
-                    if (!details[i].disabled) {
+                    d = details[i];
+                    if (!d.disabled) {
                         if (options.default_order) {
-                            details[i].set_order_by(details[i].view_options.default_order);
+                            d.set_order_by(d.view_options.default_order);
                         }
-                        details[i].open(after_open);
+                        store_rec_no(d);
+                        d.open(after_open);
                     }
                 }
             } else {
                 for (i = 0; i < details.length; i++) {
-                    if (!details[i].disabled) {
+                    d = details[i];
+                    if (!d.disabled) {
                         if (options.default_order) {
-                            details[i].set_order_by(details[i].view_options.default_order);
+                            d.set_order_by(d.view_options.default_order);
                         }
-                        details[i].open();
+                        store_rec_no(d);
+                        try {
+                            d.open();
+                        }
+                        finally {
+                            restore_rec_no(d);
+                        }
                     }
                 }
             }
@@ -7250,7 +7272,6 @@
                 }
                 this.each_detail(function(d) {
                     if (d.active) {
-                        //~ d.close();
                         if ($.inArray(d.item_name, options.details) === -1)  {
                             options.details.push(d.item_name);
                         }
@@ -7259,6 +7280,7 @@
                 this.change_log.record_refreshed();
                 this.update_controls(consts.UPDATE_RECORD);
                 if (options.details.length) {
+                    options.restore_rec_no = true
                     this.open_details(options, callback, async);
                 }
                 else if (callback) {
@@ -9866,7 +9888,9 @@
                 show_scrollbar: false,
                 paginator_container: undefined,
                 freeze_count: 0,
-                exact_height: false//true
+                exact_height: false,
+                show_hints: true,
+                hint_fields: undefined
             };
 
             this.options = $.extend(true, {}, default_options, this.item.table_options);
@@ -10385,31 +10409,40 @@
             this.$table.on('mouseenter mouseup', 'td div', function() {
                 var $this = $(this),
                     $td = $this.parent(),
+                    field_name = $td.data('field_name'),
                     tt = $this.data('tooltip'),
+                    show,
                     placement = 'right',
+                    container;
+                show = self.options.show_hints;
+                if ($.isArray(self.options.hint_fields)) {
+                     show = $.inArray(field_name, self.options.hint_fields) > -1;
+                }
+                if (show) {
+                    self._remove_tooltip();
                     container = this.closest('.dbtable');
-                self._remove_tooltip();
-                if (Math.abs(this.offsetHeight - this.scrollHeight) > 1 ||
-                    Math.abs(this.offsetWidth - this.scrollWidth) > 1) {
-                    if (self.$table.width() - ($this.offset().left + $this.width()) < 200) {
-                        placement = 'left';
+                    if (Math.abs(this.offsetHeight - this.scrollHeight) > 1 ||
+                        Math.abs(this.offsetWidth - this.scrollWidth) > 1) {
+                        if (self.$table.width() - ($this.offset().left + $this.width()) < 200) {
+                            placement = 'left';
+                        }
+                        $td.tooltip({
+                                'placement': placement,
+                                'container': container,
+                                //~ 'container': 'body',
+                                'title': $this.text()
+                            })
+                            .on('hide hidden show shown', function(e) {
+                                if (e.target === $this.get(0)) {
+                                    e.stopPropagation()
+                                }
+                            })
+                            .eq(0).tooltip('show');
+                        try {
+                            $td.data('tooltip').$tip.addClass('table-tooltip');
+                        }
+                        catch (e) {}
                     }
-                    $td.tooltip({
-                            'placement': placement,
-                            'container': container,
-                            //~ 'container': 'body',
-                            'title': $this.text()
-                        })
-                        .on('hide hidden show shown', function(e) {
-                            if (e.target === $this.get(0)) {
-                                e.stopPropagation()
-                            }
-                        })
-                        .eq(0).tooltip('show');
-                    try {
-                        $td.data('tooltip').$tip.addClass('table-tooltip');
-                    }
-                    catch (e) {}
                 }
             });
 

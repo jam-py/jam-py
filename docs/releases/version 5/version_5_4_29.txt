@@ -19,6 +19,6 @@ Library:
 
 Documetation:
 
-* :doc:`How can I perform calculations in the background </faq/faq_calculations_in_the_background>`
+* :doc:`How can I perform calculations in the background </how_to/how_to_calculations_in_the_background>`
 
-* :doc:`How can I use data from other database tables </faq/faq_data_from_other_database_tables>`
+* :doc:`How can I use data from other database tables </how_to/how_to_data_from_other_database_tables>`

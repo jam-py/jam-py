@@ -2,8 +2,9 @@
 Form events
 ===========
 
-After the form is created, and the form's html template have been added to the 
-DOM, the application triggers the following events for view forms:
+After the form is created and the HTML form template is added to the DOM, 
+the application triggers the following form events during the life cycle of 
+the form:
 
 * ``on_view_form_created`` - the event is triggered when the form has been created but not shown yet
 
@@ -17,11 +18,223 @@ DOM, the application triggers the following events for view forms:
 
 * ``on_view_form_keyup`` - the event is triggered when the keyup event occurs for the form
 
-For other form types - edit, filter and param, replace 'view' on the form type, for example
-``on_edit_form_created`` for edit form.
+For other form types - edit, filter and param, replace 'view' with the form type, 
+for example ``on_edit_form_created`` for edit form.
 
-These events are processed by the ``_process_event`` in th *jam.js* module.
-Below we explain how it works.
+We will first explain how to use the ``on_view_form_created`` event.
+
+When the user clicks on menu item the application executes the
+:doc:`view </refs/client/item/m_view>`
+method of corresponding task tree item, this method creates a form using its HTML 
+form template and triggers first the 
+:doc:`on_view_form_created </refs/client/task/on_view_form_created>` event of 
+the task.
+
+When you create a new project, the task client module already contains the 
+code, including the  
+:doc:`on_view_form_created </refs/client/task/on_view_form_created>`
+event handler. This event handler is executed each time the view form is created
+and defines the default behavior of view forms. 
+
+You can open the task client module to see this event handler. 
+If you need to change the default behavior for all view forms of the project, 
+you should do it here.
+
+Below we describe the major steps it performs:
+
+* Initializes the
+  :doc:`view_form </refs/client/item/at_view_form>`
+  and
+  :doc:`table_options </refs/client/item/at_table_options>`
+  that are used by some methods when view form and table are created.
+
+* Assigns JQuery event handlers for default buttons to methods of the item,
+  depending on the user rights. In the example below the delete button is.
+  Initialized:
+
+  .. code-block:: js
+
+    if (item.can_delete()) {
+        item.view_form.find("#delete-btn").on('click.task', function(e) {
+            e.preventDefault();
+            item.delete_record();
+        });
+    }
+    else {
+        item.view_form.find("#delete-btn").prop("disabled", true);
+    }
+
+* Executes the
+  :doc:`on_view_form_created </refs/client/group/on_view_form_created>`
+  event handler of the item group and.
+  :doc:`on_view_form_created </refs/client/item/on_view_form_created>`
+  of the item if they are defined:
+
+  .. code-block:: js
+
+    if (!item.master && item.owner.on_view_form_created) {
+        item.owner.on_view_form_created(item);
+    }
+
+    if (item.on_view_form_created) {
+        item.on_view_form_created(item);
+    }
+
+* Creates a table to display the item data and tables for details if they have 
+  been specified by calling ``create_view_tables`` method
+
+* Executes 
+  :doc:`open </refs/client/item/m_open>`
+  method, that gets the item dataset from the server.
+  
+* Finally returns true to prevent calling of the ``on_view_form_created`` of the
+  owner group and the item because the were already called see the 
+  ``_process_event`` method below.
+  
+After we initialized buttons and before creating tables we call the 
+``on_view_form_created`` event handler of the item itself.
+
+For example, in the client module of the tracks item of the demo app 
+the following 
+:doc:`on_view_form_created </refs/client/item/on_view_form_created>`
+event handler is defined. In it we
+change the height attribute of the 
+:doc:`table_options </refs/client/item/at_table_options>`
+, create the copy of the
+invoice_table set its attributes and call its
+:doc:`create_table </refs/client/item/m_create_table>`
+method that creates a table to display its data. 
+
+.. code-block:: js
+
+  function on_view_form_created(item) {
+    item.table_options.height -= 200;
+    item.invoice_table = task.invoice_table.copy();
+    item.invoice_table.paginate = false;
+    item.invoice_table.create_table(item.view_form.find('.view-detail'), {
+        height: 200,
+        summary_fields: ['date', 'total'],
+    });
+    item.alert('Double-click the record in the bottom table to see track sales.');
+  }
+
+The module also has the 
+:doc:`on_after_scroll </refs/client/item/on_after_scroll>`
+event handler that will be executed when
+the user moves to the other track and will get the sales of this track. 
+
+This example explains the principle of form events usage.
+
+The order of triggering of events depends on the type of event.
+
+There are three type of
+
+The order in which events are generated depends on the type of event.
+
+Close query events 
+==================
+
+When user tries to close the form the on_close_query event is first triggered 
+(if defined) for the item.   
+
+If the event handler returns true the application closes the form,
+else if the event handler returns false the application leaves the form open,
+otherwise the on_close_query event is triggered (if defined) the same way 
+for the item group and then for the task.
+
+For example, by default there is the 
+:doc:`on_edit_form_close_query </refs/client/item/on_edit_form_close_query>`
+event handler in the task client module:
+
+.. code-block:: js
+
+  function on_edit_form_close_query(item) {
+      var result = true;
+      if (!item.virtual_table && item.is_changing()) {
+          if (item.is_modified()) {
+              item.yes_no_cancel(task.language.save_changes,
+                  function() {
+                      item.apply_record();
+                  },
+                  function() {
+                      item.cancel_edit();
+                  }
+              );
+              result = false;
+          }
+          else {
+              item.cancel_edit();
+          }
+      }
+      return result;
+  }
+
+This code checks whether the record has been modified and then opens 
+"Yes No Cancel" dialog.
+
+If we want to close the form without this dialog we can defined the following
+event handler in the client module of the item:
+
+
+.. code-block:: js
+
+  function on_edit_form_close_query(item) {
+      item.cancel()
+      return true;
+  }
+
+
+Keydown, keyup events
+=====================
+
+These events are triggered the same way as Close query events, starting from the item,
+but if the event handler returns true, the event handlers of the group and task 
+are not executed.
+
+For example, by default there is the 
+:doc:`on_edit_form_keyup </refs/client/item/on_edit_form_keyup>`
+event handler in the task client module:
+
+
+.. code-block:: js
+
+  function on_edit_form_keyup(item, event) {
+      if (event.keyCode === 13 && event.ctrlKey === true){
+          item.edit_form.find("#ok-btn").focus(); 
+          item.apply_record();
+      }
+  }
+
+This code saves the changes of the record to the database table when user 
+presses Ctrl+Enter.
+
+Suppose we want to save the changes when user presses Enter. Then we write the
+following event handler in the item client module:
+
+.. code-block:: js
+
+  function on_edit_form_keyup(item, event) {
+      if (event.keyCode === 13){
+          item.edit_form.find("#ok-btn").focus(); 
+          item.apply_record();
+          return true;
+      }
+  }
+
+In this case the event handler of the task won't be called when the user press
+Enter.
+
+
+All other events
+================
+
+For other events, the event handler of the task is called first, if it doesn't 
+return true, the event handler of the group is executed if it doesn't 
+return true the event handler of the item is called.
+
+
+This mechanism is implemented the ``_process_event`` method of the Item class in 
+the *jam.js* module.
 
 .. code-block:: js
 
@@ -64,28 +277,3 @@ Below we explain how it works.
     }
   }
 
-Let's start with close query event
-
-Close query event
-=================
-
-This event is triggered when an attempt is made to close the form. 
-
-We will look at this event using the edit form as an example.
-
-If the ``on_edit_form_close_query`` event handler is defined in the item client 
-module, the application executes it and depending on the result of this execution
-it does the following:
-
-* if the event handler returns ``true`` closes the form
-* if the event handler returns ``false`` leaves the form open
-
-
-Video
-=====
-
-`Form events`_ - this video demonstrates the form events, using the Demo 
-application, and shows how to debug the Jam.py application using the browser 
-debugger.
-
-.. _`Form events`: https://youtu.be/DY463lcv0R4

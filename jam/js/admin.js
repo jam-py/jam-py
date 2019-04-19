@@ -2512,7 +2512,7 @@ function Events2() { // admin.catalogs.sys_roles
 	
 	function on_after_apply(item) {
 		item.server('roles_changed');
-		item.refresh_record();
+	//	item.refresh_record();
 		if (!item.sys_privileges.rec_count) {
 			item.sys_privileges.open(function() {
 				item.edit();

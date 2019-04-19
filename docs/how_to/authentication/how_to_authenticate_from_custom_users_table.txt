@@ -2,11 +2,14 @@
 How to authenticate from custom users table
 ===========================================
 
+By default, all user information is stored in a table in the admin.sqlite 
+database. This table has a fixed structure that cannot be changed.
+
 In this section, we describe how to authenticate a user using data from the 
 custom users table.
 
 First, we create an item group **Authentication** select it and add an item 
-**Users** that has thefollowing fields:
+**Users** that has the following fields:
 
 .. image:: /how_to/_images/users_fields.png
 	:align: center

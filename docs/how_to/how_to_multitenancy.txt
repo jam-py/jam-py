@@ -1,6 +1,6 @@
-============================================================================================================
-Is there a way to implement some sort of basic multi-tenancy? For example, to have users with separate data.
-============================================================================================================
+=================================================================================================
+How to implement some sort of basic multi-tenancy? For example, to have users with separate data.
+=================================================================================================
 
 You can implement a multi-tenancy using Jam.py.
 
@@ -14,7 +14,7 @@ server module of the item will do the job:
       if user_id:
           params['__filters'].append(['user_id', item.task.consts.FILTER_EQ, user_id])
   
-  def on_apply(item, delta, params):
+  def on_apply(item, delta, params, connection):
       user_id = item.session['user_info']['user_id']
       if user_id:
         for d in delta:
@@ -53,7 +53,7 @@ a user_id field:
           if user_id:
               params['__filters'].append(['user_id', item.task.consts.FILTER_EQ, user_id])
   
-  def on_apply(item, delta, params):
+  def on_apply(item, delta, params, connection):
       if item.field_by_name('user_id'):    
           user_id = item.session['user_info']['user_id']
           if user_id:
