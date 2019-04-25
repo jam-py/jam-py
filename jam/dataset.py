@@ -1033,7 +1033,7 @@ class AbstractDataSet(object):
         self._disabled_count = 0
         self._is_delta = False
         self._keep_history = False
-        self.lock_on_edit = False
+        self.edit_lock = False
         self.select_all = False
         self.owner_read_only = True
         self.on_before_append = None
@@ -1752,7 +1752,7 @@ class AbstractDataSet(object):
     def do_open(self, params=None):
         if not params:
             params = self._open_params
-        rows, error_mes = self.do_internal_open(params)
+        rows, error_mes, info = self.do_internal_open(params)
         if error_mes:
             raise RuntimeError(error_mes)
         else:

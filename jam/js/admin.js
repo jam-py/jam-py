@@ -595,10 +595,7 @@ function Events0() { // admin
 	function set_project_params(task, caption) {
 		open_sys_params(task);
 		task.sys_params.params = true;
-	//	task.sys_params.edit_options.fields = [
-	//		'f_language', 'f_safe_mode', 'f_debugging', 'f_theme', 'f_persist_con', 'f_con_pool_size',
-	//		'f_compressed_js', 'f_single_file_js', 'f_dynamic_js',
-	//		'f_history_item', 'f_timeout', 'f_ignore_change_ip', 'f_delete_reports_after', 'f_version'];
+		task.sys_params.edit_options.fields = ['id'];
 		task.sys_params.edit_options.title = caption;
 		task.sys_params.edit_record();
 	}
@@ -867,7 +864,7 @@ function Events3() { // admin.catalogs.sys_items
 			task.item_tree.type_id.value === task.item_types.TABLES_TYPE) {
 			item.fields_editor = true;
 			item.view_options.fields = ['id', 'f_name', 'f_item_name', 'f_table_name',
-				'f_visible', 'f_soft_delete', 'f_keep_history']
+				'f_visible', 'f_keep_history', 'f_edit_lock']
 			item.edit_options.fields = ['f_name', 'f_item_name', 'f_table_name']
 			if (item.task._manual_update) {
 				item.sys_fields.view_options.fields = ['f_name', 'f_field_name',  'f_db_field_name',
@@ -1153,22 +1150,18 @@ function Events3() { // admin.catalogs.sys_items
 			item.fields_editor = true;
 			if (item.task.db_options.NEED_GENERATOR) {
 				fields = ['f_name', 'f_item_name', 'f_table_name', 'f_gen_name', 'f_primary_key', 'f_deleted_flag']
-	//			row_count = 6;
 				if (item.type_id.value === types.TABLE_TYPE) {
 					fields = fields.concat(['f_master_id', 'f_master_rec_id'])
-	//				row_count = 8;
 				}
 			}
 			else {
 				fields = ['f_name', 'f_item_name', 'f_table_name', 'f_primary_key', 'f_deleted_flag']
-	//			row_count = 5;
 				if (item.type_id.value === types.TABLE_TYPE) {
 					fields = fields.concat(['f_master_id', 'f_master_rec_id'])
-	//				row_count = 7;
 				}
 			}
-			fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_keep_history', 'f_js_external'])
-	//		fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_js_external'])
+			fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_keep_history', 'f_edit_lock'])
+	//		fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_keep_history', 'f_js_external'])
 		}
 		if (item.type_id.value === types.ITEMS_TYPE || item.type_id.value === types.TABLES_TYPE) {
 			item.fields_editor = true;
@@ -4059,7 +4052,7 @@ function Events11() { // admin.catalogs.sys_params
 			item.create_inputs(general, {
 				fields: ['f_safe_mode', 'f_debugging', 'f_language', 'f_persist_con',
 				'f_con_pool_size', 'f_compressed_js',
-				'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_timeout',
+				'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_lock_item', 'f_timeout',
 				'f_ignore_change_ip', 'f_max_content_length', 'f_delete_reports_after', 'f_version'
 				],
 				in_well: false,
@@ -5683,11 +5676,11 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 	
 	function on_before_post(item) {
 		if (item.f_data_type.value !== item.task.consts.TEXT) {
-			item.f_size.value = null;
+		item.f_size.value = null;
 		}
 		item.task_id.value = item.task.item_tree.task_id.value;
 		if (!item.id.value) {
-			item.id.value = item.task.server('get_fields_next_id');
+		item.id.value = item.task.server('get_fields_next_id');
 		}
 	}
 	

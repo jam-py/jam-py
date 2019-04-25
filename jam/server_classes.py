@@ -151,6 +151,41 @@ class ServerDataset(Dataset, SQL):
             result = count, error_mess
         return result
 
+    def update_rec_version(self, delta, params, connection):
+        version = params.get('_edit_record_version')
+        if version and delta.rec_count == 1 and self.task.lock_item:
+            item_id = delta._primary_key_field.value
+            locks = self.task.lock_item.copy()
+            new_version = self.get_version(locks, item_id)
+            if new_version != version:
+                raise Exception(self.task.language('edit_record_modified'))
+            locks.set_where(item_id=self.ID, item_rec_id=item_id)
+            locks.open()
+            if locks.rec_count:
+                locks.edit()
+            else:
+                locks.append()
+            locks.item_id.value = self.ID
+            locks.item_rec_id.value = item_id
+            locks.version.value = version + 1
+            locks.post()
+            locks.apply(connection)
+            return locks.version.value
+
+    def find_rec_version(self, params):
+        item_id = params.get('_edit_record_id')
+        if item_id and self.task.lock_item:
+            locks = self.task.lock_item.copy()
+            return self.get_version(locks, item_id)
+
+    def get_version(self, locks, item_id):
+        locks.set_where(item_id=self.ID, item_rec_id=item_id)
+        locks.open()
+        if locks.rec_count:
+            return locks.version.value
+        else:
+            return 1
+
     def execute_open(self, params, connection=None, db_module=None):
         error_mes = ''
         limit = params['__limit']
@@ -170,8 +205,7 @@ class ServerDataset(Dataset, SQL):
                         break
             if (limit or offset) and not cut:
                 rows = rows[offset:offset + limit]
-        result = rows, error_mes
-        return result
+        return rows, error_mes
 
     def select_records(self, params, safe=False):
         if safe and not self.can_view():
@@ -183,6 +217,8 @@ class ServerDataset(Dataset, SQL):
             result = self.on_open(self, params)
         if result is None:
             result = self.execute_open(params)
+        result = list(result)
+        result.append(self.find_rec_version(params))
         return result
 
     def apply_delta(self, delta, params=None, connection=None, db_module=None, autocommit=True):
@@ -205,6 +241,7 @@ class ServerDataset(Dataset, SQL):
             if not self.task.mp_pool:
                 connection = self.task.connect()
         try:
+            rec_version = self.update_rec_version(delta, params, connection)
             if self.task.on_apply:
                 try:
                     result = self.task.on_apply(self, delta, params, connection)
@@ -225,6 +262,10 @@ class ServerDataset(Dataset, SQL):
                         raise
             if result is None:
                 result = self.apply_delta(delta, params, connection, autocommit=autocommit)
+            try:
+                result[0]['_edit_record_version'] = rec_version
+            except:
+                pass
         finally:
             if connection and autocommit:
                 connection.close()
@@ -353,6 +394,7 @@ class Report(AbstrReport):
         self.on_after_generate = None
         self.on_parsed = None
         self.on_before_save_report = None
+        self.on_field_get_text = None
 
     def add_param(self, caption='', name='', data_type=common.INTEGER,
             obj=None, obj_field=None, required=True, visible=True, alignment=None,

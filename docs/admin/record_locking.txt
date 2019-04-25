@@ -1,0 +1,43 @@
+==============
+Record locking
+==============
+
+In Jam.py, application you can implement a record locking while users 
+concurrently edit a record.
+
+Jam.py uses optimistic locking model, also referred to as optimistic concurrency 
+control. 
+
+When an application executes the 
+:doc:`edit_record </refs/client/item/m_edit_record>`
+method, it receives the current version of the record from the server and 
+saves it. When the user starts saving the record, the server application checks 
+the current version of the record. If it differs from the stored value (another 
+user changed it while the record were being edited), 
+the application warns the user and prohibits saving.
+
+This record locking mechanism is very easy to implement.
+
+To do so you need to create an item that will store record version.
+
+Open 
+:doc:`project parameters <project/parameters>`
+and click the button to the right of the
+**Lock item** input:
+
+.. image:: _images/history_item.png
+	:align: center
+	:alt: History item
+	
+In the dialog that will appear click on the **Create lock item** button: 
+
+.. image:: _images/create_lock_item.png
+	:align: center
+	:alt: New history item	
+
+After that you must set **Edit lock** attribute in the
+:doc:`Item Editor Dialog <items/item_editor_dialog>`:
+
+.. image:: _images/item_editor_dialog.png
+	:align: center
+	:alt: Keep history attribute

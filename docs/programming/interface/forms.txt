@@ -43,7 +43,7 @@ For example, all edit forms of the Demo project use the following html template:
       </div>
   </div>
 
-You can define your own form templates. See 
+You can define your own form templates to create your own custom forms. See 
 :doc:`Form templates <form_templates>`
 
 When some method creates a form the application finds corresponding html template. 

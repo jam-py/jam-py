@@ -27,7 +27,7 @@ The following mesage will appear when the item will be created:
 After that you have to set **Keep history** attribute of an item to save the history
 its changes:
 
-.. image:: _images/keep_history.png
+.. image:: _images/item_editor_dialog.png
 	:align: center
 	:alt: Keep history attribute
 	

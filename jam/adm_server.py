@@ -170,7 +170,7 @@ def create_items(task):
     task.sys_items.add_field(26, 'f_master_rec_id', task.language('master_rec_id'), common.INTEGER, False, task.sys_fields, 'f_field_name')
     task.sys_items.add_field(27, 'f_js_funcs', 'f_js_funcs', common.LONGTEXT, visible=False, edit_visible=False)
     task.sys_items.add_field(28, 'f_keep_history', task.language('history'), common.BOOLEAN)
-    task.sys_items.add_field(29, 'f_edit_lock', 'Edit lock', common.BOOLEAN)
+    task.sys_items.add_field(29, 'f_edit_lock', task.language('edit_lock'), common.BOOLEAN)
     task.sys_items.add_field(30, 'sys_id', 'sys_id', common.INTEGER)
     task.sys_items.add_field(31, 'f_select_all', task.language('select_all'), common.BOOLEAN)
 
@@ -799,6 +799,8 @@ def create_task(app):
             )
         result.ID = it.id.value
         load_task(result, app)
+    else:
+        raise common.ProjectNotCompleted()
     return result
 
 ###############################################################################
@@ -937,6 +939,7 @@ def load_task(target, app, first_build=True, after_import=False):
                         item.virtual_table = rec.f_virtual_table.value
                         item.server_code = rec.f_server_module.value
                         item._keep_history = rec.f_keep_history.value
+                        item.edit_lock = rec.f_edit_lock.value
                         item.select_all = rec.f_select_all.value
                         item._primary_key = rec.f_primary_key.value
                         item._deleted_flag = rec.f_deleted_flag.value
@@ -1061,6 +1064,8 @@ def load_task(target, app, first_build=True, after_import=False):
     if params.f_history_item.value:
         target.history_item = target.item_by_ID(params.f_history_item.value)
         target.history_item.on_apply = history_on_apply
+    if params.f_lock_item.value:
+        target.lock_item = target.item_by_ID(params.f_lock_item.value)
 
     target.first_build = first_build
     target.after_import = after_import
@@ -2452,7 +2457,7 @@ def create_system_item(task, field_name):
             items.open(fields = ['id', 'f_name', 'f_item_name'])
             if not items.record_count():
                 sys_group = None
-        if not sys_group:
+        else:
             items.open(open_empty=True)
             items.append()
             items.parent.value = task_id
@@ -2477,6 +2482,13 @@ def create_system_item(task, field_name):
             index_fields = common.HISTORY_INDEX_FIELDS
             param_field = 'f_history_item'
             sys_id = 1
+        elif field_name == 'f_lock_item':
+            name = 'Locks'
+            item_name = check_item_name('locks')
+            fields = common.LOCKS_FIELDS
+            index_fields = common.LOCKS_INDEX_FIELDS
+            param_field = 'f_lock_item'
+            sys_id = 2
         table_name, gen_name = get_new_table_name(task, item_name)
         items.open(open_empty=True)
         items.append()
@@ -2493,14 +2505,15 @@ def create_system_item(task, field_name):
             field_name, data_type, size = f
             items.sys_fields.append()
             items.sys_fields.id.value = get_fields_next_id(task)
+            items.sys_fields.task_id.value = task_id
             items.sys_fields.f_name.value = field_name
             items.sys_fields.f_field_name.value = field_name
             items.sys_fields.f_db_field_name.value = server_set_literal_case(task, field_name)
             items.sys_fields.f_data_type.value = data_type
             items.sys_fields.f_size.value = size
             items.sys_fields.post()
-            #~ if i == 0:
-                #~ items.f_primary_key.value = items.sys_fields.id.value
+            if field_name == 'id':
+                items.f_primary_key.value = items.sys_fields.id.value
         items.post()
         items.on_apply = items_apply_changes
         items.apply(params={'manual_update': False})

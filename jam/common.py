@@ -16,6 +16,9 @@ except ImportError:
 
 from werkzeug._compat import to_unicode, to_bytes
 
+class ProjectNotCompleted(Exception):
+    pass
+
 DEFAULT_SETTINGS = {
     'LANGUAGE': 1,
     'SAFE_MODE': False,
@@ -66,7 +69,8 @@ THEME_FILE = ('', 'bootstrap.css', 'bootstrap-cerulean.css',
     'bootstrap-readable.css', 'bootstrap-spacelab.css')
 
 
-RESPONSE, NOT_LOGGED, UNDER_MAINTAINANCE, NO_PROJECT = range(1, 5)
+PROJECT_NONE, PROJECT_NO_PROJECT, PROJECT_LOADING, PROJECT_ERROR, PROJECT_NOT_LOGGED, \
+    PROJECT_LOGGED, PROJECT_MAINTAINANCE, RESPONSE = range(1, 9)
 
 ROOT_TYPE, USERS_TYPE, ROLES_TYPE, TASKS_TYPE, TASK_TYPE, \
     ITEMS_TYPE, JOURNALS_TYPE, TABLES_TYPE, REPORTS_TYPE, \
@@ -120,9 +124,10 @@ HISTORY_FIELDS = [
 HISTORY_INDEX_FIELDS = ['item_id', 'item_rec_id']
 
 LOCKS_FIELDS = [
+    ['id', INTEGER, None],
     ['item_id', INTEGER, None],
     ['item_rec_id', INTEGER, None],
-    ['modified', DATETIME, None]
+    ['version', INTEGER, None]
 ]
 LOCKS_INDEX_FIELDS = ['item_id', 'item_rec_id']
 

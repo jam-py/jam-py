@@ -203,6 +203,7 @@ class AbstrTask(AbstractItem):
         self.__language = None
         self.item_type_id = common.TASK_TYPE
         self.history_item = None
+        self.lock_item = None
         self.log = None
         #~ self.languages = langs.get_langs()
 
@@ -218,6 +219,8 @@ class AbstrTask(AbstractItem):
         info['lookup_lists'] = self.lookup_lists
         if self.history_item:
             info['history_item'] = self.history_item.ID
+        if self.lock_item:
+            info['lock_item'] = self.lock_item.ID
 
     def set_info(self, info):
         super(AbstrTask, self).set_info(info)
@@ -291,7 +294,7 @@ class AbstrItem(AbstractItem):
         info['master_id'] = self._master_id
         info['master_rec_id'] = self._master_rec_id
         info['keep_history'] = self.keep_history
-        info['lock_on_edit'] = self.lock_on_edit
+        info['edit_lock'] = self.edit_lock
         info['view_params'] = self._view_list
         info['edit_params'] = self._edit_list
         info['virtual_table'] = self.virtual_table

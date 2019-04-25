@@ -106,7 +106,7 @@ class App():
         mimetypes.add_type('text/cache-manifest', '.appcache')
         self.started = datetime.datetime.now()
         self.work_dir = work_dir
-        self._loading = False
+        self.state = common.PROJECT_NONE
         self._load_lock = Lock()
         self._updating_task = False
         self.admin = None
@@ -148,16 +148,18 @@ class App():
         if self.task:
             return self.task
         else:
-            if not self._loading:
-                self._loading = True
+            if self.state != common.PROJECT_LOADING:
+                self.state = common.PROJECT_LOADING
                 try:
                     with self._load_lock:
                         self.task = self.admin.create_task()
-                except:
+                    self.check_project_modified()
+                    self.state = common.RESPONSE
+                except common.ProjectNotCompleted:
+                    self.state = common.PROJECT_NO_PROJECT
+                else:
+                    self.state = common.PROJECT_ERROR
                     traceback.print_exc()
-                    raise
-                finally:
-                    self._loading = False
             if self.task:
                 self.__task_locked = True
             return self.task
@@ -205,10 +207,7 @@ class App():
                 file_name = 'builder.html'
             if file_name == 'index.html':
                 self.check_modified(file_name, environ)
-                if self.get_task():
-                    self.check_project_modified()
-                else:
-                    return Response(self.admin.language('no_task'))(environ, start_response)
+                self.check_project_modified()
             elif file_name == 'builder.html':
                 self.check_modified(os.path.join(to_unicode(self.jam_dir, 'utf-8'), file_name), environ)
                 environ['PATH_INFO'] = os.path.join('jam', file_name)
@@ -279,7 +278,7 @@ class App():
 
     def connect(self, request, task):
         if self.check_session(request, task):
-            return True
+            return common.PROJECT_LOGGED
 
     def valid_session(self, task, session, request):
         if self.admin.safe_mode:
@@ -311,6 +310,7 @@ class App():
         return adm_server.login(self.admin, login, password, self.admin == task, ip, session_uuid)
 
     def login(self, request, task, form_data):
+        time.sleep(1)
         ip = None
         session_uuid = None
         ip = self.get_client_address(request);
@@ -341,20 +341,21 @@ class App():
         jam.context.session = None
 
     def check_project_modified(self):
-        if self.task_server_modified or self.task_client_modified:
-            if not self._updating_task:
-                self._updating_task = True
-                self.__task_locked = False
-                try:
-                    if self.task_server_modified:
-                        self.admin.reload_task()
-                        self.task_server_modified = False
-                    if self.task_client_modified:
-                        self.admin.update_events_code()
-                        self.task_client_modified = False
-                finally:
-                    self._updating_task = False
-                    self.__task_locked = True
+        if self.task:
+            if self.task_server_modified or self.task_client_modified:
+                if not self._updating_task:
+                    self._updating_task = True
+                    self.__task_locked = False
+                    try:
+                        if self.task_server_modified:
+                            self.admin.reload_task()
+                            self.task_server_modified = False
+                        if self.task_client_modified:
+                            self.admin.update_events_code()
+                            self.task_client_modified = False
+                    finally:
+                        self._updating_task = False
+                        self.__task_locked = True
 
     def import_metadata(self, task, task_id, file_name, from_client):
         if not from_client:
@@ -407,12 +408,27 @@ class App():
                 if task_id == 0:
                     task = self.admin
                 else:
-                    task = self.get_task()
+                    task = self.task
+                    if not task:
+                        task = self.get_task()
+                        if not task:
+                            lang = self.admin.lang
+                            result = {'status': None, 'data': {'error': lang['error'], \
+                                'info': lang['info']}, 'version': None}
+                            result['status'] = self.state
+                            if self.state == common.PROJECT_LOADING:
+                                result['data']['project_loading'] = lang['project_loading']
+                            elif self.state == common.PROJECT_NO_PROJECT:
+                                result['data']['no_project'] = lang['no_project']
+                            elif self.state == common.PROJECT_ERROR:
+                                result['data']['project_error'] = lang['project_error']
+                            r ['result'] = result
+                            return self.create_post_response(request, r)
                 result = {'status': common.RESPONSE, 'data': None, 'version': task.version}
                 if not task:
-                    result['status'] = common.NO_PROJECT
+                    result['status'] = common.PROJECT_NO_PROJECT
                 elif self.under_maintenance:
-                    result['status'] = common.UNDER_MAINTAINANCE
+                    result['status'] = common.PROJECT_MAINTAINANCE
                 elif method == 'connect':
                     self.connect(request, task)
                     result['data'] = self.connect(request, task)
@@ -420,12 +436,12 @@ class App():
                     result['data'] = self.login(request, task, params[0])
                 elif method == 'logout':
                     self.logout(request, task);
-                    result['status'] = common.NOT_LOGGED
-                    result['data'] = common.NOT_LOGGED
+                    result['status'] = common.PROJECT_NOT_LOGGED
+                    result['data'] = common.PROJECT_NOT_LOGGED
                 else:
                     if not self.check_session(request, task):
-                        result['status'] = common.NOT_LOGGED
-                        result['data'] = common.NOT_LOGGED
+                        result['status'] = common.PROJECT_NOT_LOGGED
+                        result['data'] = common.PROJECT_NOT_LOGGED
                     else:
                         item = task
                         if task and item_id:
@@ -493,68 +509,72 @@ class App():
                 params = json.loads(data)
             except:
                 params = None
-            task = self.get_task()
-            try:
-                data = None
-                if self.under_maintenance:
-                    status = common.UNDER_MAINTAINANCE
-                elif task.on_ext_request:
-                    status = common.RESPONSE
-                    self._busy += 1
-                    try:
-                        data = task.on_ext_request(task, method, params)
-                    finally:
-                        self._busy -= 1
-                else:
-                    status = None
-                r['result'] = {'status': status, 'data': data, 'version': task.version}
-            except AbortException as e:
-                traceback.print_exc()
-                r['result'] = {'data': [None, error_message(e)]}
-                r['error'] = error_message(e)
-            except Exception as e:
-                traceback.print_exc()
-                #~ if common.SETTINGS['DEBUGGING']:
-                    #~ raise
-                r['result'] = {'data': [None, error_message(e)]}
-                r['error'] = error_message(e)
+            if self.task:
+                try:
+                    data = None
+                    if self.under_maintenance:
+                        status = common.UNDER_MAINTAINANCE
+                    elif self.task.on_ext_request:
+                        status = common.RESPONSE
+                        self._busy += 1
+                        try:
+                            data = self.task.on_ext_request(self.task, method, params)
+                        finally:
+                            self._busy -= 1
+                    else:
+                        status = None
+                    r['result'] = {'status': status, 'data': data, 'version': self.task.version}
+                except AbortException as e:
+                    traceback.print_exc()
+                    r['result'] = {'data': [None, error_message(e)]}
+                    r['error'] = error_message(e)
+                except Exception as e:
+                    traceback.print_exc()
+                    r['result'] = {'data': [None, error_message(e)]}
+                    r['error'] = error_message(e)
+            else:
+                r['result'] = {'status': self.state, 'data': None, 'version': None}
             return self.create_post_response(request, r)
 
     def on_upload(self, request):
         if request.method == 'POST':
+            r = {'result': None, 'error': None}
             task_id = int(request.form.get('task_id'))
             path = request.form.get('path')
             if task_id == 0:
                 task = self.admin
             else:
-                task = self.get_task()
-            result = {'status': common.RESPONSE, 'data': None, 'version': task.version}
-            r = {'result': result, 'error': None}
-            if not self.check_session(request, task):
-                r['result']['status'] = common.NOT_LOGGED
-                r['result']['data'] = common.NOT_LOGGED
-            else:
-                f = request.files.get('file')
-                file_name = request.form.get('file_name')
-                if f and file_name:
-                    base, ext = os.path.splitext(file_name)
-                    if not path:
-                        if task_id == 0:
-                            path = os.path.join('static', 'builder')
-                        else:
-                            path = os.path.join('static', 'files')
-                        file_name = ('%s%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
-                        file_name = secure_filename(file_name)
-                        file_name = file_name.replace('?', '')
-                    if not r['error']:
-                        dir_path = os.path.join(to_unicode(self.work_dir, 'utf-8'), path)
-                        if not os.path.exists(dir_path):
-                            os.makedirs(dir_path)
-                        f.save(os.path.join(dir_path, file_name))
-                        task = self.get_task()
-                        r['result'] = {'status': common.RESPONSE, 'data': {'file_name': file_name, 'path': path}, 'version': task.version}
+                task = self.task
+            if task:
+                result = {'status': common.RESPONSE, 'data': None, 'version': task.version}
+                r ['result'] = result
+                if not self.check_session(request, task):
+                    r['result']['status'] = common.NOT_LOGGED
+                    r['result']['data'] = common.NOT_LOGGED
                 else:
-                    r['error'] = 'File upload invalid parameters';
+                    f = request.files.get('file')
+                    file_name = request.form.get('file_name')
+                    if f and file_name:
+                        base, ext = os.path.splitext(file_name)
+                        if not path:
+                            if task_id == 0:
+                                path = os.path.join('static', 'builder')
+                            else:
+                                path = os.path.join('static', 'files')
+                            file_name = ('%s%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
+                            file_name = secure_filename(file_name)
+                            file_name = file_name.replace('?', '')
+                        if not r['error']:
+                            dir_path = os.path.join(to_unicode(self.work_dir, 'utf-8'), path)
+                            if not os.path.exists(dir_path):
+                                os.makedirs(dir_path)
+                            f.save(os.path.join(dir_path, file_name))
+                            task = self.get_task()
+                            r['result'] = {'status': common.RESPONSE, 'data': {'file_name': file_name, 'path': path}, 'version': task.version}
+                    else:
+                        r['error'] = 'File upload invalid parameters';
+            else:
+                r['result'] = {'status': self.state, 'data': None, 'version': None}
             return self.create_post_response(request, r)
 
     def stop(self, sigvalue):

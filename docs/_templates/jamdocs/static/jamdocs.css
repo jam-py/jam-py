@@ -92,6 +92,7 @@ a.headerlink:hover {
 .table-bordered td:first-child {
     border-left: 0;
 }
+
 table caption {
     text-align: center;
     color: #2c3e50;
@@ -152,4 +153,10 @@ ul.simple li {
 table.colwidths-given tr,
 table.colwidths-given td {
     padding: 4px;
+}
+
+table.docutils tr,
+table.docutils td {
+    padding: 4px;    
+}
 }

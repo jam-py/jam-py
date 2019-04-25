@@ -22,5 +22,5 @@ A developer must close a connection after it is no longer needed.
 See also
 ========
 
-:doc:`How can I use data from other database tables </faq/faq_data_from_other_database_tables>`
+:doc:`How can I use data from other database tables </how_to/how_to_data_from_other_database_tables>`
 

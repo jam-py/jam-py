@@ -18,7 +18,7 @@ Below is examples for synchronous and asynchronous cases.
                 item.apply();
               }
               catch (e) {
-                
+                item.alert_error(error);
               }
               item.edit();
           }

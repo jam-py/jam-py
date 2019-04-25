@@ -33,6 +33,19 @@ The upper part of the **Item Editor dialog** have the following fields:
   for the item. If the deleted flag field was defined for the group that owns 
   the item it will be displayed there by default, otherwise you have to create 
   this field first.
+
+* **Visible** - use this checkbox to set item's visible attribute. The value of 
+  this attribute can be used in code on the client to create menu items and so 
+  on.
+
+* **Soft delete** - when this check-box is checked, the delete method does not 
+  erase a record physically from the table, but uses this field to mark the 
+  record as deleted. See
+  :doc:`Common fields </programming/data/common_fields>`,
+  :doc:`delete </refs/server/item/m_delete>`
+  method (server),
+  :doc:`delete </refs/client/item/m_delete>`
+  method (client).
   
 * **Virtual table** - if this checkbox is checked, no database table will be 
   created. Use this options to create an in memory item or to get access to the 
@@ -44,22 +57,13 @@ The upper part of the **Item Editor dialog** have the following fields:
   ). This checkbox must be set when creating an item and can not be changed 
   later.
   
-* **Soft delete** - when this check-box is checked, the delete method does not 
-  erase a record physically from the table, but uses this field to mark the 
-  record as deleted. See
-  :doc:`Common fields </programming/data/common_fields>`,
-  :doc:`delete </refs/server/item/m_delete>`
-  method (server),
-  :doc:`delete </refs/client/item/m_delete>`
-  method (client).
-  
-* **External js module** - if this checkbox is checked, a separate javascript 
-  file will be created for the them. See 
-  :doc:`Parameters </admin/project/parameters>`.
-  
-* **Visible** - use this checkbox to set item's visible attribute. The value of 
-  this attribute can be used in code on the client to create menu items and so 
-  on.
+* **History** - if this checkbox is checked, the application will saving for this
+  item audit trail/change history made by users, see 
+  :doc:`Saving audit trail/change history made by users </admin/saving_history>`
+
+* **Edit lock** - if this checkbox is checked, the application will use record 
+  locking while users concurrently edit a record, see
+  :doc:`Record locking </admin/record_locking>`
   
 In the center part of the **Item Editor dialog** there is a table containing a
 list of fields, defined for the item. To add, modify or delete a field use the 

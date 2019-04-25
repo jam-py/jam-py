@@ -73,6 +73,7 @@ def update_langs(task):
             language = res[0][1]
             langs_path = os.path.join(task.work_dir, 'langs.sqlite')
             if version != jam.version() or not os.path.exists(langs_path):
+                # ~ print('Version changed!')
                 copyfile(os.path.join(os.path.dirname(jam.__file__), 'langs.sqlite'), langs_path)
                 os.chmod(os.path.join(task.work_dir, 'langs.sqlite'), 0o666)
                 cursor.execute('SELECT ID, F_NAME FROM SYS_LANGS')
