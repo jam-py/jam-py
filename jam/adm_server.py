@@ -2481,6 +2481,8 @@ def create_system_item(task, field_name):
             fields = common.HISTORY_FIELDS
             index_fields = common.HISTORY_INDEX_FIELDS
             param_field = 'f_history_item'
+            table_name, gen_name = get_new_table_name(task, item_name)
+            gen_name = None
             sys_id = 1
         elif field_name == 'f_lock_item':
             name = 'Locks'
@@ -2488,8 +2490,8 @@ def create_system_item(task, field_name):
             fields = common.LOCKS_FIELDS
             index_fields = common.LOCKS_INDEX_FIELDS
             param_field = 'f_lock_item'
+            table_name, gen_name = get_new_table_name(task, item_name)
             sys_id = 2
-        table_name, gen_name = get_new_table_name(task, item_name)
         items.open(open_empty=True)
         items.append()
         items.parent.value = sys_group
@@ -2498,7 +2500,8 @@ def create_system_item(task, field_name):
         items.f_name.value = name
         items.f_item_name.value = item_name
         items.f_table_name.value = table_name
-        items.f_gen_name.value = None
+        if gen_name:
+            items.f_gen_name.value = gen_name
         items.sys_id.value = sys_id
         items.sys_fields.open()
         for i, f in enumerate(fields):
