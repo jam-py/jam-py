@@ -1,0 +1,69 @@
+====================================================================
+How to save changes to two tables in same transaction on the server 
+====================================================================
+
+Below is two examples. 
+
+In the first example each 
+:doc:`apply </refs/server/item/m_apply>`
+method gets its own connection from connection pool and commits it after saveing
+changes to the database.
+
+In the second example the connection is received from connection pool and passed 
+to each 
+:doc:`apply </refs/server/item/m_apply>`
+method so changes are commited at the end.
+
+.. code-block:: py
+
+  import datetime
+  
+  def change_invoice_date(item, invoice_id):
+      now = datetime.datetime.now()
+      
+      invoices = item.task.invoices.copy(handlers=False)
+      invoices.set_where(id=invoice_id)
+      invoices.open()
+      invoices.edit()
+      invoices.invoice_date.value = now
+      invoices.post()
+      invoices.apply()
+  
+      customer_id = invoices.customer.value
+      customers = item.task.customers.copy(handlers=False)
+      customers.set_where(id=customer_id)
+      customers.open()
+      customers.edit()
+      customers.last_modified.value = now
+      customers.post()
+      customers.apply()
+
+.. code-block:: py
+
+  import datetime
+  
+  def change_invoice_date(item, invoice_id):
+      now = datetime.datetime.now()
+      
+      con = item.task.connect()
+      try:
+          invoices = item.task.invoices.copy(handlers=False)
+          invoices.set_where(id=invoice_id)
+          invoices.open()
+          invoices.edit()
+          invoices.invoice_date.value = now
+          invoices.post()
+          invoices.apply(con)
+          
+          customer_id = invoices.customer.value
+          customers = item.task.customers.copy(handlers=False)
+          customers.set_where(id=customer_id)
+          customers.open()
+          customers.edit()
+          customers.last_modified.value = now
+          customers.post()
+          customers.apply(con)
+          
+          con.commit()
+      finally:
+          con.close()  

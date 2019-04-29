@@ -168,8 +168,13 @@ In this function we create a copy of the invoices journal and find the invoice.
 When the open method is executed we will show the invoice by calling its
 :doc:`edit_record </refs/client/item/m_edit_record>`
 method. But before calling it we set its attributes so that it will be modal and
-the user won't be able to modify it. Besides when the invoice_table dataset will 
-be available will find the current record in the invoice_table by calling the
+the user won't be able to modify it. 
+
+Besides we dynamically assign 
+:doc:`on_after_open </refs/client/item/on_after_open>`
+event handler to the invoice_table detail of the invoice we get.
+In this event handler we will find the current record in the sold records by 
+calling the
 :doc:`locate </refs/client/item/m_locate>`
 method.
 

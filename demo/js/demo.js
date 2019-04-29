@@ -349,7 +349,7 @@ function Events15() { // demo.catalogs.tracks
 				function() {
 					if (item.rec_count) {
 						item.invoice_table.set_where({track: item.id.value});
-						item.invoice_table.set_order_by(['-date']);
+						item.invoice_table.set_order_by(['-invoice_date']);
 						item.invoice_table.open(true);
 					}
 					else {
@@ -537,7 +537,7 @@ function Events18() { // demo.journals.invoices.invoice_table
 	}
 	
 	function on_after_append(item) {
-		item.date.value = new Date();
+		item.invoice_date.value = new Date();
 	}
 	this.calc = calc;
 	this.on_field_changed = on_field_changed;

@@ -1,0 +1,28 @@
+====
+open
+====
+
+.. js:function:: open() 
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Field class </refs/client/field_api>`
+
+Description
+===========
+
+Call ``open`` for fields of type FILE to open the url to the file by using 
+``window.open``.
+
+Example
+=======
+
+.. code-block:: js
+
+  function on_view_form_created(item) {
+    item.add_view_button('Open').click(function() {
+       item.attachment.open(); 
+    });
+  }
