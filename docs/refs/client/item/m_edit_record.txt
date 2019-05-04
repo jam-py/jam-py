@@ -13,29 +13,61 @@ edit_record
 Description
 ===========
 
-Puts the current record in edit state and creates an 
+Puts the current record in edit 
+:doc:`state <at_item_state>`
+and creates an 
 :doc:`edit_form <at_edit_form>`
-for visuall editing of the record.
+for visual editing of the record.
+
 
 If ``container`` parameter (Jquery object of the DOM element) is specified the
 edit form html template is inserted in the container.
 
-The ``edit_record`` method 
+If ``container`` parameter is not specified but **Modeless form** attribute is 
+set in the 
+:doc:`Edit Form Dialog </admin/items/edit_form_dialog>` or modeless attribute 
+of the 
+:doc:`edit_options <at_edit_options>` is set programmatically and task has the
+:doc:`forms_in_tabs </refs/client/task/at_forms_in_tabs>`
+attribute set and the application doesn't have modal forms, the 
+modeless edit form will be created in the new tab of the
+:doc:`forms_container </refs/client/task/at_forms_container>` object of the task.
+
+In all other cases the modal form will be created.
+
+If editing is allowed in modeless mode, the user can edit several records at 
+the same time. In this case the application calls the 
+:doc:`copy <m_copy>`
+method to create a copy of the item. This copy will be used to edit the record. 
+The application will call its
+:doc:`open <m_open>`
+method to get the record from the server by using the value of the primary key 
+field as a filter.
+
+In case of modal editing the application executes 
+:doc:`refresh_record <m_refresh_record>` methods to get from the server
+the latest data of the record.
+
+If a :doc:`record locking </admin/record_locking>` is enabled for the item, along 
+with receiving the record data from the server the application receives the 
+version of the record.
+
+Then the ``edit_record`` method 
 
 * calls the 
   :doc:`can_edit <m_can_edit>`
-  method to check whether a user have a right to edit a record, and if not,
-  returns
+  method to check whether a user have a right to edit the record,
   
-* checks whether the item is in edit or insert
+* if the user have a right to edit the record, checks whether the item is in edit 
+  or insert
   :doc:`state <at_item_state>`
   , and if not, calls the 
   :doc:`edit <m_edit>`
-  method to edit a record
+  method to edit the record
   
 * calls the
   :doc:`create_edit_form <m_create_edit_form>`
-  method to create a form for visuall editing of the record
+  method to create a form for visual editing of the record
 
 See also
 ========
@@ -47,3 +79,5 @@ See also
 :doc:`edit <m_edit>`
 
 :doc:`can_create <m_can_create>`
+
+:doc:`Record locking </admin/record_locking>`

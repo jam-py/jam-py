@@ -337,6 +337,11 @@ function Events15() { // demo.catalogs.tracks
 				}
 			});
 			item.alert('Double-click the record in the bottom table to see the invoice in which the track was sold.');
+			
+			item.table_options.multiselect = true;
+			item.add_view_button('Set media type').click(function() {
+				set_media_type(item);
+			});   
 		}
 	}
 	
@@ -374,6 +379,49 @@ function Events15() { // demo.catalogs.tracks
 		});
 	}
 	
+	function set_media_type(item) {
+		var copy = item.copy({handlers: false}),
+			selections = item.selections;
+		if (selections.length > 1000) {
+			item.alert('Too many records selected.');
+		}
+		else if (selections.length || item.rec_count) {		
+			if (selections.length === 0) {
+				selections = [item.id.value];
+			}
+			
+			copy.set_fields(['media_type']);
+			copy.open({open_empty: true});
+			
+			copy.edit_options.title = 'Set media type to ' + selections.length + ' record(s)';
+			copy.edit_options.history_button = false;
+			copy.media_type.required = true;
+			
+			copy.on_edit_form_created = function(c) {
+				c.edit_form.find('#ok-btn').off('click.task').on('click', function() {
+					try {
+						c.post();
+						item.server('set_media_type', [c.media_type.value, selections], function(res, error) {
+							if (error) {
+								item.alert_error(error);
+							}
+							if (res) {
+								item.selections = [];
+								item.refresh_page(true);
+								c.cancel_edit();
+								item.alert(selections.length + ' record(s) have been modified.');
+							}
+						});
+					}
+					finally {
+						c.edit();
+					}
+				});
+			};
+			copy.append_record();
+		}
+	}
+	
 	function on_edit_form_shown(item) {
 		item.each_field( function(field) {
 			var input = item.edit_form.find('input.' + field.field_name);
@@ -408,6 +456,7 @@ function Events15() { // demo.catalogs.tracks
 	this.on_view_form_created = on_view_form_created;
 	this.on_after_scroll = on_after_scroll;
 	this.show_invoice = show_invoice;
+	this.set_media_type = set_media_type;
 	this.on_edit_form_shown = on_edit_form_shown;
 	this.check_field_value = check_field_value;
 	this.on_before_post = on_before_post;

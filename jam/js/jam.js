@@ -2470,7 +2470,7 @@
                 j,
                 self = this,
                 $menu = arguments[0],
-                $forms_container = arguments[1],
+                forms_container = arguments[1],
                 options = arguments[2],
                 li,
                 ul,
@@ -2487,12 +2487,12 @@
 
             if (arguments.length === 2) {
                 options = arguments[1];
-                $forms_container = options.forms_container;
+                forms_container = options.forms_container;
             }
 
             options = $.extend({}, default_options, options);
 
-            this.set_forms_container($forms_container, {splash_screen: options.splash_screen});
+            this.set_forms_container(forms_container, {splash_screen: options.splash_screen});
             task.each_item(function(group) {
                 var items = [];
                 if (group.visible) {
@@ -10007,7 +10007,7 @@
                     }
                 }
             }
-            //~ this.options.editable = this.options.editable && !this.item.read_only;
+
             if (this.options.editable) {
                 this.options.striped = false;
             }
@@ -12288,7 +12288,7 @@
         sync_col_width: function(all_cols) {
             var $row,
                 field,
-                $th;
+                $td;
             if (this.item.record_count()) {
                 $row = this.$table.find("tr:first-child");
                 this.set_saved_width($row, all_cols)
@@ -12297,8 +12297,9 @@
                 }
                 if (this.fields.length && this.$table.is(':visible')) {
                     field = this.fields[this.fields.length - 1];
-                    $th = this.$head.find('th.' + field.field_name);
-                    if ($th.width() <= 0) {
+                    $td = this.$table.find('tr:first td.' + field.field_name)
+                    //~ $th = this.$head.find('th.' + field.field_name);
+                    if ($td.width() <= 0) {
                         this.$head.find('th.' + 'fake-column').show();
                         this.$table.find('td.' + 'fake-column').show();
                         this.set_saved_width($row, true);

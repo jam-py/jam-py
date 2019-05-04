@@ -17,9 +17,11 @@ The ``selections`` attribute stores a list of a primary key field values.
 
 When a **Multiple selection** check box is checked on the 
 **Layout** tab in the
-:doc:`View Form Dialog </admin/items/view_form_dialog>`,
-each time a user clicks on check box in the leftmost column of the table,
-the ``selections`` attrubute changes.
+:doc:`View Form Dialog </admin/items/view_form_dialog>` or
+multiselect attribute of the
+:doc:`table_options <at_table_options>` is set programmatically,
+the check box in the leftmost column of the table appears and
+each time a user clicks on the check box, the ``selections`` attrubute changes.
 
 It can also be changed programmatically by using ``add`` or ``remove`` methods
 or assigning an array.

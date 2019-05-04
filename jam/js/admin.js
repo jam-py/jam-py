@@ -5470,7 +5470,7 @@ function Events6() { // admin.catalogs.sys_items.sys_fields
 				else if (field.field_name === 'f_default_lookup_value') {
 					item.f_default_value.value = field.lookup_value.toLowerCase();
 					if (item.f_lookup_values.value) {
-						item.f_default_value.text = field.value;
+						item.f_default_value.text = field.data;
 					}
 				 }
 				if (field === item.f_data_type || field === item.f_object || field === item.f_lookup_values) {

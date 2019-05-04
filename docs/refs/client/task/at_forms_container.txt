@@ -1,0 +1,32 @@
+===============
+forms_container
+===============
+
+.. js:attribute:: forms_container
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Task </refs/client/task_api>`
+
+Description
+===========
+
+The ``forms_container`` is a JQuery object in which the application will create 
+forms.
+
+To initialize ``forms_container`` use the 
+:doc:`set_forms_container <m_set_forms_container>` method or the
+:doc:`create_menu <m_create_menu>` method.
+
+The default code uses the :doc:`create_menu <m_create_menu>` method.
+
+See also
+========
+
+:doc:`forms_in_tabs <at_forms_in_tabs>`
+
+:doc:`create_menu <m_create_menu>`
+
+:doc:`set_forms_container <m_set_forms_container>`

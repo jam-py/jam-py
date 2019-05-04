@@ -25,9 +25,10 @@ of the task tree when application started. See
 ``Options`` parameter further specifies the created copy. It can have the 
 following attributes:
 
-* ``handlers`` - if the value of this attribute is ``true``, all the functions and 
-  events defined in the client module of the item will also be available in the 
-  copy. The default value is ``true``.
+* ``handlers`` - if the value of this attribute is ``true``, all the settings 
+  to the item made in the Form Dialogs in the Application Builder and all the 
+  functions and events defined in the client module of the item will also be 
+  available in the copy. The default value is ``true``.
 * ``filters`` - if the value of this attribute is ``true``, the filters will be 
   created for the copy, otherwise there will be no filters. The default value 
   is ``true``.

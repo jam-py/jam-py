@@ -69,6 +69,9 @@ template_class      if specified, the div with this class will be searched in
                     :doc:`templates </refs/client/task/at_templates>` 
                     attribute and used as a form html template when creating a 
                     form. This attribute must be set before creating the form
+                    
+modeless            if set the edit forms will be created modeless, otherwise - 
+                    modal                    
 =================== ============================================================
 
 Example

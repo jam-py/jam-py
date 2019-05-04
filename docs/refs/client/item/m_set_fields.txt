@@ -16,9 +16,11 @@ Description
 Use the ``set_fields`` method to define and store internally the ``fields``
 option that will be used by the 
 :doc:`open <m_open>` 
-method, when its own ``fields`` option is not specified. The 
+method, when its own ``fields`` option is not specified. 
+
+After the 
 :doc:`open <m_open>` 
-method clears internally stored parameter value. 
+method executes it clears this internally stored value. 
 
 The ``field_list`` parameter is a list of field names.
 
