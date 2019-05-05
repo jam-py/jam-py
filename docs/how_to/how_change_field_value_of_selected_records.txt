@@ -27,19 +27,40 @@ event handler in the client module of "Tracks".
     });   
   }
 
-This button will execute the ``set_media_type`` function defined in the module.
+When this button is pressed, the ``set_media_type`` function defined in the 
+module is executed.
 
-In this function we create a copy of the "Tracks". We pass to the 
+In this function we create a copy of the "Tracks" item. We pass to the 
 :doc:`copy </refs/client/item/m_copy>`
-method the handlers option equal to false. It means the all the settings 
+method the handlers option equal to false. It means that all the settings 
 to the item made in the Form Dialogs in the Application Builder and all the 
 functions and events defined in the client module of the item will be 
-unavailable in the copy.
+unavailable to the copy.
 
-Then we analize the 
+Then we analyze the 
 :doc:`selections </refs/client/item/at_selections>`
 attribute that is the array of the values of primary key field of the records,
-selected by the user.
+selected by the user. 
+
+After it we initialize the dataset of the copy by calling the 
+:doc:`open </refs/client/item/m_open>`
+method with open_empty option. We also set the fields options 
+so that the dataset will have only one field media_type. 
+We set the required attribute of that field to true.
+
+And finally, before calling the
+:doc:`append_record </refs/client/item/m_append_record>`
+method, we dynamically assign the 
+:doc:`on_edit_form_created </refs/client/item/on_edit_form_created>`
+event handler to change the on click event of the **OK** button,
+that was defined in the client module of the task.
+
+In the new on click event handler we, first, call the 
+:doc:`post </refs/client/item/m_post>`
+method to check that the media type value is set, if exception
+is raised we call 
+:doc:`edit </refs/client/item/m_edit>`
+method to allow the user to set it.
 
 .. code-block:: js
 
@@ -54,8 +75,7 @@ selected by the user.
               selections = [item.id.value];
           }
           
-          copy.set_fields(['media_type']);
-          copy.open({open_empty: true});
+          copy.open({fields: ['media_type'], open_empty: true});
           
           copy.edit_options.title = 'Set media type to ' + selections.length + 
             ' record(s)';
@@ -90,10 +110,15 @@ selected by the user.
       }
   }
 
-When the user clicks the **OK** button the 
+When the user clicks the **OK** button, the item's 
 :doc:`server </refs/client/abstr_item/m_server>`
-method executes on the server the
-``set_media_type`` function that changes the field value of the selected records.
+method executes the ``set_media_type`` function on the server, which changes the 
+field value of the selected records.
+
+After changing the records on the server we, on the client, unselect the records, 
+refresh the data of the page, cancel editing by calling the
+:doc:`cancel_edit </refs/client/item/m_cancel_edit>`
+method and inform the user of the results.
 
 .. code-block:: py
   

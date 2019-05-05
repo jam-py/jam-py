@@ -13,6 +13,7 @@ Here is a useful code that you can use in your applications:
     how_to_change_style_and_attributes_of_elements
     to_append_a_record_without_view_form
     how_to_link_two_tables
+    how_change_field_value_of_selected_records
     how_to_save_edit_form_without_closing_it
     how_to_save_changes_to_two_tables_in_same_transaction
     how_to_prevent_duplicate_values
