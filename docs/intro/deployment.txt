@@ -1,5 +1,5 @@
 ==========================================
-Jam.py delpoyment with Apache and mod_wsgi
+Jam.py deployment with Apache and mod_wsgi
 ==========================================
 
 Once you’ve got ``mod_wsgi`` installed and activated, edit your Apache server’s 
@@ -41,9 +41,8 @@ The ``<Directory>`` piece just ensures that Apache can access your
 The next lines ensure that anything in the ``/static/`` URL space is explicitly 
 served as a static files.
 
-.. note::
-	Please note that if the server runs on Windows the **Multiprocessing 
-	connection pool** flag in the 
-	:doc:`Project Parameters </admin/project/parameters>`
-	must be turned off.
-	
+See also
+========
+
+See the additional information on the deployment in the 
+:doc:`How to deploy </how_to/deploy/index>`

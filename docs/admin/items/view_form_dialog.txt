@@ -15,6 +15,7 @@ On the Layout tab, you can specify how the table is displayed in the view form o
 the item.
 
 .. image:: /admin/_images/view_form_layout.png
+	:scale: 70 %
 	:align: center
 	:alt: View Form Layout tab
 
@@ -99,6 +100,7 @@ Form tab
 ========
 
 .. image:: /admin/_images/view_form_form.png
+	:scale: 70 %
 	:align: center
 	:alt: View Form Form tab
 

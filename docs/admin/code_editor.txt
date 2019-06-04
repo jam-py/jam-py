@@ -10,6 +10,7 @@ and **Server module**.
 
 
 .. image:: _images/item_btns.png
+	:scale: 70 %
 	:align: center
 	:alt: Invoke code editor buttons
 
@@ -46,5 +47,6 @@ Jam.py uses the `ace editor`_  editor to implement its code editor.
 .. _Hear are Keyboard Shortcuts for the ace editor: https://github.com/ajaxorg/ace/wiki/Default-Keyboard-Shortcuts
 
 .. image:: _images/editor.png
+	:scale: 70 %
 	:align: center
 	:alt: code editor

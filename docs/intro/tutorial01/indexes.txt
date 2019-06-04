@@ -8,6 +8,7 @@ To do so click the
 button:
 
 .. image:: /intro/_images/order_dlg.png
+	:scale: 70 %
 	:align: center
 	:alt: Contacts order
 
@@ -18,6 +19,7 @@ Click the **Indices** button to open
 and then click the **New** button and specify the index:
 
 .. image:: /intro/_images/index_dlg.png
+	:scale: 70 %
 	:align: center
 	:alt: New index
 

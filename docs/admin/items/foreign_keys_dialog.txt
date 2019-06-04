@@ -8,6 +8,7 @@ we can create a foreign key. See
 :doc:`Foreign keys topic </faq/faq_foreign_keys>` in FAQ
 
 .. image:: /admin/_images/foreign_keys_dialog.png
+	:scale: 70 %
 	:align: center
 	:alt: Foreign Keys Dialog
 

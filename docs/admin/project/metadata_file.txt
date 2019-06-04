@@ -1,0 +1,151 @@
+======================
+Export/import metadata 
+======================
+
+All the code, parameters and data structure information of the project is stored 
+in the *admin.sqlite* SQLite database located in the project folder. This 
+information we call the metadata.
+
+Export metadata
+===============
+
+The project metadata can be exported to a zip file in the Application Builder
+by clicking the :doc:`Export </admin/project/export>` button.
+
+This file contains the following information:
+
+* Information about project data structure (information about DB tables, fields, 
+  indexes defined in the project items), code and settings that is stored in 
+  the *admin.sqlite* database.
+  
+* Files from the following folders:
+
+  * css
+  * js
+  * static/css
+  * static/js
+  * static/img
+  * reports (*ods* files of project report templates)
+  * utils (this folder may contain python libraries or files used in the project)
+
+Import metadata
+===============
+
+The metadata file can be imported to another project.   
+
+The web application while importing the metadata performs the following operations:
+
+#. sets the under_maintenance flag so that incoming requests are not processed 
+   by the application. When receiving the response to theses requests the client 
+   application shows the message "Web site currently under maintenance".
+   Web applications that run in parallel processes upon 
+   receiving requests check whether the under_maintenance flag is set and, 
+   if so, also do not process requests. 
+
+#. unzips the metadata file to the temporary folder in the project directory
+
+#. checks the data integrity - items with the same 
+   :doc:`ID </refs/server/abstr_item/at_id>` in the current project and imported
+   metadata must have the same type and the same 
+   :doc:`table_name </refs/server/item/at_table_name>`
+   attribute if one is specified for an item
+
+#. analyzes the metadata to generate sql queries to update the project 
+   database structure and records of the *admin.sqlite* database.
+
+#. if the **Import delay** attribute in the project 
+   :doc:`Parameters <parameters>`
+   is set, waits the number of seconds set in the attribute,
+   otherwise waits for 5 minutes or until all previous request to the server 
+   will be processed.
+
+#. updates the project database and modifies the records of the *admin.sqlite*,
+   see bellow_
+  
+#. copies files from the temporary folder to the project folder
+
+#. reloads the task tree
+
+#. writes the import log file to the logs folder and sends the import log to 
+   the Application builder to be displayed
+
+#. deletes the temporary folder
+
+#. removes the under_maintenance flag
+
+#. increases the build flag, so web applications that run in parallel 
+   processes and monitor this flag reload their task tree
+
+
+.. _bellow:
+
+Updating project databases
+------------------------------
+
+The way the the project database is updated depends on the type of the
+project database.
+
+* Updating databases that support DDL statement rollback (**Postgress**, **Firebird**, **MSSQL**)
+
+  * creates the connection to the project database 
+  
+  * starts to execute sql statements to update the project database.
+  
+  * if an error occurs while updating the project database, rollbacks the changes, 
+    and goes to the step 9.
+
+  * after the project database has been updated, makes a copy of the *admin.sqlite*
+    file and starts modifying the *admin.sqlite* database
+    
+  * if an error occurs while modifying the records of *admin.sqlite*, restores 
+    *admin.sqlite* from the copy, rollbacks the changes to the project database 
+    and goes to the step 9.
+    
+  * commits the changes, deletes the copy of the *admin.sqlite*, closes 
+    connection and goes to the step 7.     
+
+* Updating databases that do not support DDL statement rollback (**MySql**, **Oracle**)
+
+  * creates the connection to the project database 
+  
+  * starts to execute sql statements to update the project database.
+
+  * if an error occurs while updating the project database writes error 
+    to the import log and continues until all statements will be processed
+    
+  * commits the changes
+    
+  * starts modifying the *admin.sqlite* database
+
+  * closes connection and goes to the step 7.     
+  
+  
+Causes of errors
+----------------
+
+Due to the fact that all items and fields of Jam.py projects have a unique ID
+attribute, Jam.py very accurately generates sql queries to modify the project 
+database.
+
+While generating sql queries the application currently compares only metadata
+in the current and imported project. The errors can occur when the application,
+for example, tries to adds to a table a field that doesn't exist in the current 
+project metadata but exists in the database table, you created this field 
+outside of Application Builder. This situations can be corrected using Manual 
+mode in Application Builder, see :doc:`Database <database>`,
+and changing the database.
+
+If you won't change tables, field and indexes of production database, there will 
+be no problems. Carry out development on the development project and then import 
+its metadata into production.
+
+.. note::
+    For the databases that do not support DDL statement rollback (MySql, Oracle)
+    we recommend that you make a backup of the project database 
+    and *admin.sqlite* before performing the import.
+    
+.. note::
+
+    For **SQLite** database, Jam.py doesn’t support importing of metadata into an 
+    existing project (project with tables in the database). 
+    You can only import metadata into a new project.

@@ -4,15 +4,13 @@ Jam.py roadmap
 
 We plan to add the following features to Jam.py:
 
-* Record locking when a user edits a record in DB table. Implementation of it in 
-  the Application Builder.
-* Language support stage 1: Support for other languages.
+* Support for actions that can be represented as buttons panels, navbars, pop-up 
+  menus and simplifying support for keyboard events, internalization and 
+  mobile devices.
 * Language support stage 2: internalization, support for multiple languages in 
   the project.
+* Support for Bootstrap 4.  
 * Support for mobile devices.  
-* Support for Bootstrap 4.
+* Development of report wizards, simplifying report creation
 * Rework of import/export utility: visual interface, control over merging of changes.
-* Creation of tools for analyzing the number of different requests and the time 
-  of their execution.
-* LDAP Integration
-* DBTree component
+* DBTree component revision and creation of documentation

@@ -61,7 +61,6 @@ class JamRequest(Request):
 
     def get_session(self, task):
         if not hasattr(self, '_cookie') and task:
-            # ~ secret_key = to_bytes('', 'utf-8')
             key = self.session_key(task)
             self._cookie = JamSecureCookie.load_cookie(self, key=key, secret_key=task.app.admin.secret_key)
             expires = self._cookie.get('session_expires')
@@ -79,7 +78,7 @@ class JamRequest(Request):
             session['session_expires'] = session_expires
             session.save_cookie(response, key=key, session_expires=session_expires)
 
-def create_application(from_file=None):
+def create_application(from_file=None, load_task=False):
     if from_file:
         if os.path.isfile(from_file):
             work_dir = os.path.dirname(from_file)
@@ -96,30 +95,26 @@ def create_application(from_file=None):
     jam.context = Local()
     local_manager = LocalManager([jam.context])
 
-    application = App(work_dir)
+    application = App(work_dir, load_task)
     application = SharedDataMiddleware(application, static_files)
     application = local_manager.make_middleware(application)
     return application
 
-class App():
-    def __init__(self, work_dir):
+class App(object):
+    def __init__(self, work_dir, load_task):
         mimetypes.add_type('text/cache-manifest', '.appcache')
         self.started = datetime.datetime.now()
         self.work_dir = work_dir
         self.state = common.PROJECT_NONE
         self._load_lock = Lock()
-        self._updating_task = False
         self.admin = None
         self.task = None
         self.privileges = None
         self._busy = 0
         self.pid = os.getpid()
-        self.task_server_modified = False
-        self.task_client_modified = True
-        self.under_maintenance = False
         self.jam_dir = os.path.realpath(os.path.dirname(jam.__file__))
         self.jam_version = jam.version()
-        self.__task_locked = False
+        self.__is_locked = 0
         self.application_files = {
             '/': self.work_dir,
             '/jam/': self.jam_dir
@@ -139,7 +134,14 @@ class App():
             Rule('/upload', endpoint='upload')
         ])
         self.admin = self.create_admin()
-        self.max_content_length = self.admin.max_content_length
+        with self.admin.lock('$creating_task'):
+            self.admin.read_settings()
+            self.max_content_length = self.admin.max_content_length
+            self.build_id_prefix = '$buildID'
+            self.save_build_id();
+            if load_task:
+                self.get_task()
+            self.check_migration()
 
     def create_admin(self):
         return adm_server.create_admin(self)
@@ -153,11 +155,14 @@ class App():
                 try:
                     with self._load_lock:
                         self.task = self.admin.create_task()
-                    self.check_project_modified()
+                    self.admin.update_events_code()
+                    self.CLIENT_MODIFIED = False
+                    self.SERVER_MODIFIED = False
+                    self.admin.write_settings()
                     self.state = common.RESPONSE
                 except common.ProjectNotCompleted:
                     self.state = common.PROJECT_NO_PROJECT
-                else:
+                except:
                     self.state = common.PROJECT_ERROR
                     traceback.print_exc()
             if self.task:
@@ -165,7 +170,18 @@ class App():
             return self.task
 
     def task_locked(self):
-        return self.__task_locked
+        return self.__is_locked > 0
+
+    def __get_task_locked(self):
+        pass
+
+    def __set_task_locked(self, value):
+        if value:
+            self.__is_locked += 1
+        else:
+            self.__is_locked -= 1
+
+    __task_locked = property(__get_task_locked, __set_task_locked)
 
     def __call__(self, environ, start_response):
         jam.context.environ = environ
@@ -214,7 +230,7 @@ class App():
         if file_name:
             base, ext = os.path.splitext(file_name)
         init_path_info = None
-        if common.SETTINGS['COMPRESSED_JS'] and ext and ext in ['.js', '.css']:
+        if self.COMPRESSED_JS and ext and ext in ['.js', '.css']:
             init_path_info = environ['PATH_INFO']
             min_file_name = base + '.min' + ext
             environ['PATH_INFO'] = environ['PATH_INFO'].replace(file_name, min_file_name)
@@ -340,30 +356,11 @@ class App():
         cookie['info'] = None
         jam.context.session = None
 
-    def check_project_modified(self):
+    def create_connection_pool(self):
         if self.task:
-            if self.task_server_modified or self.task_client_modified:
-                if not self._updating_task:
-                    self._updating_task = True
-                    self.__task_locked = False
-                    try:
-                        if self.task_server_modified:
-                            self.admin.reload_task()
-                            self.task_server_modified = False
-                        if self.task_client_modified:
-                            self.admin.update_events_code()
-                            self.task_client_modified = False
-                    finally:
-                        self._updating_task = False
-                        self.__task_locked = True
-
-    def import_metadata(self, task, task_id, file_name, from_client):
-        if not from_client:
-            return adm_server.import_metadata(task, task_id, file_name, from_client)
-        elif self.get_task():
             self.__task_locked = False
             try:
-                return adm_server.import_metadata(task, task_id, file_name, from_client)
+                self.task.create_pool();
             finally:
                 self.__task_locked = True
 
@@ -396,6 +393,133 @@ class App():
         }
         return result, ''
 
+    def check_migration(self):
+        path = os.path.join(self.work_dir, 'migration')
+        files = []
+        if os.path.exists(path):
+            for file_name in os.listdir(path):
+                files.append(os.path.join(self.work_dir, 'migration', file_name))
+        files_len = len(files)
+        if files_len:
+            if files_len == 1:
+                self.import_metadata(self.admin, files[0], False)
+            else:
+                print('More than one file in migration folder')
+
+
+    def import_metadata(self, task, file_name, from_client):
+        if not self.under_maintenance:
+            with self.admin.lock('$metadata_import'):
+                self.MAINTENANCE = True
+                self.PARAMS_VERSION += 1
+                self.admin.write_settings()
+                self.save_build_id()
+                self.__task_locked = False
+                try:
+                    result = adm_server.import_metadata(task, file_name, from_client)
+                    success, error, message = result
+                    if success and self.task:
+                        self.admin.reload_task()
+                        self.admin.update_events_code()
+                        self.privileges = None
+                finally:
+                    self.__task_locked = True
+                    self.MAINTENANCE = False
+                    self.PARAMS_VERSION += 1
+                    if success:
+                        self.BUILD_VERSION += 1
+                        self.MODIFICATION += 1
+                    self.admin.write_settings()
+                    self.save_build_id()
+                return result
+
+    def get_under_maintenance(self):
+        return self.MAINTENANCE
+
+    under_maintenance = property(get_under_maintenance)
+
+    def __get_client_modified(self):
+        return self.CLIENT_MODIFIED
+
+    def __set_client_modified(self, value):
+        self.CLIENT_MODIFIED = value
+        self.MODIFICATION += 1
+        self.PARAMS_VERSION += 1
+        self.admin.write_settings()
+        self.save_build_id()
+
+    client_modified = property(__get_client_modified, __set_client_modified)
+
+    def __get_server_modified(self):
+        return self.SERVER_MODIFIED
+
+    def __set_server_modified(self, value):
+        self.SERVER_MODIFIED = value
+        self.MODIFICATION += 1
+        self.PARAMS_VERSION += 1
+        self.admin.write_settings()
+        self.save_build_id()
+
+    server_modified = property(__get_server_modified, __set_server_modified)
+
+    def check_project_modified(self):
+        if self.task:
+            with self.admin.lock('$code_updating'):
+                params = self.admin.read_params(['CLIENT_MODIFIED', 'SERVER_MODIFIED', 'MAINTENANCE'])
+                if not params['MAINTENANCE'] and (params['CLIENT_MODIFIED'] or params['SERVER_MODIFIED']):
+                    self.__task_locked = False
+                    try:
+                        if params['SERVER_MODIFIED']:
+                            self.admin.reload_task()
+                            self.BUILD_VERSION += 1
+                        if params['CLIENT_MODIFIED']:
+                            self.admin.update_events_code()
+                        self.CLIENT_MODIFIED = False
+                        self.SERVER_MODIFIED = False
+                        self.MODIFICATION += 1
+                        self.PARAMS_VERSION += 1
+                        self.admin.write_settings()
+                        self.save_build_id()
+                    finally:
+                        self.__task_locked = True
+
+    @property
+    def build_id(self):
+        return '%s_%s_%s' % (self.build_id_prefix, self.BUILD_VERSION, self.PARAMS_VERSION)
+
+    def save_build_id(self):
+        with self.admin.lock('$save_build_id'):
+            path = os.path.join(self.work_dir, 'locks')
+            for file_name in os.listdir(path):
+                if file_name.startswith(self.build_id_prefix):
+                    os.remove(os.path.join(path, file_name))
+            common.file_write(os.path.join(path, self.build_id), '')
+
+    def check_build(self):
+        path = os.path.join(self.work_dir, 'locks')
+        if not os.path.exists(os.path.join(path, self.build_id)):
+            with self.admin.lock('$build_checking'):
+                cur_build_version = self.BUILD_VERSION
+                cur_params_version = self.PARAMS_VERSION
+                build_version = None
+                params_version = None
+                for file_name in os.listdir(path):
+                    if file_name.startswith(self.build_id_prefix):
+                        cur_build_id = file_name
+                        arr = cur_build_id.split('_')
+                        build_version = int(arr[1])
+                        params_version = int(arr[2])
+                        break
+                if params_version != cur_params_version:
+                    self.admin.read_settings()
+                if build_version != cur_build_version:
+                    self.__task_locked = False
+                    try:
+                        self.admin.reload_task()
+                    finally:
+                        self.__task_locked = True
+                    self.admin.read_settings()
+
     def on_api(self, request):
         error = ''
         if request.method == 'POST':
@@ -404,7 +528,7 @@ class App():
                 data = request.get_data()
                 if type(data) != str:
                     data = to_unicode(data, 'utf-8')
-                method, task_id, item_id, params, date = json.loads(data)
+                method, task_id, item_id, params, modification, date = json.loads(data)
                 if task_id == 0:
                     task = self.admin
                 else:
@@ -414,7 +538,7 @@ class App():
                         if not task:
                             lang = self.admin.lang
                             result = {'status': None, 'data': {'error': lang['error'], \
-                                'info': lang['info']}, 'version': None}
+                                'info': lang['info']}, 'modification': None}
                             result['status'] = self.state
                             if self.state == common.PROJECT_LOADING:
                                 result['data']['project_loading'] = lang['project_loading']
@@ -424,41 +548,38 @@ class App():
                                 result['data']['project_error'] = lang['project_error']
                             r ['result'] = result
                             return self.create_post_response(request, r)
-                result = {'status': common.RESPONSE, 'data': None, 'version': task.version}
                 if not task:
-                    result['status'] = common.PROJECT_NO_PROJECT
-                elif self.under_maintenance:
-                    result['status'] = common.PROJECT_MAINTAINANCE
-                elif method == 'connect':
-                    self.connect(request, task)
-                    result['data'] = self.connect(request, task)
-                elif method == 'login':
-                    result['data'] = self.login(request, task, params[0])
-                elif method == 'logout':
-                    self.logout(request, task);
-                    result['status'] = common.PROJECT_NOT_LOGGED
-                    result['data'] = common.PROJECT_NOT_LOGGED
+                    result = {'status': common.PROJECT_NO_PROJECT, 'data': None, 'modification': None}
                 else:
-                    if not self.check_session(request, task):
+                    self.check_build()
+                    result = {'status': common.RESPONSE, 'data': None, 'modification': self.MODIFICATION}
+                    if task_id and modification and modification != self.MODIFICATION:
+                        result['status'] = common.PROJECT_MODIFIED
+                    elif self.under_maintenance:
+                        result['status'] = common.PROJECT_MAINTAINANCE
+                    elif method == 'connect':
+                        self.connect(request, task)
+                        result['data'] = self.connect(request, task)
+                    elif method == 'login':
+                        result['data'] = self.login(request, task, params[0])
+                    elif method == 'logout':
+                        self.logout(request, task);
                         result['status'] = common.PROJECT_NOT_LOGGED
                         result['data'] = common.PROJECT_NOT_LOGGED
                     else:
-                        item = task
-                        if task and item_id:
-                            item = task.item_by_ID(item_id)
-                        self._busy += 1
-                        try:
-                            data = None
-                            started = datetime.datetime.now()
-                            if task.on_before_request:
-                                data = task.on_before_request(item, method, params)
-                            if not data:
+                        if not self.check_session(request, task):
+                            result['status'] = common.PROJECT_NOT_LOGGED
+                            result['data'] = common.PROJECT_NOT_LOGGED
+                        else:
+                            item = task
+                            if task and item_id:
+                                item = task.item_by_ID(item_id)
+                            self._busy += 1
+                            try:
                                 data = self.get_response(item, method, params)
-                            if task.on_after_request:
-                                task.on_after_request(item, method, params, datetime.datetime.now() - started)
-                        finally:
-                            self._busy -= 1
-                        result['data'] = data
+                            finally:
+                                self._busy -= 1
+                            result['data'] = data
                 r ['result'] = result
             except AbortException as e:
                 traceback.print_exc()
@@ -468,7 +589,7 @@ class App():
             except Exception as e:
                 traceback.print_exc()
                 error = error_message(e)
-                if common.SETTINGS['DEBUGGING'] and task_id != 0:
+                if self.DEBUGGING and task_id != 0:
                     raise
                 r['result'] = {'data': [None, error]}
                 r['error'] = error
@@ -523,7 +644,7 @@ class App():
                             self._busy -= 1
                     else:
                         status = None
-                    r['result'] = {'status': status, 'data': data, 'version': self.task.version}
+                    r['result'] = {'status': status, 'data': data, 'modification': self.MODIFICATION}
                 except AbortException as e:
                     traceback.print_exc()
                     r['result'] = {'data': [None, error_message(e)]}
@@ -533,7 +654,7 @@ class App():
                     r['result'] = {'data': [None, error_message(e)]}
                     r['error'] = error_message(e)
             else:
-                r['result'] = {'status': self.state, 'data': None, 'version': None}
+                r['result'] = {'status': self.state, 'data': None, 'modification': None}
             return self.create_post_response(request, r)
 
     def on_upload(self, request):
@@ -546,7 +667,7 @@ class App():
             else:
                 task = self.task
             if task:
-                result = {'status': common.RESPONSE, 'data': None, 'version': task.version}
+                result = {'status': common.RESPONSE, 'data': None, 'modification': self.MODIFICATION}
                 r ['result'] = result
                 if not self.check_session(request, task):
                     r['result']['status'] = common.NOT_LOGGED
@@ -570,11 +691,11 @@ class App():
                                 os.makedirs(dir_path)
                             f.save(os.path.join(dir_path, file_name))
                             task = self.get_task()
-                            r['result'] = {'status': common.RESPONSE, 'data': {'file_name': file_name, 'path': path}, 'version': task.version}
+                            r['result'] = {'status': common.RESPONSE, 'data': {'file_name': file_name, 'path': path}, 'modification': self.MODIFICATION}
                     else:
                         r['error'] = 'File upload invalid parameters';
             else:
-                r['result'] = {'status': self.state, 'data': None, 'version': None}
+                r['result'] = {'status': self.state, 'data': None, 'modification': None}
             return self.create_post_response(request, r)
 
     def stop(self, sigvalue):

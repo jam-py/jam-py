@@ -54,6 +54,7 @@ For example this code
 will change form inputs this way:
 
 .. image:: _images/form_elements_style.png
+	:scale: 70 %
 	:align: center
 	:alt: form_elements_style.png
 

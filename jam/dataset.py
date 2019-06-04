@@ -176,14 +176,15 @@ class DBField(object):
                 traceback.print_exc()
                 self.do_on_error(self.type_error() % (value), e)
 
-    text = property (get_text, set_text)
+    text = property(get_text, set_text)
 
     def convert_date_time(self, value):
-        if value.find('.'):
-            value = value.split('.')[0]
         if value.find('T'):
             value = value.replace('T', ' ')
-        return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+        try:
+            return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
+        except:
+            return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
 
     def convert_date(self, value):
         try:
@@ -219,7 +220,7 @@ class DBField(object):
             traceback.print_exc()
             self.do_on_error(self.type_error() % (''), e)
 
-    raw_value = property (get_raw_value)
+    raw_value = property(get_raw_value)
 
     def get_value(self):
         value = self.get_raw_value()
@@ -310,7 +311,7 @@ class DBField(object):
             self._set_modified(True)
             self._do_after_changed(lookup_item)
 
-    value = property (get_value, set_value)
+    value = property(get_value, set_value)
 
     def get_old_value(self):
         if isinstance(self.owner, AbstractDataSet) and  self.owner._is_delta:
@@ -1020,6 +1021,7 @@ class AbstractDataSet(object):
         self._state = common.STATE_INACTIVE
         self._read_only = False
         self._active = False
+        self._virtual_table = False
         self._where_list = []
         self._order_by_list = []
         self._select_field_list = []
@@ -1137,10 +1139,15 @@ class AbstractDataSet(object):
                 result.append(r[0:self._record_info_index])
         return result
 
+    def get_virtual_table(self):
+        return self._virtual_table
+
+    virtual_table = property(get_virtual_table)
+
     def set_dataset(self, value):
         self._dataset = value
 
-    dataset = property (get_dataset, set_dataset)
+    dataset = property(get_dataset, set_dataset)
 
     def get_keep_history(self):
         if self.master:
@@ -1157,6 +1164,7 @@ class AbstractDataSet(object):
         result.expanded = self.expanded
         result.field_defs = self.field_defs
         result.filter_defs = self.filter_defs
+        result._virtual_table = self._virtual_table
         result._keep_history = self._keep_history
         result.select_all = self.select_all
 
@@ -2079,6 +2087,8 @@ class MasterDataSet(AbstractDataSet):
 
     def apply(self, connection=None, params=None, safe=False):
         result = None
+        if self.master or self.virtual_table:
+            return
         if self.is_changing():
             self.post()
         if self.on_before_apply:
@@ -2166,7 +2176,7 @@ class MasterDetailDataset(MasterDataSet):
             if options.get('order_by'):
                 order_by = options['order_by']
             if options.get('open_empty'):
-                open_empty =False,
+                open_empty = False
             if options.get('params'):
                 params = options['params']
             if options.get('offset'):
@@ -2179,6 +2189,8 @@ class MasterDetailDataset(MasterDataSet):
             expanded = self.expanded
         else:
             self.expanded = expanded
+        if self.virtual_table:
+            open_empty = True
         group_by
         if not params:
             params = {}

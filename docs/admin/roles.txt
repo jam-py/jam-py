@@ -13,6 +13,7 @@ to the appropriate column by clicking on it with the mouse: View, Create, Edit,
 Delete (allowed to view, create, modify and delete, respectively).
 
 .. image:: _images/roles.png
+	:scale: 70 %
 	:align: center
 	:alt: Jam.py roles 
 

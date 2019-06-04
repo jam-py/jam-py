@@ -74,6 +74,7 @@ The right panel of the page have following buttons:
   privileges assigned to user roles for this item.
 
 .. image:: /admin/_images/items.png
+	:scale: 70 %
 	:align: center
 	:alt: Task node
 	

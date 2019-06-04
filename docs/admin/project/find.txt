@@ -6,6 +6,7 @@ Press this button to to search for the character string in all modules of
 the project.
 
 .. image:: /admin/_images/find.png
+	:scale: 70 %
 	:align: center
 	:alt: Find in project dialog
 	

@@ -8,7 +8,7 @@ body {
 }
 
 form.row-fluid.form-horizontal {
-    margin: 0;
+    margin: 1px 0;
 }
 
 .table th,
@@ -583,6 +583,21 @@ input.input-text {
     margin-left: 26px;
 }
 
+div.th-container {
+    overflow: hidden;
+}
+
+div.th-table {
+    display: table;
+    width: 100%;
+    height: 100%;
+}
+
+div.th-text {
+    display: table-cell;
+    vertical-align: middle;
+}
+
 .accordion-toggle.history-toggle {
     font-size: 13px;
     outline: 0;
@@ -832,4 +847,9 @@ sup {
 
 .view-detail {
     margin-top: 2px;
+}
+
+.logging-info {
+    margin-top: 20px;
+    text-align: right;
 }

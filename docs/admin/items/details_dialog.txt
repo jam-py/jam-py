@@ -6,6 +6,7 @@ Use this dialog to setup details of an item. See
 :doc:`Details </programming/data/details>`.
 
 .. image:: /admin/_images/details_dialog.png
+	:scale: 70 %
 	:align: center
 	:alt: Details Dialog
 

@@ -21,10 +21,12 @@ open a new page in a browser and enter 127.0.0.1:8080/builder.html
 
 
 .. image:: _images/demo.png
+	:scale: 70 %
 	:align: center
 	:alt: Demo application
 
 
 .. image:: _images/demo_admin.png
+	:scale: 70 %
 	:align: center
 	:alt: Application builder of demo project

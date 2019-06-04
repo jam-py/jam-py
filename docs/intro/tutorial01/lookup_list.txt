@@ -9,6 +9,7 @@ Now we create a
 Select the "Task" node in the project tree and click the **Lookup lists** button.
 
 .. image:: /intro/_images/lookup_lists.png
+	:scale: 70 %
 	:align: center
 	:alt: Lookup lists
 
@@ -16,6 +17,7 @@ Click the **New** button and specify the new lookup list name and add a list of
 integer-text pairs:
 
 .. image:: /intro/_images/lookup_list_ready.png
+	:scale: 70 %
 	:align: center
 	:alt: Lookup list entries
 	
@@ -23,12 +25,14 @@ Save the Lookup	Lists dialog and open the "Contacts" journal to add the "Status"
 field 
 
 .. image:: /intro/_images/status_field.png
+	:scale: 70 %
 	:align: center
 	:alt: Status field
 
 and set the **Lookup values** attribute to the "Status" lookup list: 
 
 .. image:: /intro/_images/status_lookup.png
+	:scale: 70 %
 	:align: center
 	:alt: Status lookup field
 	
@@ -37,16 +41,19 @@ and **Typeahead** attributes. When the **Typeahead** is checked, typeahead is
 enabled for the lookup field,
 
 .. image:: /intro/_images/customer_required_attr.png
+	:scale: 70 %
 	:align: center
 	:alt: Customer attributes
 
 .. image:: /intro/_images/customer_typeahead_attr.png
+	:scale: 70 %
 	:align: center
 	:alt: Customer typeahead attribute
 
 set **Default value** of the "Contact date" field to "CURRENT DATETIME" 
 
 .. image:: /intro/_images/contact_date_default_value.png
+	:scale: 70 %
 	:align: center
 	:alt: Contact date field default value
 
@@ -54,5 +61,6 @@ and **Default value** of the "Status" field to "Contact" selecting them in the
 drop-down lists.
 
 .. image:: /intro/_images/status_default_value.png
+	:scale: 70 %
 	:align: center
 	:alt: Status field default value

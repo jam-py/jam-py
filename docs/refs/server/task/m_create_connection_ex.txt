@@ -2,7 +2,7 @@
 create_connection_ex
 ====================
 
-.. py:method:: create_connection_ex(self, db_module, database, user=None, password=None, host=None, port=None, encoding=None, server=None):
+.. py:method:: create_connection_ex(self, db_module, database, user=None, password=None, host=None, port=None, encoding=None, server=None)
 
 **domain**: server
 

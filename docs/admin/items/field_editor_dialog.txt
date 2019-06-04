@@ -10,6 +10,7 @@ Field tab
 =========
 
 .. image:: /admin/_images/fields_editr_field.png
+	:scale: 70 %
 	:align: center
 	:alt: fields_editr_field.png
 
@@ -51,6 +52,7 @@ Lookup tab
 ==========
 
 .. image:: /admin/_images/fields_editr_lookup.png
+	:scale: 70 %
 	:align: center
 	:alt: fields_editr_lookup.png
 
@@ -82,6 +84,7 @@ Interface tab
 =============
 
 .. image:: /admin/_images/fields_editr_interface.png
+	:scale: 70 %
 	:align: center
 	:alt: fields_editr_interface.png
 
@@ -101,11 +104,13 @@ Interface tab for FILE field
 
 
 .. image:: /admin/_images/fields_editr_file_interface.png
+	:scale: 70 %
 	:align: center
 	:alt: fields_editr_file_interface.png
 
 
 .. image:: /admin/_images/file_btns.png
+	:scale: 70 %
 	:align: center
 	:alt: file_btns.png
 
@@ -123,6 +128,7 @@ Interface tab for Image field
 =============================
 
 .. image:: /admin/_images/fields_editr_image_interface.png
+	:scale: 70 %
 	:align: center
 	:alt: fields_editr_image_interface.png
 	

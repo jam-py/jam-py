@@ -8,6 +8,7 @@ a new item or modify a selected one. See
 :doc:`Items <index>`.
 
 .. image:: /admin/_images/item_editor_dialog.png
+	:scale: 70 %
 	:align: center
 	:alt: Item Editor Dialog
 	
@@ -48,13 +49,9 @@ The upper part of the **Item Editor dialog** have the following fields:
   method (client).
   
 * **Virtual table** - if this checkbox is checked, no database table will be 
-  created. Use this options to create an in memory item or to get access to the 
-  data in some table from another dataset (see 
-  :doc:`open </refs/server/item/m_open>`
-  and
-  :doc:`on_apply </refs/server/item/on_apply>`
-  methods
-  ). This checkbox must be set when creating an item and can not be changed 
+  created. Use this options to create an item with in-memory dataset or to use 
+  its modules to write code.
+  This checkbox must be set when creating an item and can not be changed 
   later.
   
 * **History** - if this checkbox is checked, the application will saving for this

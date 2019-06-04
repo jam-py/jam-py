@@ -75,6 +75,8 @@ def process_sql_result(rows):
         for r in row:
             if isinstance(r, fdb.fbcore.BlobReader):
                 r = to_unicode(r.read(), 'utf-8')
+            elif type(r) == bytes:
+                r = to_unicode(r, 'utf-8')
             new_row.append(r)
         result.append(new_row)
     return result

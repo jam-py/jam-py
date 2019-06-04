@@ -74,6 +74,7 @@ It then assigns the jQuery events to the OK and Cancel buttons.
 The edit form for **Albums** catalog looks as follows: 
 
 .. image:: /programming/_images/default_edit_form_template.png
+	:scale: 70 %
 	:align: center
 	:alt: Default edit form template
 
@@ -150,6 +151,7 @@ It creates input controls for panes, corresponding to tabs:
     }
     
 .. image:: /programming/_images/edit_form_template_with_tabs.png
+	:scale: 70 %
 	:align: center
 	:alt: Edit form template with tabs
 
@@ -198,6 +200,7 @@ This example uses the Boostrap grid system:
 
 
 .. image:: /programming/_images/edit_form_tepmlate_layout.png
+	:scale: 70 %
 	:align: center
 	:alt: Edit form template using grid layout
 
@@ -285,6 +288,7 @@ of the item (if they exist).
 
 
 .. image:: /programming/_images/catalogs_view_teplate.png
+	:scale: 70 %
 	:align: center
 	:alt: Catalogs view form template
 
@@ -352,6 +356,7 @@ as in previous example.
     </div>
 
 .. image:: /programming/_images/view_template_btns_top.png
+	:scale: 70 %
 	:align: center
 	:alt: View form template with buttons at the top
 	
@@ -437,6 +442,7 @@ event handler decleared in the client module of **Invoices** journal:
     </div>
 
 .. image:: /programming/_images/invoices_view_form_tempate.png
+	:scale: 70 %
 	:align: center
 	:alt: Invoices view form template
 	

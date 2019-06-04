@@ -1,0 +1,69 @@
+==================================
+How to migrate to another database
+==================================
+
+You can mirgate your data to another database.
+
+For example, you developed your project with SQLite database amd want to move to 
+Postgress.
+
+To do this, follow these steps:
+
+#. Create an empty Postgress database
+
+#. Create a new project with this database
+
+#. Export the metadata of the SQLite project to a zip file 
+   in the Application Builder by clicking the 
+   :doc:`Export </admin/project/export>` button.
+
+#. Import the metadata to the new project. The web application with create
+   database structures in the Postgress database.
+  
+#. copy data from SQlite to Postgress database using the 
+   :doc:`copy_database </refs/server/task/m_copy_database>` method of the task:
+  
+   * create in the sever module of the task the following function:
+  
+     .. code-block:: py
+    
+       from jam.db.db_modules import SQLITE
+      
+       def copy_db(task):
+           task.copy_database(SQLITE, '/home/work/demo/demo.sqlite')
+  
+   * then you can execute it one of the following ways:
+  
+     * call this function in the 
+       :doc:`on_created </refs/server/task/on_created>` event handler:
+
+       .. code-block:: py
+      
+         from jam.db.db_modules import SQLITE
+        
+         def copy_db(task):
+             task.copy_database(SQLITE, '/home/work/demo/demo.sqlite')
+ 
+         def on_created(task):
+           copy_db(task)
+          
+     * create a button in some form and use the task 
+       :doc:`server </refs/client/abstr_item/m_server>` method to execute it
+
+       .. code-block:: js
+
+         function on_view_form_created(item) {
+           item.add_view_button('Copy DB').click(function() { 
+             task.server('copy_db')
+           });
+         }
+
+     * or run from from debbuging console of the browser:
+    
+       .. code-block:: js
+
+         task.server('copy_db')
+         
+#. Remove the code that was used.         
+
+    

@@ -12,6 +12,7 @@ First, we create an item group **Authentication** select it and add an item
 **Users** that has the following fields:
 
 .. image:: /how_to/_images/users_fields.png
+	:scale: 70 %
 	:align: center
 	:alt: users_fields.png
 
@@ -28,6 +29,7 @@ We added to it the same roles (ids and names) as in the table
 We 'll have to sycronize this roles in the future.
 
 .. image:: /how_to/_images/roles_lookup_list.png
+	:scale: 70 %
 	:align: center
 	:alt: roles_lookup_list.png
 

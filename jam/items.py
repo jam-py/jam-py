@@ -257,7 +257,7 @@ class AbstrTask(AbstractItem):
     def update_lang(self, value):
         self.lang = langs.get_lang_dict(self, value)
         self.locale = langs.get_locale_dict(self, value)
-        common.SETTINGS['LANGUAGE'] = value
+        self.app.LANGUAGE = value
         common.LOCALE = self.locale
         for key in iterkeys(common.LOCALE):
             common.__dict__[key] = common.LOCALE[key]
@@ -274,7 +274,11 @@ class AbstrTask(AbstractItem):
         return self.lang.get(key)
 
     def get_settings(self):
-        return common.SETTINGS
+        result = {}
+        keys = list(iterkeys(common.DEFAULT_SETTINGS))
+        for key in keys:
+            result[key] = self.app.__dict__[key]
+        return result
 
 class AbstrItem(AbstractItem):
     def __init__(self, task, owner, name, caption, visible = True, item_type_id=0, js_filename=''):

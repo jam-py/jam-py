@@ -1,0 +1,94 @@
+========================================
+How to migrate development to production
+========================================
+
+Migrating development to production is very simple in Jam.py due to the ability 
+to export and import its metadata. 
+
+To understand the concept of metadata and the process of exporting and importing 
+metadata, please read the topic 
+:doc:`Export/import metadata </admin/project/metadata_file>`.
+The process of importing metadata depends on the type of project database.
+
+New project migration
+=====================
+
+* Create an empty database in the production enviroment
+
+* Run *jam-project.py* script to create a new project
+
+* Set up the server. See 
+  
+  * :doc:`Jam.py deployment with Apache and mod_wsgi </intro/deployment>`,
+  * :doc:`How to deploy <deploy/index>`.
+
+* In the browser start the Application Builder and finish the creation of the 
+  project with an empty database.
+
+* open 
+  :doc:`Parameters </admin/project/parameters>` dialog to set up the project. 
+  Setup the following parameters:
+  
+  * **Production** to true
+  
+  * **Safe mode**
+  
+  * **Debugging** to false
+
+* Export the metadata of the development project to a zip file 
+  in the Application Builder by clicking the 
+  :doc:`Export </admin/project/export>` button.
+  
+* Import the metadata to the new project.
+
+.. note::
+
+    For projects with **SQLite** database you can simply copy the development 
+    project folder to the production enviroment.
+
+Existing project migration
+==========================
+
+* Export the metadata of the development project to a zip file. 
+
+* Import the metadata to the production project.
+
+.. note::
+
+    For **SQLite** database, Jam.py doesn’t support importing of metadata into an 
+    existing project (project with tables in the database). 
+    You can only import metadata into a new project.
+
+
+Importing metadata with server shutdown
+=======================================
+
+Stop the server and copy the metadata zip file to *migration* folder in the 
+project directory. If the folder doesn't exist, create it.
+
+Start the server. The web application, while initializing itself, will
+import the metadata file. You can see the information on how the file was 
+imported in the log file in the *logs* folder of the project directory.
+If the import is successful, the zip file will be deleted.
+
+Importing metadata without server shutdown
+==========================================
+
+Click the 
+:doc:`Import </admin/project/import>`
+button in the Application Builder.
+
+.. note::
+
+   By default the web application in the process that imports the metadata waits 
+   for 5 minutes or until all previous request to the application in 
+   **this process** will be processed before it starts to change the database. 
+   For projects that run on multiple processes you can set the **Import delay** 
+   parameter in the
+   :doc:`Parameters </admin/project/parameters>` 
+   to delay the change the database or
+   use Importing metadata with server shutdown.
+   
+
+	
+

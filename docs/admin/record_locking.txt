@@ -26,12 +26,14 @@ and click the button to the right of the
 **Lock item** input:
 
 .. image:: _images/history_item.png
+	:scale: 70 %
 	:align: center
 	:alt: History item
 	
 In the dialog that will appear click on the **Create lock item** button: 
 
 .. image:: _images/create_lock_item.png
+	:scale: 70 %
 	:align: center
 	:alt: New history item	
 
@@ -39,5 +41,6 @@ After that you must set **Edit lock** attribute in the
 :doc:`Item Editor Dialog <items/item_editor_dialog>`:
 
 .. image:: _images/item_editor_dialog.png
+	:scale: 70 %
 	:align: center
 	:alt: Keep history attribute

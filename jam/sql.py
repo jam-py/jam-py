@@ -167,9 +167,6 @@ class SQL(object):
                 user_info = None
                 if item.session:
                     user_info = item.session.get('user_info')
-                #~ try:
-                    #~ h_sql = item.task.__history_sql
-                #~ except:
                 h_fields = ['item_id', 'item_rec_id', 'operation', 'changes', 'user', 'date']
                 table_name = item.task.history_item.table_name
                 fields = []
@@ -188,7 +185,6 @@ class SQL(object):
                 values = ', '.join(values)
                 h_sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
                     (table_name, fields, values)
-                #~ item.task.__history_sql = h_sql
                 changes = None
                 user = None
                 item_id = item.ID

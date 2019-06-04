@@ -12,12 +12,14 @@ Let's select the "Customers" catalog, Double-click it to open the
 and add an image field "Photo":
 
 .. image:: /intro/_images/image_field.png
+	:scale: 70 %
 	:align: center
 	:alt: image_field.png
 
 Now refresh the project page, click the Customers menu item and open the edit form.
 
 .. image:: /intro/_images/image_project1.png
+	:scale: 70 %
 	:align: center
 	:alt: image_project1.png
 
@@ -25,11 +27,13 @@ Double-click the image in the editing form to select an image from the Open File
 dialog box.
 
 .. image:: /intro/_images/select_image.png
+	:scale: 70 %
 	:align: center
 	:alt: select_image.png
 
 
 .. image:: /intro/_images/image_project2.png
+	:scale: 70 %
 	:align: center
 	:alt: image_project2.png
 
@@ -43,6 +47,7 @@ in Application Builder and set **View width** to 120 and
 **Edit width** to 314 on the **Interface** tab.
 
 .. image:: /intro/_images/image_field2.png
+	:scale: 70 %
 	:align: center
 	:alt: image_field2.png
 
@@ -55,12 +60,14 @@ In the
 we set **Row lines** to 4 and the width of the "Photo" field to 120.  
 
 .. image:: /intro/_images/image_view_form.png
+	:scale: 70 %
 	:align: center
 	:alt: image_view_form.png
 
 Now on the project page we will have:
 
 .. image:: /intro/_images/image_edit.png
+	:scale: 70 %
 	:align: center
 	:alt: image_edit.png
 	
@@ -81,12 +88,14 @@ Adding file field
 Now we add a field that will store an appendix file to the "Contacts" journal.
 
 .. image:: /intro/_images/file_field.png
+	:scale: 70 %
 	:align: center
 	:alt: file_field.png
 
 This field will be displayed in the editing form as follows:
 
 .. image:: /intro/_images/appendix_edit.png
+	:scale: 70 %
 	:align: center
 	:alt: appendix_edit.png
 	
@@ -99,6 +108,7 @@ in Application Builder and uncheck the **Download btn** check box and set
 **Accept** attribute to '.pdf'.
 
 .. image:: /intro/_images/appendix_interface.png
+	:scale: 70 %
 	:align: center
 	:alt: appendix_interface.png
 	
@@ -106,16 +116,19 @@ Let's	refresh the project page, open the "Contacts" edit form and upload a file
 by clicking the upload button:
 
 .. image:: /intro/_images/appendix_select.png
+	:scale: 70 %
 	:align: center
 	:alt: appendix_select.png
 
 Now we can open a file in the browser by clicking on the open button.
 
 .. image:: /intro/_images/appendix_field2.png
+	:scale: 70 %
 	:align: center
 	:alt: appendix_field2.png
 
 .. image:: /intro/_images/appendix_pdf_open.png
+	:scale: 70 %
 	:align: center
 	:alt: appendix_pdf_open.png
 

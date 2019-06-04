@@ -2,49 +2,15 @@
 Import
 ======
 
-Use this button to import project metadata from zip file.
+Use this button to import project 
+:doc:`metadata <metadata_file>`
+from zip file.
 
-When you click the "Import" button, 
-:doc:`Application builder </admin/index>`
-opens a Dialog to select a file to be imported.
+See also
+========
 
-After the file is selected, the Application builder uploads it to the server and 
-sends the server a request to import it.
+:doc:`Export <export>`
 
-The server while importing the metadata performs the following operations:
+:doc:`Metadata file <metadata_file>`
 
-* checks the data integrity - items with the same ID must have the same 
-  type and the same table_name attribute if one is specified for an item
-
-* analizes the metadata to generate sql queries to update the project 
-  database structure and records of the *admin.sqlite* database
-
-* waits for 5 minits or until all previous request to the server will be processed
-
-* starts to execute sql statments to update the project database.
-
-* if an error occurs while updating the project database, for databases, that 
-  support DDL statment rollback (Postgress, Firebird, MSSQL), rollbacks changes, stops the 
-  import process and returns the import log to the Application builder. 
-  If the database do not support DDL statment rollback (MySql, Oracle) writes error 
-  to the import log and continues until all statments will be processed
-  
-* Commits changes to the project database if it supports DDL statment rollback 
-  and modifies the records of the *admin.sqlite*
-  
-* Copies all the files from zip file to the project folder
-
-* Rebuilds the task on the server
-
-* Send the import log to the Application builder
-  
-.. note::
-    It is strongly recommended that you make a backup of the project database 
-    and *admin.sqlite* before performing the import.
-    
-.. note::
-
-    For **SQLite** database, Jam.py doesn’t support importing of metadata into an 
-    existing project (project with tables in the database). 
-    You can only import metadata into a new project.
-    
+:doc:`How to migrate development to production </how_to/how_to_migrate_development_to_production>`

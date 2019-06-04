@@ -16,8 +16,10 @@ At the bottom of the page there are 3 buttons:
   select a new group type in the Dialog box that will appear.
   
 .. image:: /admin/_images/group_type.png
-    :align: center
-    :alt: Group type
+	:scale: 70 %
+	:align: center
+	:alt: Group type
+
     
 There are groups of three types: Item group, Report group, Table group, see
 :doc:`task tree </programming/task_tree>`.
@@ -37,7 +39,7 @@ a selected group, see
 * :doc:`Working with modules </programming/modules>`, 
 * :doc:`Code editor </admin/code_editor>`
 
-
 .. image:: /admin/_images/groups.png
+	:scale: 70 %
 	:align: center
 	:alt: Group node

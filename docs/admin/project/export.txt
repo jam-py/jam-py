@@ -2,20 +2,15 @@
 Export
 ======
 
-Press this button to export project metadata to zip file. This zip file will
-contain:
+Press this button to export project 
+:doc:`metadata <metadata_file>`
+to zip file. 
 
-* Information about project data structure, code and interface settings that 
-  is strored in the *admin.sqlite* database.
-  
-* Files from the following folders:
+See also
+========
 
-  * css
-  * js
-  * static/css
-  * static/js
-  * static/img
-  * reports (*ods* files of project report templates)
-  * utils (this folder may contain some python libraries used in the project)
-        
-    
+:doc:`Import <import>`
+
+:doc:`Metadata file <metadata_file>`
+
+:doc:`How to migrate development to production </how_to/how_to_migrate_development_to_production>`

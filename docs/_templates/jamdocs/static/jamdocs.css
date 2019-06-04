@@ -131,17 +131,18 @@ input.gsc-input, .gsc-input-box, .gsc-input-box-hover, .gsc-input-box-focus, .gs
 
 code {
   padding: 2px 4px;
-  font-size: 18px;
+  font-size: 14px;
   border-radius: 4px;
   background-color: #ffffff;
   color: #317eac;
 }
 
 dt {
-  font-size: 18px;
+  font-size: 14px;
 }
 
-ul.simple li {
+ul.simple li, 
+ol.arabic.simple li {
     padding: 2px 0;    
 }
 

@@ -1,0 +1,35 @@
+=============
+copy_database
+=============
+
+.. py:method:: copy_database(self, dbtype, database=None, user=None, password=None, host=None, port=None, encoding=None, server=None)
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Task class </refs/server/task_api>`
+
+Description
+===========
+
+Use ``copy_database`` to copy database data when migrating to another database.
+
+See :doc:`How to migrate to another database </how_to/how_to_migrate_to_another_database>`
+
+
+Example
+=======
+
+in the following code when the project task tree is created the application
+copies the data from the demo.sqlite database to the project database:
+
+.. code-block:: py
+
+  from jam.db.db_modules import SQLITE
+  
+  def on_created(task):
+      task.copy_database(SQLITE, '/home/work/demo/demo.sqlite')
+
+
+

@@ -76,6 +76,7 @@ function Events0() { // admin
 		fields.splice(fields.indexOf('f_field_id_gen'), 1);
 		fields.push('id');
 		task.sys_params.open({fields: fields});
+		task._production = task.sys_params.f_production.value;
 	}
 	
 	function refresh_task_dict(task) {
@@ -689,30 +690,16 @@ function Events0() { // admin
 			}
 		);
 		task._importing = true;
-		task.server('server_import_task', [task.sys_tasks.task_id.value, 'static/internal/' + file_name, true], function(res) {
+		task.server('server_import_task', ['static/internal/' + file_name, true], function(res) {
 			var success = res[0],
 				error = res[1],
 				info = res[2],
 				message,
 				callback = function() { location.reload() },
-				options = {text_center: false, width: 720, height: 400, title: 'Import result',
+				options = {text_center: false, width: 800, height: 400, title: 'Import result',
 					close_button: false, margin: 0};
-	//				close_button: false, print: true, margin: 0};
 			task.hide_message(mess);
-			if (success) {
-				message = task.language.import_success;
-				if (error) {
-					message = task.language.import_errors;
-				}
-				message = '<h3 class="text-center">' + message + '</h3>'
-			}
-			else {
-				message = '<h3 class="text-center text-error">' + task.language.import_failed + '</h3>'
-			}
-			if (info) {
-				message += '<h4 class="text-info">' + task.language.import_log + '</h4><div>' + info + '</div>'
-			}
-			task.warning(message, callback, options);
+			task.warning(info, callback, options);
 			task._importing = false;
 		});
 	}
@@ -724,7 +711,7 @@ function Events0() { // admin
 	function export_task(task) {
 		var link,
 			host = location.protocol + '/' +  '/' + location.hostname + (location.port ? ':' + location.port: ''),
-			url = task.server('server_export_task', [task.sys_tasks.task_id.value, host]);
+			url = task.server('server_export_task', [host]);
 		window.open(url, "_self");
 	}
 	
@@ -1062,6 +1049,7 @@ function Events3() { // admin.catalogs.sys_items
 			types = item.task.item_types;
 	
 		item.cur_record_count = undefined;
+		item.can_modify = !(task._production && !task._manual_update)
 	
 		item.view_options.enable_search = true;
 		item.view_options.search_field = 'f_item_name';
@@ -1075,10 +1063,14 @@ function Events3() { // admin.catalogs.sys_items
 			item.view_form.find('#down-btn').hide();
 		}
 		if (get_type_id(item) === types.DETAIL_TYPE) {
+			item.can_modify = true;
 			item.view_form.find('#new-btn').hide();
 			item.view_form.find('#delete-btn').hide();
-	//		item.view_form.find('#up-btn').hide();
-	//		item.view_form.find('#down-btn').hide();
+		}
+		if (!item.can_modify) {
+			item.view_form.find('#new-btn').prop('disabled', true)
+			item.view_form.find('#delete-btn').prop('disabled', true)
+			item.view_form.find('#edit-btn').text(task.language.view)
 		}
 		item.view_form.find('#import-btn').hide();
 		if ((parent_type_id === types.ITEMS_TYPE || parent_type_id === types.TABLES_TYPE) &&
@@ -1161,7 +1153,6 @@ function Events3() { // admin.catalogs.sys_items
 				}
 			}
 			fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_keep_history', 'f_edit_lock'])
-	//		fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_keep_history', 'f_js_external'])
 		}
 		if (item.type_id.value === types.ITEMS_TYPE || item.type_id.value === types.TABLES_TYPE) {
 			item.fields_editor = true;
@@ -1188,6 +1179,13 @@ function Events3() { // admin.catalogs.sys_items
 		item.edit_form.find("#cancel-btn").on('click.task', function(e) {item.cancel_edit(e); return false;});
 		item.edit_form.find("#ok-btn").on('click.task', function() {item.apply_record()});
 		if (item.item_name === 'sys_items') {
+			if (!item.can_modify) {
+				item.edit_form.find('#ok-btn').hide()
+				item.edit_form.find('#delete-btn').prop('disabled', true);
+				item.edit_form.find('#new-btn').prop('disabled', true);
+				item.edit_form.find('#edit-btn').text(task.language.view);
+				item.edit_form.find('#cancel-btn').text(task.language.close);
+			}
 			if (item.fields_editor) {
 				if (parent_type_id === types.TASK_TYPE) {
 					height = $(window).height() - 400;
@@ -1236,7 +1234,7 @@ function Events3() { // admin.catalogs.sys_items
 					{
 						height: height,
 						sortable: true,
-	//				title_word_wrap: true,
+						title_line_count: 0,
 						row_callback: field_colors
 					});
 				item.sys_fields.open({order_by: ['f_field_name']}, true);
@@ -1441,7 +1439,8 @@ function Events3() { // admin.catalogs.sys_items
 			names,
 			item = field.owner
 		if (item.is_new() && item.type_id.value != item.task.item_types.DETAIL_TYPE) {
-			if (field.field_name == 'f_item_name' && !item.f_virtual_table.value) {
+			if (field.field_name == 'f_item_name' && !item.f_virtual_table.value &&
+				item.type_id.value !== item.task.item_types.ITEMS_TYPE) {
 				names = item.task.server('get_new_table_name', field.value);
 				item.f_table_name.value = names[0];
 				if (item.task.db_options.NEED_GENERATOR) {
@@ -1553,6 +1552,7 @@ function Events3() { // admin.catalogs.sys_items
 		var result = [
 			['multiselect', false],
 			['dblclick_edit', true],
+			['title_line_count', 1],
 			['row_count', 0],
 			['height', 0],
 			['row_line_count', 1],
@@ -2168,6 +2168,8 @@ function Events3() { // admin.catalogs.sys_items
 				item.f_item_name.value = table_name.toLowerCase();
 				item.f_table_name.value = table_name;
 				item.f_gen_name.value = ''
+				item.f_virtual_table.value = false;
+				item.f_virtual_table.read_only = true;
 				item.f_soft_delete.value = false;
 				cur_id = item.task.server('get_fields_next_id', fields.length);
 				for (var i = 0; i < fields.length; i++) {
@@ -4012,7 +4014,8 @@ function Events11() { // admin.catalogs.sys_params
 		}
 		else {
 			if (item._safe_mode !== item.f_safe_mode.value ||
-				item._language !== item.f_language.value) {
+				item._language !== item.f_language.value ||
+				item._production != item.f_production.value) {
 				item.task.logout();
 				location.reload();
 			}
@@ -4033,6 +4036,7 @@ function Events11() { // admin.catalogs.sys_params
 			item._safe_mode = item.f_safe_mode.value;
 			item._language = item.f_language.value;
 			item._theme = item.f_theme.value;
+			item._production = item.f_production.value;
 	
 			item.edit_options.width = 620;
 	
@@ -4040,20 +4044,12 @@ function Events11() { // admin.catalogs.sys_params
 			general = task.add_tab(edit_body, task.language.general);
 			intface = task.add_tab(edit_body, task.language.interface);
 	
-	//		item.create_inputs(general, {
-	//			fields: ['f_safe_mode', 'f_debugging', 'f_language',
-	//			'f_con_pool_size', 'f_mp_pool', 'f_persist_con', 'f_compressed_js',
-	//			'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_timeout',
-	//			'f_ignore_change_ip', 'f_max_content_length', 'f_delete_reports_after', 'f_version'
-	//			],
-	//			in_well: false,
-	//			label_width: 240
-	//		});
 			item.create_inputs(general, {
-				fields: ['f_safe_mode', 'f_debugging', 'f_language', 'f_persist_con',
+				fields: ['f_production', 'f_safe_mode', 'f_debugging', 'f_language', 'f_persist_con',
 				'f_con_pool_size', 'f_compressed_js',
 				'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_lock_item', 'f_timeout',
-				'f_ignore_change_ip', 'f_max_content_length', 'f_delete_reports_after', 'f_version'
+				'f_ignore_change_ip', 'f_max_content_length', 'f_import_delay',
+				'f_delete_reports_after', 'f_version'
 				],
 				in_well: false,
 				label_width: 240
@@ -4063,20 +4059,6 @@ function Events11() { // admin.catalogs.sys_params
 				in_well: false,
 				label_width: 240
 			});
-	//		item.edit_form.find('#sk-btn').text(task.language.secret_key_btn).click(function() {
-	//		item.question(task.language.secret_key_question,
-	//		function() {
-	//			if (task.server('server_change_secret_key')) {
-	//						item.warning(task.language.secret_key_changed,
-	//							function() {
-	//								location.reload();
-	//							}
-	//						);
-	//
-	//					}
-	//		}
-	//			);
-	//		});
 		}
 	}
 	
@@ -4088,8 +4070,18 @@ function Events11() { // admin.catalogs.sys_params
 	}
 	
 	function on_field_changed(field) {
-		if (field.field_name === 'f_con_pool_size' && field.value < 1) {
-			field.value = 1;
+		var item = field.owner;
+		if (field.field_name === 'f_con_pool_size') {
+			if (field.value < 1) {
+				field.value = 1;
+			}
+		}
+		else if (field.field_name === 'f_production') {
+			 if (field.value) {
+				 item.f_safe_mode.value = true;
+				 item.f_debugging.value = false;
+				 item.f_import_delay.value = 180;
+			 }
 		}
 	}
 	
@@ -4336,6 +4328,7 @@ function Events22() { // admin.catalogs.sys_langs
 					else {
 						item.set_order_by(['f_name']);
 						item.open(true);
+						item.alert('Language file imported.')
 					}
 				})
 			}})
@@ -4358,6 +4351,7 @@ function Events22() { // admin.catalogs.sys_langs
 			translation,
 			lang_defined = item.f_language.value && item.f_country.value;
 	
+		item._language_changed = false;
 		item.f_language.read_only = lang_defined;
 		item.f_country.read_only = lang_defined;
 	
@@ -4519,13 +4513,10 @@ function Events22() { // admin.catalogs.sys_langs
 							fill_table(item);
 						}
 					}
-					//~ if (field.field_name === 'f_language' || field.field_name === 'f_country') {
-						//~ item.f_name.value = get_lang_name(item);
-						//~ item.server('save_lang_field', [item.id.value, 'f_name', item.f_name.value], true);
-					//~ }
 					item.apply();
 					item.edit();
 					item.server('save_lang_field', [item.id.value, field.field_name, field.value], true);
+					item._language_changed = true;
 				}
 			}
 			finally {
@@ -4568,6 +4559,9 @@ function Events22() { // admin.catalogs.sys_langs
 							if (err) {
 								item.warning(err);
 							}
+							else {
+								item._language_changed = true;
+							}
 						}
 					);
 				}
@@ -4578,6 +4572,9 @@ function Events22() { // admin.catalogs.sys_langs
 	function on_edit_form_close_query(item) {
 		if (item.is_changing()) {
 			item.cancel();
+		}
+		if (item._language_changed) {
+			task.server('server_lang_modified');
 		}
 		return true;
 	}
@@ -4727,6 +4724,12 @@ function Events10() { // admin.tables.sys_indices
 				edit_index(item, false);
 			}
 		}
+		item.can_modify = !(task._production && !task._manual_update)
+		if (!item.can_modify) {
+			item.view_form.find('#delete-btn').prop('disabled', true);
+			item.view_form.find('#new-btn').prop('disabled', true);
+		}
+	
 	}
 	
 	function on_view_form_keydown(item, event) {

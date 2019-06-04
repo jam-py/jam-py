@@ -1,5 +1,5 @@
-
 (function($) {
+
     "use strict";
 
     var settings,
@@ -13,7 +13,8 @@
             "PROJECT_NOT_LOGGED": 5,
             "PROJECT_LOGGED": 6,
             "PROJECT_MAINTAINANCE": 7,
-            "RESPONSE": 8,
+            "PROJECT_MODIFIED": 8,
+            "RESPONSE": 9,
 
             "TEXT": 1,
             "INTEGER": 2,
@@ -268,7 +269,7 @@
                 child.edit_lock = item_info.edit_lock;
                 child._view_params = item_info.view_params;
                 child._edit_params = item_info.edit_params;
-                child.virtual_table = item_info.virtual_table;
+                child._virtual_table = item_info.virtual_table;
 
                 child.prototype_ID = item_info.prototype_ID
                 if (child.initAttr) {
@@ -1866,6 +1867,7 @@
             height: 0,
             row_count: 0,
             row_line_count: 1,
+            title_line_count: 1,
             expand_selected_row: 0,
             freeze_count: 0,
             sort_fields: [],
@@ -1910,7 +1912,7 @@
                 contentType: contentType,
                 async: async,
                 cache: false,
-                data: JSON.stringify([request, this.ID, item.ID, params, date]),
+                data: JSON.stringify([request, this.ID, item.ID, params, self.modification, date]),
                 statusCode: statusCode,
                 success: function(data) {
                     var mess;
@@ -1922,26 +1924,6 @@
                             task.language = data.result.data
                             item.alert(task.language.no_project, {duration: 10});
                             return;
-                        } else if (data.result.status === consts.PROJECT_LOADING) {
-                            data.result.data = consts.PROJECT_LOADING
-                        } else if (data.result.status === consts.PROJECT_ERROR) {
-                            $('body').empty();
-                            task.language = data.result.data
-                            item.alert_error(task.language.project_error);
-                            return;
-                        } else if (data.result.status === consts.UNDER_MAINTAINANCE) {
-                            if (!self.task._under_maintainance) {
-                                self.task._under_maintainance = true;
-                                if (language) {
-                                    mess = language.website_maintenance;
-                                } else {
-                                    mess = 'Web site currently under maintenance.';
-                                }
-                                item.warning(mess, function() {
-                                    self.task._under_maintainance = undefined;
-                                });
-                            }
-                            return;
                         } else if (data.result.status === consts.PROJECT_NOT_LOGGED) {
                             if (!self._logged_in) {
                                 self.login();
@@ -1949,12 +1931,32 @@
                                 location.reload();
                             }
                             return;
-                        } else if (self.ID > 0 && data.result.version &&
-                            self.version && data.result.version !== self.version) {
+                        } else if (data.result.status === consts.PROJECT_LOADING) {
+                            data.result.data = consts.PROJECT_LOADING
+                        } else if (data.result.status === consts.PROJECT_ERROR) {
+                            $('body').empty();
+                            task.language = data.result.data
+                            item.alert_error(task.language.project_error);
+                            return;
+                        } else if (data.result.status === consts.PROJECT_MAINTAINANCE) {
+                            if (!self._under_maintainance) {
+                                self._under_maintainance = true;
+                                if (language) {
+                                    mess = language.website_maintenance;
+                                } else {
+                                    mess = 'Web site currently under maintenance.';
+                                }
+                                item.warning(mess, function() {
+                                    self._under_maintainance = undefined;
+                                });
+                            }
+                            setTimeout(function() { self.load() }, 1000);
+                            return;
+                        } else if (self.ID && data.result.status === consts.PROJECT_MODIFIED) {
                             if (!self.task._version_changed) {
                                 self.task._version_changed = true;
-                                self.message('<h4>' + language.version_changed + '</h4>', {
-                                    margin: '40px 40px',
+                                self.message('<h4 class="text-info">' + language.version_changed + '</h4>', {
+                                    margin: '50px 50px',
                                     width: 500,
                                     text_center: true
                                 });
@@ -2254,6 +2256,7 @@
                 self.forms_in_tabs = self.settings.FORMS_IN_TABS;
                 self.full_width = self.settings.FULL_WIDTH;
                 self.version = self.settings.VERSION;
+                self.modification = self.settings.MODIFICATION;
                 self.ID = info.task.id;
                 self.item_name = info.task.name;
                 self.item_caption = info.task.caption;
@@ -3341,6 +3344,7 @@
         this.owner_read_only = true;
         this._can_modify = true;
         this._active = false;
+        this._virtual_table = false;
         this._disabled_count = 0;
         this._open_params = {};
         this._where_list = [];
@@ -3379,6 +3383,11 @@
             get: function() {
                 return this._get_active();
             }
+        });
+        Object.defineProperty(this, "virtual_table", {
+            get: function() {
+                return this._virtual_table;
+            },
         });
         Object.defineProperty(this, "read_only", {
             get: function() {
@@ -4086,6 +4095,7 @@
             result._edit_options = this._edit_options;
             result._view_options = this._view_options;
             result._table_options = this._table_options;
+            result._virtual_table = this._virtual_table;
             result.prototype_ID = this.prototype_ID;
             result._keep_history = this._keep_history;
             result._view_params = this._view_params;
@@ -4524,8 +4534,11 @@
                 d,
                 detail_count = 0,
                 store_rec_no = function(d) {
-                    if (options.restore_rec_no && d.active) {
+                    if (options.master_refresh_record && d.active) {
                         d._prev_rec_no = d.rec_no
+                    }
+                    if (options.filters && options.filters[d.item_name]) {
+                        d._where_list = options.filters[d.item_name];
                     }
                 },
                 restore_rec_no = function(d) {
@@ -4701,6 +4714,9 @@
             }
             if (!params) {
                 params = {};
+            }
+            if (this.virtual_table) {
+                open_empty = true;
             }
             if (expanded === undefined) {
                 expanded = this.expanded;
@@ -5354,7 +5370,7 @@
                 result,
                 data,
                 result = true;
-            if (this.master) {
+            if (this.master || this.virtual_table) {
                 if (callback) {
                     callback.call(this);
                 }
@@ -6096,6 +6112,7 @@
                     });
                 }
                 else if (this.edit_options.edit_details.length) {
+                    options.filters = this.edit_options.edit_detail_filters;
                     this.open_details(options, function(error) {
                         create_form()
                     });
@@ -6144,6 +6161,10 @@
                 if (task.lock_item && this.edit_lock) {
                     params = {_edit_record_id: pk_value};
                 }
+                copy.edit_options.edit_detail_filters = {};
+                this.each_detail(function(d) {
+                    copy.edit_options.edit_detail_filters[d.item_name] = d._open_params.__filters.slice();
+                });
                 copy.open({params: params}, function() {
                     var on_after_apply = copy.on_after_apply;
                     copy.edit_options.tab_id = tab_id;
@@ -6302,7 +6323,7 @@
                     this.post();
                     this.apply(params, function(error) {
                         if (error) {
-                            self.alert_error(error);
+                            self.alert_error(error, {duration: 20});
                             this.enable_edit_form();
                             if (!self.is_changing()) {
                                 self.edit();
@@ -7321,6 +7342,7 @@
                 len,
                 default_options = {
                     details: [],
+                    filters: {},
                     default_order: true
                 },
             options = $.extend(true, {}, default_options, options);
@@ -7334,13 +7356,14 @@
                     if (d.active) {
                         if ($.inArray(d.item_name, options.details) === -1)  {
                             options.details.push(d.item_name);
+                            options.filters[d.item_name] = d._open_params.__filters.slice();
                         }
                     }
                 });
                 this.change_log.record_refreshed();
                 this.update_controls(consts.UPDATE_RECORD);
                 if (options.details.length) {
-                    options.restore_rec_no = true
+                    options.master_refresh_record = true;
                     this.open_details(options, callback, async);
                 }
                 else if (callback) {
@@ -7357,7 +7380,6 @@
                 self = this,
                 fields = [],
                 primary_key = this._primary_key,
-                where = {},
                 copy;
             if (this.master) {
                 throw 'The refresh_record method can not be executed for a detail item';
@@ -7371,14 +7393,14 @@
                 self.each_field(function(field) {
                     fields.push(field.field_name)
                 })
-                where[primary_key] = this._primary_key_field.value;
-
+                copy._where_list = this._open_params.__filters.slice();
+                copy._where_list.push([primary_key, consts.FILTER_EQ, this._primary_key_field.value, -2]);
                 if (callback || async) {
-                    copy.open({expanded: this.expanded, fields: fields, where: where, params: options.params}, function() {
+                    copy.open({expanded: this.expanded, fields: fields, params: options.params}, function() {
                         self._do_on_refresh_record(copy, options, callback, async);
                     });
                 } else {
-                    copy.open({expanded: this.expanded, fields: fields, where: where, params: options.params});
+                    copy.open({expanded: this.expanded, fields: fields, params: options.params});
                     this._do_on_refresh_record(copy, options);
                 }
             }
@@ -9920,7 +9942,7 @@
                 row_count: undefined,
                 fields: [],
                 column_width: {},
-                title_word_wrap: false,
+                title_line_count: 1,
                 row_line_count: 1,
                 expand_selected_row: 0,
                 selections: undefined,
@@ -9964,6 +9986,12 @@
             }
             if (this.options.row_line_count < 1) {
                 this.options.row_line_count = 0;
+            }
+            if (options && options.title_word_wrap) {
+                this.options.title_line_count = 0;
+            }
+            else if (this.options.title_line_count < 0 || this.options.title_line_count === undefined) {
+                this.options.title_line_count = 1;
             }
             if (this.item.master) {
                 this.options.select_all = false;
@@ -10739,12 +10767,13 @@
             $element = this.$element.clone()
                 .css("float", "left")
                 .css("position", "absolute")
-                //~ .css("top", 0);
-                .css("top", -1000);
+                .css("top", 100);
+                //~ .css("top", -1000);
             $element.width(this.$container.width());
             if (!$element.width()) {
                 $element.width($('body').width());
             }
+            $('body').append($element);
             this.fill_title($element);
             this.fill_footer($element);
             this.create_pager($element)
@@ -10758,7 +10787,7 @@
                 $table.append(row);
             }
             $element.find('th > div > p').css('margin', 0);
-            $('body').append($element);
+            //~ $('body').append($element);
             $td = $table.find('tr:last td');
             this.text_height = $td.find('div').height();
             row_height = $td.outerHeight(true);
@@ -11225,14 +11254,14 @@
                 else if (sortable_fields[field.field_name]) {
                     caption = sortable_fields[field.field_name] + caption;
                 }
-                div = $('<div class="text-center ' + field.field_name +
-                    '" style="overflow: hidden"><p style="margin: 0">' + caption + '</p></div>');
+                div = $('<div class="th-container"><div class="th-table"><div class="text-center th-text ' + field.field_name +
+                    '" style="overflow: hidden">' + caption + '</div></div></div>');
                 cell = $('<th class="' + field.field_name + '" data-field_name="' + field.field_name + '"></th>').append(div);
-                if (!this.options.title_word_wrap) {
-                    div.css('height', this.text_height);
-                    cell.css('height', this.text_height);
-                }
                 heading.append(cell);
+                if (this.options.title_line_count !== 0) {
+                    div.css('height', parseInt(cell.css('line-height'), 10) * this.options.title_line_count);
+                    cell.css('height', parseInt(cell.css('line-height'), 10) * this.options.title_line_count);
+                }
             }
             heading.append('<th class="fake-column" style="display: None;></th>');
             if (this.options.title_callback) {
@@ -11394,7 +11423,7 @@
                 search_field,
                 funcs,
                 params = {};
-            if (!this.item._paginate) {
+            if (!this.item._paginate || this.item.virtual_table) {
                 this.item.calc_summary(this.item, undefined, undefined, this.options.summary_fields);
             }
             else {
@@ -12428,7 +12457,7 @@
                 if (this.options.row_count !== this.row_count) {
                     this.calc_row_count();
                 }
-                this.$scroll_div.height(this.scroll_height())
+                this.$scroll_div.height(this.scroll_height());
             }
             this.$table.empty();
             if (this.selection_block) {
@@ -12461,7 +12490,7 @@
                 len = this.fields.length;
                 for (i = 0; i < len; i++) {
                     tmpRow = tmpRow + '<th class="' + this.fields[i].field_name + '" ><div style="overflow: hidden">' +
-                        this.fields[i].field_caption + '</div></th>';
+                        '<span style="font-size: large;">&darr;</span>' + this.fields[i].field_caption + '</div></th>';
                 }
                 tmpRow = $(tmpRow + '</tr>');
                 this.$table.prepend(tmpRow);

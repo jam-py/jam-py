@@ -9,14 +9,14 @@ General tab
 ===========
 
 .. image:: /admin/_images/parameters.png
+	:scale: 70 %
 	:align: center
 	:alt: Project parameters dialog
 
 On the General tab, you can specify general parameters of the project:
 
-
-* **Language** - use it to open Language Dialog. See 
-  :doc:`Language support </admin/language_support>`
+* **Production** - if this checkbox is checked, you will not be able to change the 
+  project database in Application Builder.
 
 * **Safe mode** - if safe mode is enabled, authentication  is needed for user to 
   work in the system (See 
@@ -25,11 +25,14 @@ On the General tab, you can specify general parameters of the project:
   :doc:`Roles </admin/roles>`
   ). 
   
-* **Debugging** - if this button is checked, the Werkzeug libarary bebugger will
+* **Debugging** - if this checkbox is checked, the Werkzeug libarary bebugger will
   be invoked when an error on the server occurs.
 
+* **Language** - use it to open Language Dialog. See 
+  :doc:`Language support </admin/language_support>`
+
 * **Persistent connection** - if this checkbox is checked the application creates 
-  a connection pool otherwise a connection is created before executing sql query.
+  a connection pool otherwise a connection is created before executing the sql query.
   
 * **Connection pool size** — the size of the server database connection pool. 
 
@@ -65,6 +68,13 @@ On the General tab, you can specify general parameters of the project:
 * **Max content length (MB)** - use it to limit the total content length of the
   request to the server, in megabytes.
   
+* **Import delay (seconds)** - if set the application will wait the number of 
+  seconds set in the parameter before changing the project dataset while 
+  :doc:`importing project metadata <metadata_file>`
+  , 
+  otherwise it waits for 5 minutes or until all previous request 
+  to the serverin the current process will be processed.
+  
 * **Delete reports after (hours)** - if a value is specified the generated 
   reports that are located in the static/reports folder will be deleted after
   specified number of hours have passed.
@@ -80,6 +90,7 @@ Interface tab
 =============
 
 .. image:: /admin/_images/parameters_interface.png
+	:scale: 70 %
 	:align: center
 	:alt: parameters_interface.png
 	

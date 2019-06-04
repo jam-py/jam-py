@@ -32,35 +32,9 @@ def execute(cursor, command, params=None):
         print('\nError: %s\n command: %s\n params: %s' % (str(x), command, params))
         raise
 
-def info_from_error(err):
-    arr = str(err).split('\\n')
-    error = '<br>'.join(arr)
-    return '<div class="text-error">%s</div>' % error
-
-def execute_dll(cursor, db_module, command, params, messages):
-    try:
-        result = None
-        print('')
-        print(command)
-        if params:
-            print(params)
-            messages.append('<p>' + command + '<br>' + \
-                json.dumps(params, default=common.json_defaul_handler) + '</p>')
-        else:
-            messages.append('<p>' + command + '</p>')
-        result = execute(cursor, command, params)
-    except Exception as x:
-        error = '\nError: %s\n command: %s\n params: %s' % (str(x), command, params)
-        print(error)
-        messages.append(info_from_error(x))
-        if db_module.DDL_ROLLBACK:
-            raise
-
-def execute_command(cursor, db_module, command, params=None, select=False, ddl=False, messages=None):
+def execute_command(cursor, db_module, command, params=None, select=False):
     if select:
         result = execute_select(cursor, db_module, command)
-    elif ddl:
-        result = execute_dll(cursor, db_module, command, params, messages)
     else:
         result = execute(cursor, command, params)
     return result
@@ -127,27 +101,26 @@ def execute_delta(cursor, db_module, command, params, delta_result):
     delta = command['delta']
     process_delta(cursor, db_module, delta, None, delta_result)
 
-def execute_list(cursor, db_module, command, delta_result, params, select, ddl, messages):
+def execute_list(cursor, db_module, command, delta_result, params, select):
     res = None
     for com in command:
         command_type = type(com)
         if command_type in string_types:
-            res = execute_command(cursor, db_module, com, params, select, ddl, messages)
+            res = execute_command(cursor, db_module, com, params, select)
         elif command_type == dict:
             res = execute_delta(cursor, db_module, com, params, delta_result)
         elif command_type == list:
-            res = execute_list(cursor, db_module, com, delta_result, params, select, ddl, messages)
+            res = execute_list(cursor, db_module, com, delta_result, params, select)
         elif command_type == tuple:
-            res = execute_command(cursor, db_module, com[0], com[1], select, ddl, messages)
+            res = execute_command(cursor, db_module, com[0], com[1], select)
         elif not com:
             pass
         else:
             raise Exception('server_classes execute_list: invalid argument - command: %s' % command)
     return res
 
-def execute_sql_connection(connection, command, params, select, ddl, db_module, close_on_error=False, autocommit=True):
+def execute_sql_connection(connection, command, params, select, db_module, close_on_error=False, autocommit=True):
     delta_result = {}
-    messages = []
     result = None
     error = None
     info = ''
@@ -155,13 +128,13 @@ def execute_sql_connection(connection, command, params, select, ddl, db_module, 
         cursor = connection.cursor()
         command_type = type(command)
         if command_type in string_types:
-            result = execute_command(cursor, db_module, command, params, select, ddl, messages)
+            result = execute_command(cursor, db_module, command, params, select)
         elif command_type == dict:
             res = execute_delta(cursor, db_module, command, params, delta_result)
         elif command_type == list:
-            result = execute_list(cursor, db_module, command, delta_result, params, select, ddl, messages)
+            result = execute_list(cursor, db_module, command, delta_result, params, select)
         else:
-            result = execute_command(cursor, db_module, command, params, select, ddl, messages)
+            result = execute_command(cursor, db_module, command, params, select)
         if autocommit:
             if select:
                 connection.rollback()
@@ -183,61 +156,18 @@ def execute_sql_connection(connection, command, params, select, ddl, db_module, 
             if close_on_error:
                 connection = None
     finally:
-        if ddl:
-            if error:
-                messages.append(info_from_error(error))
-            if messages:
-                info = ''.join(messages)
-            result = connection, (result, error, info)
-        else:
-            result = connection, (result, error)
+        result = connection, (result, error)
     return result
 
 def execute_sql(db_module, db_server, db_database, db_user, db_password,
     db_host, db_port, db_encoding, connection, command,
-    params=None, select=False, ddl=False):
+    params=None, select=False):
 
     if connection is None:
         try:
             connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding, db_server)
         except Exception as x:
             print(str(x))
-            if ddl:
-                return  None, (None, str(x), info_from_error(x))
-            else:
-                return  None, (None, str(x))
-    return execute_sql_connection(connection, command, params, select, ddl, db_module, close_on_error=True)
-
-def process_request(parentPID, name, queue, db_type, db_server, db_database, db_user, db_password, db_host, db_port, db_encoding, mod_count):
-    con = None
-    counter = 0
-    last_date = datetime.datetime.now()
-    db_module = db_modules.get_db_module(db_type)
-    while True:
-        if parentPID and hasattr(os, 'getppid') and os.getppid() != parentPID:
-            break
-        request = queue.get()
-        if request:
-            result_queue = request['queue']
-            command = request['command']
-            params = request['params']
-            select = request['select']
-            cur_mod_count = request['mod_count']
-            date = datetime.datetime.now()
-            hours = (date - last_date).total_seconds() // 3600
-            if cur_mod_count != mod_count or counter > 1000 or hours >= 1:
-                if con:
-                    try:
-                        con.rollback()
-                        con.close()
-                    except:
-                        pass
-                con = None
-                mod_count = cur_mod_count
-                counter = 0
-            last_date = date
-            con, result = execute_sql(db_module, db_server, db_database, db_user, db_password,
-                db_host, db_port, db_encoding, con, command, params, select)
-            counter += 1
-            result_queue.put(result)
+            return  None, (None, str(x))
+    return execute_sql_connection(connection, command, params, select, db_module, close_on_error=True)
 

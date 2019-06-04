@@ -11,6 +11,7 @@ default. See
 method
 
 .. image:: /admin/_images/records_order_dialog.png
+	:scale: 70 %
 	:align: center
 	:alt: Order Dialog
 

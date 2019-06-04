@@ -42,5 +42,6 @@ Use **Edit** button at the bottom of the page to change ``item_name`` or
 ``caption`` of a `detail`.  
 
 .. image:: _images/details.png
+	:scale: 70 %
 	:align: center
 	:alt: Jam.py details

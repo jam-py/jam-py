@@ -10,18 +10,21 @@ Lookup list is a list of integer-text pairs that can used as a datasource for
     The length of the lookup list should not exceed 10
 
 .. image:: _images/lookup_lists.png
+	:scale: 70 %
 	:align: center
 	:alt: Lookup List Dialog
 
 Click on the **Edit**/**New** buttons to edit/create a lookup list.
 
 .. image:: _images/lookup_list.png
+	:scale: 70 %
 	:align: center
 	:alt: Lookup List 
 
 Then use the **Edit**/**New** buttons to edit/add a lookup pairs to the list.
 
 .. image:: _images/lookup_paire.png
+	:scale: 70 %
 	:align: center
 	:alt: Lookup Pair
 

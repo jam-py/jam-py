@@ -246,5 +246,6 @@ will be as follows:
   }
 
 .. image:: _images/two_tables.png
+	:scale: 70 %
 	:align: center
 	:alt: two_tables.png

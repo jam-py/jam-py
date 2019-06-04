@@ -43,6 +43,10 @@ fields              a list of field names. If specified, a column will be
                     specified (the default) then the fields attribute of an 
                     :doc:`view_options <at_view_options>`
                     will be used 
+                    
+title_line_count    specifies the number of lines of text displayed in a 
+                    title row, if it is 0, the height of the row is determined 
+                    by the contents of the title cells                
 
 row_line_count      specifies the number of lines of text displayed in a 
                     table row, if it is 0, the height of the row is determined 
@@ -131,10 +135,26 @@ Example
 
 .. code-block:: js
 
-    function on_view_form_created(item) {
-        item.table_options.row_line_count = 2;
-        item.table_options.expand_selected_row = 3;    
-    }
+  function on_view_form_created(item) {
+      item.table_options.row_line_count = 2;
+      item.table_options.expand_selected_row = 3;    
+  }
+
+The code in the following two examples does the same:
+
+.. code-block:: js
+
+  item.invoice_table.create_table(item.view_form.find('.view-detail'), {
+      height: 200,
+      summary_fields: ['date', 'total'],
+  });
+
+.. code-block:: js
+
+  item.invoice_table.table_options.height = 200;
+  item.invoice_table.table_options.summary_fields = ['date', 'total'];
+  item.invoice_table.create_table(item.view_form.find('.view-detail'));
+
 
 See also
 ========
