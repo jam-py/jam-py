@@ -34,9 +34,3 @@ Example
     finally:
       conection.close()
 
-See also
-========
-
-:doc:`execute <m_execute>`
-
-:doc:`select <m_select>`

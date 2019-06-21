@@ -1,0 +1,32 @@
+===============================
+How to prohibit changing record
+===============================
+
+Let's assume that we have an item with a logical field "posted", and if the 
+value of the field is true, we must prohibit changing or deleting the record.
+
+We can do this by writing the
+:doc:`on_after_scroll </refs/client/item/on_after_scroll>` 
+event handler and using 
+:doc:`can_modify </refs/client/item/at_can_modify>` property:
+
+.. code-block:: js
+
+  function on_after_scroll(item) {
+      if (item.rec_count) {
+          item.can_modify = !item.posted.value;
+      }
+      if (item.view_form) {
+          item.view_form.find("#delete-btn").prop("disabled", !item.can_modify);    
+      }
+  }
+  
+In this event handler we check the value of the "posted" field and set the 
+can_modify property to true
+
+.. code-block:: py
+
+  def on_apply(item, delta, params, connection): 
+    for d in delta:
+        if d.posted.old_value:
+            raise Exception('Document posted. No change allowed')

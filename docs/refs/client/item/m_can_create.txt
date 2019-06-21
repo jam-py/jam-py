@@ -18,7 +18,7 @@ record in an item dataset when the project
 :doc:`safe mode parameter </admin/project/parameters>`
 is set. If the project project 
 :doc:`safe mode parameter </admin/project/parameters>`
-is not set the method always returns true.
+is not set the method returns true.
 
 The user privileges are set in the :doc:`roles node </admin/roles>` of the project 
 tree.

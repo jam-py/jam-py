@@ -9,15 +9,11 @@ datasets of `Embarcadero Delphi`_.
 
 .. note::
 
-    There are other ways to read and modify the database data. You can use
-    :doc:`execute </refs/server/task/m_execute>` and 
-    :doc:`select </refs/server/task/m_select>` 
-    methods or just 
-    create a connection by using, for example,   
-    :doc:`create_connection </refs/server/task/m_create_connection>` 
-    method and exchange data between client and server by 
-    :doc:`server </refs/client/abstr_item/m_server>`
-    method.
+    There are other ways to read and modify the database data. You can use the
+    :doc:`connect </refs/server/task/m_connect>` 
+    method of the task to get a connection from the connection pool and use 
+    the connection to get access to the database using Python Database API.
+    
 
 All items with ``item_type`` "item" or "table" as well as their details (see
 :doc:`Task tree </programming/task_tree>`)

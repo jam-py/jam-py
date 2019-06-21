@@ -20,7 +20,7 @@ Library:
 * virtual_table is now a read-only property on the client
   :doc:`virtual_table </refs/client/item/at_virtual_table>`
   and server
-  :doc:`virtual_table </refs/server/item/at_virtual_table>`
+  :doc:`virtual_table </refs/server/item/at_virtual_table>`.
   For an item which virtual_table property is true, calling the open method creates 
   an empty data set, and calling the apply method does nothing.
   

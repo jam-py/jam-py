@@ -37,6 +37,7 @@ You can use Jam.py with existing database, that is supported by the framework.
    
 * After importing serveral tables, you can specify lookup fields (in DB manual mode).     
 
+
 .. note::
 
     Please, do be very carefull when performing this operations.
@@ -45,6 +46,14 @@ You can use Jam.py with existing database, that is supported by the framework.
     the corresponding DB table. If you delete the item, the table will be dropped
     from the database.
 
+.. note::
+    
+  The database table to be imported must have a primary key with one field.
+
+.. note::
+    
+  Binary fields must not be imported.
+  
 .. note::
 
     This is a new feature, so if you have some comments, suggestions or found

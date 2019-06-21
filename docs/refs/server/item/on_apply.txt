@@ -63,10 +63,7 @@ is executed:
         sql = delta.apply_sql(safe)
         return self.task.execute(sql)
 
-The ``apply_sql`` method generates a dictionary, containing SQL queries, that the
-:doc:`execute </refs/server/task/m_execute>`
-method of the task knows how to process. After processing it 
-:doc:`execute </refs/server/task/m_execute>`
+The ``apply_sql`` method generates SQL queries and executes them. After that
 returns to the client information about the result of processing, that stores the
 id's of the new records as well. The client based on this information updates the 
 item's change log and values of ``id`` fields of new records.

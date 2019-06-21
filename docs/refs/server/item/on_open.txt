@@ -86,19 +86,10 @@ sends to the server:
       '__summary': True
   }
 
-The server application uses ``get_select_query`` method generates an SQL query, 
-based on params that the :doc:`select </refs/server/task/m_select>` method executes. 
-The server returns to the client the records, that the item  and error message.
+The server application generates an SQL query, based on params and executes them. 
 
-Example
-=======
-
-.. code-block:: py
-
-  def on_open(item, params):
-    sql = item.get_select_query(params)
-    rows = item.task.select(sql)
-    return rows, ''
+The server returns to the client the resulting records and the error message if 
+it occurs during the execution.
 
 :doc:`Here is an example how server events can be used </how_to/how_to_multitenancy>`
 

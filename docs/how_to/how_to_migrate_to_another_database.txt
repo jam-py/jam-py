@@ -66,4 +66,9 @@ To do this, follow these steps:
          
 #. Remove the code that was used.         
 
+.. note::
+	
+	You can not migrate to SQLite database of the current database has foreign
+	keys
+
     

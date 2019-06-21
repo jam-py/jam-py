@@ -28,9 +28,7 @@ If there is a
 event handler defined for the item, ``open`` executes this event handler and 
 assigns a dataset to the result, returned by it, 
 otherwise generates a SELECT SQL query, based on parameters of the request, 
-executes this query using the
-:doc:`select </refs/server/task/m_select>`
-method of the task and assigns a dataset to the result of the execution.
+executes this query and assigns the result of the execution to the dataset
 
 After that it sets 
 :doc:`active <at_active>`
