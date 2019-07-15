@@ -58,6 +58,7 @@ More demos on Heroku:
 Jam.py application from GitHub repo on Heroku
 
 Demo on PythonAnywhere:
+
 * `Jam.py Demo Application (wip) <https://jampy.pythonanywhere.com>`_
 
 Main features
