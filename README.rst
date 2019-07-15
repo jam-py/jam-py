@@ -59,7 +59,7 @@ Jam.py application from GitHub repo on Heroku
 
 Demo on PythonAnywhere:
 
-* `Jam.py Demo Application (wip) <https://jampy.pythonanywhere.com>`_
+* `Jam.py Assets/Parts Application (wip) <https://jampy.pythonanywhere.com>`_
 
 Main features
 =============
