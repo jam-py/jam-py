@@ -51,11 +51,14 @@ to see some applications written in Jam.py.
 More demos on Heroku:
 
 * `The RedHat Satellite 5.x Dashboard utility Demo <https://redhatsatellite.herokuapp.com>`_
-* `The Postfix email aliases utility Demo <https://jampy-aliases.herokuapp.com/>`_
-* `Jam.py Demo Application <https://jampy.herokuapp.com/>`_
+* `The Postfix email aliases utility Demo <https://jampy-aliases.herokuapp.com>`_
+* `The Samba Shares utility Demo <https://sambashares.herokuapp.com>`_
 
 `Here <https://youtu.be/pQYer6po820>`_ is a video showing how to publish a
 Jam.py application from GitHub repo on Heroku
+
+Demo on PythonAnywhere:
+* `Jam.py Demo Application (wip) <https://jampy.pythonanywhere.com>`_
 
 Main features
 =============
