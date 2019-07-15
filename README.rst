@@ -31,7 +31,7 @@ Click on the image to see the online demo
     :width: 100%
     :align: center
     :alt: Online demo
-    :target: http://ms71.pro:1083/
+    :target: http://oazis.ms/jam/
 
 If you are not a professional programmer or an expert in databases, you can use
 Jam.py to store, share and analyze your data.
