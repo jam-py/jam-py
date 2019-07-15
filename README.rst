@@ -18,7 +18,7 @@
 
 
 ================
-Jam.py framework
+Jam.py Application Builder (web framework)
 ================
 
 
