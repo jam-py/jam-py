@@ -202,13 +202,13 @@ def create_items(task):
     task.sys_tasks.add_field(5, 'f_item_name', task.language('name'), common.TEXT, required=True, size=256, edit_visible=False)
     task.sys_tasks.add_field(6, 'f_manual_update', task.language('manual_update'), common.BOOLEAN, visible=False, edit_visible=False)
     task.sys_tasks.add_field(7, 'f_db_type', task.language('db_type'), common.INTEGER, required=True, lookup_values=get_value_list(db_modules.DB_TYPE))
-    task.sys_tasks.add_field(8, 'f_alias', task.language('db_name'), common.TEXT, required=True, size = 30)
-    task.sys_tasks.add_field(9, 'f_login', task.language('login'), common.TEXT, size = 30)
-    task.sys_tasks.add_field(10, 'f_password', task.language('password'), common.TEXT, size = 30)
+    task.sys_tasks.add_field(8, 'f_alias', task.language('db_name'), common.TEXT, required=True, size = 256)
+    task.sys_tasks.add_field(9, 'f_login', task.language('login'), common.TEXT, size = 256)
+    task.sys_tasks.add_field(10, 'f_password', task.language('password'), common.TEXT, size = 256)
     task.sys_tasks.add_field(11, 'f_host', task.language('host'), common.TEXT, size = 30)
     task.sys_tasks.add_field(12, 'f_port', task.language('port'), common.TEXT, size = 10)
-    task.sys_tasks.add_field(13, 'f_encoding', task.language('encoding'), common.TEXT, size = 30)
-    task.sys_tasks.add_field(14, 'f_server', 'Server', common.TEXT, size = 30)
+    task.sys_tasks.add_field(13, 'f_encoding', task.language('encoding'), common.TEXT, size = 256)
+    task.sys_tasks.add_field(14, 'f_server', 'Server', common.TEXT, size = 256)
 
     task.sys_tasks.add_filter('task_id', 'Task ID', 'task_id', common.FILTER_EQ, visible=False)
 
