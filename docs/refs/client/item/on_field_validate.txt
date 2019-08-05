@@ -21,7 +21,12 @@ item that owns the field, use the
 :doc:`owner </refs/client/field/at_owner>` 
 attribute of the field.
 
-the event handler should return a string is the field value is invalid.
+The event handler must return a string if the field value is invalid. 
+When an event handler returns a string, the application throws an exception.
+
+The event is triggered when the 
+:doc:`post <m_post>`
+method is called or when the user leaves the input used to edit the field value.
 
 Example
 =======
@@ -41,5 +46,7 @@ See also
 :doc:`Fields </programming/data/fields>`
 
 :doc:`value </refs/client/field/at_value>`
+
+:doc:`How to validate field value </how_to/how_to_validate_field_value>`
 
 

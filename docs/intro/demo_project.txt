@@ -5,8 +5,10 @@ Demo project
 The framework has a full fledged demo application that demonstrates programming 
 techniques used in the framework. 
 
-To see it you should go to the demo folder of the Jam.py package and run 
-*server.py* script.
+The demo is located in the demo folder of the Jam.py package or you can download 
+it by clicking on the `link <http://jam-py.com/download/demo.tar.gz>`_.
+
+To start the demo application go to the demo folder and run *server.py* script.
 
 .. code-block:: console
 

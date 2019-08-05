@@ -84,7 +84,7 @@
 
     <div class="templates" style="display: none">
 
-        <div class="catalogs-view">
+        <div class="catalogs-view details-view">
             <div class="modal-body">
                 <div class="row-fluid title">
                     <div id="title-left" class="span6"></div>
@@ -108,7 +108,7 @@
             </div>
         </div>
 
-        <div class="journals-view tables-view">
+        <div class="journals-view">
             <div class="modal-body">
                 <div class="view-title">
                     <div class="row-fluid">
@@ -369,6 +369,7 @@
                     <tr>
                         <td id="center-box" class="td-panel" style="width: auto">
                             <div class="view-table langs-table">
+                            </div>
                         </td>
                         <td id="right-box" class="td-panel" style="width: 220px; padding: 4px">
                             <div class="text-center">
@@ -398,12 +399,12 @@
                 <div class="edit-body"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" id="new-btn" class="btn expanded-btn pull-left" style="display: none"></i> New</button>
+                <button type="button" id="new-btn" class="btn expanded-btn pull-left" style="display: none"> New</button>
                 <button type="button" id="delete-btn" class="btn expanded-btn pull-left" style="display: none"> Delete</button>
             </div>
         </div>
 
-        <div class="journals-edit catalogs-edit tables-edit">
+        <div class="journals-edit catalogs-edit details-edit">
             <div class="modal-body">
                 <div class="edit-body">
                 </div>
@@ -466,7 +467,7 @@
             </div>
         </div>
 
-        <div class="sys_items-edit sys_lookup_lists-edit">
+        <div class="sys_items-edit">
             <div class="modal-body">
                 <div class="edit-body row-fluid">
                 </div>
@@ -481,6 +482,24 @@
             <div id="edit-footer" class="modal-footer">
                 <button type="button" id="ok-btn" class="btn expanded-btn">OK<small class="muted">&nbsp;[Ctrl+Enter]</small></button>
                 <button type="button" id="cancel-btn" class="btn expanded-btn">Cancel<small class="muted">&nbsp;[Esc]</small></button>
+            </div>
+        </div>
+
+        <div class="sys_lookup_lists-edit">
+            <div class="modal-body">
+                <div class="edit-body row-fluid">
+                </div>
+                <div class="edit-detail">
+                </div>
+            </div>
+            <div id="edit-detail-footer" class="modal-footer">
+                <button id="delete-btn" class="btn expanded-btn pull-left" type="button">Delete</button>
+                <button id="edit-btn" class="btn expanded-btn" type="button">Edit</button>
+                <button id="new-btn" class="btn expanded-btn" type="button">New</button>
+            </div>
+            <div id="edit-footer" class="modal-footer">
+                <button type="button" id="ok-btn" class="btn expanded-btn">OK</button>
+                <button type="button" id="cancel-btn" class="btn expanded-btn">Cancel</button>
             </div>
         </div>
 

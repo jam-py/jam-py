@@ -6,7 +6,6 @@ When user opens a Jam.py application in a Web browser, the browser first loads
 the *index.html* file. This file is located in the root directory of a project.
 
 .. image:: /admin/_images/index_html.png
-	:scale: 70 %
 	:align: center
 	:alt: index.html
 	

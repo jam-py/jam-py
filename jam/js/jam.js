@@ -2,10 +2,7 @@
 
     "use strict";
 
-    var settings,
-        locale,
-        language,
-        consts = {
+    const consts = {
             "PROJECT_NONE": 1,
             "PROJECT_NO_PROJECT": 2,
             "PROJECT_LOADING": 3,
@@ -79,8 +76,7 @@
             "UPDATE_CLOSE": 8,
             "UPDATE_STATE": 9,
             "UPDATE_APPLIED": 10,
-            "UPDATE_PAGE_CHANGED": 11,
-            "UPDATE_SUMMARY": 12
+            "UPDATE_SUMMARY": 11
         },
         align_value = ['', 'left', 'center', 'right'],
         filter_value = ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in',
@@ -92,24 +88,17 @@
             "field_name",
             "field_caption",
             "data_type",
+            "field_size",
             "required",
             "lookup_item",
-            "master_field",
             "lookup_field",
             "lookup_field1",
             "lookup_field2",
-            "view_visible",
-            "view_index",
             "edit_visible",
-            "edit_index",
             "_read_only",
-            "_expand",
-            "_word_wrap",
-            "field_size",
+            "default",
             "default_value",
-            "is_default",
-            "calculated",
-            "editable",
+            "master_field",
             "_alignment",
             "lookup_values",
             "multi_select",
@@ -137,6 +126,9 @@
             "date", "datetime", "boolean", "longtext", "keys", "file", "image"
         ];
 
+    var settings,
+        locale,
+        language;
 
 
     /**********************************************************************/
@@ -567,7 +559,7 @@
                 }
             }
 
-            function releaseMouseMove(e) {
+            function release_mouse_move(e) {
                 mouseX = undefined;
                 mouseY = undefined;
                 $doc.off("mousemove.modalform");
@@ -640,7 +632,7 @@
                     mouseX = e.screenX;
                     mouseY = e.screenY;
                     $doc.on("mousemove.modalform", captureMouseMove);
-                    $doc.on("mouseup.modalform", releaseMouseMove);
+                    $doc.on("mouseup.modalform", release_mouse_move);
                 });
 
                 $form.on("mousemove", ".modal-header", function(e) {
@@ -940,29 +932,25 @@
                         500
                     );
                 });
-                search.keydown(function(e) {
+                search.keyup(function(e) {
                     var code = e.which;
                     if (code === 13) {
                         e.preventDefault();
                     }
-                    else if (code === 40) {
+                    //~ else if (code === 40 || code === 27) {
+                    else if (code === 27) {
                         self.view_form.find('.dbtable.' + self.item_name + ' .inner-table').focus();
                         e.preventDefault();
+                        e.stopPropagation();
                     }
                 });
                 this.view_form.on('keydown', function(e) {
-                    var code = e.which;
-                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                        return;
+                    var code = e.keyCode || e.which;
+                    if (code === 70 && e.ctrlKey) {
+                        e.preventDefault();
+                        search.focus();
                     }
-                    if (isCharCode(code) || code === 8) {
-                        if (!search.is(":focus")) {
-                            if (code !== 8) {
-                                search.val('');
-                            }
-                            search.focus();
-                        }
-                    }
+                    return
                 });
             }
             else {
@@ -1231,6 +1219,7 @@
                 this[form_name].bind('destroyed', function() {
                     self._close_modeless_form(form_type);
                 });
+                console.trace();
                 throw this.item_name + " - can't close form";
             }
         },
@@ -1676,7 +1665,7 @@
                                     if (!lookups[field.lookup_item.ID]) {
                                         lookups[field.lookup_item.ID] = [];
                                     }
-                                    field.set_data(field_arr[i][val_index]);
+                                    field.data = field_arr[i][val_index];
                                     new_value = field.value;
                                     if (new_value) {
                                         lookups[field.lookup_item.ID].push([field.lookup_field, new_value]);
@@ -1684,9 +1673,9 @@
                                     }
                                 }
                                 else {
-                                    field.set_data(field_arr[i][val_index]);
+                                    field.data = field_arr[i][val_index];
                                     new_value = field.display_text;
-                                    if (field.raw_value === null) {
+                                    if (field.data === null) {
                                         new_value = ' '
                                     }
                                 }
@@ -1856,15 +1845,13 @@
             enable_filters: true,
             view_detail: undefined,
             detail_height: 0,
-            buttons_on_top: false,
-            can_create: true,
-            can_edit: true,
-            can_delete: true
+            buttons_on_top: false
         });
         this.table_options = {
             multiselect: false,
             dblclick_edit: true,
             height: 0,
+            striped: false,
             row_count: 0,
             row_line_count: 1,
             title_line_count: 1,
@@ -1912,7 +1899,7 @@
                 contentType: contentType,
                 async: async,
                 cache: false,
-                data: JSON.stringify([request, this.ID, item.ID, params, self.modification, date]),
+                data: JSON.stringify([request, this.ID, item.ID, params, self.modification]),
                 statusCode: statusCode,
                 success: function(data) {
                     var mess;
@@ -2112,7 +2099,7 @@
             button.click();
         },
 
-        load: function() {
+        load: function(callback) {
             var self = this,
                 reload = function() {
                     setTimeout(function() {
@@ -2123,7 +2110,7 @@
                 };
             this.send_request('connect', null, function(res) {
                 if (res === consts.PROJECT_LOGGED) {
-                    self.load_task();
+                    self.load_task(callback);
                     reload();
                 }
                 else if (res === consts.PROJECT_LOADING) {
@@ -2150,7 +2137,7 @@
                 form_header: true
             });
 
-            form.find("#login-btn").click(function(e) {
+            form.find("#login-btn").on('click.login', function(e) {
                 var form_data = {},
                     ready = false;
                 e.preventDefault();
@@ -2183,6 +2170,7 @@
                             if (form) {
                                 form.modal('hide');
                             }
+                            self.login_form_data = form_data;
                             self.load_task();
                         }
                         else {
@@ -2228,7 +2216,7 @@
             });
         },
 
-        load_task: function() {
+        load_task: function(callback) {
             var self = this,
                 info;
             this.send_request('load', null, function(data) {
@@ -2282,13 +2270,7 @@
                     self.js_filename = 'jam/js/admin.js';
                     self.settings.DYNAMIC_JS = false;
                 }
-                if (self.static_js_modules) {
-                    self.bind_events();
-                    self._page_loaded();
-                }
-                else {
-                    self.init_modules();
-                }
+                self.init_modules(callback);
                 if (self.history_item) {
                     self._set_history_item(self.item_by_ID(self.history_item))
                 }
@@ -2311,12 +2293,50 @@
             });
         },
 
-        _page_loaded: function() {
+        init_modules: function(callback) {
+            var self = this,
+                mutex = 0,
+                calcback_executing = false,
+                calc_modules = function(item) {
+                    if (item.js_filename) {
+                        mutex++;
+                    }
+                },
+                load_script = function(item) {
+                    if (item.js_filename) {
+                        item.load_script(
+                            item.js_filename,
+                            function() {
+                                if (--mutex === 0) {
+                                    self.bind_events();
+                                    if (!calcback_executing) {
+                                        calcback_executing = true;
+                                        self._page_loaded(callback);
+                                    }
+                                }
+                            }
+                        );
+                    }
+                };
+
+            if (this.settings.DYNAMIC_JS) {
+                mutex = 1;
+                load_script(this);
+            } else {
+                this.all(calc_modules);
+                this.all(load_script);
+            }
+        },
+
+        _page_loaded: function(callback) {
             if (locale.RTL) {
                 $('html').attr('dir', 'rtl')
             }
             if (this.on_page_loaded) {
                 this.on_page_loaded.call(this, this);
+            }
+            if (callback) {
+                callback.call(this)
             }
         },
 
@@ -2361,41 +2381,6 @@
                         it.display_history(hist);
                     });
                 }
-            }
-        },
-
-        init_modules: function() {
-            var self = this,
-                mutex = 0,
-                calcback_executing = false,
-                calc_modules = function(item) {
-                    if (item.js_filename) {
-                        mutex++;
-                    }
-                },
-                load_script = function(item) {
-                    if (item.js_filename) {
-                        item.load_script(
-                            item.js_filename,
-                            function() {
-                                if (--mutex === 0) {
-                                    self.bind_events();
-                                    if (!calcback_executing) {
-                                        calcback_executing = true;
-                                        self._page_loaded();
-                                    }
-                                }
-                            }
-                        );
-                    }
-                };
-
-            if (this.settings.DYNAMIC_JS) {
-                mutex = 1;
-                load_script(this);
-            } else {
-                this.all(calc_modules);
-                this.all(load_script);
             }
         },
 
@@ -2753,6 +2738,312 @@
                 }
                 return cur_tab_content
             }
+        },
+
+        round: function(num, dec) {
+            return Number(Math.round(num + 'e' + dec) + 'e-' + dec);
+        },
+
+        str_to_int: function(str) {
+            var result = parseInt(str, 10);
+            if (isNaN(result)) {
+                console.trace();
+                throw "invalid integer value";
+            }
+            return result;
+        },
+
+        str_to_date: function(str) {
+            return this.format_string_to_date(str, locale.D_FMT);
+        },
+
+        str_to_datetime: function(str) {
+            return this.format_string_to_date(str, locale.D_T_FMT);
+        },
+
+        str_to_float: function(text) {
+            var result;
+            text = text.replace(locale.DECIMAL_POINT, ".")
+            text = text.replace(locale.MON_DECIMAL_POINT, ".")
+            result = parseFloat(text);
+            if (isNaN(result)) {
+                console.trace();
+                throw "invalid float value";
+            }
+            return result;
+        },
+
+        str_to_cur: function(val) {
+            var result = '';
+            if (val) {
+                result = $.trim(val);
+                result = result.replace(' ', '')
+                if (locale.MON_THOUSANDS_SEP.length) {
+                    result = result.replace(new RegExp(locale.MON_THOUSANDS_SEP, 'g'), '');
+                }
+                if (locale.CURRENCY_SYMBOL) {
+                    result = $.trim(result.replace(locale.CURRENCY_SYMBOL, ''));
+                }
+                if (locale.POSITIVE_SIGN) {
+                    result = result.replace(locale.POSITIVE_SIGN, '');
+                }
+                if (locale.N_SIGN_POSN === 0 || locale.P_SIGN_POSN === 0) {
+                    result = result.replace('(', '').replace(')', '')
+                }
+                if (locale.NEGATIVE_SIGN && result.indexOf(locale.NEGATIVE_SIGN) !== -1) {
+                    result = result.replace(locale.NEGATIVE_SIGN, '')
+                    result = '-' + result
+                }
+                result = $.trim(result.replace(locale.MON_DECIMAL_POINT, '.'));
+                result = parseFloat(result);
+            }
+            return result;
+        },
+
+        int_to_str: function(value) {
+            if (value || value === 0) {
+                return value.toString();
+            }
+            else {
+                return '';
+            }
+        },
+
+        float_to_str: function(value) {
+            var str,
+                i,
+                result = '';
+            if (value || value === 0) {
+                str = ('' + value.toFixed(6)).replace(".", locale.DECIMAL_POINT);
+                i = str.length - 1;
+                for (; i >= 0; i--) {
+                    if ((str[i] === '0') && (result.length === 0)) {
+                        continue;
+                    } else {
+                        result = str[i] + result;
+                    }
+                }
+                if (result.slice(result.length - 1) === locale.DECIMAL_POINT) {
+                    result = result + '0';
+                }
+            }
+            return result;
+        },
+
+        date_to_str: function(value) {
+            if (value) {
+                return this.format_date_to_string(value, locale.D_FMT);
+            }
+            else {
+                return '';
+            }
+        },
+
+        datetime_to_str: function(value) {
+            if (value) {
+                return this.format_date_to_string(value, locale.D_T_FMT);
+            }
+            else {
+                return '';
+            }
+        },
+
+        cur_to_str: function(value) {
+            var point,
+                dec,
+                digits,
+                i,
+                d,
+                count = 0,
+                len,
+                result = '';
+
+            if (value || value === 0) {
+                result = value.toFixed(locale.FRAC_DIGITS);
+                if (isNaN(result[0])) {
+                    result = result.slice(1, result.length);
+                }
+                point = result.indexOf('.');
+                dec = '';
+                digits = result;
+                if (point >= 0) {
+                    digits = result.slice(0, point);
+                    dec = result.slice(point + 1, result.length);
+                }
+                result = '';
+                len = digits.length;
+                for (i = 0; i < len; i++) {
+                    d = digits[len - i - 1];
+                    result = d + result;
+                    count += 1;
+                    if ((count % 3 === 0) && (i !== len - 1)) {
+                        result = locale.MON_THOUSANDS_SEP + result;
+                    }
+                }
+                if (dec) {
+                    result = result + locale.MON_DECIMAL_POINT + dec;
+                }
+                if (value < 0) {
+                    if (locale.N_SIGN_POSN === 3) {
+                        result = locale.NEGATIVE_SIGN + result;
+                    } else if (locale.N_SIGN_POSN === 4) {
+                        result = result + locale.NEGATIVE_SIGN;
+                    }
+                } else {
+                    if (locale.P_SIGN_POSN === 3) {
+                        result = locale.POSITIVE_SIGN + result;
+                    } else if (locale.P_SIGN_POSN === 4) {
+                        result = result + locale.POSITIVE_SIGN;
+                    }
+                }
+                if (locale.CURRENCY_SYMBOL) {
+                    if (value < 0) {
+                        if (locale.N_CS_PRECEDES) {
+                            if (locale.N_SEP_BY_SPACE) {
+                                result = locale.CURRENCY_SYMBOL + ' ' + result;
+                            } else {
+                                result = locale.CURRENCY_SYMBOL + result;
+                            }
+                        } else {
+                            if (locale.N_SEP_BY_SPACE) {
+                                result = result + ' ' + locale.CURRENCY_SYMBOL;
+                            } else {
+                                result = result + locale.CURRENCY_SYMBOL;
+                            }
+                        }
+                    } else {
+                        if (locale.P_CS_PRECEDES) {
+                            if (locale.P_SEP_BY_SPACE) {
+                                result = locale.CURRENCY_SYMBOL + ' ' + result;
+                            } else {
+                                result = locale.CURRENCY_SYMBOL + result;
+                            }
+                        } else {
+                            if (locale.P_SEP_BY_SPACE) {
+                                result = result + ' ' + locale.CURRENCY_SYMBOL;
+                            } else {
+                                result = result + locale.CURRENCY_SYMBOL;
+                            }
+                        }
+                    }
+                }
+                if (value < 0) {
+                    if (locale.N_SIGN_POSN === 0 && locale.NEGATIVE_SIGN) {
+                        result = locale.NEGATIVE_SIGN + '(' + result + ')';
+                    } else if (locale.N_SIGN_POSN === 1) {
+                        result = locale.NEGATIVE_SIGN + result;
+                    } else if (locale.N_SIGN_POSN === 2) {
+                        result = result + locale.NEGATIVE_SIGN;
+                    }
+                } else {
+                    if (locale.P_SIGN_POSN === 0 && locale.POSITIVE_SIGN) {
+                        result = locale.POSITIVE_SIGN + '(' + result + ')';
+                    } else if (locale.P_SIGN_POSN === 1) {
+                        result = locale.POSITIVE_SIGN + result;
+                    } else if (locale.P_SIGN_POSN === 2) {
+                        result = result + locale.POSITIVE_SIGN;
+                    }
+                }
+            }
+            return result;
+        },
+
+        parseDateInt: function(str, digits) {
+            var result = parseInt(str.substring(0, digits), 10);
+            if (isNaN(result)) {
+                //            result = 0
+                console.trace();
+                throw 'invalid date';
+            }
+            return result;
+        },
+
+        format_string_to_date: function(str, format) {
+            var ch = '',
+                substr,
+                day, month, year,
+                hour = 0,
+                min = 0,
+                sec = 0;
+            if (str && str.search('.') !== -1) {
+                str = str.split('.')[0];
+            }
+            substr = str;
+            for (var i = 0; i < format.length; ++i) {
+                ch = format.charAt(i);
+                switch (ch) {
+                    case "%":
+                        break;
+                    case "d":
+                        day = this.parseDateInt(substr, 2);
+                        substr = substr.slice(2);
+                        break;
+                    case "m":
+                        month = this.parseDateInt(substr, 2);
+                        substr = substr.slice(2);
+                        break;
+                    case "Y":
+                        year = this.parseDateInt(substr, 4);
+                        substr = substr.slice(4);
+                        break;
+                    case "H":
+                        hour = this.parseDateInt(substr, 2);
+                        substr = substr.slice(2);
+                        break;
+                    case "M":
+                        min = this.parseDateInt(substr, 2);
+                        substr = substr.slice(2);
+                        break;
+                    case "S":
+                        sec = this.parseDateInt(substr, 2);
+                        substr = substr.slice(2);
+                        break;
+                    default:
+                        substr = substr.slice(ch.length);
+                }
+            }
+            return new Date(year, month - 1, day, hour, min, sec);
+        },
+
+        leftPad: function(value, len, ch) {
+            var result = value.toString();
+            while (result.length < len) {
+                result = ch + result;
+            }
+            return result;
+        },
+
+        format_date_to_string: function(date, format) {
+            var ch = '',
+                result = '';
+            for (var i = 0; i < format.length; ++i) {
+                ch = format.charAt(i);
+                switch (ch) {
+                    case "%":
+                        break;
+                    case "d":
+                        result += this.leftPad(date.getDate(), 2, '0');
+                        break;
+                    case "m":
+                        result += this.leftPad(date.getMonth() + 1, 2, '0');
+                        break;
+                    case "Y":
+                        result += date.getFullYear();
+                        break;
+                    case "H":
+                        result += this.leftPad(date.getHours(), 2, '0');
+                        break;
+                    case "M":
+                        result += this.leftPad(date.getMinutes(), 2, '0');
+                        break;
+                    case "S":
+                        result += this.leftPad(date.getSeconds(), 2, '0');
+                        break;
+                    default:
+                        result += ch;
+                }
+            }
+            return result;
         }
     });
 
@@ -2979,6 +3270,7 @@
                         this.item.record_status = consts.RECORD_DELETED;
                     }
                 } else {
+                    console.trace();
                     throw this.item.item_name + ': change log invalid records state';
                 }
                 if (this.item.master) {
@@ -3013,9 +3305,6 @@
                     if (info[consts.REC_STATUS] !== consts.RECORD_UNCHANGED) {
                         details = record_log.details;
                         old_record = record_log.old_record;
-                        //~ if (this.item.keep_history) {
-                            //~ old_record = record_log.old_record;
-                        //~ }
                         new_record = this.copy_record(record, false)
                         new_details = {};
                         for (var detail_id in details) {
@@ -3330,6 +3619,11 @@
         this._paginate = undefined;
         this.disabled = false;
         this.expanded = true;
+        this.permissions = {
+            can_create: true,
+            can_edit: true,
+            can_delete: true
+        };
         this._log_changes = true;
         this._dataset = null;
         this._eof = false;
@@ -3359,6 +3653,7 @@
         this._show_selected = false;
         this.selection_limit = 1500;
         this.is_loaded = false;
+        this.lookup_field = null;
         this.edit_record_version = 0;
         if (this.task) {
             this.view_options = $.extend({}, this.task.view_options);
@@ -3429,11 +3724,6 @@
                 this._set_record_status(new_value);
             }
         });
-        Object.defineProperty(this, "default_field", {
-            get: function() {
-                return this.get_default_field();
-            }
-        });
         Object.defineProperty(this, "log_changes", {
             get: function() {
                 return this._get_log_changes();
@@ -3470,6 +3760,11 @@
             set: function(new_value) {
                 this._paginate = new_value;
             }
+        });
+        Object.defineProperty(this, "default_field", { // depricated
+            get: function() {
+                return this.get_default_field();
+            },
         });
     }
 
@@ -3525,7 +3820,7 @@
                 return false;
             }
             return this.task.has_privilege(this, operation) &&
-                this.view_options[operation] && this.can_modify;
+                this.permissions[operation] && this.can_modify;
         },
 
         can_create: function() {
@@ -4060,6 +4355,7 @@
 
         copy: function(options) {
             if (this.master) {
+                console.trace();
                 throw 'A detail can not be copied.';
             }
             return this._copy(options);
@@ -4127,7 +4423,8 @@
             else {
                 result.edit_options = $.extend(true, {}, this.task.edit_options);
                 result.view_options = $.extend(true, {}, this.task.view_options);
-                result.table_options = {};
+                result.table_options = $.extend(true, {}, this.task.table_options);
+                //~ result.table_options = {};
             }
             if (options.paginate) {
                 result._paginate = this._paginate;
@@ -4334,6 +4631,7 @@
                 try {
                     fld = this.field_by_name(field_name);
                 } catch (e) {
+                    console.trace();
                     throw this.item_name + ': set_order_by method arument error - ' + field + ' ' + e;
                 }
                 result.push([fld.field_name, desc]);
@@ -4369,15 +4667,17 @@
                     if (filter_type !== -1) {
                         filter_type += 1
                     } else {
+                        console.trace();
                         throw this.item_name + ': set_where method arument error - ' + field_arg;
                     }
                     field = this._field_by_name(field_name);
                     if (!field) {
+                        console.trace();
                         throw this.item_name + ': set_where method arument error - ' + field_arg;
                     }
                     if (value !== null) {
                         if (field.data_type === consts.DATETIME && filter_type !== consts.FILTER_ISNULL) {
-                            value = field.format_date_to_string(value, '%Y-%m-%d %H:%M:%S')
+                            value = task.format_date_to_string(value, '%Y-%m-%d %H:%M:%S')
                         }
                         result.push([field_name, filter_type, value, -1])
                     }
@@ -4484,8 +4784,8 @@
                     filters = this._where_list.slice(0);
                 } else {
                     this.each_filter(function(filter, i) {
-                        if (filter.get_value() !== null) {
-                            filters.push([filter.field.field_name, filter.filter_type, filter.get_value(), filter.ID]);
+                        if (filter.value !== null) {
+                            filters.push([filter.field.field_name, filter.filter_type, filter.value, filter.ID]);
                         }
                     });
                 }
@@ -4566,9 +4866,7 @@
 
             if (callback || async) {
                 for (i = 0; i < details.length; i++) {
-                    if (!details[i].disabled) {
-                        detail_count += 1;
-                    }
+                    detail_count += 1;
                 }
                 for (i = 0; i < details.length; i++) {
                     d = details[i];
@@ -4578,6 +4876,9 @@
                         }
                         store_rec_no(d);
                         d.open(after_open);
+                    }
+                    else {
+                        after_open(d)
                     }
                 }
             } else {
@@ -4607,20 +4908,6 @@
             }
         },
 
-        _check_open_options: function(options) {
-            if (options) {
-                if (options.fields && !$.isArray(options.fields)) {
-                    throw this.item_name + ': open method options error: the fields option must be an array.';
-                }
-                if (options.order_by && !$.isArray(options.order_by)) {
-                    throw this.item_name + ': open method options error: the order_by option must be an array.';
-                }
-                if (options.group_by && !$.isArray(options.group_by)) {
-                    throw this.item_name + ': open method options error: the group_by option must be an array.';
-                }
-            }
-        },
-
         _update_params: function(params, new_params) {
             var i,
                 s,
@@ -4644,8 +4931,8 @@
                 }
             }
             this.each_filter(function(filter, i) {
-                if (filter.get_value() !== null) {
-                    filters.push([filter.field.field_name, filter.filter_type, filter.get_value(), filter.ID]);
+                if (filter.value !== null) {
+                    filters.push([filter.field.field_name, filter.filter_type, filter.value, filter.ID]);
                 }
             });
             if (new_params.hasOwnProperty('__search')) {
@@ -4668,12 +4955,24 @@
             }
 
             params.__filters = filters;
-            this._open_params = params;
             return params;
         },
 
-        _update_page: function(params, callback) {
-            this.open({offset: 0, params: params, page_changed: false}, callback);
+        _check_open_options: function(options) {
+            if (options) {
+                if (options.fields && !$.isArray(options.fields)) {
+                    console.trace();
+                    throw this.item_name + ': open method options error: the fields option must be an array.';
+                }
+                if (options.order_by && !$.isArray(options.order_by)) {
+                    console.trace();
+                    throw this.item_name + ': open method options error: the order_by option must be an array.';
+                }
+                if (options.group_by && !$.isArray(options.group_by)) {
+                    console.trace();
+                    throw this.item_name + ': open method options error: the group_by option must be an array.';
+                }
+            }
         },
 
         open: function() {
@@ -4696,7 +4995,6 @@
                 field_name,
                 rec_info,
                 records,
-                page_changed;
                 self = this;
             this._check_open_options(options);
             if (options) {
@@ -4710,7 +5008,6 @@
                 limit = options.limit;
                 funcs = options.funcs;
                 group_by = options.group_by;
-                page_changed = options.page_changed;
             }
             if (!params) {
                 params = {};
@@ -4761,21 +5058,18 @@
                     }
                 } else {
                     this.close();
-                    //~ this._do_after_open();
                     this.update_controls(consts.UPDATE_OPEN);
                     return;
                 }
             }
 
             if (this._paginate && offset !== undefined) {
-                if (page_changed === undefined) {
-                    page_changed = true;
-                }
                 params = this._update_params(this._open_params, params);
                 params.__offset = offset;
                 if (this.on_before_open) {
                     this.on_before_open.call(this, this, params);
                 }
+                this._open_params = params;
             } else {
                 if (offset === undefined) {
                     offset = 0;
@@ -4789,10 +5083,10 @@
             }
             this.change_log.prepare();
             this._dataset = [];
-            this._do_open(offset, async, params, open_empty, page_changed, callback);
+            this._do_open(offset, async, params, open_empty, callback);
         },
 
-        _do_open: function(offset, async, params, open_empty, page_changed, callback) {
+        _do_open: function(offset, async, params, open_empty, callback) {
             var self = this,
                 i,
                 filters,
@@ -4804,13 +5098,13 @@
             if (this.on_open && !open_empty) {
                 if (this.on_open) {
                     this.on_open.call(this, this, params, function(data) {
-                        self._do_after_load(data, offset, callback);
+                        self._do_after_load(data, offset, params, callback);
                     });
                 }
             }
             else if (async && !open_empty) {
                 this.send_request('open', params, function(data) {
-                    self._do_after_load(data, offset, page_changed, callback);
+                    self._do_after_load(data, offset, params, callback);
                 });
             } else {
                 if (open_empty) {
@@ -4820,11 +5114,11 @@
                 } else {
                     data = this.send_request('open', params);
                 }
-                this._do_after_load(data, offset, page_changed, callback);
+                this._do_after_load(data, offset, params, callback);
             }
         },
 
-        _do_after_load: function(data, offset, page_changed, callback) {
+        _do_after_load: function(data, offset, params, callback) {
             var rows,
                 error_mes,
                 i,
@@ -4834,7 +5128,9 @@
                 if (error_mes) {
                     this.alert_error(error_mes)
                 } else {
-                    this.edit_record_version = data[2];
+                    if (params.__edit_record_id) {
+                        this.edit_record_version = data[2];
+                    }
                     if (data[0]) {
                         rows = data[0];
                         len = rows.length;
@@ -4859,12 +5155,7 @@
                                 this._on_filters_applied_internal.call(this, this);
                             }
                         }
-                        if (page_changed) {
-                            this.update_controls(consts.UPDATE_PAGE_CHANGED);
-                        }
-                        else {
-                            this.update_controls(consts.UPDATE_OPEN);
-                        }
+                        this.update_controls(consts.UPDATE_OPEN);
                         if (callback) {
                             callback.call(this, this);
                         }
@@ -4873,6 +5164,53 @@
             } else {
                 this._dataset = [];
                 console.log(this.item_name + " error while opening table");
+            }
+        },
+
+        _do_on_refresh_page: function(rec_no, callback) {
+            if (rec_no !== null) {
+                this.rec_no = rec_no;
+            }
+            this.update_controls(consts.UPDATE_OPEN);
+            if (callback) {
+                callback.call(this);
+            }
+        },
+
+        refresh_page: function(call_back) {
+            var args = this._check_args(arguments),
+                callback = args['function'],
+                async = args['boolean'],
+                self = this,
+                rec_no = this.rec_no;
+            if (!this.master) {
+                if (callback || async) {
+                    this.reopen(this._open_params.__offset, {}, function() {
+                        self._do_on_refresh_page(rec_no, callback);
+                    });
+                }
+                else {
+                    this.reopen(this._open_params.__offset, {});
+                    this._do_on_refresh_page(rec_no, callback);
+                }
+            }
+        },
+
+        reopen: function(offset, params, callback) {
+            var options = {};
+            if (this.paginate) {
+                this.open({offset: offset, params: params}, callback);
+            }
+            else {
+                options.params = params;
+                params = this._update_params(this._open_params, params);
+                this._where_list = this._open_params.__filters;
+                this._order_by_list = this._open_params.__order;
+                options.expanded = this._open_params.__expanded;
+                options.open_empty = this._open_params.__open_empty;
+                options.offset = this._open_params.__offset;
+                options.limit = this._open_params.__limit;
+                this.open(options, callback);
             }
         },
 
@@ -4948,7 +5286,7 @@
                     if (field.lookup_item) {
                         index = field.lookup_index;
                     }
-                    data_type = field.get_lookup_data_type();
+                    data_type = field.lookup_data_type;
                     val1 = convert_value(rec1[index], data_type);
                     val2 = convert_value(rec2[index], data_type);
                     if (val1 < val2) {
@@ -5035,6 +5373,7 @@
                     text = text.replace(locale.MON_DECIMAL_POINT, ".");
                     if (text && isNaN(text)) {
                         this.alert_error(language.invalid_value.replace('%s', ''));
+                        console.trace();
                         throw language.invalid_value.replace('%s', '');
                     }
                 }
@@ -5043,7 +5382,7 @@
                     params.__search = [field_name, text, filter_type, search_text];
                 }
                 if (paginating) {
-                    this._update_page(params, callback);
+                    this.reopen(0, params, callback);
                 }
                 else {
                     this.open({params: params}, callback);
@@ -5069,13 +5408,38 @@
             return result;
         },
 
-        _do_before_append: function() {
+        append: function(index) {
+            if (!this._active) {
+                console.trace();
+                throw language.append_not_active.replace('%s', this.item_name);
+            }
+            if (this._applying) {
+                console.trace();
+                throw 'Can not perform this operation. Item is applying data to the database';
+            }
+            if (this.master && !this.master.is_changing()) {
+                console.trace();
+                throw language.append_master_not_changing.replace('%s', this.item_name);
+            }
+            if (this.item_state !== consts.STATE_BROWSE) {
+                console.trace();
+                throw language.append_not_browse.replace('%s', this.item_name);
+            }
             if (this.on_before_append) {
                 this.on_before_append.call(this, this);
             }
-        },
-
-        _do_after_append: function() {
+            this._do_before_scroll();
+            this.item_state = consts.STATE_INSERT;
+            if (index === 0) {
+                this._dataset.splice(0, 0, this.new_record());
+            }
+            else {
+                this._dataset.push(this.new_record());
+                index = this._dataset.length - 1;
+            }
+            this.skip(index, false);
+            this._do_after_scroll();
+            this.record_status = consts.RECORD_INSERTED;
             for (var i = 0; i < this.fields.length; i++) {
                 if (this.fields[i].default_value) {
                     this.fields[i].assign_default_value();
@@ -5085,57 +5449,11 @@
             if (this.on_after_append) {
                 this.on_after_append.call(this, this);
             }
-        },
-
-        append: function() {
-            if (!this._active) {
-                throw language.append_not_active.replace('%s', this.item_name);
-            }
-            if (this._applying) {
-                throw 'Can not perform this operation. Item is applying data to the database';
-            }
-            if (this.master && !this.master.is_changing()) {
-                throw language.append_master_not_changing.replace('%s', this.item_name);
-            }
-            if (this.item_state !== consts.STATE_BROWSE) {
-                throw language.append_not_browse.replace('%s', this.item_name);
-            }
-            this._do_before_append();
-            this._do_before_scroll();
-            this._old_row = this.rec_no;
-            this.item_state = consts.STATE_INSERT;
-            this._dataset.push(this.new_record());
-            this._cur_row = this._dataset.length - 1;
-            this.record_status = consts.RECORD_INSERTED;
             this.update_controls();
-            this._do_after_scroll();
-            this._do_after_append();
         },
 
         insert: function() {
-            if (!this._active) {
-                throw language.insert_not_active.replace('%s', this.item_name);
-            }
-            if (this._applying) {
-                throw 'Can not perform this operation. Item is applying data to the database';
-            }
-            if (this.master && !this.master.is_changing()) {
-                throw language.insert_master_not_changing.replace('%s', this.item_name);
-            }
-            if (this.item_state !== consts.STATE_BROWSE) {
-                throw language.insert_not_browse.replace('%s', this.item_name);
-            }
-            this._do_before_append();
-            this._do_before_scroll();
-            this._old_row = this.rec_no;
-            this.item_state = consts.STATE_INSERT;
-            this._dataset.splice(0, 0, this.new_record());
-            this._cur_row = 0;
-            this._modified = false;
-            this.record_status = consts.RECORD_INSERTED;
-            this.update_controls();
-            this._do_after_scroll();
-            this._do_after_append();
+            this.append(0);
         },
 
         _do_before_edit: function() {
@@ -5152,40 +5470,35 @@
 
         edit: function() {
             if (!this._active) {
+                console.trace();
                 throw language.edit_not_active.replace('%s', this.item_name);
             }
             if (this._applying) {
+                console.trace();
                 throw 'Can not perform this operation. Item is applying data to the database';
             }
             if (this.record_count() === 0) {
+                console.trace();
                 throw language.edit_no_records.replace('%s', this.item_name);
             }
+            if (this.item_state === consts.STATE_EDIT) {
+                return
+            }
             if (this.master && !this.master.is_changing()) {
+                console.trace();
                 throw language.edit_master_not_changing.replace('%s', this.item_name);
             }
             if (this.item_state !== consts.STATE_BROWSE) {
+                console.trace();
                 throw language.edit_not_browse.replace('%s', this.item_name);
             }
             this._do_before_edit();
             this.change_log.log_change();
             this._buffer = this.change_log.store_record_log();
             this.item_state = consts.STATE_EDIT;
-            this._old_row = this.rec_no;
             this._old_status = this.record_status;
             this._modified = false;
             this._do_after_edit();
-        },
-
-        _do_before_cancel: function() {
-            if (this.on_before_cancel) {
-                this.on_before_cancel.call(this, this);
-            }
-        },
-
-        _do_after_cancel: function() {
-            if (this.on_after_cancel) {
-                this.on_after_cancel.call(this, this);
-            }
         },
 
         cancel: function() {
@@ -5194,36 +5507,39 @@
                 modified = this._modified,
                 self = this,
                 prev_state;
-            this._do_before_cancel();
-            if (this.item_state === consts.STATE_EDIT) {
-                this.change_log.restore_record_log(this._buffer)
-                this.update_controls(consts.UPDATE_CANCEL)
-                for (var i = 0; i < this.details.length; i++) {
-                    this.details[i].update_controls(consts.UPDATE_OPEN);
-                }
-            } else if (this.item_state === consts.STATE_INSERT) {
-                this.change_log.remove_record_log();
-                this._dataset.splice(this.rec_no, 1);
-            } else {
-                throw language.cancel_invalid_state.replace('%s', this.item_name);
+            if (this.on_before_cancel) {
+                this.on_before_cancel.call(this, this);
             }
-
-            prev_state = this.item_state;
             this._canceling = true;
             try {
-                this.item_state = consts.STATE_BROWSE;
-                if (prev_state === consts.STATE_INSERT) {
-                    this._do_before_scroll();
+                if (this.item_state === consts.STATE_EDIT) {
+                    this.change_log.restore_record_log(this._buffer)
+                    this.update_controls(consts.UPDATE_CANCEL)
+                    for (var i = 0; i < this.details.length; i++) {
+                        this.details[i].update_controls(consts.UPDATE_OPEN);
+                    }
+                } else if (this.item_state === consts.STATE_INSERT) {
+                    //~ this._do_before_scroll();
+                    this.change_log.remove_record_log();
+                    this._dataset.splice(this.rec_no, 1);
+                } else {
+                    console.trace();
+                    throw language.cancel_invalid_state.replace('%s', this.item_name);
                 }
-                this._cur_row = this._old_row;
+
+                prev_state = this.item_state;
+                this.item_state = consts.STATE_BROWSE;
+                this.skip(this._old_row, false);
+                this._modified = false;
                 if (prev_state === consts.STATE_EDIT) {
                     this.record_status = this._old_status;
                 }
-                this._modified = false;
-                if (prev_state === consts.STATE_INSERT) {
+                else if (prev_state === consts.STATE_INSERT) {
                     this._do_after_scroll();
                 }
-                this._do_after_cancel();
+                if (this.on_after_cancel) {
+                    this.on_after_cancel.call(this, this);
+                }
                 if (modified && this.details.length) {
                     this.each_detail(function(d) {
                         self._detail_changed(d);
@@ -5234,6 +5550,49 @@
             finally {
                 this._canceling = false;
             }
+        },
+
+        delete: function() {
+            var rec = this.rec_no;
+            if (!this._active) {
+                console.trace();
+                throw language.delete_not_active.replace('%s', this.item_name);
+            }
+            if (this.record_count() === 0) {
+                console.trace();
+                throw language.delete_no_records.replace('%s', this.item_name);
+            }
+            if (this.master && !this.master.is_changing()) {
+                console.trace();
+                throw language.delete_master_not_changing.replace('%s', this.item_name);
+            }
+            try {
+                if (this.on_before_delete) {
+                    this.on_before_delete.call(this, this);
+                }
+                this._do_before_scroll();
+                this.item_state = consts.STATE_DELETE;
+                this.change_log.log_change();
+                if (this.master) {
+                    this.master._set_modified(true);
+                }
+                this._dataset.splice(rec, 1);
+                this.skip(rec, false);
+                this.item_state = consts.STATE_BROWSE;
+                this._do_after_scroll();
+                if (this.on_after_delete) {
+                    this.on_after_delete.call(this, this);
+                }
+                if (this.master) {
+                    this.master._detail_changed(this, true);
+                }
+            } catch (e) {
+                console.trace();
+                throw e;
+            } finally {
+                this.item_state = consts.STATE_BROWSE;
+            }
+            this.update_controls();
         },
 
         is_browsing: function() {
@@ -5254,54 +5613,6 @@
 
         is_deleting: function() {
             return this.item_state === consts.STATE_DELETE;
-        },
-
-
-        _do_before_delete: function(callback) {
-            if (this.on_before_delete) {
-                this.on_before_delete.call(this, this);
-            }
-        },
-
-        _do_after_delete: function() {
-            if (this.on_after_delete) {
-                this.on_after_delete.call(this, this);
-            }
-        },
-
-        "delete": function() {
-            var rec = this.rec_no;
-            if (!this._active) {
-                throw language.delete_not_active.replace('%s', this.item_name);
-            }
-            if (this.record_count() === 0) {
-                throw language.delete_no_records.replace('%s', this.item_name);
-            }
-            if (this.master && !this.master.is_changing()) {
-                throw language.delete_master_not_changing.replace('%s', this.item_name);
-            }
-            this.item_state = consts.STATE_DELETE;
-            try {
-                this._do_before_delete();
-                this._do_before_scroll();
-                this.change_log.log_change();
-                if (this.master) {
-                    this.master._set_modified(true);
-                }
-                this._dataset.splice(rec, 1);
-                this.rec_no = rec;
-                this.item_state = consts.STATE_BROWSE;
-                this._do_after_scroll();
-                this._do_after_delete();
-                if (this.master) {
-                    this.master._detail_changed(this, true);
-                }
-            } catch (e) {
-                throw e;
-            } finally {
-                this.item_state = consts.STATE_BROWSE;
-            }
-            this.update_controls();
         },
 
         detail_by_ID: function(ID) {
@@ -5326,13 +5637,14 @@
                 modified = this._modified;
 
             if (!this.is_changing()) {
+                console.trace();
                 throw this.item_name + ' post method: dataset is not in edit or insert mode';
             }
             if (this.on_before_post) {
                 this.on_before_post.call(this, this);
             }
             if (this.master && this._master_id) {
-                this.field_by_name(this._master_id).set_data(this.master.ID);
+                this.field_by_name(this._master_id).data = this.master.ID;
             }
             this.check_record_valid();
             len = this.details.length;
@@ -5382,7 +5694,7 @@
             this.change_log.get_changes(changes);
             if (!this.change_log.is_empty_obj(changes.data)) {
                 params = $.extend({}, params);
-                params._edit_record_version = this.edit_record_version;
+                params.__edit_record_version = this.edit_record_version;
                 if (this.on_before_apply) {
                     this.on_before_apply.call(this, this, params);
                 }
@@ -5416,7 +5728,7 @@
                     }
                     throw err;
                 } else {
-                    this.edit_record_version = res.edit_record_version;
+                    this.edit_record_version = res.__edit_record_version;
                     this.change_log.update(res)
                     if (this.on_after_apply) {
                         this.on_after_apply.call(this, this, err);
@@ -5653,29 +5965,31 @@
         },
 
         _do_before_scroll: function() {
-            if (this._cur_row !== null) {
-                if (this.is_changing()) {
-                    this.post();
-                }
-                if (this.on_before_scroll) {
-                    this.on_before_scroll.call(this, this);
-                }
-                if (this._on_before_scroll_internal) {
-                    this._on_before_scroll_internal.call(this, this);
-                }
+            if (this.is_changing()) {// && !this._canceling) {
+                this.post();
+            }
+            if (this.on_before_scroll) {
+                this.on_before_scroll.call(this, this);
+            }
+            if (this._on_before_scroll_internal) {
+                this._on_before_scroll_internal.call(this, this);
             }
         },
 
-        skip: function(value) {
+        skip: function(value, trigger_events) {
             var eof,
                 bof,
                 old_row,
                 new_row;
+            if (trigger_events === undefined) {
+                trigger_events = true;
+            }
             if (this.record_count() === 0) {
-                this._do_before_scroll();
+                if (trigger_events) this._do_before_scroll();
+                this._cur_row = null;
                 this._eof = true;
                 this._bof = true;
-                this._do_after_scroll();
+                if (trigger_events) this._do_after_scroll();
             } else {
                 old_row = this._cur_row;
                 eof = false;
@@ -5692,14 +6006,12 @@
                 this._eof = eof;
                 this._bof = bof;
                 if (old_row !== new_row) {
-                    this._do_before_scroll();
+                    if (trigger_events) this._do_before_scroll();
                     this._cur_row = new_row;
-                    this._do_after_scroll();
-                } else if (eof || bof && this.is_new() && this.record_count() === 1) {
-                    this._do_before_scroll();
-                    this._do_after_scroll();
+                    if (trigger_events) this._do_after_scroll();
                 }
             }
+            this._old_row = this._cur_row;
         },
 
         _set_rec_no: function(value) {
@@ -5713,9 +6025,7 @@
         },
 
         _get_rec_no: function() {
-            if (this._active) {
-                return this._cur_row;
-            }
+            return this._cur_row;
         },
 
         filter_active: function() {
@@ -5736,7 +6046,7 @@
             if (this.filter_active()) {
                 this.find_last();
             } else {
-                this.rec_no = this._dataset.length;
+                this.rec_no = this._dataset.length - 1;
             }
         },
 
@@ -6105,7 +6415,7 @@
                 options.default_order = true;
                 if (!in_tab) {
                     if (task.lock_item && this.edit_lock) {
-                        options.params = {_edit_record_id: this.field_by_name(this._primary_key).value}
+                        options.params = {__edit_record_id: this.field_by_name(this._primary_key).value}
                     }
                     this.refresh_record(options, function(error) {
                         create_form()
@@ -6159,11 +6469,13 @@
                 where[pk] = pk_value;
                 copy.set_where(where);
                 if (task.lock_item && this.edit_lock) {
-                    params = {_edit_record_id: pk_value};
+                    params = {__edit_record_id: pk_value};
                 }
                 copy.edit_options.edit_detail_filters = {};
                 this.each_detail(function(d) {
-                    copy.edit_options.edit_detail_filters[d.item_name] = d._open_params.__filters.slice();
+                    if (d._open_params.__filters) {
+                        copy.edit_options.edit_detail_filters[d.item_name] = d._open_params.__filters.slice();
+                    }
                 });
                 copy.open({params: params}, function() {
                     var on_after_apply = copy.on_after_apply;
@@ -6174,6 +6486,7 @@
                             on_after_apply(copy, copy);
                         }
                         self.refresh_page(true);
+                        self.update_controls(consts.UPDATE_APPLIED);
                     }
                 });
             }
@@ -6237,7 +6550,7 @@
             if (this.can_delete()) {
                 if (this.rec_count > 0) {
                     this.question(language.delete_record, function() {
-                        self["delete"]();
+                        self.delete();
                         self.apply(function(e) {
                             var error;
                             if (e) {
@@ -6323,7 +6636,7 @@
                     this.post();
                     this.apply(params, function(error) {
                         if (error) {
-                            self.alert_error(error, {duration: 20});
+                            self.alert_error(error, {duration: 10});
                             this.enable_edit_form();
                             if (!self.is_changing()) {
                                 self.edit();
@@ -6494,7 +6807,7 @@
                 catch (e) {
                     params = {};
                 }
-                this._update_page(params, function() {
+                this.reopen(0, params, function() {
                     self.close_filter_form();
                 });
             }
@@ -6536,7 +6849,8 @@
         enable_controls: function() {
             this._disabled_count -= 1;
             if (this.controls_enabled()) {
-                this.update_controls(consts.UPDATE_SCROLLED);
+                //~ this.update_controls(consts.UPDATE_SCROLLED);
+                this.update_controls();
             }
         },
 
@@ -6583,14 +6897,15 @@
             var table_container = this.view_form.find('.' + this.view_options.table_container_class),
                 height,
                 detail,
-                detail_container;
+                detail_container,
+                self = this;
             if (table_container && table_container.length) {
                 if (this.view_options.view_details) {
                     detail_container = this.view_form.find('.' + this.view_options.detail_container_class);
                     if (detail_container) {
                         height = this.view_options.detail_height;
                         if (!height) {
-                            height = 210;
+                            height = 232;
                         }
                         this.create_detail_table(detail_container, {height: height});
                         this.table_options.height -= height;
@@ -6599,7 +6914,7 @@
                 if (this.master) {
                     this.table_options.height = this.master.edit_options.detail_height;
                     if (!this.table_options.height) {
-                        this.table_options.height = 260;
+                        this.table_options.height = 262;
                     }
                 }
                 this.create_table(table_container);
@@ -6898,20 +7213,27 @@
         _detail_changed: function(detail, modified) {
             if (modified && !detail.paginate && this.on_detail_changed ||
                 detail.controls.length && detail.table_options.summary_fields.length) {
-                var self = this;
-                clearTimeout(this._detail_changed_time_out);
-                this._detail_changed_time_out = setTimeout(
-                    function() {
-                        detail._summary = undefined;
-                        if (modified && self.on_detail_changed) {
-                            self.on_detail_changed.call(self, self, detail);
-                        }
-                        if (detail._summary === undefined) {
-                            self.calc_summary(detail);
-                        }
-                    },
-                    100
-                );
+                detail._summary = undefined;
+                if (modified && this.on_detail_changed) {
+                    this.on_detail_changed.call(this, this, detail);
+                }
+                if (detail._summary === undefined) {
+                    this.calc_summary(detail);
+                }
+                //~ var self = this;
+                //~ clearTimeout(this._detail_changed_time_out);
+                //~ this._detail_changed_time_out = setTimeout(
+                    //~ function() {
+                        //~ detail._summary = undefined;
+                        //~ if (modified && self.on_detail_changed) {
+                            //~ self.on_detail_changed.call(self, self, detail);
+                        //~ }
+                        //~ if (detail._summary === undefined) {
+                            //~ self.calc_summary(detail);
+                        //~ }
+                    //~ },
+                    //~ 0
+                //~ );
             }
         },
 
@@ -7312,7 +7634,7 @@
             if (this._default_field === undefined) {
                 this._default_field = null;
                 for (i = 0; i < this.fields.length; i++) {
-                    if (this.fields[i].is_default) {
+                    if (this.fields[i].default) {
                         this._default_field = this.fields[i];
                         break;
                     }
@@ -7330,8 +7652,7 @@
         },
 
         round: function(num, dec) {
-            //~ return Math.round(num * Math.pow(10, dec)) / Math.pow(10, dec);
-            return Number(num.toFixed(dec));
+            return task.round(num, dec)
         },
 
         refresh: function(callback) {
@@ -7347,7 +7668,9 @@
                 },
             options = $.extend(true, {}, default_options, options);
             if (copy.record_count() === 1) {
-                this.edit_record_version = copy.edit_record_version;
+                if (options.params && options.params.__edit_record_id) {
+                    this.edit_record_version = copy.edit_record_version;
+                }
                 len = copy._dataset[0].length;
                 for (i = 0; i < len; i++) {
                     this._dataset[this.rec_no][i] = copy._dataset[0][i];
@@ -7382,6 +7705,7 @@
                 primary_key = this._primary_key,
                 copy;
             if (this.master) {
+                console.trace();
                 throw 'The refresh_record method can not be executed for a detail item';
             }
             if (!this.rec_count) {
@@ -7406,36 +7730,6 @@
             }
             else if (callback) {
                 callback.call(this);
-            }
-        },
-
-
-        _do_on_refresh_page: function(rec_no, callback) {
-            if (rec_no !== null) {
-                this.rec_no = rec_no;
-            }
-            this.update_controls(consts.UPDATE_OPEN);
-            if (callback) {
-                callback.call(this);
-            }
-        },
-
-        refresh_page: function(call_back) {
-            var args = this._check_args(arguments),
-                callback = args['function'],
-                async = args['boolean'],
-                self = this,
-                rec_no = this.rec_no;
-            if (!this.master) {
-                if (callback || async) {
-                    this.open({params: this._open_params, offset: this._open_params.__offset}, function() {
-                        this._do_on_refresh_page(rec_no, callback);
-                    });
-                }
-                else {
-                    this.open({params: this._open_params, offset: this._open_params.__offset});
-                    this._do_on_refresh_page(rec_no, callback);
-                }
             }
         },
 
@@ -7761,11 +8055,22 @@
         Object.defineProperty(this, "data", {
             get: function() {
                 return this.get_data();
+            },
+            set: function(new_value) {
+                this.set_data(new_value);
             }
         });
         Object.defineProperty(this, "lookup_data", {
             get: function() {
                 return this.get_lookup_data();
+            },
+            set: function(new_value) {
+                this.set_lookup_data(new_value);
+            }
+        });
+        Object.defineProperty(this, "lookup_data_type", {
+            get: function() {
+                return this.get_lookup_data_type();
             }
         });
         Object.defineProperty(this, "value", {
@@ -7776,9 +8081,9 @@
                 this.set_value(new_value);
             }
         });
-        Object.defineProperty(this, "raw_value", {
+        Object.defineProperty(this, "raw_value", { // depricated
             get: function() {
-                return this.get_raw_value();
+                return this.data;
             },
         });
         Object.defineProperty(this, "text", {
@@ -7809,7 +8114,7 @@
         });
         Object.defineProperty(this, "lookup_type", {
             get: function() {
-                return field_type_names[this.get_lookup_data_type()];
+                return field_type_names[this.lookup_data_type];
             },
         });
         Object.defineProperty(this, "alignment", {
@@ -7868,17 +8173,24 @@
                 if (this.owner) {
                     this.owner.alert_error(mess, {duration: 0});
                 }
+                console.trace();
                 throw mess
             }
         },
 
         get_data: function() {
-            var row;
+            var row,
+                result;
             if (this.field_kind === consts.ITEM_FIELD) {
                 row = this.get_row();
                 if (row && this.bind_index >= 0) {
-                    return row[this.bind_index];
+                    result = row[this.bind_index];
+                    if (this.data_type === consts.DATETIME && result) {
+                        result = result.replace('T', ' ');
+                    }
+                    return result;
                 }
+
             } else {
                 return this._value;
             }
@@ -7897,11 +8209,16 @@
         },
 
         get_lookup_data: function() {
-            var row;
+            var row,
+                result;
             if (this.field_kind === consts.ITEM_FIELD) {
                 row = this.get_row();
                 if (row && this.lookup_index >= 0) {
-                    return row[this.lookup_index];
+                    result = row[this.lookup_index];
+                    if (this.data_type === consts.DATETIME && result) {
+                        result = result.replace('T', ' ');
+                    }
+                    return result
                 }
             } else {
                 return this._lookup_value;
@@ -7945,7 +8262,7 @@
                             result = this.datetime_to_str(result);
                             break;
                         case consts.BOOLEAN:
-                            if (this.get_value()) {
+                            if (this.value) {
                                 result = language.yes;
                             } else {
                                 result = language.no;
@@ -7958,9 +8275,6 @@
                             break;
                     }
                 }
-                //~ } else {
-                    //~ result = "";
-                //~ }
             } catch (e) {
                 result = '';
                 console.error(e);
@@ -7973,123 +8287,54 @@
 
         set_text: function(value) {
             var error = "";
-
-            if (value !== this.get_text()) {
+            if (value !== this.text) {
                 switch (this.data_type) {
                     case consts.TEXT:
-                        this.set_value(value);
+                        this.value = value;
                         break;
                     case consts.INTEGER:
-                        this.set_value(this.str_to_int(value));
+                        this.value = this.str_to_int(value);
                         break;
                     case consts.FLOAT:
-                        this.set_value(this.str_to_float(value));
+                        this.value = this.str_to_float(value);
                         break;
                     case consts.CURRENCY:
-                        this.set_value(this.str_to_float(value));
-                        //~ this.set_value(this.str_to_cur(value));
+                        this.value = this.str_to_float(value);
                         break;
                     case consts.DATE:
-                        this.set_value(this.str_to_date(value));
+                        this.value = this.str_to_date(value);
                         break;
                     case consts.DATETIME:
-                        this.set_value(this.str_to_datetime(value));
+                        this.value = this.str_to_datetime(value);
                         break;
                     case consts.BOOLEAN:
-                        if (language) {
-                            if (value.length && value.toUpperCase().trim() === language.yes.toUpperCase().trim()) {
-                                this.set_value(true);
-                            } else {
-                                this.set_value(false);
-                            }
+                        if (value.toUpperCase() === language.yes.toUpperCase()) {
+                            this.value = true;
                         } else {
-                            if (value.length && (value[0] === 'T' || value[0] === 't')) {
-                                this.set_value(true);
-                            } else {
-                                this.set_value(false);
-                            }
+                            this.value = false;
                         }
                         break;
                     case consts.KEYS:
                         break;
                     default:
-                        this.set_value(value);
+                        this.value = value;
                 }
             }
         },
 
-        _convert_date_time: function(value) {
-            if (value) {
-                if (value.search('.') !== -1) {
-                    value = value.split('.')[0];
-                }
-                return this.format_string_to_date(value, '%Y-%m-%d %H:%M:%S');
-            }
-            else return value;
-        },
-
-        _convert_date: function(value) {
-            if (value) {
-                if (value.search(' ') !== -1) {
-                    value = value.split(' ')[0];
-                }
-                return this.format_string_to_date(value, '%Y-%m-%d');
-            }
-            else return value;
-        },
-
-        _convert_keys: function(value) {
-            var result = [];
-            if (this.get_lookup_data()) {
-                return this.get_lookup_data();
-            }
-            else if (value) {
-                if (this.get_lookup_data_type() === consts.TEXT) {
-                    result = value.split(';')
-                }
-                else {
-                    result = value.split(';').map(function(i) {
-                        return parseInt(i, 10);
-                    });
-                }
-            }
-            this.set_lookup_data(result);
-            return result;
-        },
-
-        get_raw_value: function() {
-            var result = this.get_data();
-            if (this.data_type === consts.DATETIME && result) {
-                result = result.replace('T', ' ');
-            }
-            else if (this.multi_select) {
-                if (result instanceof Array) {
-                    if (!result.length) {
-                        result = null;
-                    }
-                }
-            }
-            return result;
-        },
-
-        get_value: function() {
-            var value = this.get_raw_value();
+          get_value: function() {
+            var value = this.data;
             if (value === null) {
                 if (this.field_kind === consts.ITEM_FIELD) {
                     switch (this.data_type) {
                         case consts.INTEGER:
-                            value = 0;
-                            break;
                         case consts.FLOAT:
-                            value = 0;
-                            break;
                         case consts.CURRENCY:
                             value = 0;
                             break;
                         case consts.TEXT:
-                            value = '';
-                            break;
                         case consts.LONGTEXT:
+                        case consts.FILE:
                             value = '';
                             break;
                         case consts.BOOLEAN:
@@ -8097,9 +8342,6 @@
                             break;
                         case consts.KEYS:
                             value = [];
-                            break;
-                        case consts.FILE:
-                            value = ''
                             break;
                     }
                 }
@@ -8110,16 +8352,21 @@
             else {
                 switch (this.data_type) {
                     case consts.DATE:
-                        value = this._convert_date(value);
+                        value = task.format_string_to_date(value, '%Y-%m-%d');
                         break;
                     case consts.DATETIME:
-                        value = this._convert_date_time(value);
+                        value = task.format_string_to_date(value, '%Y-%m-%d %H:%M:%S');
                         break;
                     case consts.BOOLEAN:
                         return value ? true : false;
                         break;
                     case consts.KEYS:
-                        return this._convert_keys(value);
+                        let result = this.lookup_data;
+                        if (!result) {
+                            result = value.split(';').map(function(i) { return parseInt(i, 10) });
+                            this.lookup_data = result;
+                        }
+                        return result;
                         break;
                     case consts.FILE:
                         if (value) {
@@ -8161,7 +8408,8 @@
 
         _do_before_changed: function() {
             if (this.field_kind === consts.ITEM_FIELD) {
-                if (this.owner.item_state !== consts.STATE_INSERT && this.owner.item_state !== consts.STATE_EDIT) {
+                if (!this.owner.is_changing()) {
+                    console.trace();
                     throw language.not_edit_insert_state.replace('%s', this.owner.item_name);
                 }
                 if (this.owner.on_before_field_changed) {
@@ -8185,9 +8433,11 @@
         _check_system_field_value: function(value) {
             if (this.field_kind === consts.ITEM_FIELD) {
                 if (this.field_name === this.owner._primary_key && this.value && this.value !== value) {
+                    console.trace();
                     throw language.no_primary_field_changing.replace('%s', this.owner.item_name);
                 }
                 if (this.field_name === this.owner._deleted_flag && this.value !== value) {
+                    console.trace();
                     throw language.no_deleted_field_changing.replace('%s', this.owner.item_name);
                 }
             }
@@ -8199,55 +8449,38 @@
             }
             this._check_system_field_value(value);
             this.new_value = null;
-            this.new_lookup_value = lookup_value;
             if (value !== null) {
-                this.new_value = value;
-                if (!this.multi_select) {
+                if (this.multi_select) {
+                    this.new_value = value;
+                }
+                else {
                     switch (this.data_type) {
-                        case consts.INTEGER:
-                            this.new_value = value;
-                            if (typeof(value) === "string") {
-                                this.new_value = parseInt(value, 10);
-                            }
-                            break;
-                        case consts.FLOAT:
-                            this.new_value = value;
-                            if (typeof(value) === "string") {
-                                this.new_value = parseFloat(value);
-                            }
-                            break;
                         case consts.CURRENCY:
-                            this.new_value = value;
-                            if (typeof(value) === "string") {
-                                this.new_value = parseFloat(value);
-                            }
+                            value = task.round(value, locale.FRAC_DIGITS);
                             break;
                         case consts.BOOLEAN:
-                            this.new_value = value ? 1 : 0;
+                            value = value ? 1 : 0;
                             break;
                         case consts.DATE:
-                            this.new_value = this.format_date_to_string(value, '%Y-%m-%d');
+                            value = task.format_date_to_string(value, '%Y-%m-%d');
                             break;
                         case consts.DATETIME:
-                            this.new_value = this.format_date_to_string(value, '%Y-%m-%d %H:%M:%S');
+                            value = task.format_date_to_string(value, '%Y-%m-%d %H:%M:%S');
                             break;
                         case consts.TEXT:
-                            this.new_value = value + '';
+                            value = value + '';
                             break;
                         case consts.KEYS:
-                            this.new_value = value.join(';')
                             lookup_value = value;
+                            value = value.join(';')
                             break;
                     }
+                    this.new_value = value;
                 }
             }
-            if (this.get_raw_value() !== this.new_value) {
+            if (this.data !== this.new_value) {
                 this._do_before_changed();
-                try {
-                    this.set_data(this.new_value);
-                } catch (e) {
-                    throw this.field_name + ": " + this.type_error();
-                }
+                this.data = this.new_value;
                 this._change_lookup_field(lookup_value, slave_field_values);
                 this._set_modified(true);
                 this._do_after_changed(lookup_item);
@@ -8256,13 +8489,12 @@
                 this._do_after_changed(lookup_item, slave_field_values);
             }
             this.new_value = null;
-            this.new_lookup_value = null;
             this.update_controls();
         },
 
         _set_modified: function(value) {
             if (this.field_kind === consts.ITEM_FIELD) {
-                if (this.owner._set_modified && !this.calculated) {
+                if (this.owner._set_modified) {
                     this.owner._set_modified(value);
                 }
             }
@@ -8310,16 +8542,16 @@
             }
             else if (this.lookup_item) {
                 if (this.get_value()) {
-                    value = this.get_lookup_data();
-                    switch (this.get_lookup_data_type()) {
+                    value = this.lookup_data;
+                    switch (this.lookup_data_type) {
                         case consts.DATE:
                             if (typeof(value) === "string") {
-                                value = this._convert_date(value);
+                                value = task.format_string_to_date(value, '%Y-%m-%d');
                             }
                             break;
                         case consts.DATETIME:
                             if (typeof(value) === "string") {
-                                value = this._convert_date_time(value);
+                                value = task.format_string_to_date(value, '%Y-%m-%d %H:%M:%S');
                             }
                             break;
                         case consts.BOOLEAN:
@@ -8337,14 +8569,14 @@
                     value = this.data.substr(0, this.data.indexOf('?'));
                 }
             } else {
-                value = this.get_value();
+                value = this.value;
             }
             return value;
         },
 
         set_lookup_value: function(value) {
             if (this.lookup_item) {
-                this.set_lookup_data(value);
+                this.lookup_data = value;
                 this.update_controls();
             }
         },
@@ -8356,25 +8588,25 @@
                 result = '';
             try {
                 if (this.lookup_values) {
-                    result = this.get_lookup_value();
+                    result = this.lookup_value;
                 }
                 else if (this.lookup_item) {
                     if (this.data_type === consts.KEYS) {
                         result = this.text;
                     }
-                    else if (this.get_value()) {
+                    else if (this.value) {
                         lookup_field = this.lookup_item.field_by_name(this.lookup_field);
                         if (lookup_field.lookup_values) {
                             result = lookup_field._get_value_in_list(this.lookup_value);
                         }
                         else {
-                            result = this.get_lookup_value();
+                            result = this.lookup_value;
                         }
                     }
                     if (result === null) {
                         result = '';
                     } else {
-                        data_type = this.get_lookup_data_type()
+                        data_type = this.lookup_data_type
                         if (data_type) {
                             switch (data_type) {
                                 case consts.DATE:
@@ -8408,7 +8640,7 @@
                 value,
                 field_image,
                 result = {};
-            if (this.get_lookup_data_type() === consts.IMAGE) {
+            if (this.lookup_data_type === consts.IMAGE) {
                 field_image = this.field_image;
                 value = this.value;
                 if (this.lookup_item) {
@@ -8445,7 +8677,7 @@
                 value,
                 src,
                 placeholder;
-            if (this.get_lookup_data_type() === consts.IMAGE) {
+            if (this.lookup_data_type === consts.IMAGE) {
                 size = this._get_image_size(edit_image),
                 field_image = this.field_image;
                 value = this.value;
@@ -8488,7 +8720,7 @@
                 value,
                 result = '';
             if (this.multi_select) {
-                value = this.raw_value;
+                value = this.data;
                 if (value instanceof Array) {
                     len = value.length;
                 }
@@ -8506,18 +8738,18 @@
                 if (result === '&nbsp') result = '';
             } else if (this.lookup_item) {
                 if (this.field_kind === consts.ITEM_FIELD && !this.owner.expanded) {
-                    result = this.get_text();
+                    result = this.text;
                 }
                 else {
                     result = this.get_lookup_text();
                 }
             } else {
                 if (this.data_type === consts.CURRENCY) {
-                    if (this.raw_value !== null) {
-                        result = this.cur_to_str(this.get_value());
+                    if (this.data !== null) {
+                        result = this.cur_to_str(this.value);
                     }
                 } else {
-                    result = this.get_text();
+                    result = this.text;
                 }
             }
             if (this.owner && (this.owner.on_field_get_text || this.owner.on_get_field_text)) {
@@ -8699,21 +8931,19 @@
         },
 
         check_type: function() {
-            this.get_value();
-            if ((this.data_type === consts.TEXT) && (this.field_size !== 0) && (this.get_text().length > this.field_size)) {
+            if ((this.data_type === consts.TEXT) && (this.field_size !== 0) && (this.text.length > this.field_size)) {
+                console.trace();
                 throw this.field_caption + ': ' + language.invalid_length.replace('%s', this.field_size);
             }
             return true;
         },
 
         check_reqired: function() {
-            if (!this.required) {
-                return true;
-            } else if (this.data !== null) {
-                return true;
-            } else {
+            if (this.required && this.data === null) {
+                console.trace();
                 throw this.field_caption + ': ' + language.value_required;
             }
+            return true;
         },
 
         get_mask: function() {
@@ -8759,6 +8989,7 @@
                     if (this.owner && this.owner.on_field_validate) {
                         err = this.owner.on_field_validate.call(this.owner, this);
                         if (err) {
+                            console.trace();
                             throw err;
                             return;
                         }
@@ -8766,6 +8997,7 @@
                     if (this.filter) {
                         err = this.filter.check_value(this)
                         if (err) {
+                            console.trace();
                             throw err;
                             return;
                         }
@@ -8907,7 +9139,7 @@
                 isDigit = code >= 48 && code <= 57,
                 decPoint = ch === '.' || ch === locale.DECIMAL_POINT || ch === locale.MON_DECIMAL_POINT,
                 sign = ch === '+' || ch === '-',
-                data_type = this.get_lookup_data_type();
+                data_type = this.lookup_data_type;
             if (data_type === consts.INTEGER) {
                 if (!isDigit && !sign) {
                     return false;
@@ -8922,294 +9154,51 @@
         },
 
         str_to_int: function(str) {
-            var result = parseInt(str, 10);
-            if (isNaN(result)) {
-                throw "invalid integer value";
-            }
-            return result;
+            return task.str_to_int(str);
         },
 
         str_to_date: function(str) {
-            return this.format_string_to_date(str, locale.D_FMT);
+            return task.str_to_date(str);
         },
 
         str_to_datetime: function(str) {
-            return this.format_string_to_date(str, locale.D_T_FMT);
+            return task.str_to_datetime(str);
         },
 
-        str_to_float: function(text) {
-            var result;
-            text = text.replace(locale.DECIMAL_POINT, ".")
-            text = text.replace(locale.MON_DECIMAL_POINT, ".")
-            result = parseFloat(text);
-            if (isNaN(result)) {
-                throw "invalid float value";
-            }
-            return result;
+        str_to_float: function(str) {
+            return task.str_to_float(str);
         },
 
-        str_to_cur: function(val) {
-            var result = '';
-            if (val) {
-                result = $.trim(val);
-                if (locale.MON_THOUSANDS_SEP.length) {
-                    result = result.replace(locale.MON_THOUSANDS_SEP, '');
-                }
-                if (locale.CURRENCY_SYMBOL) {
-                    result = $.trim(result.replace(locale.CURRENCY_SYMBOL, ''));
-                }
-                if (locale.POSITIVE_SIGN) {
-                    result = result.replace(locale.POSITIVE_SIGN, '');
-                }
-                if (locale.NEGATIVE_SIGN && result.indexOf(locale.NEGATIVE_SIGN) !== -1) {
-                    result = result.replace(locale.NEGATIVE_SIGN, '')
-                    result = '-' + result
-                }
-                result = $.trim(result.replace(locale.MON_DECIMAL_POINT, '.'));
-                result = parseFloat(result);
-            }
-            return result;
+        str_to_cur: function(str) {
+            return task.str_to_cur(str);
         },
 
         int_to_str: function(value) {
-            if (value || value === 0) {
-                return value.toString();
-            }
-            else {
-                return '';
-            }
+            return task.int_to_str(value);
         },
 
         float_to_str: function(value) {
-            var str,
-                i,
-                result = '';
-            if (value || value === 0) {
-                str = ('' + value.toFixed(6)).replace(".", locale.DECIMAL_POINT);
-                i = str.length - 1;
-                for (; i >= 0; i--) {
-                    if ((str[i] === '0') && (result.length === 0)) {
-                        continue;
-                    } else {
-                        result = str[i] + result;
-                    }
-                }
-                if (result.slice(result.length - 1) === locale.DECIMAL_POINT) {
-                    result = result + '0';
-                }
-            }
-            return result;
+            return task.float_to_str(value);
         },
 
         date_to_str: function(value) {
-            if (value) {
-                return this.format_date_to_string(value, locale.D_FMT);
-            }
-            else {
-                return '';
-            }
+            return task.date_to_str(value);
         },
 
         datetime_to_str: function(value) {
-            if (value) {
-                return this.format_date_to_string(value, locale.D_T_FMT);
-            }
-            else {
-                return '';
-            }
+            return task.datetime_to_str(value);
         },
 
         cur_to_str: function(value) {
-            var point,
-                dec,
-                digits,
-                i,
-                d,
-                count = 0,
-                len,
-                result = '';
-
-            if (value || value === 0) {
-                result = value.toFixed(locale.FRAC_DIGITS);
-                if (isNaN(result[0])) {
-                    result = result.slice(1, result.length);
-                }
-                point = result.indexOf('.');
-                dec = '';
-                digits = result;
-                if (point >= 0) {
-                    digits = result.slice(0, point);
-                    dec = result.slice(point + 1, result.length);
-                }
-                result = '';
-                len = digits.length;
-                for (i = 0; i < len; i++) {
-                    d = digits[len - i - 1];
-                    result = d + result;
-                    count += 1;
-                    if ((count % 3 === 0) && (i !== len - 1)) {
-                        result = locale.MON_THOUSANDS_SEP + result;
-                    }
-                }
-                if (dec) {
-                    result = result + locale.MON_DECIMAL_POINT + dec;
-                }
-                if (value < 0) {
-                    if (locale.N_SIGN_POSN === 3) {
-                        result = locale.NEGATIVE_SIGN + result;
-                    } else if (locale.N_SIGN_POSN === 4) {
-                        result = settings.result + locale.NEGATIVE_SIGN;
-                    }
-                } else {
-                    if (locale.P_SIGN_POSN === 3) {
-                        result = locale.POSITIVE_SIGN + result;
-                    } else if (locale.P_SIGN_POSN === 4) {
-                        result = result + locale.POSITIVE_SIGN;
-                    }
-                }
-                if (locale.CURRENCY_SYMBOL) {
-                    if (value < 0) {
-                        if (locale.N_CS_PRECEDES) {
-                            if (locale.N_SEP_BY_SPACE) {
-                                result = locale.CURRENCY_SYMBOL + ' ' + result;
-                            } else {
-                                result = locale.CURRENCY_SYMBOL + result;
-                            }
-                        } else {
-                            if (locale.N_SEP_BY_SPACE) {
-                                result = result + ' ' + locale.CURRENCY_SYMBOL;
-                            } else {
-                                result = result + locale.CURRENCY_SYMBOL;
-                            }
-                        }
-                    } else {
-                        if (locale.P_CS_PRECEDES) {
-                            if (locale.P_SEP_BY_SPACE) {
-                                result = locale.CURRENCY_SYMBOL + ' ' + result;
-                            } else {
-                                result = locale.CURRENCY_SYMBOL + result;
-                            }
-                        } else {
-                            if (locale.P_SEP_BY_SPACE) {
-                                result = result + ' ' + locale.CURRENCY_SYMBOL;
-                            } else {
-                                result = result + locale.CURRENCY_SYMBOL;
-                            }
-                        }
-                    }
-                }
-                if (value < 0) {
-                    if (locale.N_SIGN_POSN === 0 && locale.NEGATIVE_SIGN) {
-                        result = locale.NEGATIVE_SIGN + '(' + result + ')';
-                    } else if (locale.N_SIGN_POSN === 1) {
-                        result = locale.NEGATIVE_SIGN + result;
-                    } else if (locale.N_SIGN_POSN === 2) {
-                        result = result + locale.NEGATIVE_SIGN;
-                    }
-                } else {
-                    if (locale.P_SIGN_POSN === 0 && locale.POSITIVE_SIGN) {
-                        result = locale.POSITIVE_SIGN + '(' + result + ')';
-                    } else if (locale.P_SIGN_POSN === 1) {
-                        result = locale.POSITIVE_SIGN + result;
-                    } else if (locale.P_SIGN_POSN === 2) {
-                        result = result + locale.POSITIVE_SIGN;
-                    }
-                }
-            }
-            return result;
+            return task.cur_to_str(value);
         },
 
-        parseDateInt: function(str, digits) {
-            var result = parseInt(str.substring(0, digits), 10);
-            if (isNaN(result)) {
-                //            result = 0
-                throw 'invalid date';
-            }
-            return result;
+        format_string_to_date: function(value, format) {
+            return task.format_string_to_date(value, format);
         },
 
-        format_string_to_date: function(str, format) {
-            var ch = '',
-                substr = str,
-                day, month, year,
-                hour = 0,
-                min = 0,
-                sec = 0;
-            for (var i = 0; i < format.length; ++i) {
-                ch = format.charAt(i);
-                switch (ch) {
-                    case "%":
-                        break;
-                    case "d":
-                        day = this.parseDateInt(substr, 2);
-                        substr = substr.slice(2);
-                        break;
-                    case "m":
-                        month = this.parseDateInt(substr, 2);
-                        substr = substr.slice(2);
-                        break;
-                    case "Y":
-                        year = this.parseDateInt(substr, 4);
-                        substr = substr.slice(4);
-                        break;
-                    case "H":
-                        hour = this.parseDateInt(substr, 2);
-                        substr = substr.slice(2);
-                        break;
-                    case "M":
-                        min = this.parseDateInt(substr, 2);
-                        substr = substr.slice(2);
-                        break;
-                    case "S":
-                        sec = this.parseDateInt(substr, 2);
-                        substr = substr.slice(2);
-                        break;
-                    default:
-                        substr = substr.slice(ch.length);
-                }
-            }
-            return new Date(year, month - 1, day, hour, min, sec);
-        },
-
-        leftPad: function(value, len, ch) {
-            var result = value.toString();
-            while (result.length < len) {
-                result = ch + result;
-            }
-            return result;
-        },
-
-        format_date_to_string: function(date, format) {
-            var ch = '',
-                result = '';
-            for (var i = 0; i < format.length; ++i) {
-                ch = format.charAt(i);
-                switch (ch) {
-                    case "%":
-                        break;
-                    case "d":
-                        result += this.leftPad(date.getDate(), 2, '0');
-                        break;
-                    case "m":
-                        result += this.leftPad(date.getMonth() + 1, 2, '0');
-                        break;
-                    case "Y":
-                        result += date.getFullYear();
-                        break;
-                    case "H":
-                        result += this.leftPad(date.getHours(), 2, '0');
-                        break;
-                    case "M":
-                        result += this.leftPad(date.getMinutes(), 2, '0');
-                        break;
-                    case "S":
-                        result += this.leftPad(date.getSeconds(), 2, '0');
-                        break;
-                    default:
-                        result += ch;
-                }
-            }
-            return result;
+        format_date_to_string: function(value, format) {
+            return task.format_date_to_string(value, format);
         },
 
         _do_select_value: function(lookup_item) {
@@ -9344,15 +9333,15 @@
         get_value: function() {
             var result;
             if (this.filter_type === consts.FILTER_RANGE) {
-                if (this.field.raw_value !== null && this.field1.raw_value !== null) {
-                    return [this.field.raw_value, this.field1.raw_value];
+                if (this.field.data !== null && this.field1.data !== null) {
+                    return [this.field.data, this.field1.data];
                 }
                 else {
                     return null;
                 }
             }
             else {
-                return this.field.raw_value;
+                return this.field.data;
             }
         },
 
@@ -9381,7 +9370,7 @@
                     if (field === this.field) {
                         other_field = this.field1;
                     }
-                    if (other_field.raw_value === null) {
+                    if (other_field.data === null) {
                         other_field.value = field.value;
                     }
                 }
@@ -9391,14 +9380,15 @@
         check_valid: function() {
             var error = this.check_value(this.field);
             if (error) {
+                console.trace();
                 throw error;
             }
         },
 
         check_value: function(field) {
             if (this.filter_type === consts.FILTER_RANGE) {
-                if (this.field.raw_value === null && this.field1.raw_value !== null ||
-                    this.field.raw_value !== null && this.field1.raw_value === null ||
+                if (this.field.data === null && this.field1.data !== null ||
+                    this.field.data !== null && this.field1.data === null ||
                     this.field.value > this.field1.value) {
                     return language.invalid_range;
                 }
@@ -9410,7 +9400,7 @@
             if (this.visible && this.value != null) {
                 result = this.filter_caption + ': ';
                 if (this.filter_type === consts.FILTER_RANGE) {
-                    result += this.field.get_display_text() + ' - ' + this.field1.get_display_text();
+                    result += this.field.display_text + ' - ' + this.field1.display_text;
                 } else {
                     result += this.field.display_text;
                 }
@@ -9424,7 +9414,7 @@
             if (this.visible && this.value != null) {
                 result = this.filter_caption + ': ';
                 if (this.filter_type === consts.FILTER_RANGE) {
-                    val = this.field.get_display_text() + ' - ' + this.field1.get_display_text();
+                    val = this.field.display_text + ' - ' + this.field1.display_text;
                 } else {
                     val = this.field.display_text;
                 }
@@ -9539,18 +9529,6 @@
                 case consts.UPDATE_OPEN:
                     this.build();
                     break;
-                //~ case consts.UPDATE_CANCEL:
-                    //~ this.changed();
-                    //~ break;
-                //~ case consts.UPDATE_APPEND:
-                    //~ this.changed();
-                    //~ break;
-                //~ case consts.UPDATE_INSERT:
-                    //~ this.changed();
-                    //~ break;
-                //~ case consts.UPDATE_DELETE:
-                    //~ this.changed();
-                    //~ break;
                 case consts.UPDATE_SCROLLED:
                     this.syncronize();
                     break;
@@ -9566,7 +9544,7 @@
         keydown: function(e) {
             var self = this,
                 $li,
-                code = (e.keyCode ? e.keyCode : e.which);
+                code = e.keyCode || e.which;
             if (this.selected_node && !e.ctrlKey && !e.shiftKey) {
                 switch (code) {
                     case 13: //return
@@ -9847,6 +9825,12 @@
     /**********************************************************************/
 
     function DBTable(item, container, options, master_table) {
+        this._editable_fields = [];
+        Object.defineProperty(this, "editable_fields", {
+            get: function() {
+                return this.get_editable_fields();
+            },
+        });
         this.init(item, container, options, master_table);
     }
 
@@ -9868,15 +9852,13 @@
             this.master_table = master_table;
             this.is_mac = navigator.platform.toLowerCase().indexOf('mac') + 1;
 
-            this.editMode = false;
+            this.edit_mode = false;
             this._sorted_fields = [];
             this._multiple_sort = false;
             this.page = 0;
             this.record_count = 0;
             this.cell_widths = {};
-            this.auto_field_width = true;
             this.scrollLeft = 0;
-            //~ this.field_width_updated = undefined;
 
             this.init_options(options);
             this.init_selections();
@@ -9978,14 +9960,14 @@
 
             this.options = $.extend(true, {}, default_options, this.item.table_options);
             this.options = $.extend({}, this.options, options);
-            if (!this.item._paginate) {
-                default_options.striped = false;
-            }
             if (!this.options.height && !this.options.row_count) {
                 this.options.height = 480;
             }
             if (this.options.row_line_count < 1) {
                 this.options.row_line_count = 0;
+            }
+            if (!this.options.row_line_count && !this.options.row_count) {
+                this.options.row_count = 10;
             }
             if (options && options.title_word_wrap) {
                 this.options.title_line_count = 0;
@@ -10007,6 +9989,28 @@
             }
 
             this.on_dblclick = this.options.on_dblclick;
+        },
+
+        get_editable_fields: function() {
+            var i,
+                field,
+                result = [];
+            for (i = 0; i < this._editable_fields.length; i++) {
+                field = this._editable_fields[i];
+                if (!field.read_only && !field.master_field) {
+                    result.push(field)
+                }
+            }
+            if (this.freezed_table) {
+                let index;
+                for (i = 0; i < this.options.freeze_count; i++) {
+                    index = result.indexOf(this.fields[i]);
+                    if (index !== -1) {
+                        result.splice(index, 1);
+                    }
+                }
+            }
+            return result;
         },
 
         init_fields: function() {
@@ -10036,28 +10040,23 @@
                 }
             }
 
-            if (this.options.editable) {
-                this.options.striped = false;
-            }
-            this.editableFields = [];
+            this._editable_fields = [];
             if (this.options.editable_fields) {
                 len = this.fields.length;
                 for (i = 0; i < len; i++) {
-                    if (!this.fields[i].read_only) {
-                        if (this.options.editable_fields.indexOf(this.fields[i].field_name) !== -1) {
-                            this.editableFields.push(this.fields[i]);
-                        }
+                    if (this.options.editable_fields.indexOf(this.fields[i].field_name) !== -1) {
+                        this._editable_fields.push(this.fields[i]);
                     }
                 }
             } else {
                 len = this.fields.length;
                 for (i = 0; i < len; i++) {
                     if (!this.fields[i].read_only) {
-                        this.editableFields.push(this.fields[i]);
+                        this._editable_fields.push(this.fields[i]);
                     }
                 }
             }
-            this.initSelectedField();
+            this.init_selected_field();
             this.colspan = this.fields.length;
             if (this.options.multiselect) {
                 this.colspan += 1;
@@ -10108,6 +10107,7 @@
 
             this.freezed_table.$container = this.$container;
             this.$container.append(this.freezed_table.$element);
+            //~ this.freezed_table.focus();
         },
 
         delete_freezed_table: function() {
@@ -10156,8 +10156,9 @@
                         col += 1;
                     }
                     $th = this.$head.find('th').eq(col);
-                    scroll_left = this.$element.find('.table-container')[0].scrollLeft;
-                    width = scroll_left + ($th.position().left + $th.outerWidth(true) + 2);
+                    //~ scroll_left = this.$element.find('.table-container')[0].scrollLeft;
+                    //~ width = scroll_left + ($th.position().left + $th.outerWidth(true) + 2);
+                    width = ($th.position().left + $th.outerWidth(true) + 2);
 
                     this.freezed_table.$element.width(width);
                 }
@@ -10172,7 +10173,7 @@
                     for (i = 0; i < this.fields.length; i++) {
                         field_name = this.fields[i].field_name;
                         cell_width = this.master_table.$head.find('th.' + field_name).outerWidth();
-                        this.set_сell_width(field_name, cell_width);
+                         this.set_сell_width(field_name, cell_width);
                     }
                     this.sync_col_width();
                 }
@@ -10192,7 +10193,7 @@
                 this.options.multiselect = true;
             }
             if (this.item.lookup_field && this.item.lookup_field.multi_select) {
-                value = this.item.lookup_field.raw_value;
+                value = this.item.lookup_field.data;
                 this.options.select_all = this.item.lookup_field.multi_select_all;
                 if (value instanceof Array) {
                     this.item.selections = value;
@@ -10415,7 +10416,7 @@
                 '   <tr>' +
                 '       <td id="top-td" style="padding: 0; border: 0;" colspan=' + this.colspan + '>' +
                 '           <div class="overlay-div" style="position: relative; width: 100%; height: 100%; overflow-y: auto; overflow-x: hidden;">' +
-                '               <div class="scroll-div" style="position: relative; height: 0;">' +
+                '               <div class="scroll-div" style="position: relative; height: auto;">' +
                 '                   <table class="inner-table table table-condensed table-bordered" style="position: absolute; width: 100%">' +
                 '                       <tbody></tbody>' +
                 '                   </table>' +
@@ -10427,7 +10428,6 @@
                 '       <tr><th>&nbsp</th></tr>' +
                 '   </tfoot>' +
                 '</table>'));
-
             this.$table_container = this.$element.find(".table-container")
             this.$outer_table = this.$element.find("table.outer-table")
             this.$overlay_div = this.$element.find('div.overlay-div');
@@ -10439,6 +10439,9 @@
 
             if (this.item._paginate && !this.options.show_scrollbar) {
                 this.$overlay_div.css('overflow-y', 'hidden');
+            }
+            if (this.options.row_count && !this.options.row_line_count) {
+                this.$table.css('position', 'relative');
             }
 
             this.$overlay_div.scroll(function(e) {
@@ -10464,7 +10467,7 @@
                 .css("border", 0)
 
             if (this.options.striped) {
-                this.$table.addClass("table-striped");
+                this.$element.addClass("striped");
             }
 
             this.$table.on('mousedown dblclick', 'td', function(e) {
@@ -10508,11 +10511,16 @@
                      show = $.inArray(field_name, self.options.hint_fields) > -1;
                 }
                 if (show) {
-                    self._remove_tooltip();
-                    container = this.closest('.dbtable');
+                    self.remove_tooltip();
+                    container = self.$element[0];
                     if (Math.abs(this.offsetHeight - this.scrollHeight) > 1 ||
                         Math.abs(this.offsetWidth - this.scrollWidth) > 1) {
-                        if (self.$table.width() - ($this.offset().left + $this.width()) < 200) {
+                        let table_width = self.$table.width();
+                        if (self.master_table) {
+                            table_width = self.master_table.$table.width();
+                            container = self.master_table.$element[0];
+                        }
+                        if (table_width - ($this.offset().left + $this.width()) < 200) {
                             placement = 'left';
                         }
                         $td.tooltip({
@@ -10585,35 +10593,20 @@
                 }
             }
 
-            function changeFieldWidth($title, delta) {
-                var field_name,
-                    cellWidth;
-                field_name = $title.data('field_name');
-                cellWidth = self.get_cell_width(field_name) + delta;
-
-                self.set_сell_width(field_name, cellWidth);
-
-                if (self.master_table) {
-                    self.$element.width(self.$element.width() + delta)
-                    self.master_table.set_сell_width(field_name, cellWidth);
-                    self.master_table.sync_col_width();
-                    self.master_table.sync_freezed();
-                }
-                else {
-                    self.sync_col_width();
-                }
-                self.sync_freezed();
+            function change_field_width($title, delta) {
+                var field_name = $title.data('field_name');
+                self.change_field_width(field_name, delta);
             }
 
-            function releaseMouseMove(e) {
+            function release_mouse_move(e) {
                 var field_name,
                     $td,
                     $tf,
-                    cellWidth;
+                    cell_width;
                 $doc.off("mousemove.grid-title");
                 $doc.off("mouseup.grid-title");
 
-                changeFieldWidth($th, delta);
+                change_field_width($th, delta);
 
                 mouseX = undefined;
                 $selection.remove()
@@ -10642,7 +10635,7 @@
                     index = self.fields.indexOf(self.item.field_by_name(field_name))
                     delta = 0;
                     $doc.on("mousemove.grid-title", captureMouseMove);
-                    $doc.on("mouseup.grid-title", releaseMouseMove);
+                    $doc.on("mouseup.grid-title", release_mouse_move);
                     parent = self.$container.closest('.modal');
                     if (parent.length) {
                         left = $this.offset().left - parent.offset().left;
@@ -10718,6 +10711,14 @@
             });
 
             this.$table.focus(function(e) {
+                if (self.master_table) {
+                    self.master_table.flush_editor();
+                    self.master_table.hide_editor()
+                }
+                if (self.freezed_table) {
+                    self.freezed_table.flush_editor();
+                    self.freezed_table.hide_editor()
+                }
                 self.syncronize(true);
             });
 
@@ -10729,7 +10730,25 @@
             this.calculate();
         },
 
-        _remove_tooltip: function() {
+        change_field_width: function(field_name, delta) {
+            var cell_width;
+            cell_width = this.get_cell_width(field_name) + delta;
+
+            this.set_сell_width(field_name, cell_width);
+
+            if (this.master_table) {
+                this.$element.width(this.$element.width() + delta)
+                this.master_table.set_сell_width(field_name, cell_width);
+                this.master_table.sync_col_width();
+                this.master_table.sync_freezed();
+            }
+            else {
+                this.sync_col_width(delta > 0);
+            }
+            this.sync_freezed();
+        },
+
+        remove_tooltip: function() {
             try {
                 $('body').find('.tooltip.table-tooltip').remove();
             }
@@ -10750,6 +10769,12 @@
                 elementHeight,
                 selected_row_height,
                 overlay_div_height;
+            if (this.options.row_count && !this.options.row_line_count) {
+                this.item.paginate = true;
+                this.row_count = this.options.row_count;
+                this.item._limit = this.row_count;
+                return;
+            }
             row_line_count  = this.options.row_line_count
             if (!row_line_count) {
                 row_line_count = 1;
@@ -10835,6 +10860,9 @@
         },
 
         calc_row_count: function() {
+            if (this.master_table) {
+                return this.master_table.row_count;
+            }
             var overlay_div_height = this.$overlay_div.innerHeight() + this.row_margin,
                 selected_row_height = this.selected_row_height;
             if (this.options.expand_selected_row) {
@@ -10959,56 +10987,61 @@
             }
         },
 
-        initSelectedField: function() {
+        init_selected_field: function() {
             var field;
-            if (!this.selectedField && this.editableFields.length) {
-                this.selectedField = this.editableFields[0];
+            if (!this.selected_field && this.editable_fields.length) {
+                this.selected_field = this.editable_fields[0];
                 if (this.options.selected_field) {
                     field = this.item.field_by_name(this.options.selected_field);
-                    if (this.editableFields.indexOf(field) !== -1) {
-                        this.selectedField = field;
+                    if (this.editable_fields.indexOf(field) !== -1) {
+                        this.selected_field = field;
                     }
                 }
             }
         },
 
-        setSelectedField: function(field) {
+        set_selected_field: function(field) {
             var self = this,
-                fieldChanged = this.selectedField !== field;
-            if (this.editableFields.indexOf(field) !== -1) {
-                if (fieldChanged && this.can_edit()) {
-                    this.flush_editor();
-                    this.hide_editor();
-                }
+                field_changed = this.selected_field !== field;
+            if (field_changed && this.can_edit()) {
+                this.flush_editor();
+                this.hide_editor();
+            }
+            if (this.editable_fields.indexOf(field) !== -1) {
                 this.hide_selection();
-                this.selectedField = field
-                if (this.can_edit() && fieldChanged && this.editMode) {
-                    clearTimeout(this.editorsTimeOut);
-                    this.editorsTimeOut = setTimeout(function() {
-                            self.show_editor();
-                        },
-                        75);
-                }
+                this.selected_field = field
                 this.show_selection();
             }
         },
 
-        nextField: function() {
+        next_field: function() {
             var index;
-            if (this.selectedField) {
-                index = this.editableFields.indexOf(this.selectedField);
-                if (index < this.editableFields.length - 1) {
-                    this.setSelectedField(this.editableFields[index + 1]);
+            if (this.selected_field) {
+                index = this.editable_fields.indexOf(this.selected_field);
+                if (index < this.editable_fields.length - 1) {
+                    this.set_selected_field(this.editable_fields[index + 1]);
+                }
+                else {
+                    if (this.master_table && this.master_table.editable_fields.length) {
+                        this.master_table.set_selected_field(this.master_table.editable_fields[0]);
+                        this.master_table.focus();
+                    }
                 }
             }
         },
 
-        priorField: function() {
+        prior_field: function() {
             var index;
-            if (this.selectedField) {
-                index = this.editableFields.indexOf(this.selectedField);
+            if (this.selected_field) {
+                index = this.editable_fields.indexOf(this.selected_field);
                 if (index > 0) {
-                    this.setSelectedField(this.editableFields[index - 1]);
+                    this.set_selected_field(this.editable_fields[index - 1]);
+                }
+                else {
+                    if (this.freezed_table && this.freezed_table.editable_fields.length) {
+                        this.freezed_table.set_selected_field(this.freezed_table.editable_fields[0]);
+                        this.freezed_table.focus();
+                    }
                 }
             }
         },
@@ -11021,8 +11054,8 @@
             $td;
             if (this.editing) {
                 try {
-                    this.editMode = false;
-                    $td = this.editor.$controlGroup.parent();
+                    this.edit_mode = false;
+                    $td = this.editor.$control_group.parent();
                     field = this.editor.field
                     $div = $td.find('div.' + field.field_name);
 
@@ -11032,7 +11065,7 @@
                     $td.css("padding-right", this.editor.paddingRight)
                     $td.css("padding-bottom", this.editor.paddingBottom)
 
-                    this.editor.$controlGroup.remove();
+                    this.editor.$control_group.remove();
                     this.editor.removed = true;
                     this.editor = undefined;
 
@@ -11052,35 +11085,25 @@
             }
         },
 
-        selected_field_visible: function() {
-            var field_name,
-                $td;
-            if (this.selectedField && this.freezed_table) {
-                field_name = this.selectedField.field_name;
-                $td = this.$table.find('tr:first td.' + field_name);
-                if ($td.position().left < this.freezed_table.$element.width()) {
-                    return false;
-                }
-            }
-            return true;
-        },
-
         show_editor: function() {
-            var width,
+            var self = this,
+                width,
                 height,
+                min_width,
                 editor,
                 $div,
                 $td,
-                $row = this.row_by_record();
-            if ($row && this.can_edit() && !this.editing && this.selectedField &&
-                this.selected_field_visible() && this.item.record_count()) {
+                $row = this.row_by_record(),
+                freezed_table = this.freezed_table;
+            if ($row && this.can_edit() && !this.editing && this.selected_field &&
+                this.item.rec_count) {
                 if (!this.item.is_changing()) {
                     this.item.edit();
                 }
-                this.editMode = true;
-                this.editor = new DBTableInput(this, this.selectedField);
-                this.editor.$controlGroup.find('.controls, .input-prepend, .input-append, input').css('margin', 0);
-                this.editor.$controlGroup.css('margin', 0);
+                this.edit_mode = true;
+                this.editor = new DBTableInput(this, this.selected_field);
+                this.editor.$control_group.find('.controls, .input-prepend, .input-append, input').css('margin', 0);
+                this.editor.$control_group.css('margin', 0);
 
                 $div = $row.find('div.' + this.editor.field.field_name);
                 $div.hide();
@@ -11088,8 +11111,8 @@
 
                 this.editor.$input.css('font-size', $td.css('font-size'));
 
-                height = $td.innerHeight()
-                width = $td.outerWidth();
+                height = $td.innerHeight();
+                width = $td.innerWidth();
                 this.editor.paddingLeft = $td.css("padding-left");
                 this.editor.paddingTop = $td.css("padding-top");
                 this.editor.paddingRight = $td.css("padding-right");
@@ -11097,20 +11120,49 @@
 
                 this.editor.padding = $td.css("padding");
                 $td.css("padding", 0);
-                $td.outerWidth(width);
+                $td.innerWidth(width);
 
-                $td.append(this.editor.$controlGroup);
-
-                width = 0;
-                this.editor.$input.parent().children('*').each(function() {
-                    width += $(this).outerWidth(true);
-                });
-                this.editor.$input.width(this.editor.$input.width() + this.editor.$controlGroup.width() - width);
-                if (this.editor.$input.outerHeight(true) > height) {
-                    this.editor.$controlGroup.find('.controls, .input-prepend, .input-append, input, btn')
-                        .outerHeight(height, true)
+                this.editor.$input.css('max-width', 'initial');
+                $td.append(this.editor.$control_group);
+                min_width = parseInt(this.editor.$input.css('min-width'), 10);
+                if (min_width) {
+                    width = 2;
+                    this.editor.$input.parent().children('*').each(function() {
+                        width += $(this).outerWidth(true);
+                    });
+                    if (width > $td.outerWidth()) {
+                        this.set_сell_width(this.selected_field.field_name, $td.outerWidth());
+                        this.change_field_width(this.selected_field.field_name, width - $td.outerWidth());
+                        if (freezed_table !== this.freezed_table && this.freezed_table.fields.indexOf(self.selected_field) !== -1) {
+                            this.editor.$control_group.remove();
+                            this.editor.removed = true;
+                            this.editor = undefined;
+                            setTimeout(
+                                function() {
+                                    self.edit_mode = false;
+                                    self.freezed_table.focus();
+                                    self.freezed_table.selected_field = self.selected_field;
+                                    self.freezed_table.show_editor();
+                                }, 0);
+                            return;
+                        }
+                    }
                 }
 
+                width = 0;
+                this.editor.$input.parent().children('*').css('border', '0').each(function() {
+                    width += $(this).outerWidth(true);
+                });
+                if (this.editor.$btn_ctrls) {
+                    width += 2
+                }
+                this.editor.$input.width(this.editor.$input.width() + this.editor.$control_group.width() - width);
+                if (this.editor.$btn_ctrls && this.editor.$btn_ctrls.width()) {
+                    this.editor.$btn_ctrls.width('auto');
+                }
+                if (this.selected_field.lookup_item || this.selected_field.lookup_values) {
+                    this.editor.$control_group.css('margin-left', 1);
+                }
                 this.editor.update();
 
                 if (this.is_focused()) {
@@ -11232,7 +11284,7 @@
                     bl.find("#mshow-selected").click(function(e) {
                         e.preventDefault();
                         self.item._show_selected = !self.item._show_selected;
-                        self.item._update_page({__show_selected_changed: true}, function() {
+                        self.item.reopen(0, {__show_selected_changed: true}, function() {
                             self.selections_update_selected();
                             self.$table.focus();
                         });
@@ -11279,7 +11331,7 @@
                 div,
                 old_div,
                 cell,
-                cellWidth;
+                cell_width;
             if ($element === undefined) {
                 $element = this.$element
             }
@@ -11303,6 +11355,7 @@
                 cell = $('<th class="' + field.field_name + '"></th>').append(div);
                 footer.append(cell);
             }
+            footer.append('<th class="fake-column" style="display: None;></th>');
             if (!this.options.show_footer) {
                 footer.hide();
             }
@@ -11325,16 +11378,16 @@
             this.cell_widths[field_name] = value;
         },
 
-        init_table: function(page_changed) {
-            if (this.item._offset === 0 && !page_changed) {
+        init_table: function() {
+            if (!this.table_initiated) {
+                this.table_initiated = true;
                 this.init_fields();
                 this._sorted_fields = this.item._open_params.__order;
                 if (this.item._paginate) {
                     this.page = 0;
                     this.update_page_info();
                     this.update_totals();
-                } else {//if (this.item.rec_count) {
-                    //~ this.field_width_updated = undefined;
+                } else {
                     this.calc_summary();
                 }
             }
@@ -11348,16 +11401,16 @@
             }
         },
 
-        do_after_open: function(page_changed) {
+        do_after_open: function() {
             var self = this;
             if (this.$table.is(':visible')) {
-                this.init_table(page_changed);
+                this.init_table();
                 this.sync_freezed();
             }
             else if (this.item.rec_count) {
                 setTimeout(
                     function() {
-                        self.init_table(page_changed);
+                        self.init_table();
                         self.sync_freezed();
                     },
                     1
@@ -11379,13 +11432,11 @@
                 case consts.UPDATE_RECORD:
                     this.refresh_row();
                     break;
-                case consts.UPDATE_PAGE_CHANGED:
-                    this.do_after_open(true);
-                    break;
                 case consts.UPDATE_SCROLLED:
                     this.syncronize();
                     break;
                 case consts.UPDATE_CONTROLS:
+                    this.syncronize();
                     this.build(true);
                     break;
                 case consts.UPDATE_CLOSE:
@@ -11565,32 +11616,34 @@
             });
         },
 
-        do_on_edit: function(mouseClicked) {
+        do_on_edit: function(field) {
             if (this.item.lookup_field) {
                 this.item.set_lookup_field_value();
-            } else if (!this.can_edit() || (!this.editMode && mouseClicked)) {
-                if (this.on_dblclick) {
-                    this.on_dblclick.call(this.item, this.item);
-                } else if (this.options.dblclick_edit) {
-                    this.item.edit_record();
+            } else {
+                if (this.can_edit()) {
+                    if (field) {
+                        this.set_selected_field(field);
+                    }
+                    if (!this.edit_mode && (!field || this.editable_fields.indexOf(field) !== -1)) {
+                        this.show_editor();
+                    }
                 }
-                else {
-                    this.show_editor();
+                if (!this.edit_mode) {
+                    if (this.on_dblclick) {
+                        this.on_dblclick.call(this.item, this.item);
+                    } else if (this.options.dblclick_edit) {
+                        this.item.edit_record();
+                    }
                 }
-            } else if (this.can_edit() && !this.editMode && !mouseClicked) {
-                this.show_editor();
             }
         },
 
         clicked: function(e, td) {
             var rec,
-                field,
+                field = this.item.field_by_name(td.data('field_name')),
                 $row = td.parent();
-            if (this.can_edit()) {
-                this.setSelectedField(this.item.field_by_name(td.data('field_name')));
-            }
             rec = this.record_by_row($row);
-            if (this.editMode && rec !== this.item.rec_no) {
+            if (this.edit_mode && rec !== this.item.rec_no) {
                 if (!this.item.is_edited()) {
                     this.item.edit();
                 }
@@ -11601,16 +11654,19 @@
             if (!this.editing && !this.is_focused()) {
                 this.focus();
             }
+            if (field) {
+                this.set_selected_field(field);
+            }
             if (e.type === "dblclick") {
-                this.do_on_edit(true);
+                this.do_on_edit(field);
             }
         },
 
         hide_selection: function() {
             if (this.selected_row) {
-                if (this.selectedField) {
+                if (this.selected_field) {
                     this.selected_row.removeClass("selected-focused selected");
-                    this.selected_row.find('td.' + this.selectedField.field_name)
+                    this.selected_row.find('td.' + this.selected_field.field_name)
                         .removeClass("field-selected-focused field-selected")
                 } else {
                     this.selected_row.removeClass("selected-focused selected");
@@ -11618,23 +11674,48 @@
             }
         },
 
+        table_focused: function() {
+            var focused = this.is_focused();
+            if (this.master_table && !focused) {
+                focused = this.master_table.is_focused()
+            }
+            if (this.freezed_table && !focused) {
+                focused = this.freezed_table.is_focused()
+            }
+            return focused;
+        },
 
         show_selection: function() {
-            var focused = this.is_focused(),
-                selClassName = 'selected',
+            var selClassName = 'selected',
                 selFieldClassName = 'field-selected';
-            if (focused) {
-                selClassName = 'selected-focused';
-                selFieldClassName = 'field-selected-focused';
-            }
-            if (this.selected_row) {
-                if (this.can_edit() && this.selectedField) {
-                    this.selected_row.addClass(selClassName);
-                    this.selected_row.find('td.' + this.selectedField.field_name)
-                        .removeClass(selClassName)
-                        .addClass(selFieldClassName);
-                } else {
-                    this.selected_row.addClass(selClassName);
+            if (!this.is_showing_selection) {
+                this.is_showing_selection = true;
+                try {
+                    if (this.table_focused()) {
+                        selClassName = 'selected-focused';
+                        selFieldClassName = 'field-selected-focused';
+                    }
+                    if (this.selected_row) {
+                        if (this.can_edit() && this.selected_field) {
+                            this.selected_row.addClass(selClassName);
+                            if (this.is_focused()) {
+                                this.selected_row.find('td.' + this.selected_field.field_name)
+                                    .removeClass(selClassName)
+                                    .addClass(selFieldClassName);
+                            }
+                        } else {
+                            this.selected_row.addClass(selClassName);
+                        }
+                    }
+                    if (this.master_table) {
+                        this.master_table.show_selection()
+                    }
+                    if (this.freezed_table) {
+                        this.freezed_table.show_selection()
+                    }
+                }
+                finally {
+                    this.is_showing_selection = false;
                 }
             }
         },
@@ -11718,14 +11799,6 @@
                     try {
                         this.select_row(this.row_by_record());
                     } catch (e) {}
-
-                    if (row_changed && this.can_edit() && this.editMode) {
-                        clearTimeout(this.editorsTimeOut);
-                        this.editorsTimeOut = setTimeout(function() {
-                                self.show_editor();
-                            },
-                            75);
-                    }
                     if (!noscroll) {
                         this.table_scroll = true;
                         this.$overlay_div.scrollTop(this.scroll_pos_by_rec());
@@ -11738,16 +11811,16 @@
         },
 
         get_field_text: function(field) {
-            if (field.get_lookup_data_type() === consts.BOOLEAN) {
+            if (field.lookup_data_type === consts.BOOLEAN) {
                 if (this.owner && (this.owner.on_field_get_text || this.owner.on_get_field_text)) {
-                    return field.get_display_text();
+                    return field.display_text;
                 }
                 else {
-                    return field.get_lookup_value() ? '×' : ''
+                    return field.lookup_value ? '×' : ''
                 }
             }
             else {
-                return field.get_display_text();
+                return field.display_text;
             }
         },
 
@@ -11902,13 +11975,13 @@
                         }
                         break;
                     case 37:
-                        if (this.can_edit() && !this.editMode) {
-                            this.priorField();
+                        if (this.can_edit() && !this.edit_mode) {
+                            this.prior_field();
                         }
                         break;
                     case 39:
-                        if (this.can_edit() && !this.editMode) {
-                            this.nextField();
+                        if (this.can_edit() && !this.edit_mode) {
+                            this.next_field();
                         }
                         break;
                 }
@@ -11923,7 +11996,7 @@
                 switch (code) {
                     case 13:
                         e.preventDefault();
-                        this.do_on_edit(false);
+                        this.do_on_edit();
                         break;
                     case 33:
                     case 34:
@@ -11949,8 +12022,8 @@
             var self = this,
                 multi_sel,
                 code = e.which;
-            if (code > 32 && this.can_edit() && this.options.keypress_edit && !this.editMode) {
-                if (this.selectedField && this.selectedField.valid_char_code(code)) {
+            if (code > 32 && this.can_edit() && this.options.keypress_edit && !this.edit_mode) {
+                if (this.selected_field && this.selected_field.valid_char_code(code)) {
                     this.show_editor();
                 }
             }
@@ -11966,7 +12039,7 @@
                 return;
             }
             if (value < this.page_count || value === 0) {
-                this._remove_tooltip();
+                this.remove_tooltip();
                 this.page = value;
                 this.scrollLeft = this.$element.find('.table-container').get(0).scrollLeft;
                 if (this.master_table) {
@@ -12088,7 +12161,6 @@
                 }
                 this.$table.append(row);
                 this.datasource.push([this.item.rec_no, row[0]]);
-                //~ this.sync_col_width();
             }
 
         },
@@ -12141,7 +12213,6 @@
                     }
                     this.$table.prepend(row);
                     this.datasource.splice(0, 0, [this.item.rec_no, row[0]]);
-                    //~ this.sync_col_width();
                 }
             }
         },
@@ -12253,8 +12324,8 @@
             }
         },
 
-        new_column: function(columnName, align, text, index, setFieldWidth) {
-            var cellWidth = this.get_cell_width(columnName),
+        new_column: function(columnName, align, text, index) {
+            var cell_width = this.get_cell_width(columnName),
                 classStr = 'class="' + columnName + '"',
                 dataStr = 'data-field_name="' + columnName + '"',
                 tdStyleStr = 'style="text-align:' + align + ';overflow: hidden',
@@ -12278,16 +12349,14 @@
                 align,
                 text,
                 rowStr,
-                checked = '',
-                setFieldWidth = !this.auto_field_width ||
-                (this.auto_field_width && this.field_width_updated);
+                checked = '';
             len = this.fields.length;
             rowStr = '';
             if (this.options.multiselect) {
                 if (this.selections_get_selected()) {
                     checked = 'checked';
                 }
-                rowStr += this.new_column('multi-select', 'center', '<input class="multi-select" type="checkbox" ' + checked + ' tabindex="-1">', -1, setFieldWidth);
+                rowStr += this.new_column('multi-select', 'center', '<input class="multi-select" type="checkbox" ' + checked + ' tabindex="-1">', -1);
             }
             for (i = 0; i < len; i++) {
                 field = this.fields[i];
@@ -12297,42 +12366,38 @@
                 }
                 text = this.get_field_html(f);
                 align = f.data_type === consts.BOOLEAN ? 'center' : align_value[f.alignment]
-                rowStr += this.new_column(f.field_name, align, text, i, setFieldWidth);
+                rowStr += this.new_column(f.field_name, align, text, i);
             }
             rowStr += '<td class="fake-column" style="display: None;"></td>'
             return '<tr class="inner">' + rowStr + '</tr>';
         },
 
-        getElementWidth: function(element) {
+        get_element_width: function(element) {
             if (!element.length) {
                 return 0;
             }
             if (element.is(':visible')) {
                 return element.width()
             } else {
-                return this.getElementWidth(element.parent())
+                return this.get_element_width(element.parent())
             }
         },
 
-        sync_col_width: function(all_cols) {
+        sync_col_width: function(fake_column) {
             var $row,
                 field,
                 $td;
             if (this.item.record_count()) {
                 $row = this.$table.find("tr:first-child");
-                this.set_saved_width($row, all_cols)
-                if (all_cols) {
-                    return;
-                }
+                this.set_saved_width($row)
                 if (this.fields.length && this.$table.is(':visible')) {
                     field = this.fields[this.fields.length - 1];
                     $td = this.$table.find('tr:first td.' + field.field_name)
-                    //~ $th = this.$head.find('th.' + field.field_name);
-                    if ($td.width() <= 0) {
+                    if ($td.width() <= 0 || fake_column) {
                         this.$head.find('th.' + 'fake-column').show();
                         this.$table.find('td.' + 'fake-column').show();
                         this.set_saved_width($row, true);
-                        this.sync_col_width(true);
+                        //~ this.sync_col_width(true);
                     }
                     else {
                         this.$head.find('th.' + 'fake-column').hide();
@@ -12358,7 +12423,7 @@
             if (this.options.multiselect) {
                 col_group += '<col style="width: 48px">'
             }
-            if (all_cols) {
+            if (all_cols || this.master_table) {
                 count = len;
             }
             for (i = 0; i < count; i++) {
@@ -12428,7 +12493,7 @@
                 field,
                 row, tmpRow,
                 cell,
-                cellWidth,
+                cell_width,
                 headCell,
                 footCell,
                 table,
@@ -12442,10 +12507,11 @@
                 is_visible = this.$table.is(':visible'),
                 scroll_left = this.$table_container.scrollLeft(),
                 editable_val,
-                container;
+                container,
+                self = this;
 
             is_focused = this.is_focused();
-            if (this.options.editable && this.editMode && this.editor) {
+            if (this.options.editable && this.edit_mode && this.editor) {
                 if (!is_focused) {
                     is_focused = this.editor.$input.is(':focus');
                 }
@@ -12469,12 +12535,12 @@
             this.fill_rows();
 
             row = this.$table.find("tr:first");
-            if (this.auto_field_width && !this.field_width_updated) {
+            if (!this.field_width_updated) {
                 container = $('<div>');
                 container.css("position", "absolute")
-                    .css("top", 0)
-                    //~ .css("top", -1000)
-                    .width(this.getElementWidth(this.$element));
+                    //~ .css("top", 0)
+                    .css("top", -1000)
+                    .width(this.get_element_width(this.$element));
                 $('body').append(container);
                 this.$element.detach();
                 container.append(this.$element);
@@ -12490,7 +12556,7 @@
                 len = this.fields.length;
                 for (i = 0; i < len; i++) {
                     tmpRow = tmpRow + '<th class="' + this.fields[i].field_name + '" ><div style="overflow: hidden">' +
-                        '<span style="font-size: large;">&darr;</span>' + this.fields[i].field_caption + '</div></th>';
+                        '<span style="font-size: xx-small;">&darr;</span>' + this.fields[i].field_caption + '</div></th>';
                 }
                 tmpRow = $(tmpRow + '</tr>');
                 this.$table.prepend(tmpRow);
@@ -12536,7 +12602,7 @@
             if (is_focused) {
                 this.focus();
             }
-            if (this.can_edit() && this.editMode && this.editor) {
+            if (this.can_edit() && this.edit_mode && this.editor) {
                 this.show_editor();
                 this.editor.$input.value = editable_val;
             }
@@ -12605,7 +12671,7 @@
                 align,
                 height,
                 width,
-                $controlGroup,
+                $control_group,
                 $label,
                 $input,
                 $div,
@@ -12616,7 +12682,7 @@
                 $controls,
                 $btnCtrls,
                 $help,
-                field_type = field.get_lookup_data_type(),
+                field_type = field.lookup_data_type,
                 field_mask,
                 inpit_btn_class = '';
             if ($('body').css('font-size') === '12px') {
@@ -12639,7 +12705,7 @@
                     $label.width(this.label_width);
                 }
             }
-            if (field.get_lookup_data_type() === consts.BOOLEAN) {
+            if (field.lookup_data_type === consts.BOOLEAN) {
                 $input = $('<input>')
                     .attr("type", "checkbox")
                     .click(function(e) {
@@ -12647,7 +12713,7 @@
                     });
             } else if (field_type === consts.IMAGE) {
                 $input = $('<div>');
-            } else if (field.get_lookup_data_type() === consts.LONGTEXT) {
+            } else if (field.lookup_data_type === consts.LONGTEXT) {
                 $input = $('<textarea>').innerHeight(70);
             } else {
                 $input = $('<input>').attr("type", "text")
@@ -12705,7 +12771,7 @@
                 $btn = $('<button class="btn' + inpit_btn_class + '"type="button"><i class="icon-remove-sign"></button>');
                 $btn.attr("tabindex", -1);
                 $btn.click(function() {
-                    field.set_value(null);
+                    field.value = null;
                 });
                 this.$firstBtn = $btn;
                 $btnCtrls.append($btn);
@@ -12717,7 +12783,7 @@
                         self.dropdown.enter_pressed();
                     }
                     else if (field.lookup_item){
-                        self.selectValue();
+                        self.select_value();
                     }
                     else {
                         if (self.field.owner.is_changing() && !self.field.owner.read_only) {
@@ -12816,7 +12882,7 @@
                         $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i class="icon-remove-sign"></button>');
                         $btn.attr("tabindex", -1);
                         $btn.click(function() {
-                            field.set_value(null);
+                            field.value = null;
                         });
                         this.$firstBtn = $btn;
                         $btnCtrls.append($btn);
@@ -12832,7 +12898,7 @@
                         $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i class="icon-calendar"></button>');
                         $btn.attr("tabindex", -1);
                         $btn.click(function() {
-                            self.showDatePicker();
+                            self.show_date_picker();
                         });
                         this.$lastBtn = $btn;
                         $btnCtrls.append($btn);
@@ -12868,22 +12934,23 @@
                 align = field.data_type === consts.BOOLEAN ? 'center' : align_value[field.alignment];
                 this.$input.css("text-align", align);
             }
+            this.$btn_ctrls = $btnCtrls;
 
             if (this.label_on_top) {
-                this.$controlGroup = $('<div class="input-container"></div>');
+                this.$control_group = $('<div class="input-container"></div>');
             } else {
-                this.$controlGroup = $('<div class="control-group input-container"></div>');
+                this.$control_group = $('<div class="control-group input-container"></div>');
             }
             if (this.label) {
-                this.$controlGroup.append($label);
+                this.$control_group.append($label);
                 if (!this.label_width) {
-                    this.$controlGroup.addClass('label-size' + this.label_size);
+                    this.$control_group.addClass('label-size' + this.label_size);
                 }
             }
-            this.$controlGroup.append($controls);
+            this.$control_group.append($controls);
 
             if (container) {
-                container.append(this.$controlGroup);
+                container.append(this.$control_group);
             }
 
             $controls.find('.add-on').css('padding-top',
@@ -12948,11 +13015,19 @@
 
             this.$input.bind('destroyed', function() {
                 self.field.controls.splice(self.field.controls.indexOf(self), 1);
-                if (self.dropdown){
-                    self.dropdown.destroy();
+                try {
+                    if (self.dropdown){
+                        self.dropdown.destroy();
+                    }
+                    if (self.$help) {
+                        self.$help.find('span').popover('destroy');
+                    }
+                    if (self.datepicker_shown) {
+                        self.$input.datepicker('hide');
+                    }
                 }
-                if (self.$help) {
-                    self.$help.find('span').popover('destroy');
+                catch (e) {
+                    console.error(e);
                 }
             });
 
@@ -12981,7 +13056,7 @@
             if (this.$input) {
                 this.$input.prop('disabled', value);
             }
-            if (this.field.get_lookup_data_type() === consts.FILE) {
+            if (this.field.lookup_data_type === consts.FILE) {
                 this.$input.prop('disabled', true);
                 if (this.field.lookup_value) {
                     if (this.$openBtn) {
@@ -13091,7 +13166,7 @@
                 }
             }
             if (!this.removed && !this.form_closing()) {
-                if (this.field.get_lookup_data_type() === consts.IMAGE) {
+                if (this.field.lookup_data_type === consts.IMAGE) {
                     if (this.$input.html() != this.field.get_html()) {
                         this.$input.html(this.field._get_image(true));
                     }
@@ -13103,16 +13178,16 @@
                     placeholder = this.field.field_placeholder;
                     focused = this.$input.get(0) === document.activeElement;
 
-                    if (this.read_only !== this.field._get_read_only() || is_changing !== this.is_changing) {
-                        this.read_only = this.field._get_read_only();
+                    if (this.read_only !== this.field.read_only || is_changing !== this.is_changing) {
+                        this.read_only = this.field.read_only;
                         this.is_changing = is_changing;
                         this.set_read_only(this.read_only || !this.is_changing);
                     }
                     if (this.field.master_field) {
                         this.set_read_only(true);
                     }
-                    if (this.field.get_lookup_data_type() === consts.BOOLEAN) {
-                        if (this.field.get_lookup_value()) {
+                    if (this.field.lookup_data_type === consts.BOOLEAN) {
+                        if (this.field.lookup_value) {
                             this.$input.prop("checked", true);
                         } else {
                             this.$input.prop("checked", false);
@@ -13121,14 +13196,14 @@
                     if (this.field.lookup_values) {
                         this.$input.val(this.field.display_text);
                     } else {
-                        if (focused && this.$input.val() !== this.field.get_text() ||
-                            !focused && this.$input.val() !== this.field.get_display_text()) {
+                        if (focused && this.$input.val() !== this.field.text ||
+                            !focused && this.$input.val() !== this.field.display_text) {
                             this.errorValue = undefined;
                             this.error = undefined;
                             if (focused && !this.field.lookup_item && !this.field.lookup_values) {
-                                this.$input.val(this.field.get_text());
+                                this.$input.val(this.field.text);
                             } else {
-                                this.$input.val(this.field.get_display_text());
+                                this.$input.val(this.field.display_text);
                             }
                         }
                     }
@@ -13152,14 +13227,26 @@
                 e.preventDefault();
             }
             if (code === 9) {
-                if (this.grid && this.grid.editMode) {
+                if (this.grid && this.grid.edit_mode) {
                     e.preventDefault();
                     if (e.shiftKey) {
-                        this.grid.priorField();
+                        this.grid.prior_field();
                     } else {
-                        this.grid.nextField();
+                        this.grid.next_field();
                     }
                 }
+            }
+        },
+
+        enter_pressed: function(e) {
+            if (this.field.lookup_item && !this.field.enable_typeahead) {
+                e.stopPropagation();
+                e.preventDefault();
+                this.select_value();
+            } else if ((this.field.data_type === consts.DATE) || (this.field.data_type === consts.DATETIME)) {
+                e.stopPropagation();
+                e.preventDefault();
+                this.show_date_picker();
             }
         },
 
@@ -13173,30 +13260,22 @@
                 }
             }
             if (code === 13 && !e.ctrlKey && !e.shiftKey) {
-                if (this.grid && this.grid.editMode) {
-                    if (!(this.dropdown && this.dropdown.shown)) {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        if (!this.grid.item.is_changing()) {
-                            this.grid.item.edit();
-                        }
-                        this.grid.flush_editor();
-                        this.grid.hide_editor();
-                        if (this.grid.item.is_changing()) {
-                            this.grid.item.post();
-                        }
+                if (this.grid && this.grid.edit_mode) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (!this.grid.item.is_changing()) {
+                        this.grid.item.edit();
                     }
-                } else if (this.field.lookup_item && !this.field.enable_typeahead) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    this.selectValue();
-                } else if ((this.field.data_type === consts.DATE) || (this.field.data_type === consts.DATETIME)) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    this.showDatePicker();
+                    this.grid.flush_editor();
+                    this.grid.hide_editor();
+                    if (this.grid.item.is_changing()) {
+                        this.grid.item.post();
+                    }
+                } else {
+                    this.enter_pressed(e);
                 }
             } else if (code === 27) {
-                if (this.grid && this.grid.editMode) {
+                if (this.grid && this.grid.edit_mode) {
                     e.preventDefault();
                     e.stopPropagation();
                     this.grid.item.cancel();
@@ -13233,7 +13312,7 @@
             }
         },
 
-        showDatePicker: function() {
+        show_date_picker: function() {
             var self = this,
                 format;
             if (this.field.data_type === consts.DATE) {
@@ -13263,13 +13342,14 @@
                     }
                 })
                 .on('changeDate', function(e) {
-                    self.field.set_value(e.date);
+                    self.field.value = e.date;
                     self.$input.datepicker('hide');
                 });
             this.$input.datepicker('show');
+            this.datepicker_shown = true;
         },
 
-        selectValue: function() {
+        select_value: function() {
             if (this.field.on_entry_button_click) {
                 this.field.on_entry_button_click.call(this.item, this.field);
             } else {
@@ -13285,7 +13365,7 @@
             this.error = undefined;
             if (this.field.lookup_item || this.field.lookup_values) {
                 if (this.$input.val() !== this.field.get_lookup_text()) {
-                    this.$input.val(this.field.get_display_text());
+                    this.$input.val(this.field.display_text);
                 }
             } else {
                 try {
@@ -13295,7 +13375,7 @@
                             this.field.owner.edit();
                         }
                         if (text === '') {
-                            this.field.set_value(null);
+                            this.field.value = null;
                         } else {
                             this.field.set_text(text);
                             if (!(this.field.field_kind === consts.ITEM_FIELD && !this.field.owner.rec_count)) {
@@ -13327,14 +13407,14 @@
             if (!this.form_closing()) {
                 this.hideError();
                 if (this.field.lookup_item && !this.field.enable_typeahead) {
-                    this.$input.val(this.field.get_display_text());
+                    this.$input.val(this.field.display_text);
                 } else {
                     if (this.errorValue) {
                         this.$input.val(this.errorValue);
                     } else if (this.field.lookup_item || this.field.lookup_values) {
-                        this.$input.val(this.field.get_display_text());
+                        this.$input.val(this.field.display_text);
                     } else {
-                        this.$input.val(this.field.get_text());
+                        this.$input.val(this.field.text);
                     }
                     if (!this.mouseIsDown) {
                         this.$input.select();
@@ -13351,14 +13431,15 @@
 
             if (!this.changed) {
                 if (this.field.field_kind !== consts.ITEM_FIELD || this.field.owner.rec_count) {
-                    this.$input.val(this.field.get_display_text());
+                    this.$input.val(this.field.display_text);
                 }
                 return;
             }
-            if (this.grid && this.grid.editMode) {
+            if (this.grid && this.grid.edit_mode) {
                 if (this.grid.item.is_changing()) {
                     this.grid.flush_editor();
                     this.grid.item.post();
+                    this.grid.item.apply(true);
                     this.grid.hide_editor();
                 }
                 result = true;
@@ -13367,7 +13448,7 @@
                 result = true;
             } else if (!this.grid && this.change_field_text()) {
                 if (this.$input.is(':visible')) {
-                    this.$input.val(this.field.get_display_text());
+                    this.$input.val(this.field.display_text);
                 }
                 result = true;
             }
@@ -13377,8 +13458,8 @@
 
         updateState: function(value) {
             if (value) {
-                if (this.$controlGroup) {
-                    this.$controlGroup.removeClass('error');
+                if (this.$control_group) {
+                    this.$control_group.removeClass('error');
                 }
                 this.errorValue = undefined;
                 this.error = undefined;
@@ -13389,8 +13470,8 @@
             } else {
                 task.alert_error(this.error, {replace: false});
                 this.showError();
-                if (this.$controlGroup) {
-                    this.$controlGroup.addClass('error');
+                if (this.$control_group) {
+                    this.$control_group.addClass('error');
                 }
                 this.$input.tooltip('hide')
                     .attr('data-original-title', this.error)
@@ -13683,7 +13764,7 @@
                     case 9: // tab
                     case 13: // enter
                         if (!this.shown) {
-                            if (e.keyCode === 13) {
+                            if (e.keyCode === 13 && this.$element && !this.$element.grid) {
                                 this.enter_pressed();
                             }
                         }
@@ -13750,8 +13831,6 @@
     function DropdownList(field, element, options) {
         Dropdown.call(this, field, element, options);
         this.init();
-        //~ this.source = this.field.lookup_values;
-        //~ this.options.length = this.source.length;
         this.listen();
     }
 
@@ -13780,7 +13859,6 @@
             if (this.$element) {
                 this.$element.focus();
             }
-            //~ this.process(this.source);
             this.process(this.field.lookup_values);
         }
 
@@ -13892,5 +13970,6 @@
     };
 
     window.task = new Task();
+    window.task.Item = Item;
 
 })(jQuery);

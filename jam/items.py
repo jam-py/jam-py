@@ -1,23 +1,18 @@
 import sys
-import logging
+
+from werkzeug.utils import cached_property
+from werkzeug._compat import iteritems
+from werkzeug._compat import to_unicode, to_bytes
 
 import jam
-import jam.langs as langs
-import jam.common as common
-from werkzeug._compat import iteritems, iterkeys
+from .common import consts, json_defaul_handler
 
 class AbortException(Exception):
     pass
 
-class DebugException(Exception):
-    pass
-
-class DictObject(object):
-    def __init__(self, d):
-        self.__dict__ = d
-
 class AbstractItem(object):
     def __init__(self, task, owner, name='', caption='', visible = True, item_type_id=0, js_filename=''):
+        self.task = task
         self.owner = owner
         self.item_name = name
         self.items = []
@@ -30,22 +25,22 @@ class AbstractItem(object):
                 owner.items.append(self)
                 if not hasattr(owner, self.item_name):
                     setattr(owner, self.item_name, self)
-        if task:
-            self.task = task
         self.item_caption = caption
         self.visible = visible
         self.item_type_id = item_type_id
+        if self != task:
+            self.log = task.log
         self._loader = TracebackLoader(self)
 
     def task_locked(self):
         try:
-            owner = self.owner
-            if self.master:
-                owner = self.master.owner
-            if owner:
-                app = self.task.app
-                if app.task == self.task:
-                    return app.task_locked()
+            if self.task.ID:
+                if self.master:
+                    owner = self.master.owner
+                else:
+                    owner = self.owner
+                if owner:
+                    return self.task.app.task_locked()
         except:
             pass
 
@@ -57,18 +52,19 @@ class AbstractItem(object):
 
     @property
     def session(self):
-        if hasattr(jam.context, 'session'):
+        try:
             return jam.context.session
+        except:
+            pass
 
     @property
     def environ(self):
-        if hasattr(jam.context, 'environ'):
-            return jam.context.environ
+        return jam.context.environ
 
     @property
     def user_info(self):
         if self.session:
-            return DictObject(self.session['user_info'])
+            return self.session['user_info']
 
     def find(self, name):
         for item in self.items:
@@ -88,7 +84,7 @@ class AbstractItem(object):
         for item in self.items:
             item.all(func)
 
-    def write_info(self, info):
+    def write_info(self, info, server):
         info['id'] = self.ID
         info['name'] = self.item_name
         info['caption'] = self.item_caption
@@ -104,21 +100,21 @@ class AbstractItem(object):
         self.item_type_id = info['type']
         self.js_filename = info['js_filename']
 
-    def get_info(self):
+    def get_info(self, server=False):
         result = {}
         result['items'] = []
-        self.write_info(result)
+        self.write_info(result, server)
         for item in self.items:
-            result['items'].append((item.item_type_id, item.get_info()))
+            result['items'].append((item.item_type_id, item.get_info(server)))
         return result
 
-    def get_child_class(self, item_type_id):
+    def get_child_class(self):
         pass
 
     def set_info(self, info):
         self.read_info(info)
         for item_type_id, item_info in info['items']:
-            child = self.get_child_class(item_type_id)(self)
+            child = self.get_child_class()(self.task, self, item_info['name'])
             child.item_type_id = item_type_id
             child.set_info(item_info)
 
@@ -129,7 +125,7 @@ class AbstractItem(object):
         self.bind_item()
         for item in self.items:
             item.bind_items()
-        self.item_type = common.ITEM_TYPES[self.item_type_id - 1]
+        self.item_type = consts.ITEM_TYPES[self.item_type_id - 1]
 
     def get_module_name(self):
         result = self.owner.get_module_name() + '.' + self.item_name
@@ -168,10 +164,10 @@ class AbstractItem(object):
     def check_operation(self, operation):
         try:
             app = self.task.app
-            if not app.admin.safe_mode:# or self.master:
+            if not consts.SAFE_MODE:
                 return True
             elif self.task == app.admin:
-                if app.admin.safe_mode:
+                if consts.SAFE_MODE:
                     session = self.session
                     if session and session['user_info']['admin']:
                         return True
@@ -200,22 +196,20 @@ class AbstrTask(AbstractItem):
     def __init__(self, owner, name, caption, visible = True, item_type_id=0, js_filename=''):
         AbstractItem.__init__(self, self, owner, name, caption, visible, item_type_id, js_filename)
         self.task = self
-        self.__language = None
-        self.item_type_id = common.TASK_TYPE
+        self.item_type_id = consts.TASK_TYPE
         self.history_item = None
         self.lock_item = None
         self.log = None
-        #~ self.languages = langs.get_langs()
 
     def task_locked(self):
         try:
-            if self.app.task == self:
+            if self.ID:
                 return self.app.task_locked()
         except:
             pass
 
-    def write_info(self, info):
-        super(AbstrTask, self).write_info(info)
+    def write_info(self, info, server):
+        super(AbstrTask, self).write_info(info, server)
         info['lookup_lists'] = self.lookup_lists
         if self.history_item:
             info['history_item'] = self.history_item.ID
@@ -225,6 +219,9 @@ class AbstrTask(AbstractItem):
     def set_info(self, info):
         super(AbstrTask, self).set_info(info)
         self.bind_items()
+
+    def get_child_class(self):
+        pass
 
     def item_by_name(self, item_name):
         for group in self.items:
@@ -250,44 +247,22 @@ class AbstrTask(AbstractItem):
                 self.compile_item(item)
         for group in self.items:
             for item in group.items:
-                if group.item_type_id != common.REPORTS_TYPE:
+                if group.item_type_id != consts.REPORTS_TYPE:
                     for detail in item.details:
                         self.compile_item(detail)
 
-    def update_lang(self, value):
-        self.lang = langs.get_lang_dict(self, value)
-        self.locale = langs.get_locale_dict(self, value)
-        self.app.LANGUAGE = value
-        common.LOCALE = self.locale
-        for key in iterkeys(common.LOCALE):
-            common.__dict__[key] = common.LOCALE[key]
-
-
-    def set_language(self, value):
-        if not value:
-            value = 1
-        if self.__language != value:
-            self.update_lang(value)
-            self.__language = value
-
     def language(self, key):
-        return self.lang.get(key)
-
-    def get_settings(self):
-        result = {}
-        keys = list(iterkeys(common.DEFAULT_SETTINGS))
-        for key in keys:
-            result[key] = self.app.__dict__[key]
-        return result
+        return consts.language(key)
 
 class AbstrItem(AbstractItem):
     def __init__(self, task, owner, name, caption, visible = True, item_type_id=0, js_filename=''):
         AbstractItem.__init__(self, task, owner, name, caption, visible, item_type_id, js_filename)
-        if self.owner and not hasattr(self.task, self.item_name):
-            setattr(self.task, self.item_name, self)
+        if not isinstance(self, AbstrDetail):
+            if self.owner and not hasattr(self.task, self.item_name):
+                setattr(self.task, self.item_name, self)
 
-    def write_info(self, info):
-        super(AbstrItem, self).write_info(info)
+    def write_info(self, info, server):
+        super(AbstrItem, self).write_info(info, server)
         info['fields'] = self.field_defs
         info['filters'] = self.filter_defs
         info['reports'] = self.get_reports_info()
@@ -302,6 +277,8 @@ class AbstrItem(AbstractItem):
         info['view_params'] = self._view_list
         info['edit_params'] = self._edit_list
         info['virtual_table'] = self.virtual_table
+        if server:
+            info['table_name'] = self.table_name
 
     def read_info(self, info):
         super(AbstrItem, self).read_info(info)
@@ -309,6 +286,16 @@ class AbstrItem(AbstractItem):
         self.create_filters(info['filters'])
         self.reports = info['reports']
         self._order_by = info['default_order']
+        self._primary_key = info['primary_key']
+        self._deleted_flag = info['deleted_flag']
+        self._virtual_table = info['virtual_table']
+        self._master_id = info['master_id']
+        self._master_rec_id = info['master_rec_id']
+        self._keep_history = info['keep_history']
+        self.edit_lock = info['edit_lock']
+        self._view_list = info['view_params']
+        self._edit_list = info['edit_params']
+        self.table_name = info['table_name']
 
     def bind_item(self):
         self.prepare_fields()
@@ -326,8 +313,8 @@ class AbstrItem(AbstractItem):
 
 class AbstrDetail(AbstrItem):
 
-    def write_info(self, info):
-        super(AbstrDetail, self).write_info(info)
+    def write_info(self, info, server):
+        super(AbstrDetail, self).write_info(info, server)
         info['prototype_ID'] = self.prototype.ID
 
     def read_info(self, info):
@@ -335,7 +322,13 @@ class AbstrDetail(AbstrItem):
         self.owner.details.append(self)
         if not hasattr(self.owner.details, self.item_name):
             setattr(self.owner.details, self.item_name, self)
+        self._prototype_id = info['prototype_ID']
 
+    def bind_item(self):
+        super(AbstrDetail, self).bind_item();
+        if hasattr(self, '_prototype_id'):
+            self.prototype = self.task.item_by_ID(self._prototype_id)
+            self.init_fields()
 
 class AbstrReport(AbstractItem):
     def __init__(self, task, owner, name, caption, visible = True, item_type_id=0, js_filename=''):
@@ -343,8 +336,8 @@ class AbstrReport(AbstractItem):
         if not hasattr(self.task, self.item_name):
             setattr(self.task, self.item_name, self)
 
-    def write_info(self, info):
-        super(AbstrReport, self).write_info(info)
+    def write_info(self, info, server):
+        super(AbstrReport, self).write_info(info, server)
         info['fields'] = self.param_defs
 
     def read_info(self, info):

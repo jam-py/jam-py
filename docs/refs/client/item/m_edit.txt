@@ -22,9 +22,11 @@ fields of the record, and can then post those changes to the item dataset using
 
 The ``edit`` method
 
-* checks if item dataset is active, otherwise raises exception
+* checks if the item dataset is active, otherwise raises exception
 
-* checks if item dataset is not empty, otherwise raises exception
+* checks if the item dataset is not empty, otherwise raises exception
+
+* checks whether the item dataset is already in edit state, and if so, returns
 
 * if item is a 
   :doc:`detail </programming/data/details>`

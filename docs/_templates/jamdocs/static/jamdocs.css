@@ -160,4 +160,9 @@ table.docutils tr,
 table.docutils td {
     padding: 4px;    
 }
+
+#searchbox div {
+    display: inline-block;    
 }
+
+

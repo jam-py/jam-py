@@ -6,7 +6,7 @@ function Events1() { // demo
 	function on_page_loaded(task) {
 		
 		$("title").text(task.item_caption);
-		$("#title").text(task.item_caption);
+		$("#app-title").text(task.item_caption);
 		  
 		if (task.safe_mode) {
 			$("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
@@ -56,7 +56,7 @@ function Events1() { // demo
 		var table_options_height = item.table_options.height,
 			table_container;
 	
-		// item.paginate = false;
+		// item.paginate = false; 
 		// item.table_options.show_paginator = false;
 		// item.table_options.show_scrollbar = true;
 		
@@ -164,6 +164,24 @@ function Events1() { // demo
 		item.create_detail_views(item.edit_form.find('.' + item.edit_options.detail_container_class));
 	
 		return true;
+	}
+	
+	function on_edit_form_shown(item) {
+		if (item.check_field_value) {
+			item.each_field( function(field) {
+				var input = item.edit_form.find('input.' + field.field_name);
+				input.blur( function(e) {
+					var err;
+					if ($(e.relatedTarget).attr('id') !== "cancel-btn") {
+						err = item.check_field_value(field);
+						if (err) {
+							item.alert_error(err);
+							input.focus();			 
+						}
+					}
+				});
+			});
+		}
 	}
 	
 	function on_edit_form_close_query(item) {
@@ -277,6 +295,7 @@ function Events1() { // demo
 	this.on_view_form_shown = on_view_form_shown;
 	this.on_view_form_closed = on_view_form_closed;
 	this.on_edit_form_created = on_edit_form_created;
+	this.on_edit_form_shown = on_edit_form_shown;
 	this.on_edit_form_close_query = on_edit_form_close_query;
 	this.on_filter_form_created = on_filter_form_created;
 	this.on_param_form_created = on_param_form_created;
@@ -422,23 +441,10 @@ function Events15() { // demo.catalogs.tracks
 		}
 	}
 	
-	function on_edit_form_shown(item) {
-		item.each_field( function(field) {
-			var input = item.edit_form.find('input.' + field.field_name);
-			input.blur( function(e) {
-				var err;
-				if ($(e.relatedTarget).attr('id') !== "cancel-btn") {
-					err = check_field_value(field);
-					if (err) {
-						item.alert_error(err);
-						input.focus();			 
-					}
-				}
-			});
-		});
-	}
-	
 	function check_field_value(field) {
+		if (field.field_name === 'album' && !field.value) {
+			return 'Album must be specified';
+		}
 		if (field.field_name === 'unitprice' && field.value <= 0) {
 			return 'Unit price must be greater that 0';
 		}
@@ -453,13 +459,19 @@ function Events15() { // demo.catalogs.tracks
 			}
 		});
 	}
+	
+	function on_field_validate(field) {
+		 if (field.field_name === 'unitprice' && field.value <= 0) {
+			return 'Unit price must be greater that 0';
+		}
+	}
 	this.on_view_form_created = on_view_form_created;
 	this.on_after_scroll = on_after_scroll;
 	this.show_invoice = show_invoice;
 	this.set_media_type = set_media_type;
-	this.on_edit_form_shown = on_edit_form_shown;
 	this.check_field_value = check_field_value;
 	this.on_before_post = on_before_post;
+	this.on_field_validate = on_field_validate;
 }
 
 task.events.events15 = new Events15();
@@ -481,14 +493,22 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_field_changed(field, lookup_item) {
-		var item = field.owner;
+		var item = field.owner,
+			rec;
 		if (field.field_name === 'taxrate') {
-			item.invoice_table.each(function(t) {
-				t.edit();
-				t.calc(t);
-				t.post();
-			});
-			item.invoice_table.first();
+			rec = item.invoice_table.rec_no;
+			item.invoice_table.disable_controls();
+			try {
+				item.invoice_table.each(function(t) {
+					t.edit();
+					t.calc(t);
+					t.post();
+				});
+			}
+			finally {
+				item.invoice_table.rec_no = rec;
+				item.invoice_table.enable_controls();
+			}
 		}
 	}
 	
@@ -503,53 +523,19 @@ function Events16() { // demo.journals.invoices
 	
 	function on_before_post(item) {
 		var rec = item.invoice_table.rec_no;
-		item.invoice_table.each(function(t) {
-			t.edit();
-			t.customer.value = item.customer.value;
-			t.post();
-		});	
-		item.invoice_table.rec_no = rec;
+		item.invoice_table.disable_controls();
+		try {
+			item.invoice_table.each(function(t) {
+				t.edit();
+				t.customer.value = item.customer.value;
+				t.post();
+			});	
+		}
+		finally {
+			item.invoice_table.rec_no = rec;
+			item.invoice_table.enable_controls();
+		}
 	}
-	
-	
-	// function on_edit_form_created(item) {
-		// item.read_only = item.id.value % 2 === 1;
-	// }
-	
-	// function add_invoice() {
-	//	 var invoices = task.invoices.copy();
-	//	 invoices.open({ open_empty: true });
-	//	 invoices.append_record();
-	// }
-	
-	// function edit_invoice(invoice_id) {
-	//	 var invoices = task.invoices.copy();
-	//	 invoices.edit_options.modeless = false;
-	//	 invoices.open({ where: {id: invoice_id} }, function() {
-	//		 if (invoices.rec_count) {
-	//			 invoices.edit_record();
-	//		 }
-	//		 else {
-	//			 invoices.alert_error('Invoices: record not found.');
-	//		 }
-	//	 });
-	// }
-	
-	
-	// function on_after_scroll(item) {
-	//	 item.view_options.can_edit = false;
-	//	 item.view_options.can_delete = false;
-	//	 if (item.rec_count) {
-	//		 if (item.id.value % 2 !== 1) {
-	//			 item.view_options.can_edit = true;		
-	//			 item.view_options.can_delete = true;
-	//		 }
-	//	 }
-	//	 if (item.view_form) {
-	//		 item.view_form.find("#delete-btn").prop("disabled", !item.view_options.can_delete);
-	//		 // item.view_form.find("#edit-btn").prop("disabled", !item.view_options.can_edit);
-	//	 }
-	// }
 	this.on_field_get_text = on_field_get_text;
 	this.on_field_get_html = on_field_get_html;
 	this.on_field_changed = on_field_changed;
@@ -580,7 +566,7 @@ function Events18() { // demo.journals.invoices.invoice_table
 	function on_view_form_created(item) {
 		var btn = item.add_view_button('Select', {type: 'primary', btn_id: 'select-btn'});
 		btn.click(function() {
-			item.alert('Select the records to add to the invoice');
+			item.alert('Select the records to add to the invoice and close the from');
 			item.select_records('track');
 		});
 	}

@@ -7,7 +7,6 @@ catalog to the same value for the selected records.
 
 
 .. image:: _images/set_media_type.png
-	:scale: 70 %
 	:align: center
 	:alt: set_media_type.png
 

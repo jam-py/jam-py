@@ -6,7 +6,6 @@ Use **Filters Dialog** to create and modify item filters. See
 :doc:`Filters </programming/data/filters>`
 
 .. image:: /admin/_images/filters_dialog.png
-	:scale: 70 %
 	:align: center
 	:alt: Filters Dialog
 	
@@ -15,7 +14,6 @@ following form will appear:
 
 
 .. image:: /admin/_images/filter_editor.png
-	:scale: 70 %
 	:align: center
 	:alt: Filter Editor
 

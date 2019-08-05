@@ -1,6 +1,5 @@
-VERSION = (5, 4, 62)
+__version__ = (5, 4, 69)
 
 def version():
-    global VERSION
-    return '%s.%s.%s' % VERSION
+    return '%s.%s.%s' % __version__
 

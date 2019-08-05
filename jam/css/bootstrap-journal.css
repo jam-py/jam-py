@@ -6657,6 +6657,10 @@ textarea[readonly] {
     filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffe6e6e6', endColorstr='#ffcccccc', GradientType=0);
 }
 
+.dbtable.striped tr:nth-child(odd):not(.selected-focused):not(.selected) > td {
+    background-color: #f9f9f9;
+}
+
 .dbtable.freezed thead,
 .dbtable.freezed tfoot {
     background-color: white;

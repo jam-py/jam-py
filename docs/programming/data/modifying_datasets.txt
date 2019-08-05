@@ -18,8 +18,9 @@ edit, insert, and returns a dataset to *browse* state. ``Post`` writes changes
 to the dataset, and if successful, also returns a dataset to *browse* state. If 
 this operations fail, the current state remains unchanged.
 
-To check an item dataset state use **item_state** attribute or **is_new**, 
-**is_edited** or **is_changing** methods:
+
+To check an item dataset state use ``item_state`` attribute or ``is_new`` 
+``is_edited`` or ``is_changing`` methods:
 
 .. csv-table:: 
    :header: Client, Server, Description
@@ -44,11 +45,10 @@ You can use the following item methods to insert, update, and delete data in dat
    :doc:`cancel </refs/client/item/m_cancel>`, :doc:`cancel </refs/server/item/m_cancel>`, "Cancels the current operation and puts the dataset in *browse* state."
    :doc:`delete </refs/client/item/m_delete>`, :doc:`delete </refs/server/item/m_delete>`, "Deletes the current record and puts the dataset in *browse* state."         
 
-All changes made to an item dataset are stored in memory. If the item 
-**log_changes** attrubute is set to true, the item logs changes. Thus, after all 
-the changes have been made, they can be stored in the assiciated database table 
-by calling the **apply** method. The **apply** method generates and executes SQL 
-query to save changes to the database.
+All changes made to the dataset are stored in memory, the item records changes 
+to change log. Thus, after all the changes have been made, they can be stored in 
+the associated database table by calling the ``apply`` method. The ``apply`` 
+method generates and executes SQL query to save changes to the database.
 
 .. csv-table:: 
    :header: Client, Server, Description

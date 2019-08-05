@@ -126,11 +126,13 @@
             this.element.on("keyup.datepicker", function(e) {
                 e.preventDefault();
                 e.stopPropagation();
+                e.stopImmediatePropagation();
                 if (e.keyCode === 27) {
                     that.hide();
                 }
             });
-            this.picker.focus();
+            this.element.focus();
+            //~ this.picker.focus();
         },
 
         hide: function(){

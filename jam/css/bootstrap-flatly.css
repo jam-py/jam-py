@@ -6923,6 +6923,10 @@ textarea[readonly] {
     background-color: #8ef0dd;
 }
 
+.dbtable.striped tr:nth-child(odd):not(.selected-focused):not(.selected) > td {
+    background-color: #f9f9f9;
+}
+
 .input-append .btn.btn12,
 .input-prepend .btn.btn12 {
     padding: 5px 5px;

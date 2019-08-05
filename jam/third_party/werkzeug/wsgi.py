@@ -5,34 +5,29 @@
 
     This module implements WSGI related helpers.
 
-    :copyright: (c) 2014 by the Werkzeug Team, see AUTHORS for more details.
-    :license: BSD, see LICENSE for more details.
+    :copyright: 2007 Pallets
+    :license: BSD-3-Clause
 """
 import io
-try:
-    import httplib
-except ImportError:
-    from http import client as httplib
-import mimetypes
-import os
-import posixpath
 import re
-import socket
-from datetime import datetime
-from functools import partial, update_wrapper
+from functools import partial
+from functools import update_wrapper
 from itertools import chain
-from time import mktime, time
-from zlib import adler32
 
-from werkzeug._compat import BytesIO, PY2, implements_iterator, iteritems, \
-    make_literal_wrapper, string_types, text_type, to_bytes, to_unicode, \
-    try_coerce_native, wsgi_get_bytes
-from werkzeug._internal import _empty_stream, _encode_idna
-from werkzeug.filesystem import get_filesystem_encoding
-from werkzeug.http import http_date, is_resource_modified, \
-    is_hop_by_hop_header
-from werkzeug.urls import uri_to_iri, url_join, url_parse, url_quote
-from werkzeug.datastructures import EnvironHeaders
+from ._compat import BytesIO
+from ._compat import implements_iterator
+from ._compat import make_literal_wrapper
+from ._compat import string_types
+from ._compat import text_type
+from ._compat import to_bytes
+from ._compat import to_unicode
+from ._compat import try_coerce_native
+from ._compat import wsgi_get_bytes
+from ._internal import _encode_idna
+from .urls import uri_to_iri
+from .urls import url_join
+from .urls import url_parse
+from .urls import url_quote
 
 
 def responder(f):
@@ -48,8 +43,13 @@ def responder(f):
     return update_wrapper(lambda *a: f(*a)(*a[-2:]), f)
 
 
-def get_current_url(environ, root_only=False, strip_querystring=False,
-                    host_only=False, trusted_hosts=None):
+def get_current_url(
+    environ,
+    root_only=False,
+    strip_querystring=False,
+    host_only=False,
+    trusted_hosts=None,
+):
     """A handy helper function that recreates the full URL as IRI for the
     current request or parts of it.  Here's an example:
 
@@ -84,19 +84,19 @@ def get_current_url(environ, root_only=False, strip_querystring=False,
     :param trusted_hosts: a list of trusted hosts, see :func:`host_is_trusted`
                           for more information.
     """
-    tmp = [environ['wsgi.url_scheme'], '://', get_host(environ, trusted_hosts)]
+    tmp = [environ["wsgi.url_scheme"], "://", get_host(environ, trusted_hosts)]
     cat = tmp.append
     if host_only:
-        return uri_to_iri(''.join(tmp) + '/')
-    cat(url_quote(wsgi_get_bytes(environ.get('SCRIPT_NAME', ''))).rstrip('/'))
-    cat('/')
+        return uri_to_iri("".join(tmp) + "/")
+    cat(url_quote(wsgi_get_bytes(environ.get("SCRIPT_NAME", ""))).rstrip("/"))
+    cat("/")
     if not root_only:
-        cat(url_quote(wsgi_get_bytes(environ.get('PATH_INFO', '')).lstrip(b'/')))
+        cat(url_quote(wsgi_get_bytes(environ.get("PATH_INFO", "")).lstrip(b"/")))
         if not strip_querystring:
             qs = get_query_string(environ)
             if qs:
-                cat('?' + qs)
-    return uri_to_iri(''.join(tmp))
+                cat("?" + qs)
+    return uri_to_iri("".join(tmp))
 
 
 def host_is_trusted(hostname, trusted_list):
@@ -117,8 +117,8 @@ def host_is_trusted(hostname, trusted_list):
         trusted_list = [trusted_list]
 
     def _normalize(hostname):
-        if ':' in hostname:
-            hostname = hostname.rsplit(':', 1)[0]
+        if ":" in hostname:
+            hostname = hostname.rsplit(":", 1)[0]
         return _encode_idna(hostname)
 
     try:
@@ -126,7 +126,7 @@ def host_is_trusted(hostname, trusted_list):
     except UnicodeError:
         return False
     for ref in trusted_list:
-        if ref.startswith('.'):
+        if ref.startswith("."):
             ref = ref[1:]
             suffix_match = True
         else:
@@ -137,36 +137,44 @@ def host_is_trusted(hostname, trusted_list):
             return False
         if ref == hostname:
             return True
-        if suffix_match and hostname.endswith(b'.' + ref):
+        if suffix_match and hostname.endswith(b"." + ref):
             return True
     return False
 
 
 def get_host(environ, trusted_hosts=None):
-    """Return the real host for the given WSGI environment.  This first checks
-    the `X-Forwarded-Host` header, then the normal `Host` header, and finally
-    the `SERVER_NAME` environment variable (using the first one it finds).
+    """Return the host for the given WSGI environment. This first checks
+    the ``Host`` header. If it's not present, then ``SERVER_NAME`` and
+    ``SERVER_PORT`` are used. The host will only contain the port if it
+    is different than the standard port for the protocol.
 
-    Optionally it verifies that the host is in a list of trusted hosts.
-    If the host is not in there it will raise a
-    :exc:`~werkzeug.exceptions.SecurityError`.
+    Optionally, verify that the host is trusted using
+    :func:`host_is_trusted` and raise a
+    :exc:`~werkzeug.exceptions.SecurityError` if it is not.
 
-    :param environ: the WSGI environment to get the host of.
-    :param trusted_hosts: a list of trusted hosts, see :func:`host_is_trusted`
-                          for more information.
+    :param environ: The WSGI environment to get the host from.
+    :param trusted_hosts: A list of trusted hosts.
+    :return: Host, with port if necessary.
+    :raise ~werkzeug.exceptions.SecurityError: If the host is not
+        trusted.
     """
-    if 'HTTP_X_FORWARDED_HOST' in environ:
-        rv = environ['HTTP_X_FORWARDED_HOST'].split(',', 1)[0].strip()
-    elif 'HTTP_HOST' in environ:
-        rv = environ['HTTP_HOST']
+    if "HTTP_HOST" in environ:
+        rv = environ["HTTP_HOST"]
+        if environ["wsgi.url_scheme"] == "http" and rv.endswith(":80"):
+            rv = rv[:-3]
+        elif environ["wsgi.url_scheme"] == "https" and rv.endswith(":443"):
+            rv = rv[:-4]
     else:
-        rv = environ['SERVER_NAME']
-        if (environ['wsgi.url_scheme'], environ['SERVER_PORT']) not \
-           in (('https', '443'), ('http', '80')):
-            rv += ':' + environ['SERVER_PORT']
+        rv = environ["SERVER_NAME"]
+        if (environ["wsgi.url_scheme"], environ["SERVER_PORT"]) not in (
+            ("https", "443"),
+            ("http", "80"),
+        ):
+            rv += ":" + environ["SERVER_PORT"]
     if trusted_hosts is not None:
         if not host_is_trusted(rv, trusted_hosts):
-            from werkzeug.exceptions import SecurityError
+            from .exceptions import SecurityError
+
             raise SecurityError('Host "%s" is not trusted' % rv)
     return rv
 
@@ -180,10 +188,10 @@ def get_content_length(environ):
 
     :param environ: the WSGI environ to fetch the content length from.
     """
-    if environ.get('HTTP_TRANSFER_ENCODING', '') == 'chunked':
+    if environ.get("HTTP_TRANSFER_ENCODING", "") == "chunked":
         return None
 
-    content_length = environ.get('CONTENT_LENGTH')
+    content_length = environ.get("CONTENT_LENGTH")
     if content_length is not None:
         try:
             return max(0, int(content_length))
@@ -208,20 +216,20 @@ def get_input_stream(environ, safe_fallback=True):
         content length is not set. Disabling this allows infinite streams,
         which can be a denial-of-service risk.
     """
-    stream = environ['wsgi.input']
+    stream = environ["wsgi.input"]
     content_length = get_content_length(environ)
 
     # A wsgi extension that tells us if the input is terminated.  In
     # that case we return the stream unchanged as we know we can safely
     # read it until the end.
-    if environ.get('wsgi.input_terminated'):
+    if environ.get("wsgi.input_terminated"):
         return stream
 
     # If the request doesn't specify a content length, returning the stream is
     # potentially dangerous because it could be infinite, malicious or not. If
     # safe_fallback is true, return an empty stream instead for safety.
     if content_length is None:
-        return safe_fallback and _empty_stream or stream
+        return BytesIO() if safe_fallback else stream
 
     # Otherwise limit the stream to the content length
     return LimitedStream(stream, content_length)
@@ -237,14 +245,14 @@ def get_query_string(environ):
 
     :param environ: the WSGI environment object to get the query string from.
     """
-    qs = wsgi_get_bytes(environ.get('QUERY_STRING', ''))
+    qs = wsgi_get_bytes(environ.get("QUERY_STRING", ""))
     # QUERY_STRING really should be ascii safe but some browsers
     # will send us some unicode stuff (I am looking at you IE).
     # In that case we want to urllib quote it badly.
-    return try_coerce_native(url_quote(qs, safe=':&%=+$!*\'(),'))
+    return try_coerce_native(url_quote(qs, safe=":&%=+$!*'(),"))
 
 
-def get_path_info(environ, charset='utf-8', errors='replace'):
+def get_path_info(environ, charset="utf-8", errors="replace"):
     """Returns the `PATH_INFO` from the WSGI environment and properly
     decodes it.  This also takes care about the WSGI decoding dance
     on Python 3 environments.  if the `charset` is set to `None` a
@@ -257,11 +265,11 @@ def get_path_info(environ, charset='utf-8', errors='replace'):
                     decoding should be performed.
     :param errors: the decoding error handling.
     """
-    path = wsgi_get_bytes(environ.get('PATH_INFO', ''))
+    path = wsgi_get_bytes(environ.get("PATH_INFO", ""))
     return to_unicode(path, charset, errors, allow_none_charset=True)
 
 
-def get_script_name(environ, charset='utf-8', errors='replace'):
+def get_script_name(environ, charset="utf-8", errors="replace"):
     """Returns the `SCRIPT_NAME` from the WSGI environment and properly
     decodes it.  This also takes care about the WSGI decoding dance
     on Python 3 environments.  if the `charset` is set to `None` a
@@ -274,11 +282,11 @@ def get_script_name(environ, charset='utf-8', errors='replace'):
                     decoding should be performed.
     :param errors: the decoding error handling.
     """
-    path = wsgi_get_bytes(environ.get('SCRIPT_NAME', ''))
+    path = wsgi_get_bytes(environ.get("SCRIPT_NAME", ""))
     return to_unicode(path, charset, errors, allow_none_charset=True)
 
 
-def pop_path_info(environ, charset='utf-8', errors='replace'):
+def pop_path_info(environ, charset="utf-8", errors="replace"):
     """Removes and returns the next segment of `PATH_INFO`, pushing it onto
     `SCRIPT_NAME`.  Returns `None` if there is nothing left on `PATH_INFO`.
 
@@ -305,32 +313,32 @@ def pop_path_info(environ, charset='utf-8', errors='replace'):
 
     :param environ: the WSGI environment that is modified.
     """
-    path = environ.get('PATH_INFO')
+    path = environ.get("PATH_INFO")
     if not path:
         return None
 
-    script_name = environ.get('SCRIPT_NAME', '')
+    script_name = environ.get("SCRIPT_NAME", "")
 
     # shift multiple leading slashes over
     old_path = path
-    path = path.lstrip('/')
+    path = path.lstrip("/")
     if path != old_path:
-        script_name += '/' * (len(old_path) - len(path))
+        script_name += "/" * (len(old_path) - len(path))
 
-    if '/' not in path:
-        environ['PATH_INFO'] = ''
-        environ['SCRIPT_NAME'] = script_name + path
+    if "/" not in path:
+        environ["PATH_INFO"] = ""
+        environ["SCRIPT_NAME"] = script_name + path
         rv = wsgi_get_bytes(path)
     else:
-        segment, path = path.split('/', 1)
-        environ['PATH_INFO'] = '/' + path
-        environ['SCRIPT_NAME'] = script_name + segment
+        segment, path = path.split("/", 1)
+        environ["PATH_INFO"] = "/" + path
+        environ["SCRIPT_NAME"] = script_name + segment
         rv = wsgi_get_bytes(segment)
 
     return to_unicode(rv, charset, errors, allow_none_charset=True)
 
 
-def peek_path_info(environ, charset='utf-8', errors='replace'):
+def peek_path_info(environ, charset="utf-8", errors="replace"):
     """Returns the next segment on the `PATH_INFO` or `None` if there
     is none.  Works like :func:`pop_path_info` without modifying the
     environment:
@@ -351,14 +359,20 @@ def peek_path_info(environ, charset='utf-8', errors='replace'):
 
     :param environ: the WSGI environment that is checked.
     """
-    segments = environ.get('PATH_INFO', '').lstrip('/').split('/', 1)
+    segments = environ.get("PATH_INFO", "").lstrip("/").split("/", 1)
     if segments:
-        return to_unicode(wsgi_get_bytes(segments[0]),
-                          charset, errors, allow_none_charset=True)
+        return to_unicode(
+            wsgi_get_bytes(segments[0]), charset, errors, allow_none_charset=True
+        )
 
 
-def extract_path_info(environ_or_baseurl, path_or_url, charset='utf-8',
-                      errors='replace', collapse_http_schemes=True):
+def extract_path_info(
+    environ_or_baseurl,
+    path_or_url,
+    charset="utf-8",
+    errors="werkzeug.url_quote",
+    collapse_http_schemes=True,
+):
     """Extracts the path info from the given URL (or WSGI environment) and
     path.  The path info returned is a unicode string, not a bytestring
     suitable for a WSGI environment.  The URLs might also be IRIs.
@@ -379,8 +393,6 @@ def extract_path_info(environ_or_baseurl, path_or_url, charset='utf-8',
 
     Instead of providing a base URL you can also pass a WSGI environment.
 
-    .. versionadded:: 0.6
-
     :param environ_or_baseurl: a WSGI environment dict, a base URL or
                                base IRI.  This is the root of the
                                application.
@@ -394,30 +406,36 @@ def extract_path_info(environ_or_baseurl, path_or_url, charset='utf-8',
                                   not assume that http and https on the
                                   same server point to the same
                                   resource.
+
+    .. versionchanged:: 0.15
+        The ``errors`` parameter defaults to leaving invalid bytes
+        quoted instead of replacing them.
+
+    .. versionadded:: 0.6
     """
+
     def _normalize_netloc(scheme, netloc):
-        parts = netloc.split(u'@', 1)[-1].split(u':', 1)
+        parts = netloc.split(u"@", 1)[-1].split(u":", 1)
         if len(parts) == 2:
             netloc, port = parts
-            if (scheme == u'http' and port == u'80') or \
-               (scheme == u'https' and port == u'443'):
+            if (scheme == u"http" and port == u"80") or (
+                scheme == u"https" and port == u"443"
+            ):
                 port = None
         else:
             netloc = parts[0]
             port = None
         if port is not None:
-            netloc += u':' + port
+            netloc += u":" + port
         return netloc
 
     # make sure whatever we are working on is a IRI and parse it
     path = uri_to_iri(path_or_url, charset, errors)
     if isinstance(environ_or_baseurl, dict):
-        environ_or_baseurl = get_current_url(environ_or_baseurl,
-                                             root_only=True)
+        environ_or_baseurl = get_current_url(environ_or_baseurl, root_only=True)
     base_iri = uri_to_iri(environ_or_baseurl, charset, errors)
     base_scheme, base_netloc, base_path = url_parse(base_iri)[:3]
-    cur_scheme, cur_netloc, cur_path, = \
-        url_parse(url_join(base_iri, path))[:3]
+    cur_scheme, cur_netloc, cur_path, = url_parse(url_join(base_iri, path))[:3]
 
     # normalize the network location
     base_netloc = _normalize_netloc(base_scheme, base_netloc)
@@ -426,11 +444,10 @@ def extract_path_info(environ_or_baseurl, path_or_url, charset='utf-8',
     # is that IRI even on a known HTTP scheme?
     if collapse_http_schemes:
         for scheme in base_scheme, cur_scheme:
-            if scheme not in (u'http', u'https'):
+            if scheme not in (u"http", u"https"):
                 return None
     else:
-        if not (base_scheme in (u'http', u'https') and
-                base_scheme == cur_scheme):
+        if not (base_scheme in (u"http", u"https") and base_scheme == cur_scheme):
             return None
 
     # are the netlocs compatible?
@@ -438,401 +455,20 @@ def extract_path_info(environ_or_baseurl, path_or_url, charset='utf-8',
         return None
 
     # are we below the application path?
-    base_path = base_path.rstrip(u'/')
+    base_path = base_path.rstrip(u"/")
     if not cur_path.startswith(base_path):
         return None
 
-    return u'/' + cur_path[len(base_path):].lstrip(u'/')
-
-
-class ProxyMiddleware(object):
-    """This middleware routes some requests to the provided WSGI app and
-    proxies some requests to an external server.  This is not something that
-    can generally be done on the WSGI layer and some HTTP requests will not
-    tunnel through correctly (for instance websocket requests cannot be
-    proxied through WSGI).  As a result this is only really useful for some
-    basic requests that can be forwarded.
-
-    Example configuration::
-
-        app = ProxyMiddleware(app, {
-            '/static/': {
-                'target': 'http://127.0.0.1:5001/',
-            }
-        })
-
-    For each host options can be specified.  The following options are
-    supported:
-
-    ``target``:
-        the target URL to dispatch to
-    ``remove_prefix``:
-        if set to `True` the prefix is chopped off the URL before
-        dispatching it to the server.
-    ``host``:
-        When set to ``'<auto>'`` which is the default the host header is
-        automatically rewritten to the URL of the target.  If set to `None`
-        then the host header is unmodified from the client request.  Any
-        other value overwrites the host header with that value.
-    ``headers``:
-        An optional dictionary of headers that should be sent with the
-        request to the target host.
-    ``ssl_context``:
-        In case this is an HTTPS target host then an SSL context can be
-        provided here (:class:`ssl.SSLContext`).  This can be used for instance
-        to disable SSL verification.
-
-    In this case everything below ``'/static/'`` is proxied to the server on
-    port 5001.  The host header is automatically rewritten and so are request
-    URLs (eg: the leading `/static/` prefix here gets chopped off).
-
-    .. versionadded:: 0.14
-    """
-
-    def __init__(self, app, targets, chunk_size=2 << 13, timeout=10):
-        def _set_defaults(opts):
-            opts.setdefault('remove_prefix', False)
-            opts.setdefault('host', '<auto>')
-            opts.setdefault('headers', {})
-            opts.setdefault('ssl_context', None)
-            return opts
-        self.app = app
-        self.targets = dict(('/%s/' % k.strip('/'), _set_defaults(v))
-                            for k, v in iteritems(targets))
-        self.chunk_size = chunk_size
-        self.timeout = timeout
-
-    def proxy_to(self, opts, path, prefix):
-        target = url_parse(opts['target'])
-
-        def application(environ, start_response):
-            headers = list(EnvironHeaders(environ).items())
-            headers[:] = [(k, v) for k, v in headers
-                          if not is_hop_by_hop_header(k) and
-                          k.lower() not in ('content-length', 'host')]
-            headers.append(('Connection', 'close'))
-            if opts['host'] == '<auto>':
-                headers.append(('Host', target.ascii_host))
-            elif opts['host'] is None:
-                headers.append(('Host', environ['HTTP_HOST']))
-            else:
-                headers.append(('Host', opts['host']))
-            headers.extend(opts['headers'].items())
-
-            remote_path = path
-            if opts['remove_prefix']:
-                remote_path = '%s/%s' % (
-                    target.path.rstrip('/'),
-                    remote_path[len(prefix):].lstrip('/')
-                )
-
-            content_length = environ.get('CONTENT_LENGTH')
-            chunked = False
-            if content_length not in ('', None):
-                headers.append(('Content-Length', content_length))
-            elif content_length is not None:
-                headers.append(('Transfer-Encoding', 'chunked'))
-                chunked = True
-
-            try:
-                if target.scheme == 'http':
-                    con = httplib.HTTPConnection(
-                        target.ascii_host, target.port or 80,
-                        timeout=self.timeout)
-                elif target.scheme == 'https':
-                    con = httplib.HTTPSConnection(
-                        target.ascii_host, target.port or 443,
-                        timeout=self.timeout,
-                        context=opts['ssl_context'])
-                con.connect()
-                con.putrequest(environ['REQUEST_METHOD'], url_quote(remote_path),
-                               skip_host=True)
-
-                for k, v in headers:
-                    if k.lower() == 'connection':
-                        v = 'close'
-                    con.putheader(k, v)
-                con.endheaders()
-
-                stream = get_input_stream(environ)
-                while 1:
-                    data = stream.read(self.chunk_size)
-                    if not data:
-                        break
-                    if chunked:
-                        con.send(b'%x\r\n%s\r\n' % (len(data), data))
-                    else:
-                        con.send(data)
-
-                resp = con.getresponse()
-            except socket.error:
-                from werkzeug.exceptions import BadGateway
-                return BadGateway()(environ, start_response)
-
-            start_response('%d %s' % (resp.status, resp.reason),
-                           [(k.title(), v) for k, v in resp.getheaders()
-                            if not is_hop_by_hop_header(k)])
-
-            def read():
-                while 1:
-                    try:
-                        data = resp.read(self.chunk_size)
-                    except socket.error:
-                        break
-                    if not data:
-                        break
-                    yield data
-            return read()
-        return application
-
-    def __call__(self, environ, start_response):
-        path = environ['PATH_INFO']
-        app = self.app
-        for prefix, opts in iteritems(self.targets):
-            if path.startswith(prefix):
-                app = self.proxy_to(opts, path, prefix)
-                break
-        return app(environ, start_response)
-
-
-class SharedDataMiddleware(object):
-
-    """A WSGI middleware that provides static content for development
-    environments or simple server setups. Usage is quite simple::
-
-        import os
-        from werkzeug.wsgi import SharedDataMiddleware
-
-        app = SharedDataMiddleware(app, {
-            '/shared': os.path.join(os.path.dirname(__file__), 'shared')
-        })
-
-    The contents of the folder ``./shared`` will now be available on
-    ``http://example.com/shared/``.  This is pretty useful during development
-    because a standalone media server is not required.  One can also mount
-    files on the root folder and still continue to use the application because
-    the shared data middleware forwards all unhandled requests to the
-    application, even if the requests are below one of the shared folders.
-
-    If `pkg_resources` is available you can also tell the middleware to serve
-    files from package data::
-
-        app = SharedDataMiddleware(app, {
-            '/shared': ('myapplication', 'shared_files')
-        })
-
-    This will then serve the ``shared_files`` folder in the `myapplication`
-    Python package.
-
-    The optional `disallow` parameter can be a list of :func:`~fnmatch.fnmatch`
-    rules for files that are not accessible from the web.  If `cache` is set to
-    `False` no caching headers are sent.
-
-    Currently the middleware does not support non ASCII filenames.  If the
-    encoding on the file system happens to be the encoding of the URI it may
-    work but this could also be by accident.  We strongly suggest using ASCII
-    only file names for static files.
-
-    The middleware will guess the mimetype using the Python `mimetype`
-    module.  If it's unable to figure out the charset it will fall back
-    to `fallback_mimetype`.
-
-    .. versionchanged:: 0.5
-       The cache timeout is configurable now.
-
-    .. versionadded:: 0.6
-       The `fallback_mimetype` parameter was added.
-
-    :param app: the application to wrap.  If you don't want to wrap an
-                application you can pass it :exc:`NotFound`.
-    :param exports: a list or dict of exported files and folders.
-    :param disallow: a list of :func:`~fnmatch.fnmatch` rules.
-    :param fallback_mimetype: the fallback mimetype for unknown files.
-    :param cache: enable or disable caching headers.
-    :param cache_timeout: the cache timeout in seconds for the headers.
-    """
-
-    def __init__(self, app, exports, disallow=None, cache=True,
-                 cache_timeout=60 * 60 * 12, fallback_mimetype='text/plain'):
-        self.app = app
-        self.exports = []
-        self.cache = cache
-        self.cache_timeout = cache_timeout
-        if hasattr(exports, 'items'):
-            exports = iteritems(exports)
-        for key, value in exports:
-            if isinstance(value, tuple):
-                loader = self.get_package_loader(*value)
-            elif isinstance(value, string_types):
-                if os.path.isfile(value):
-                    loader = self.get_file_loader(value)
-                else:
-                    loader = self.get_directory_loader(value)
-            else:
-                raise TypeError('unknown def %r' % value)
-            self.exports.append((key, loader))
-        if disallow is not None:
-            from fnmatch import fnmatch
-            self.is_allowed = lambda x: not fnmatch(x, disallow)
-        self.fallback_mimetype = fallback_mimetype
-
-    def is_allowed(self, filename):
-        """Subclasses can override this method to disallow the access to
-        certain files.  However by providing `disallow` in the constructor
-        this method is overwritten.
-        """
-        return True
-
-    def _opener(self, filename):
-        return lambda: (
-            open(filename, 'rb'),
-            datetime.utcfromtimestamp(os.path.getmtime(filename)),
-            int(os.path.getsize(filename))
-        )
-
-    def get_file_loader(self, filename):
-        return lambda x: (os.path.basename(filename), self._opener(filename))
-
-    def get_package_loader(self, package, package_path):
-        from pkg_resources import DefaultProvider, ResourceManager, \
-            get_provider
-        loadtime = datetime.utcnow()
-        provider = get_provider(package)
-        manager = ResourceManager()
-        filesystem_bound = isinstance(provider, DefaultProvider)
-
-        def loader(path):
-            if path is None:
-                return None, None
-            path = posixpath.join(package_path, path)
-            if not provider.has_resource(path):
-                return None, None
-            basename = posixpath.basename(path)
-            if filesystem_bound:
-                return basename, self._opener(
-                    provider.get_resource_filename(manager, path))
-            s = provider.get_resource_string(manager, path)
-            return basename, lambda: (
-                BytesIO(s),
-                loadtime,
-                len(s)
-            )
-        return loader
-
-    def get_directory_loader(self, directory):
-        def loader(path):
-            if path is not None:
-                path = os.path.join(directory, path)
-            else:
-                path = directory
-            if os.path.isfile(path):
-                return os.path.basename(path), self._opener(path)
-            return None, None
-        return loader
-
-    def generate_etag(self, mtime, file_size, real_filename):
-        if not isinstance(real_filename, bytes):
-            real_filename = real_filename.encode(get_filesystem_encoding())
-        return 'wzsdm-%d-%s-%s' % (
-            mktime(mtime.timetuple()),
-            file_size,
-            adler32(real_filename) & 0xffffffff
-        )
-
-    def __call__(self, environ, start_response):
-        cleaned_path = get_path_info(environ)
-        if PY2:
-            cleaned_path = cleaned_path.encode(get_filesystem_encoding())
-        # sanitize the path for non unix systems
-        cleaned_path = cleaned_path.strip('/')
-        for sep in os.sep, os.altsep:
-            if sep and sep != '/':
-                cleaned_path = cleaned_path.replace(sep, '/')
-        path = '/' + '/'.join(x for x in cleaned_path.split('/')
-                              if x and x != '..')
-        file_loader = None
-        for search_path, loader in self.exports:
-            if search_path == path:
-                real_filename, file_loader = loader(None)
-                if file_loader is not None:
-                    break
-            if not search_path.endswith('/'):
-                search_path += '/'
-            if path.startswith(search_path):
-                real_filename, file_loader = loader(path[len(search_path):])
-                if file_loader is not None:
-                    break
-        if file_loader is None or not self.is_allowed(real_filename):
-            return self.app(environ, start_response)
-
-        guessed_type = mimetypes.guess_type(real_filename)
-        mime_type = guessed_type[0] or self.fallback_mimetype
-        f, mtime, file_size = file_loader()
-
-        headers = [('Date', http_date())]
-        if self.cache:
-            timeout = self.cache_timeout
-            etag = self.generate_etag(mtime, file_size, real_filename)
-            headers += [
-                ('Etag', '"%s"' % etag),
-                ('Cache-Control', 'max-age=%d, public' % timeout)
-            ]
-            if not is_resource_modified(environ, etag, last_modified=mtime):
-                f.close()
-                start_response('304 Not Modified', headers)
-                return []
-            headers.append(('Expires', http_date(time() + timeout)))
-        else:
-            headers.append(('Cache-Control', 'public'))
-
-        headers.extend((
-            ('Content-Type', mime_type),
-            ('Content-Length', str(file_size)),
-            ('Last-Modified', http_date(mtime))
-        ))
-        start_response('200 OK', headers)
-        return wrap_file(environ, f)
-
-
-class DispatcherMiddleware(object):
-
-    """Allows one to mount middlewares or applications in a WSGI application.
-    This is useful if you want to combine multiple WSGI applications::
-
-        app = DispatcherMiddleware(app, {
-            '/app2':        app2,
-            '/app3':        app3
-        })
-    """
-
-    def __init__(self, app, mounts=None):
-        self.app = app
-        self.mounts = mounts or {}
-
-    def __call__(self, environ, start_response):
-        script = environ.get('PATH_INFO', '')
-        path_info = ''
-        while '/' in script:
-            if script in self.mounts:
-                app = self.mounts[script]
-                break
-            script, last_item = script.rsplit('/', 1)
-            path_info = '/%s%s' % (last_item, path_info)
-        else:
-            app = self.mounts.get(script, self.app)
-        original_script_name = environ.get('SCRIPT_NAME', '')
-        environ['SCRIPT_NAME'] = original_script_name + script
-        environ['PATH_INFO'] = path_info
-        return app(environ, start_response)
+    return u"/" + cur_path[len(base_path) :].lstrip(u"/")
 
 
 @implements_iterator
 class ClosingIterator(object):
-
     """The WSGI specification requires that all middlewares and gateways
-    respect the `close` callback of an iterator.  Because it is useful to add
-    another close action to a returned iterator and adding a custom iterator
-    is a boring task this class can be used for that::
+    respect the `close` callback of the iterable returned by the application.
+    Because it is useful to add another close action to a returned iterable
+    and adding a custom iterable is a boring task this class can be used for
+    that::
 
         return ClosingIterator(app(environ, start_response), [cleanup_session,
                                                               cleanup_locals])
@@ -858,7 +494,7 @@ class ClosingIterator(object):
             callbacks = [callbacks]
         else:
             callbacks = list(callbacks)
-        iterable_close = getattr(iterator, 'close', None)
+        iterable_close = getattr(iterable, "close", None)
         if iterable_close:
             callbacks.insert(0, iterable_close)
         self._callbacks = callbacks
@@ -890,12 +526,11 @@ def wrap_file(environ, file, buffer_size=8192):
     :param file: a :class:`file`-like object with a :meth:`~file.read` method.
     :param buffer_size: number of bytes for one iteration.
     """
-    return environ.get('wsgi.file_wrapper', FileWrapper)(file, buffer_size)
+    return environ.get("wsgi.file_wrapper", FileWrapper)(file, buffer_size)
 
 
 @implements_iterator
 class FileWrapper(object):
-
     """This class can be used to convert a :class:`file`-like object into
     an iterable.  It yields `buffer_size` blocks until the file is fully
     read.
@@ -918,22 +553,22 @@ class FileWrapper(object):
         self.buffer_size = buffer_size
 
     def close(self):
-        if hasattr(self.file, 'close'):
+        if hasattr(self.file, "close"):
             self.file.close()
 
     def seekable(self):
-        if hasattr(self.file, 'seekable'):
+        if hasattr(self.file, "seekable"):
             return self.file.seekable()
-        if hasattr(self.file, 'seek'):
+        if hasattr(self.file, "seek"):
             return True
         return False
 
     def seek(self, *args):
-        if hasattr(self.file, 'seek'):
+        if hasattr(self.file, "seek"):
             self.file.seek(*args)
 
     def tell(self):
-        if hasattr(self.file, 'tell'):
+        if hasattr(self.file, "tell"):
             return self.file.tell()
         return None
 
@@ -973,7 +608,7 @@ class _RangeWrapper(object):
         if byte_range is not None:
             self.end_byte = self.start_byte + self.byte_range
         self.read_length = 0
-        self.seekable = hasattr(iterable, 'seekable') and iterable.seekable()
+        self.seekable = hasattr(iterable, "seekable") and iterable.seekable()
         self.end_reached = False
 
     def __iter__(self):
@@ -998,7 +633,7 @@ class _RangeWrapper(object):
             while self.read_length <= self.start_byte:
                 chunk = self._next_chunk()
             if chunk is not None:
-                chunk = chunk[self.start_byte - self.read_length:]
+                chunk = chunk[self.start_byte - self.read_length :]
             contextual_read_length = self.start_byte
         return chunk, contextual_read_length
 
@@ -1013,7 +648,7 @@ class _RangeWrapper(object):
             chunk = self._next_chunk()
         if self.end_byte is not None and self.read_length >= self.end_byte:
             self.end_reached = True
-            return chunk[:self.end_byte - contextual_read_length]
+            return chunk[: self.end_byte - contextual_read_length]
         return chunk
 
     def __next__(self):
@@ -1024,16 +659,17 @@ class _RangeWrapper(object):
         raise StopIteration()
 
     def close(self):
-        if hasattr(self.iterable, 'close'):
+        if hasattr(self.iterable, "close"):
             self.iterable.close()
 
 
 def _make_chunk_iter(stream, limit, buffer_size):
     """Helper for the line and chunk iter functions."""
     if isinstance(stream, (bytes, bytearray, text_type)):
-        raise TypeError('Passed a string or byte object instead of '
-                        'true iterator or stream.')
-    if not hasattr(stream, 'read'):
+        raise TypeError(
+            "Passed a string or byte object instead of true iterator or stream."
+        )
+    if not hasattr(stream, "read"):
         for item in stream:
             if item:
                 yield item
@@ -1048,8 +684,7 @@ def _make_chunk_iter(stream, limit, buffer_size):
         yield item
 
 
-def make_line_iter(stream, limit=None, buffer_size=10 * 1024,
-                   cap_at_buffer=False):
+def make_line_iter(stream, limit=None, buffer_size=10 * 1024, cap_at_buffer=False):
     """Safely iterates line-based over an input stream.  If the input stream
     is not a :class:`LimitedStream` the `limit` parameter is mandatory.
 
@@ -1083,15 +718,15 @@ def make_line_iter(stream, limit=None, buffer_size=10 * 1024,
     """
     _iter = _make_chunk_iter(stream, limit, buffer_size)
 
-    first_item = next(_iter, '')
+    first_item = next(_iter, "")
     if not first_item:
         return
 
     s = make_literal_wrapper(first_item)
-    empty = s('')
-    cr = s('\r')
-    lf = s('\n')
-    crlf = s('\r\n')
+    empty = s("")
+    cr = s("\r")
+    lf = s("\n")
+    crlf = s("\r\n")
 
     _iter = chain((first_item,), _iter)
 
@@ -1099,7 +734,7 @@ def make_line_iter(stream, limit=None, buffer_size=10 * 1024,
         _join = empty.join
         buffer = []
         while 1:
-            new_data = next(_iter, '')
+            new_data = next(_iter, "")
             if not new_data:
                 break
             new_buf = []
@@ -1134,8 +769,9 @@ def make_line_iter(stream, limit=None, buffer_size=10 * 1024,
         yield previous
 
 
-def make_chunk_iter(stream, separator, limit=None, buffer_size=10 * 1024,
-                    cap_at_buffer=False):
+def make_chunk_iter(
+    stream, separator, limit=None, buffer_size=10 * 1024, cap_at_buffer=False
+):
     """Works like :func:`make_line_iter` but accepts a separator
     which divides chunks.  If you want newline based processing
     you should use :func:`make_line_iter` instead as it
@@ -1162,23 +798,23 @@ def make_chunk_iter(stream, separator, limit=None, buffer_size=10 * 1024,
     """
     _iter = _make_chunk_iter(stream, limit, buffer_size)
 
-    first_item = next(_iter, '')
+    first_item = next(_iter, "")
     if not first_item:
         return
 
     _iter = chain((first_item,), _iter)
     if isinstance(first_item, text_type):
         separator = to_unicode(separator)
-        _split = re.compile(r'(%s)' % re.escape(separator)).split
-        _join = u''.join
+        _split = re.compile(r"(%s)" % re.escape(separator)).split
+        _join = u"".join
     else:
         separator = to_bytes(separator)
-        _split = re.compile(b'(' + re.escape(separator) + b')').split
-        _join = b''.join
+        _split = re.compile(b"(" + re.escape(separator) + b")").split
+        _join = b"".join
 
     buffer = []
     while 1:
-        new_data = next(_iter, '')
+        new_data = next(_iter, "")
         if not new_data:
             break
         chunks = _split(new_data)
@@ -1208,7 +844,6 @@ def make_chunk_iter(stream, separator, limit=None, buffer_size=10 * 1024,
 
 @implements_iterator
 class LimitedStream(io.IOBase):
-
     """Wraps a stream so that it doesn't read more than n bytes.  If the
     stream is exhausted and the caller tries to get more bytes from it
     :func:`on_exhausted` is called which by default returns an empty
@@ -1271,7 +906,8 @@ class LimitedStream(io.IOBase):
         the client went away.  By default a
         :exc:`~werkzeug.exceptions.ClientDisconnected` exception is raised.
         """
-        from werkzeug.exceptions import ClientDisconnected
+        from .exceptions import ClientDisconnected
+
         raise ClientDisconnected()
 
     def exhaust(self, chunk_size=1024 * 64):

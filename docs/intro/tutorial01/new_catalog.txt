@@ -8,7 +8,6 @@ Now we select the "Catalogs" group in the project tree and and click the **New**
 button at the bottom right corner of the page
 
 .. image:: /intro/_images/catalogs.png
-	:scale: 70 %
 	:align: center
 	:alt: Catalogs
 
@@ -17,7 +16,6 @@ In the
 dialog, fill in the caption and name of the new catalog 
 
 .. image:: /intro/_images/customers_new.png
-	:scale: 70 %
 	:align: center
 	:alt: New customes catalog
 
@@ -28,7 +26,6 @@ dialog appears. Type the caption and name of the
 "Firstname" field, select its type and click **OK** button.
 
 .. image:: /intro/_images/firstname.png
-	:scale: 70 %
 	:align: center
 	:alt: New journal tasks
 
@@ -36,7 +33,6 @@ Similarly, we added the "Lastname" and "Phone" fields. When adding the "Lastname
 field, we checked the **Required** attribute. 
 
 .. image:: /intro/_images/customers_fields.png
-	:scale: 70 %
 	:align: center
 	:alt: Customers fields
 	
@@ -44,7 +40,6 @@ Now, to save the changes, click the **OK** button. When saving, the Application
 builder created the CRM_CUSTOMERS table in the ctm.sqlite database:
 
 .. image:: /intro/_images/customer_sql.png
-	:scale: 70 %
 	:align: left
 	:alt: Table created
 	
@@ -52,6 +47,5 @@ Go to the Project page, refresh it and click the **New**
 button and then **OK** button:
 
 .. image:: /intro/_images/customers_refresh.png
-	:scale: 70 %
 	:align: center
 	:alt: Customers page

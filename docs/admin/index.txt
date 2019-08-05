@@ -41,6 +41,5 @@ To see the changes made in Application builder go to the Project page and reload
    language_translation
 
 .. image:: _images/admin.png
-	:scale: 70 %
 	:align: center
 	:alt: Business application builder

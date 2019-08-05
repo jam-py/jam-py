@@ -1,0 +1,69 @@
+==============
+Version 5.4.69
+==============
+
+Library:
+
+* Werkzeug library upgraded to the version 0.15.4
+
+* common.py module rewritten, consts object created
+
+* adm_server.py module removed 
+
+* admin folder is created with modules 
+
+  * admin.py - application builder server side module
+  
+  * task.py - loading of task from admin.sqlite database
+  
+  * export_metadata.py
+  
+  * import_metadata.py
+
+* builder folder added to package that contains Application Builder project that 
+  is used to create Jam.py Application Builder, see read.me file in the folder.
+
+* task loading accelerated
+
+* import of metadata rewritten
+
+* import of metadata accelerated
+
+* :doc:`permissions </refs/client/item/at_permissions>` property added
+  
+* logging created (currently under development and not documented yet)
+
+* edit method on the client and server checks now if item state is in edit mode
+  and if it is does nothing
+
+* round methods are corrected on the client and server, value of currency fields 
+  are rounded before they are assigned   
+
+* inline editing is now available for any items (not details only)
+
+* inline editing of lookup fields, list fields, date and datetime inputs reworked,
+  bugs fixed
+  
+* fixed columns of tables bugs fixed
+
+* tables striped option added
+
+* search input is focused now by Ctrl-F, Escape returns focus to the table 
+
+* :doc:`enable_controls </refs/client/item/m_enable_controls>` redraws controls
+  now, no need to call update_controls method
+  
+* lot of bugs fixed  
+
+Application builder:
+
+* a link to the form-related documentation page has been added to the 
+  application Builder form headers
+  
+Documetation:
+
+* search bug fixed
+
+* topics related to the server on_apply and on_open events rewritten
+ 
+* new topic added :doc:`How to prohibit changing record </how_to/how_to_prohibit_changing_record>` 

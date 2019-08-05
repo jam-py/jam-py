@@ -18,9 +18,10 @@ application server for writing to the database.
 
 The ``apply`` method can have the following parameters:
 
-* ``callback``: if the parameter is not present, the request to the server is 
+* ``callback``: if the parameter is not present and ``async`` parameter is ``false`` 
+  or ``undefined``, the request to the server is 
   sent synchronously, otherwise, the request is executed asynchronously and 
-  after the responce is received, the callback is executed
+  after the response is received, the callback is executed
 
 * ``params`` - an object specifying user defined params, that can be used 
   on the server in the
@@ -34,20 +35,15 @@ The order of parameters doesn't matter.
 
 The ``apply`` method
 
-* checks whether the item is a detail, and if it is, returns 
+* checks whether the item is a detail, and if it is, returns (the master saves the
+  details changes)
 
 * checks whether the item is in edit or insert 
   :doc:`state <at_item_state>`
   , and if so, posts the record
   
-* checks if the change log has changes, and if not, 
-  triggers the 
-  :doc:`on_before_apply <on_before_apply>`
-  event handler if one is defined for the item, 
-  triggers the 
-  :doc:`on_after_apply <on_after_apply>`
-  event handler if one is defined for the item, 
-  executes callback if it is passed and then returns
+* checks if the change log has changes, and if not, executes callback if it is 
+  passed and then returns
 
 * triggers the 
   :doc:`on_before_apply <on_before_apply>`
@@ -58,7 +54,8 @@ The ``apply`` method
 * server on receiving the request checks whether
   :doc:`on_apply </refs/server/item/on_apply>`
   event handler is defined for the item, and if it is, executes it, otherwise   
-  generates and executes SQL query to write changes to the database
+  generates and executes SQL query to write changes to the database, see also
+  :doc:`on_apply events </programming/server/on_apply_events>` topic
   
 * when generating an SQL query, checks whether a user, that send the request, has 
   rights to make these changes, if not raises an exception
@@ -68,8 +65,9 @@ The ``apply`` method
 * after writing changes to the database, server sends to the client results
   of the execution
 
-* if exception was raised during the operation on the server and the callback 
-  parameter is not present (synchronous execution), the client throws an exception
+* if exception was raised during the operation on the server the client throws an 
+  exception, before throwing exception, if the callback parameter is passed, 
+  it is called and the error is passed as the callback function parameter
 
 * the client, based on the results, updates the change log   
 
@@ -77,9 +75,7 @@ The ``apply`` method
   :doc:`on_after_apply <on_after_apply>`
   event handler if one is defined for the item 
  
-* if the callback parameter is passed, it is called. If exception was raised 
-  during the operation on the server the the error is passed as callback 
-  parameter
+* if the callback parameter is passed, it is called. 
 
 .. note::
     The server, before writing new records to the database table, generates 
@@ -87,9 +83,29 @@ The ``apply`` method
     information received from the server. If you change values of some other 
     fields in the 
     :doc:`on_apply </refs/server/item/on_apply>`
-    event handler, these changes will not be reflected on the client. You must
-    update them yourself.
+    event handler, these changes will not be reflected on the client. You can
+    update them yourself using, for example, 
+    :doc:`refresh_record <m_refresh_record>`
+    method
     
+Example
+=======
+
+
+.. code-block:: js
+
+  var self = this;
+  this.apply(function(err) {
+      if (err) {
+          self.alert_error(err);
+      }
+      else {
+          //some code to execute after appling changes
+      }
+  });
+
+
+
 See also
 ========
 

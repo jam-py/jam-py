@@ -4,7 +4,6 @@ Database
 
 
 .. image:: /admin/_images/database.png
-	:scale: 70 %
 	:align: center
 	:alt: Database dialog
 
@@ -33,7 +32,6 @@ SQLite
 ------
 
 .. image:: /admin/_images/SQLite_setup.png
-	:scale: 70 %
 	:align: center
 	:alt: SQLite setup
 
@@ -41,7 +39,6 @@ PostgreSQL
 ----------
 
 .. image:: /admin/_images/postgres_setup.png
-	:scale: 70 %
 	:align: center
 	:alt: PostgreSQL setup
 
@@ -49,7 +46,6 @@ MySql
 -----
 
 .. image:: /admin/_images/MySql_setup.png
-	:scale: 70 %
 	:align: center
 	:alt: MySql setup
 
@@ -57,7 +53,6 @@ FireBird
 --------
 
 .. image:: /admin/_images/firebird_setup.png
-	:scale: 70 %
 	:align: center
 	:alt: FireBird setup
 
@@ -65,7 +60,6 @@ MSSQL
 -----
 
 .. image:: /admin/_images/mssql_setup.png
-	:scale: 70 %
 	:align: center
 	:alt: MSSQL setup
 
@@ -73,6 +67,5 @@ Oracle
 ------
 
 .. image:: /admin/_images/oracle_setup.png
-	:scale: 70 %
 	:align: center
 	:alt: Oracle setup

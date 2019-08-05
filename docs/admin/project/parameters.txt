@@ -9,7 +9,6 @@ General tab
 ===========
 
 .. image:: /admin/_images/parameters.png
-	:scale: 70 %
 	:align: center
 	:alt: Project parameters dialog
 
@@ -90,7 +89,6 @@ Interface tab
 =============
 
 .. image:: /admin/_images/parameters_interface.png
-	:scale: 70 %
 	:align: center
 	:alt: parameters_interface.png
 	

@@ -10,7 +10,6 @@ the item.
 A new project code has a function that can be used to print the reports.
 
 .. image:: /admin/_images/reports_dialog.png
-	:scale: 70 %
 	:align: center
 	:alt: Reports Dialog
 

@@ -4,81 +4,62 @@ import json
 import uuid
 import traceback
 import datetime, time
-from threading import Lock
 from types import MethodType
 import mimetypes
+import logging
 import jam
-import base64
-from jam.third_party.six import get_function_code
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(jam.__file__), 'third_party')))
 
 from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Map, Rule
 from werkzeug.exceptions import HTTPException, NotFound
-from werkzeug.wsgi import SharedDataMiddleware, peek_path_info, get_path_info
+from werkzeug.middleware.shared_data import SharedDataMiddleware
+from werkzeug.wsgi import peek_path_info, get_path_info
 from werkzeug.local import Local, LocalManager
 from werkzeug.http import parse_date, http_date
-from werkzeug.contrib.securecookie import SecureCookie
 from werkzeug.utils import cached_property, secure_filename
 from werkzeug._compat import to_unicode, to_bytes
+from werkzeug.secure_cookie.securecookie import SecureCookie
 
-import jam.common as common
-from jam.common import error_message
-import jam.adm_server as adm_server
-from jam.items import AbortException
+from .third_party.six import get_function_code
+
+from .common import consts, error_message, file_write
+from .common import consts, ProjectNotCompleted
+from .common import json_defaul_handler, compressBuf
+from .admin.admin import create_admin, login_user, get_roles
+from .admin.admin import user_valid_ip, user_valid_uuid
+from .admin.builder import update_events_code
+from .admin.import_metadata import import_metadata
+from .items import AbortException
+from .admin.task import create_task, reload_task
 
 class JamSecureCookie(SecureCookie):
     serialization_method = json
 
-    @classmethod
-    def quote(cls, value):
-        if cls.serialization_method is not None:
-            value = cls.serialization_method.dumps(value)
-            ### Added line
-            value = to_bytes(value, 'utf-8')
-        if cls.quote_base64:
-            value = b''.join(base64.b64encode(value).splitlines()).strip()
-        return value
-
-    @classmethod
-    def unquote(cls, value):
-        if cls.quote_base64:
-            value = base64.b64decode(value)
-        ### Added line
-        value = to_unicode(value, 'utf-8')
-        if cls.serialization_method is not None:
-            value = cls.serialization_method.loads(value)
-        return value
-
 class JamRequest(Request):
 
-    def session_key(self, task):
-        if task.app.admin == task:
-            return '%s_session_%s' % (task.item_name, self.environ['SERVER_PORT'])
+    @cached_property
+    def session_key(self):
+        if self.task.app.admin == self.task:
+            return '%s_session_%s' % (self.task.item_name, self.environ['SERVER_PORT'])
         else:
-            return '%s_session' % (task.item_name)
+            return '%s_session' % (self.task.item_name)
 
-    def get_session(self, task):
-        if not hasattr(self, '_cookie') and task:
-            key = self.session_key(task)
-            self._cookie = JamSecureCookie.load_cookie(self, key=key, secret_key=task.app.admin.secret_key)
-            expires = self._cookie.get('session_expires')
-            if expires and time.time() > expires:
-                self._cookie = {}
-        return self._cookie
+    @cached_property
+    def client_cookie(self):
+        return JamSecureCookie.load_cookie(self, key=self.session_key, secret_key=self.task.app.admin.secret_key)
 
-    def save_session(self, response, app, task):
+    def save_client_cookie(self, response, app, task):
         if task:
-            session_expires = None
-            if app.admin.safe_mode and app.admin.timeout:
-                session_expires = time.time() + app.admin.timeout
-            key = self.session_key(task)
-            session = self.get_session(task)
-            session['session_expires'] = session_expires
-            session.save_cookie(response, key=key, session_expires=session_expires)
+            cookie = self.client_cookie
+            expires = None
+            if consts.SAFE_MODE and task.timeout:
+                expires = time.time() + task.timeout
+                cookie.modified = True
+            cookie.save_cookie(response, key=self.session_key, session_expires=expires)
 
-def create_application(from_file=None, load_task=False):
+def create_application(from_file=None, load_task=False, testing=False):
     if from_file:
         if os.path.isfile(from_file):
             work_dir = os.path.dirname(from_file)
@@ -96,19 +77,52 @@ def create_application(from_file=None, load_task=False):
     local_manager = LocalManager([jam.context])
 
     application = App(work_dir, load_task)
-    application = SharedDataMiddleware(application, static_files)
-    application = local_manager.make_middleware(application)
+    if not testing:
+        application = SharedDataMiddleware(application, static_files)
+        application = local_manager.make_middleware(application)
     return application
+
+class JamLogger(object):
+    def __init__(self, app):
+        self.app = app
+
+    @cached_property
+    def log(self):
+        logger = logging.getLogger('jam_app')
+        logger.setLevel(logging.DEBUG)
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+
+        return logger
+
+    def debug(self, msg, *args, **kwargs):
+        self.log.debug(msg, *args, **kwargs)
+
+    def info(self, msg, *args, **kwargs):
+        self.log.info(msg, *args, **kwargs)
+
+    def warning(self, msg, *args, **kwargs):
+        self.log.warning(msg, *args, **kwargs)
+
+    def error(self, msg, *args, **kwargs):
+        self.log.error(msg, *args, **kwargs)
+
+    def exception(self, msg, *args, **kwargs):
+        self.log.exception(msg, *args, **kwargs)
+
+    def critical(self, msg, *args, **kwargs):
+        self.log.critical(msg, *args, **kwargs)
 
 class App(object):
     def __init__(self, work_dir, load_task):
         mimetypes.add_type('text/cache-manifest', '.appcache')
         self.started = datetime.datetime.now()
         self.work_dir = work_dir
-        self.state = common.PROJECT_NONE
-        self._load_lock = Lock()
-        self.admin = None
-        self.task = None
+        self.state = consts.PROJECT_NONE
+        self.__task = None
         self.privileges = None
         self._busy = 0
         self.pid = os.getpid()
@@ -133,61 +147,61 @@ class App(object):
             Rule('/api', endpoint='api'),
             Rule('/upload', endpoint='upload')
         ])
-        self.admin = self.create_admin()
-        with self.admin.lock('$creating_task'):
-            self.admin.read_settings()
-            self.max_content_length = self.admin.max_content_length
-            self.build_id_prefix = '$buildID'
-            self.save_build_id();
-            if load_task:
-                self.get_task()
-            self.check_migration()
+        consts.app = self
+        self.log = JamLogger(self)
+        create_admin(self)
+        self.build_id_prefix = '$buildID'
+        self.save_build_id()
+        if load_task:
+            with self.admin.lock('$creating_task'):
+                self.__task = create_task(self)
+        self.check_migration()
 
-    def create_admin(self):
-        return adm_server.create_admin(self)
+    def create_task(self):
+        result = None
+        if self.state != consts.PROJECT_LOADING:
+            self.state = consts.PROJECT_LOADING
+            try:
+                result = create_task(self)
+                update_events_code(self.admin)
+                consts.CLIENT_MODIFIED = False
+                consts.SERVER_MODIFIED = False
+                consts.write_settings()
+                self.state = consts.RESPONSE
+                result.__task_locked = True
+            except ProjectNotCompleted:
+                self.state = consts.PROJECT_NO_PROJECT
+            except:
+                self.state = consts.PROJECT_ERROR
+                traceback.print_exc()
+        return result
 
-    def get_task(self):
-        if self.task:
-            return self.task
-        else:
-            if self.state != common.PROJECT_LOADING:
-                self.state = common.PROJECT_LOADING
-                try:
-                    with self._load_lock:
-                        self.task = self.admin.create_task()
-                    self.admin.update_events_code()
-                    self.CLIENT_MODIFIED = False
-                    self.SERVER_MODIFIED = False
-                    self.admin.write_settings()
-                    self.state = common.RESPONSE
-                except common.ProjectNotCompleted:
-                    self.state = common.PROJECT_NO_PROJECT
-                except:
-                    self.state = common.PROJECT_ERROR
-                    traceback.print_exc()
-            if self.task:
-                self.__task_locked = True
-            return self.task
+    @property
+    def task(self):
+        if not self.__task:
+            self.__task = self.create_task()
+        return self.__task
 
     def task_locked(self):
         return self.__is_locked > 0
 
-    def __get_task_locked(self):
+    @property
+    def __task_locked(self):
         pass
 
-    def __set_task_locked(self, value):
+    @__task_locked.setter
+    def __task_locked(self, value):
         if value:
             self.__is_locked += 1
         else:
             self.__is_locked -= 1
 
-    __task_locked = property(__get_task_locked, __set_task_locked)
-
     def __call__(self, environ, start_response):
         jam.context.environ = environ
+        jam.context.session = None
         request = JamRequest(environ)
-        if self.max_content_length > 0:
-            request.max_content_length = 1024 * 1024 * self.max_content_length
+        if consts.MAX_CONTENT_LENGTH > 0:
+            request.max_content_length = 1024 * 1024 * consts.MAX_CONTENT_LENGTH
         adapter = self.url_map.bind_to_environ(request.environ)
         try:
             endpoint, values = adapter.match()
@@ -201,7 +215,6 @@ class App(object):
                 response = self.on_ext(request)
             else:
                 response = e
-        jam.context.session = None
         return response(environ, start_response)
 
     def check_modified(self, file_path, environ):
@@ -230,7 +243,7 @@ class App(object):
         if file_name:
             base, ext = os.path.splitext(file_name)
         init_path_info = None
-        if self.COMPRESSED_JS and ext and ext in ['.js', '.css']:
+        if consts.COMPRESSED_JS and ext and ext in ['.js', '.css']:
             init_path_info = environ['PATH_INFO']
             min_file_name = base + '.min' + ext
             environ['PATH_INFO'] = environ['PATH_INFO'].replace(file_name, min_file_name)
@@ -255,14 +268,14 @@ class App(object):
         except:
             pass
         try:
-            buff = json.dumps(result, default=common.json_defaul_handler)
+            buff = json.dumps(result, default=json_defaul_handler)
         except:
-            print('wsgi.py create_post_response error:')
-            print(result)
+            self.log.exception('wsgi.py create_post_response error')
+            self.log.debug(result)
             raise
         response.headers['Content-Type'] = 'application/json'
         if accepts_gzip:
-            buff = common.compressBuf(buff)
+            buff = compressBuf(buff)
             response.headers['Content-encoding'] = 'gzip'
             response.headers['Content-Length'] = str(len(buff))
         response.set_data(buff)
@@ -283,9 +296,9 @@ class App(object):
                 'user_name': '',
                 'admin': False
             }
-        cookie = request.get_session(task)
+        cookie = request.client_cookie
         session = {}
-        session['ip'] = self.get_client_address(request);
+        session['ip'] = self.get_client_address(request)
         session['uuid'] = session_uuid
         session['user_info'] = user_info
         cookie['info'] = session
@@ -294,25 +307,25 @@ class App(object):
 
     def connect(self, request, task):
         if self.check_session(request, task):
-            return common.PROJECT_LOGGED
+            return consts.PROJECT_LOGGED
 
     def valid_session(self, task, session, request):
-        if self.admin.safe_mode:
+        if consts.SAFE_MODE:
             user_info = session['user_info']
             if not (user_info and user_info.get('user_id')):
                 return False
             if not self.admin.ignore_change_ip and task != self.admin:
-                ip = self.get_client_address(request);
-                if not adm_server.user_valid_ip(self.admin, user_info['user_id'], ip):
+                ip = self.get_client_address(request)
+                if not user_valid_ip(self.admin, user_info['user_id'], ip):
                     return False
             if not self.admin.ignore_change_uuid and task != self.admin:
-                if not adm_server.user_valid_uuid(self.admin, user_info['user_id'], session['uuid']):
+                if not user_valid_uuid(self.admin, user_info['user_id'], session['uuid']):
                     return False
         return True
 
     def check_session(self, request, task):
-        c = request.get_session(task)
-        if not c.get('info') and not self.admin.safe_mode:
+        c = request.client_cookie
+        if not c.get('info') and not consts.SAFE_MODE:
             c = self.create_session(request, task)
         session = c.get('info')
         if session:
@@ -323,13 +336,13 @@ class App(object):
             return True
 
     def default_login(self, task, login, password, ip, session_uuid):
-        return adm_server.login(self.admin, login, password, self.admin == task, ip, session_uuid)
+        return login_user(self.admin, login, password, self.admin == task, ip, session_uuid)
 
     def login(self, request, task, form_data):
-        time.sleep(1)
+        time.sleep(0.3)
         ip = None
         session_uuid = None
-        ip = self.get_client_address(request);
+        ip = self.get_client_address(request)
         session_uuid = str(uuid.uuid4())
         if self.admin == task or task.on_login is None:
             user_info = self.default_login(task, form_data['login'], form_data['password'], ip, session_uuid)
@@ -352,21 +365,20 @@ class App(object):
             return True
 
     def logout(self, request, task):
-        cookie = cookie = request.get_session(task)
-        cookie['info'] = None
+        del request.client_cookie['info']
         jam.context.session = None
 
     def create_connection_pool(self):
         if self.task:
             self.__task_locked = False
             try:
-                self.task.create_pool();
+                self.task.create_pool()
             finally:
                 self.__task_locked = True
 
     def get_privileges(self, role_id):
         if self.privileges is None:
-            roles, privileges = adm_server.get_roles(self.admin)
+            roles, privileges = get_roles(self.admin)
             self.privileges = privileges
         try:
             result = self.privileges[role_id]
@@ -385,9 +397,9 @@ class App(object):
                 priv = self.get_privileges(role_id)
         result = {
             'task': task.get_info(),
-            'settings': self.admin.get_settings(),
-            'locale': self.admin.locale,
-            'language': self.admin.lang,
+            'settings': consts.settings,
+            'locale': consts.locale,
+            'language': consts.lang,
             'user_info': user_info,
             'privileges': priv
         }
@@ -402,62 +414,64 @@ class App(object):
         files_len = len(files)
         if files_len:
             if files_len == 1:
-                self.import_metadata(self.admin, files[0], False)
+                self.import_md(files[0], False)
             else:
-                print('More than one file in migration folder')
+                self.log.error('More than one file in migration folder')
 
+    def import_metadata(self, task, task_id, file_name, from_client): #for compatibility with previous versions
+        self.import_md(file_name, from_client)
 
-    def import_metadata(self, task, file_name, from_client):
+    def import_md(self, file_name, from_client):
         if not self.under_maintenance:
             with self.admin.lock('$metadata_import'):
-                self.MAINTENANCE = True
-                self.PARAMS_VERSION += 1
-                self.admin.write_settings()
+                consts.MAINTENANCE = True
+                consts.PARAMS_VERSION += 1
+                consts.write_settings()
                 self.save_build_id()
                 self.__task_locked = False
                 try:
-                    result = adm_server.import_metadata(task, file_name, from_client)
+                    result = import_metadata(self.admin, file_name, from_client)
                     success, error, message = result
                     if success and self.task:
-                        self.admin.reload_task()
-                        self.admin.update_events_code()
+                        reload_task(self)
+                        update_events_code(self.admin)
                         self.privileges = None
                 finally:
                     self.__task_locked = True
-                    self.MAINTENANCE = False
-                    self.PARAMS_VERSION += 1
+                    consts.MAINTENANCE = False
+                    consts.PARAMS_VERSION += 1
                     if success:
-                        self.BUILD_VERSION += 1
-                        self.MODIFICATION += 1
-                    self.admin.write_settings()
+                        consts.BUILD_VERSION += 1
+                        consts.MODIFICATION += 1
+                    consts.write_settings()
                     self.save_build_id()
                 return result
 
     def get_under_maintenance(self):
-        return self.MAINTENANCE
+        return consts.MAINTENANCE
 
     under_maintenance = property(get_under_maintenance)
 
     def __get_client_modified(self):
-        return self.CLIENT_MODIFIED
+        return consts.CLIENT_MODIFIED
 
     def __set_client_modified(self, value):
-        self.CLIENT_MODIFIED = value
-        self.MODIFICATION += 1
-        self.PARAMS_VERSION += 1
-        self.admin.write_settings()
+        consts.CLIENT_MODIFIED = value
+        consts.MODIFICATION += 1
+        consts.PARAMS_VERSION += 1
+        consts.write_settings()
         self.save_build_id()
 
     client_modified = property(__get_client_modified, __set_client_modified)
 
     def __get_server_modified(self):
-        return self.SERVER_MODIFIED
+        return consts.SERVER_MODIFIED
 
     def __set_server_modified(self, value):
-        self.SERVER_MODIFIED = value
-        self.MODIFICATION += 1
-        self.PARAMS_VERSION += 1
-        self.admin.write_settings()
+        consts.SERVER_MODIFIED = value
+        consts.MODIFICATION += 1
+        consts.PARAMS_VERSION += 1
+        consts.write_settings()
         self.save_build_id()
 
     server_modified = property(__get_server_modified, __set_server_modified)
@@ -465,27 +479,27 @@ class App(object):
     def check_project_modified(self):
         if self.task:
             with self.admin.lock('$code_updating'):
-                params = self.admin.read_params(['CLIENT_MODIFIED', 'SERVER_MODIFIED', 'MAINTENANCE'])
+                params = consts.read_params(['CLIENT_MODIFIED', 'SERVER_MODIFIED', 'MAINTENANCE'])
                 if not params['MAINTENANCE'] and (params['CLIENT_MODIFIED'] or params['SERVER_MODIFIED']):
                     self.__task_locked = False
                     try:
                         if params['SERVER_MODIFIED']:
-                            self.admin.reload_task()
-                            self.BUILD_VERSION += 1
+                            reload_task(self)
+                            consts.BUILD_VERSION += 1
                         if params['CLIENT_MODIFIED']:
-                            self.admin.update_events_code()
-                        self.CLIENT_MODIFIED = False
-                        self.SERVER_MODIFIED = False
-                        self.MODIFICATION += 1
-                        self.PARAMS_VERSION += 1
-                        self.admin.write_settings()
+                            update_events_code(self.admin)
+                        consts.CLIENT_MODIFIED = False
+                        consts.SERVER_MODIFIED = False
+                        consts.MODIFICATION += 1
+                        consts.PARAMS_VERSION += 1
+                        consts.write_settings()
                         self.save_build_id()
                     finally:
                         self.__task_locked = True
 
     @property
     def build_id(self):
-        return '%s_%s_%s' % (self.build_id_prefix, self.BUILD_VERSION, self.PARAMS_VERSION)
+        return '%s_%s_%s' % (self.build_id_prefix, consts.BUILD_VERSION, consts.PARAMS_VERSION)
 
     def save_build_id(self):
         with self.admin.lock('$save_build_id'):
@@ -493,14 +507,14 @@ class App(object):
             for file_name in os.listdir(path):
                 if file_name.startswith(self.build_id_prefix):
                     os.remove(os.path.join(path, file_name))
-            common.file_write(os.path.join(path, self.build_id), '')
+            file_write(os.path.join(path, self.build_id), '')
 
     def check_build(self):
         path = os.path.join(self.work_dir, 'locks')
         if not os.path.exists(os.path.join(path, self.build_id)):
             with self.admin.lock('$build_checking'):
-                cur_build_version = self.BUILD_VERSION
-                cur_params_version = self.PARAMS_VERSION
+                cur_build_version = consts.BUILD_VERSION
+                cur_params_version = consts.PARAMS_VERSION
                 build_version = None
                 params_version = None
                 for file_name in os.listdir(path):
@@ -511,14 +525,14 @@ class App(object):
                         params_version = int(arr[2])
                         break
                 if params_version != cur_params_version:
-                    self.admin.read_settings()
+                    consts.read_settings()
                 if build_version != cur_build_version:
                     self.__task_locked = False
                     try:
-                        self.admin.reload_task()
+                        reload_task(self)
                     finally:
                         self.__task_locked = True
-                    self.admin.read_settings()
+                    consts.read_settings()
 
     def on_api(self, request):
         error = ''
@@ -528,48 +542,49 @@ class App(object):
                 data = request.get_data()
                 if type(data) != str:
                     data = to_unicode(data, 'utf-8')
-                method, task_id, item_id, params, modification, date = json.loads(data)
+                method, task_id, item_id, params, modification = json.loads(data)
                 if task_id == 0:
                     task = self.admin
                 else:
                     task = self.task
                     if not task:
-                        task = self.get_task()
+                        task = self.task
                         if not task:
-                            lang = self.admin.lang
+                            lang = consts.lang
                             result = {'status': None, 'data': {'error': lang['error'], \
                                 'info': lang['info']}, 'modification': None}
                             result['status'] = self.state
-                            if self.state == common.PROJECT_LOADING:
+                            if self.state == consts.PROJECT_LOADING:
                                 result['data']['project_loading'] = lang['project_loading']
-                            elif self.state == common.PROJECT_NO_PROJECT:
+                            elif self.state == consts.PROJECT_NO_PROJECT:
                                 result['data']['no_project'] = lang['no_project']
-                            elif self.state == common.PROJECT_ERROR:
+                            elif self.state == consts.PROJECT_ERROR:
                                 result['data']['project_error'] = lang['project_error']
                             r ['result'] = result
                             return self.create_post_response(request, r)
                 if not task:
-                    result = {'status': common.PROJECT_NO_PROJECT, 'data': None, 'modification': None}
+                    result = {'status': consts.PROJECT_NO_PROJECT, 'data': None, 'modification': None}
                 else:
+                    request.task = task
                     self.check_build()
-                    result = {'status': common.RESPONSE, 'data': None, 'modification': self.MODIFICATION}
-                    if task_id and modification and modification != self.MODIFICATION:
-                        result['status'] = common.PROJECT_MODIFIED
+                    result = {'status': consts.RESPONSE, 'data': None, 'modification': consts.MODIFICATION}
+                    if task_id and modification and modification != consts.MODIFICATION:
+                        result['status'] = consts.PROJECT_MODIFIED
                     elif self.under_maintenance:
-                        result['status'] = common.PROJECT_MAINTAINANCE
+                        result['status'] = consts.PROJECT_MAINTAINANCE
                     elif method == 'connect':
                         self.connect(request, task)
                         result['data'] = self.connect(request, task)
                     elif method == 'login':
                         result['data'] = self.login(request, task, params[0])
                     elif method == 'logout':
-                        self.logout(request, task);
-                        result['status'] = common.PROJECT_NOT_LOGGED
-                        result['data'] = common.PROJECT_NOT_LOGGED
+                        self.logout(request, task)
+                        result['status'] = consts.PROJECT_NOT_LOGGED
+                        result['data'] = consts.PROJECT_NOT_LOGGED
                     else:
                         if not self.check_session(request, task):
-                            result['status'] = common.PROJECT_NOT_LOGGED
-                            result['data'] = common.PROJECT_NOT_LOGGED
+                            result['status'] = consts.PROJECT_NOT_LOGGED
+                            result['data'] = consts.PROJECT_NOT_LOGGED
                         else:
                             item = task
                             if task and item_id:
@@ -589,12 +604,12 @@ class App(object):
             except Exception as e:
                 traceback.print_exc()
                 error = error_message(e)
-                if self.DEBUGGING and task_id != 0:
+                if consts.DEBUGGING and task_id != 0:
                     raise
                 r['result'] = {'data': [None, error]}
                 r['error'] = error
             response = self.create_post_response(request, r)
-            request.save_session(response, self, task)
+            request.save_client_cookie(response, self, task)
             return response
 
     def get_response(self, item, method, params):
@@ -634,9 +649,9 @@ class App(object):
                 try:
                     data = None
                     if self.under_maintenance:
-                        status = common.UNDER_MAINTAINANCE
+                        status = consts.UNDER_MAINTAINANCE
                     elif self.task.on_ext_request:
-                        status = common.RESPONSE
+                        status = consts.RESPONSE
                         self._busy += 1
                         try:
                             data = self.task.on_ext_request(self.task, method, params)
@@ -644,7 +659,7 @@ class App(object):
                             self._busy -= 1
                     else:
                         status = None
-                    r['result'] = {'status': status, 'data': data, 'modification': self.MODIFICATION}
+                    r['result'] = {'status': status, 'data': data, 'modification': consts.MODIFICATION}
                 except AbortException as e:
                     traceback.print_exc()
                     r['result'] = {'data': [None, error_message(e)]}
@@ -667,11 +682,12 @@ class App(object):
             else:
                 task = self.task
             if task:
-                result = {'status': common.RESPONSE, 'data': None, 'modification': self.MODIFICATION}
+                request.task = task
+                result = {'status': consts.RESPONSE, 'data': None, 'modification': consts.MODIFICATION}
                 r ['result'] = result
                 if not self.check_session(request, task):
-                    r['result']['status'] = common.NOT_LOGGED
-                    r['result']['data'] = common.NOT_LOGGED
+                    r['result']['status'] = consts.NOT_LOGGED
+                    r['result']['data'] = consts.NOT_LOGGED
                 else:
                     f = request.files.get('file')
                     file_name = request.form.get('file_name')
@@ -690,10 +706,10 @@ class App(object):
                             if not os.path.exists(dir_path):
                                 os.makedirs(dir_path)
                             f.save(os.path.join(dir_path, file_name))
-                            task = self.get_task()
-                            r['result'] = {'status': common.RESPONSE, 'data': {'file_name': file_name, 'path': path}, 'modification': self.MODIFICATION}
+                            r['result']['data'] = {'file_name': file_name, 'path': path}
+                            # ~ r['result'] = {'status': consts.RESPONSE, 'data': {'file_name': file_name, 'path': path}, 'modification': consts.MODIFICATION}
                     else:
-                        r['error'] = 'File upload invalid parameters';
+                        r['error'] = 'File upload invalid parameters'
             else:
                 r['result'] = {'status': self.state, 'data': None, 'modification': None}
             return self.create_post_response(request, r)

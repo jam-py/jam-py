@@ -6241,6 +6241,10 @@ jam.py css
     background-color: #cf7917;
 }
 
+.dbtable.striped tr:nth-child(odd):not(.selected-focused):not(.selected) > td {
+    background-color: #f9f9f9;
+}
+
 .table th{
     color: #7F7F7F;
 }

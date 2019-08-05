@@ -9,21 +9,18 @@ To do so, open project parameters and click the button to the right of the
 History item input:
 
 .. image:: _images/history_item.png
-	:scale: 70 %
 	:align: center
 	:alt: History item
 	
 In the dialog that will appear click on the Create history item button 
 
 .. image:: _images/new_hist_item.png
-	:scale: 70 %
 	:align: center
 	:alt: New history item
 
 The following mesage will appear when the item will be created: 
 
 .. image:: _images/hist_item_created.png
-	:scale: 70 %
 	:align: center
 	:alt: History item created
 	
@@ -31,7 +28,6 @@ After that you have to set **Keep history** attribute of an item to save the his
 its changes:
 
 .. image:: _images/item_editor_dialog.png
-	:scale: 70 %
 	:align: center
 	:alt: Keep history attribute
 	
@@ -40,7 +36,6 @@ the close button on the right part of the header of the edit form.
 
 
 .. image:: _images/invoices_hist.png
-	:scale: 70 %
 	:align: center
 	:alt: Invoices history
 

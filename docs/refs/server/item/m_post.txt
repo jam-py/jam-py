@@ -31,9 +31,7 @@ The ``post`` method
   :doc:`details </programming/data/details>`
   , post current record in details
 
-* if item attribute
-  :doc:`log_changes <at_log_changes>`
-  is set (default), add changes to an item change log.
+* add changes to an item change log
 
 * puts the item into browse 
   :doc:`state <at_item_state>`

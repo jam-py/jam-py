@@ -1,17 +1,18 @@
 import os
 from setuptools import setup
-from jam import version
+import jam
 
 setup(
     name='jam.py',
-    version=version(),
+    version=jam.version(),
     url='http://jam-py.com/',
     author='Andrew Yushev',
     author_email='andrew@jam-py.com',
-    description=('Jam.py is an event-driven framework for the development of web database applications.'),
+    description=('Jam.py Application Builder is an event-driven framework for the development of web database applications.'),
     license='BSD',
-    packages=['jam', 'jam.db', 'jam.third_party', 'jam.third_party.werkzeug',
-        'jam.third_party.werkzeug.contrib', 'jam.third_party.werkzeug.debug',
+    packages=['jam', 'jam.db', 'jam.admin', 'jam.third_party', 'jam.third_party.werkzeug',
+        'jam.third_party.werkzeug.middleware', 'jam.third_party.werkzeug.debug',
+        'jam.third_party.werkzeug.wrappers', 'jam.third_party.werkzeug.secure_cookie',
         'jam.third_party.esprima', 'jam.third_party.jsmin',
         'jam.third_party.sqlalchemy', 'jam.third_party.sqlalchemy.dialects',
         'jam.third_party.sqlalchemy.engine', 'jam.third_party.sqlalchemy.event',
@@ -19,7 +20,7 @@ setup(
         'jam.third_party.sqlalchemy.util'],
     package_data={'jam': ['builder.html', 'langs.sqlite', 'js/*.js',
         'js/ace/*.js', 'img/*.*', 'css/*.*', 'project/*.*', 'project/css/*.*',
-        'third_party/werkzeug/debug/shared/*.*']},
+        'admin/builder_structure.info', 'third_party/werkzeug/debug/shared/*.*']},
     scripts=['jam/bin/jam-project.py'],
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -34,6 +35,7 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Programming Language :: JavaScript',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',

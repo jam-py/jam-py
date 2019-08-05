@@ -1,0 +1,39 @@
+===========
+permissions
+===========
+
+.. js:attribute:: permissions
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Set the ``permissions`` property attributes to prohibit changing of the item in 
+the visual controls.
+
+The ``permissions`` property is an object that has the following attributes:
+
+* can_create
+* can_edit
+* can_delete
+
+By default theses attributes are set to true.
+
+When these attributes are set to false the corresponding
+
+* :doc:`can_create <m_can_create>`, 
+* :doc:`can_edit <m_can_edit>`, 
+* :doc:`can_delete <m_can_delete>` 
+
+methods return false.
+
+
+See also 
+========
+
+:doc:`How to prohibit changing record </how_to/how_to_prohibit_changing_record>`

@@ -13,15 +13,16 @@ can_delete
 Description
 ===========
 
-Use ``can_delete`` method to determine if a user have a right to delete a record 
-in an item dataset when the project 
-:doc:`safe mode parameter </admin/project/parameters>`
-is set. If the project project 
-:doc:`safe mode parameter </admin/project/parameters>`
-is not set the method always returns true.
+Use ``can_delete`` method to determine if a user have a right to delete a record of 
+an item dataset.
 
-The user privileges are set in the :doc:`roles node </admin/roles>` of the project 
-tree.
+This method takes into account the user permissions set in the :doc:`roles node </admin/roles>`
+in the Application Builder when the project 
+:doc:`safe mode parameter </admin/project/parameters>`
+is set as well as the values of the 
+:doc:`permissions <at_permissions>` 
+attribute and the value of
+:doc:`can_modify <at_can_modify>` attribute.
 
 Example
 =======

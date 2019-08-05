@@ -12,7 +12,6 @@ select Users node, click New and fill in the form that appears:
 
 
 .. image:: _images/users_new.png
-	:scale: 70 %
 	:align: center
 	:alt: New users dialog
 
@@ -25,7 +24,6 @@ select Users node, click New and fill in the form that appears:
 * **Admin** - if this flag is set, the user has the right to work in the Application builder.
 
 .. image:: _images/users.png
-	:scale: 70 %
 	:align: center
 	:alt: Jam.py Application builder Users 
 

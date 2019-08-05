@@ -58,7 +58,6 @@ In the bottom-right corner of the Dialog form there are two buttons:
     **Caption**, **Name** and  **Visible** attributes.
 
 .. image:: /admin/_images/item_group.png
-	:scale: 70 %
 	:align: center
 	:alt: Item Group Editor
 

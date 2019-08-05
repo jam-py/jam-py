@@ -32,15 +32,12 @@ The ``delete`` method
   , checks if it is in browse 
   :doc:`state <at_item_state>`, otherwise raises exception.
   
-* triggers the ``on_before_delete`` event handler if one is defined for the item. 
-  
 * puts the item into delete :doc:`state <at_item_state>`
 
 * deletes the active record and positions the cursor on the next record
 
 * puts the item into browse :doc:`state <at_item_state>`
 
-* triggers the ``on_after_delete`` event handler if one is defined for the item
 
 See also
 ========

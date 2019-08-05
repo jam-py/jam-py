@@ -21,7 +21,6 @@ item's table. For example in the Demo application **Albums** catalog there is th
 **Artist** lookup field.
 
 .. image:: /programming/_images/albums_edit_form.png
-	:scale: 70 %
 	:align: center
 	:alt: albums_edit_form.png
 
@@ -33,7 +32,6 @@ flag is set in the
 :doc:`Field Editor Dialog </admin/items/field_editor_dialog>`:
 
 .. image:: /programming/_images/artist_field.png
-	:scale: 70 %
 	:align: center
 	:alt: Lookup field
 
@@ -70,7 +68,6 @@ the master field and the SQL query that is generated on the server, when the
 open method is called, uses one ``JOIN`` clause for all this fields.
 
 .. image:: /programming/_images/master_field_example.png
-	:scale: 70 %
 	:align: center
 	:alt: Master field example
 	
@@ -87,7 +84,6 @@ a user to select a value for the field.
 The lookup field in the lookup item can also be a lookup field, for example:
 
 .. image:: /programming/_images/tracks_lookup_field.png
-	:scale: 70 %
 	:align: center
 	:alt: tracks_lookup_field.png
 	
@@ -103,7 +99,6 @@ example, a **MediaType** field in the **Tracks** catalog of the
 to the MediaTypes lookup list:
 
 .. image:: /programming/_images/mediatype_field.png
-	:scale: 70 %
 	:align: center
 	:alt:  MediaType field definition
 

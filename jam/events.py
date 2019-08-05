@@ -1,4 +1,4 @@
-import jam.common as common
+from .common import consts
 
 # Client events
 
@@ -157,30 +157,30 @@ report_server_events = \
 
 def get_events(item_type_id, server):
     if server:
-        if item_type_id == common.TASK_TYPE:
+        if item_type_id == consts.TASK_TYPE:
             return task_server_events
-        elif item_type_id in [common.ITEMS_TYPE, common.TABLES_TYPE]:
+        elif item_type_id in [consts.ITEMS_TYPE, consts.TABLES_TYPE]:
             return group_server_events
-        elif item_type_id == common.REPORTS_TYPE:
+        elif item_type_id == consts.REPORTS_TYPE:
             return reports_server_events
-        elif item_type_id in [common.ITEM_TYPE, common.TABLE_TYPE, common.DETAIL_TYPE]:
+        elif item_type_id in [consts.ITEM_TYPE, consts.TABLE_TYPE, consts.DETAIL_TYPE]:
             return item_server_events
-        elif item_type_id == common.REPORT_TYPE:
+        elif item_type_id == consts.REPORT_TYPE:
             return report_server_events
-        elif item_type_id == common.DETAIL_TYPE:
+        elif item_type_id == consts.DETAIL_TYPE:
             return detail_server_events
     else:
-        if item_type_id == common.TASK_TYPE:
+        if item_type_id == consts.TASK_TYPE:
             return task_client_events
-        elif item_type_id in [common.ITEMS_TYPE, common.TABLES_TYPE]:
+        elif item_type_id in [consts.ITEMS_TYPE, consts.TABLES_TYPE]:
             return group_client_events
-        elif item_type_id == common.REPORTS_TYPE:
+        elif item_type_id == consts.REPORTS_TYPE:
             return reports_client_events
-        elif item_type_id in [common.ITEM_TYPE, common.TABLE_TYPE, common.DETAIL_TYPE]:
+        elif item_type_id in [consts.ITEM_TYPE, consts.TABLE_TYPE, consts.DETAIL_TYPE]:
             return item_client_events
-        elif item_type_id == common.REPORT_TYPE:
+        elif item_type_id == consts.REPORT_TYPE:
             return report_client_events
-        elif item_type_id == common.DETAIL_TYPE:
+        elif item_type_id == consts.DETAIL_TYPE:
             return detail_client_events
 
 

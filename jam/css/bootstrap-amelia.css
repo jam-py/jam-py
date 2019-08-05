@@ -7380,6 +7380,10 @@ body {
     background-color: #0a3e44;
 }
 
+.dbtable.striped tr:nth-child(odd):not(.selected-focused):not(.selected) > td {
+  background-color: #19a4b1;
+}
+
 .input-append .btn.btn12,
 .input-prepend .btn.btn12 {
     padding: 1px 4px;

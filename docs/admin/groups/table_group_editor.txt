@@ -71,6 +71,5 @@ In the bottom-right corner of the Dialog form there are two buttons:
     **Caption**, **Name** and  **Visible** attributes.
 
 .. image:: /admin/_images/detail_group.png
-	:scale: 70 %
 	:align: center
 	:alt: Detail Group Editor

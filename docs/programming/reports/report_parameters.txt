@@ -6,7 +6,6 @@ You can specify the parameters of the report. For example, the
 **Customer purchases** report of the Demo project have three parameters.
 
 .. image:: /programming/_images/parameters.png
-	:scale: 70 %
 	:align: center
 	:alt: Report parameters
 
@@ -16,7 +15,6 @@ parameters. Then click New or Edit button of the form to add or change the
 parameter.
 
 .. image:: /programming/_images/report_param.png
-	:scale: 70 %
 	:align: center
 	:alt: Report param
 
@@ -45,7 +43,6 @@ report has a **Customer** parameter that can be selected from **Customers**
 catalog:
 
 .. image:: /programming/_images/lookup_param.png
-	:scale: 70 %
 	:align: center
 	:alt: Lookup parameter
 
@@ -59,7 +56,6 @@ Form for setting the parameters of **Customer purchases** report is as follows:
 
 
 .. image:: /programming/_images/customer_purchases_params.png
-	:scale: 70 %
 	:align: center
 	:alt: Customer purchases parameters example
 

@@ -7,7 +7,6 @@ in the edit form of the "Contacts" journal are displayed in the order in which
 they were created. 
 
 .. image:: /intro/_images/contacts_new.png
-	:scale: 70 %
 	:align: center
 	:alt: Contacts new record
 
@@ -18,7 +17,6 @@ Let's change the displayed fields using **left**, **right**, **up**
 and **down** buttons
 
 .. image:: /intro/_images/view_contacts1.png
-	:scale: 70 %
 	:align: center
 	:alt: View contacts1
 
@@ -27,7 +25,6 @@ fields by which user can sort the contents of the table by clicking in the
 corresponding column header of the table.
 
 .. image:: /intro/_images/view_contacts_order_by.png
-	:scale: 70 %
 	:align: center
 	:alt: view_contacts_order_by.png
 
@@ -36,7 +33,6 @@ button to open the
 :doc:`Edit Form Dialog </admin/items/edit_form_dialog>`
 
 .. image:: /intro/_images/edit_contacts2.png
-	:scale: 70 %
 	:align: center
 	:alt: Edit contacts2
 
@@ -44,7 +40,6 @@ To see the result of our work, go to the project page, refresh it and click
 the **New** button.
 
 .. image:: /intro/_images/contacts_view.png
-	:scale: 70 %
 	:align: center
 	:alt: Contacts view
 

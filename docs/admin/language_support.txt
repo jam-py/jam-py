@@ -5,7 +5,6 @@ Language support
 Use Language Dialog to add, select and change your language.  
 
 .. image:: _images/lang_dialog.png
-	:scale: 70 %
 	:align: center
 	:alt: lang_dialog.png
 
@@ -16,7 +15,6 @@ Use language locale to set up how the field value will be displayed. See
 :doc:`display_text </refs/client/field/at_display_text>`
 
 .. image:: _images/lang_locale.png
-	:scale: 70 %
 	:align: center
 	:alt: lang_locale.png
 
@@ -27,6 +25,5 @@ Language translation
 See :doc:`Language translation <language_translation>`
 
 .. image:: _images/lang_translation.png
-	:scale: 70 %
 	:align: center
 	:alt: lang_translation.png

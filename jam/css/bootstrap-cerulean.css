@@ -6511,6 +6511,7 @@ jam.py css
     background-color: #ffffff;
 }
 
+/*
 .table tbody tr.selected > td:not(.field-selected) {
     color: #ffffff;
     background-color: #76c3ef;
@@ -6529,6 +6530,31 @@ jam.py css
 .table tbody td.field-selected-focused {
     color: #ffffff;
     background-color: #3b83c7
+}
+*/
+
+.table tbody tr.selected > td:not(.field-selected) {
+    color: #035d8a;
+    background-color: #e6f7ff;
+}
+
+.table tbody tr.selected-focused > td:not(.field-selected-focused) {
+    color: #035d8a;
+    background-color: #cceeff;
+}
+
+.table tbody td.field-selected {
+    color: #035d8a;
+    background-color: #b3e6ff
+}
+
+.table tbody td.field-selected-focused {
+    color: #035d8a;
+    background-color: #99ddff;
+}
+
+.dbtable.striped tr:nth-child(odd):not(.selected-focused):not(.selected) > td {
+    background-color: #f9f9f9;
 }
 
 .input-append .btn.btn12,

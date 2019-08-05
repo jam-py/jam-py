@@ -36,6 +36,6 @@ def update_file(folder, delete_scale=False):
 
 folder = os.getcwd()
 update_file(folder, True)
-update_file(folder)
+#update_file(folder)
 
 

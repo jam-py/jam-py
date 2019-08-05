@@ -7,7 +7,6 @@ tree, the click the New button and fill in the caption, name and the template fi
 name of the report.
 
 .. image:: /programming/_images/new_report.png
-	:scale: 70 %
 	:align: center
 	:alt: Creating a report
 

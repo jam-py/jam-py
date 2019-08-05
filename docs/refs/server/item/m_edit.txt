@@ -26,6 +26,8 @@ The ``edit`` method
 
 * checks if item dataset is not empty, otherwise raises exception
 
+* checks whether the item dataset is already in edit state, and if so, returns
+
 * if item is a 
   :doc:`detail </programming/data/details>`
   , checks if the master item is in edit or insert 
@@ -38,13 +40,9 @@ The ``edit`` method
   :doc:`state <at_item_state>`
   , otherwise raises exception
 
-* triggers the ``on_before_edit`` event handler if one is defined for the item 
-
 * puts the item into edit 
   :doc:`state <at_item_state>`
   , enabling the application or user to modify fields in the record
-
-* triggers the ``on_after_edit>`` event handler if one is defined for the item
 
 See also
 ========

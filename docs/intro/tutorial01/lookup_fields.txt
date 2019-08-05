@@ -14,7 +14,6 @@ Let's add the
 "Customer" field that will store a reference to a record in the "Customers" catalog.
 
 .. image:: /intro/_images/contacs_cutomer_fld.png
-	:scale: 70 %
 	:align: center
 	:alt: Adding Customer field
 
@@ -24,14 +23,12 @@ the **Lookup item** input
 
 
 .. image:: /intro/_images/cutomers_lookup_tab.png
-	:scale: 70 %
 	:align: center
 	:alt: Cutomer lookup tab
 
 and double click the record to select it.
 
 .. image:: /intro/_images/cutomers_lookup_item.png
-	:scale: 70 %
 	:align: center
 	:alt: Selecting Customer lookup item
 
@@ -39,7 +36,6 @@ The same way specify a lookup field.
 
 
 .. image:: /intro/_images/lastname_lookup.png
-	:scale: 70 %
 	:align: center
 	:alt: Lastname lookup field
 
@@ -47,19 +43,16 @@ In the same way we add the "Firstname" and "Phone" lookup fields. For this field
 we specify the "Customer" field as their **Master field** attribute. 
 
 .. image:: /intro/_images/contacts_firstname.png
-	:scale: 70 %
 	:align: center
 	:alt: contacts_firstname.png
 
 .. image:: /intro/_images/phone_lookup.png
-	:scale: 70 %
 	:align: center
 	:alt: Phone lookup field
 	
 Click the "OK" button to save the "Contacts" item. 
 
 .. image:: /intro/_images/contacts_sql.png
-	:scale: 70 %
 	:align: center
 	:alt: Contacts sql
 
@@ -72,7 +65,6 @@ When we refresh the project page and click the **New** button we'll see that
 there is a small button to the right of the "Customer" input. 
 
 .. image:: /intro/_images/customer_input.png
-	:scale: 70 %
 	:align: center
 	:alt: Customer input
 
@@ -80,7 +72,6 @@ When we click on it and select a record in the "Customers" catalog the
 fields "Customer", "Firstname" and "Phone" will be filled.
 
 .. image:: /intro/_images/customer_input_selected.png
-	:scale: 70 %
 	:align: center
 	:alt: Customer input selected
 

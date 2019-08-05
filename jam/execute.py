@@ -4,32 +4,33 @@ import sys, os
 import datetime
 import traceback
 
-import jam.common as common
-import jam.db.db_modules as db_modules
 from werkzeug._compat import string_types
 
+from .common import consts, error_message
 
 def execute_select(cursor, db_module, command):
-    #~ print('')
-    #~ print(command)
+    # ~ print('')
+    # ~ print(command)
     try:
         cursor.execute(command)
     except Exception as x:
-        print('\nError: %s\n command: %s' % (str(x), command))
+        consts.app.log.exception(error_message(x))
+        # ~ print('\nError: %s\n command: %s' % (str(x), command))
         raise
     return db_module.process_sql_result(cursor.fetchall())
 
 def execute(cursor, command, params=None):
-    #~ print('')
-    #~ print(command)
-    #~ print(params)
+    # ~ print('')
+    # ~ print(command)
+    # ~ print(params)
     try:
         if params:
             cursor.execute(command, params)
         else:
             cursor.execute(command)
     except Exception as x:
-        print('\nError: %s\n command: %s\n params: %s' % (str(x), command, params))
+        consts.app.log.exception(error_message(x))
+        # ~ print('\nError: %s\n command: %s\n params: %s' % (str(x), command, params))
         raise
 
 def execute_command(cursor, db_module, command, params=None, select=False):
@@ -167,7 +168,8 @@ def execute_sql(db_module, db_server, db_database, db_user, db_password,
         try:
             connection = db_module.connect(db_database, db_user, db_password, db_host, db_port, db_encoding, db_server)
         except Exception as x:
-            print(str(x))
+            consts.app.log.exception(error_message(x))
+            # ~ print(str(x))
             return  None, (None, str(x))
     return execute_sql_connection(connection, command, params, select, db_module, close_on_error=True)
 

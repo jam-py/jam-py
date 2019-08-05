@@ -1,0 +1,99 @@
+===========================
+How to validate field value
+===========================
+
+Write the
+:doc:`on_field_validate </refs/client/item/on_field_validate>`
+event handler to validate field value.
+
+For example, The event will triggered when the 
+:doc:`post </refs/client/item/m_post>`
+method is called, that saves the record in memory or 
+when the user leaves the input used to edit the unitprice field value.
+
+.. code-block:: js
+
+  function on_field_validate(field) {
+       if (field.field_name === 'unitprice' && field.value <= 0) {
+          return 'Unit price must be greater that 0';
+      }
+  }
+
+As an example, below is the code that doesn't use the
+:doc:`on_field_validate </refs/client/item/on_field_validate>` 
+method and checks the value of the unitprice field and prevents the user 
+from leaving the input when the value is less than or equal to zero:
+
+.. code-block:: js
+
+  function on_edit_form_shown(item) {
+      item.each_field( function(field) {
+          var input = item.edit_form.find('input.' + field.field_name);
+          input.blur( function(e) {
+              var err;
+              if ($(e.relatedTarget).attr('id') !== "cancel-btn") {
+                  err = check_field_value(field);
+                  if (err) {
+                      item.alert_error(err);
+                      input.focus();             
+                  }
+              }
+          });
+      });
+  }
+  
+  function check_field_value(field) {
+      if (field.field_name === 'album' && !field.value) {
+          return 'Album must be specified';
+      }
+      if (field.field_name === 'unitprice' && field.value <= 0) {
+          return 'Unit price must be greater that 0';
+      }
+  }
+
+In the on_edit_form_shown event handler, we iterate through all the fields using the each_field method and find the input data for each field, if it exists.
+
+In the 
+:doc:`on_edit_form_shown </refs/client/item/on_edit_form_shown>` 
+event handler we iterate through all the fields using the
+:doc:`each_field </refs/client/item/m_each_field>` 
+method and find the input for each field, if it exists. Each input has a class 
+with the name of the field (:doc:`field_name </refs/client/field/at_field_name>`).
+
+Then we assign a jQuery blur event to it, in which we call the ``check_field_value`` 
+function, and, if it returns text string, we warn the user and focus the input. 
+Before calling the function, we check whether the "Cancel" button was pressed.
+
+We declared the 
+:doc:`on_edit_form_shown </refs/client/item/on_edit_form_shown>` 
+event handler in the item's module, so it will work in this module only.
+
+We can declare the following event handler in the task client module so we can 
+write ``check_field_value`` function in any module we need to enable this field 
+validation. The 
+:doc:`on_edit_form_shown </refs/client/task/on_edit_form_shown>` of the task
+is called first for every item when edit form is shown. See 
+:doc:`Form events </programming/interface/form_events>`.
+
+.. code-block:: js
+
+  function on_edit_form_shown(item) {
+      if (item.check_field_value) {
+          item.each_field( function(field) {
+              var input = item.edit_form.find('input.' + field.field_name);
+              input.blur( function(e) {
+                  var err;
+                  if ($(e.relatedTarget).attr('id') !== "cancel-btn") {
+                      err = item.check_field_value(field);
+                      if (err) {
+                          item.alert_error(err);
+                          input.focus();             
+                      }
+                  }
+              });
+          });
+      }
+  }
+
+In this event handler we check if the item has the ``check_field_value`` attribute. 
+Each function declared in a module becomes an attribute of the item. 

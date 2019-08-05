@@ -26,6 +26,5 @@ Use buttons in the right panel of the page to edit
   :doc:`Lookup lists <lookup_lists>` Dialog
   
 .. image:: _images/task.png
-	:scale: 70 %
 	:align: center
 	:alt: Task node

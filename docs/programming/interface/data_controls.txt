@@ -27,18 +27,14 @@ The methods are usually used in the **on_view_form_created** and
 **on_edit_form_created** event handlers.
 
 All visual controls (tables, inputs, checkboxes), created by this methods
-are data-aware. This means that they immediately reflect any data 
-changes of the item.
+are data-aware. This means that they immediately reflect any changes of the 
+item dataset.
 
 Sometimes it is necessary to disable this interaction. To do so use the 
 :doc:`disable_controls </refs/client/item/m_disable_controls>`
 and 
 :doc:`enable_controls </refs/client/item/m_enable_controls>`
 methods respectively. 
-
-To update visual controls use the 
-:doc:`update_controls </refs/client/item/m_update_controls>`
-method. 
 
 Videos
 ======

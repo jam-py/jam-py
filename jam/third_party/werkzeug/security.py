@@ -5,49 +5,38 @@
 
     Security related helpers such as secure password hashing tools.
 
-    :copyright: (c) 2014 by the Werkzeug Team, see AUTHORS for more details.
-    :license: BSD, see LICENSE for more details.
+    :copyright: 2007 Pallets
+    :license: BSD-3-Clause
 """
-import os
-import hmac
-import hashlib
-import posixpath
 import codecs
-from struct import Struct
+import hashlib
+import hmac
+import os
+import posixpath
 from random import SystemRandom
-from operator import xor
-from itertools import starmap
+from struct import Struct
 
-from werkzeug._compat import range_type, PY2, text_type, izip, to_bytes, \
-    string_types, to_native
+from ._compat import izip
+from ._compat import PY2
+from ._compat import range_type
+from ._compat import text_type
+from ._compat import to_bytes
+from ._compat import to_native
 
+SALT_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+DEFAULT_PBKDF2_ITERATIONS = 150000
 
-SALT_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-DEFAULT_PBKDF2_ITERATIONS = 50000
-
-
-_pack_int = Struct('>I').pack
-_builtin_safe_str_cmp = getattr(hmac, 'compare_digest', None)
+_pack_int = Struct(">I").pack
+_builtin_safe_str_cmp = getattr(hmac, "compare_digest", None)
 _sys_rng = SystemRandom()
-_os_alt_seps = list(sep for sep in [os.path.sep, os.path.altsep]
-                    if sep not in (None, '/'))
+_os_alt_seps = list(
+    sep for sep in [os.path.sep, os.path.altsep] if sep not in (None, "/")
+)
 
 
-def _find_hashlib_algorithms():
-    algos = getattr(hashlib, 'algorithms', None)
-    if algos is None:
-        algos = ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512')
-    rv = {}
-    for algo in algos:
-        func = getattr(hashlib, algo, None)
-        if func is not None:
-            rv[algo] = func
-    return rv
-_hash_funcs = _find_hashlib_algorithms()
-
-
-def pbkdf2_hex(data, salt, iterations=DEFAULT_PBKDF2_ITERATIONS,
-               keylen=None, hashfunc=None):
+def pbkdf2_hex(
+    data, salt, iterations=DEFAULT_PBKDF2_ITERATIONS, keylen=None, hashfunc=None
+):
     """Like :func:`pbkdf2_bin`, but returns a hex-encoded string.
 
     .. versionadded:: 0.9
@@ -62,14 +51,12 @@ def pbkdf2_hex(data, salt, iterations=DEFAULT_PBKDF2_ITERATIONS,
                      from the hashlib module.  Defaults to sha256.
     """
     rv = pbkdf2_bin(data, salt, iterations, keylen, hashfunc)
-    return to_native(codecs.encode(rv, 'hex_codec'))
+    return to_native(codecs.encode(rv, "hex_codec"))
 
 
-_has_native_pbkdf2 = hasattr(hashlib, 'pbkdf2_hmac')
-
-
-def pbkdf2_bin(data, salt, iterations=DEFAULT_PBKDF2_ITERATIONS,
-               keylen=None, hashfunc=None):
+def pbkdf2_bin(
+    data, salt, iterations=DEFAULT_PBKDF2_ITERATIONS, keylen=None, hashfunc=None
+):
     """Returns a binary digest for the PBKDF2 hash algorithm of `data`
     with the given `salt`. It iterates `iterations` times and produces a
     key of `keylen` bytes. By default, SHA-256 is used as hash function;
@@ -86,39 +73,18 @@ def pbkdf2_bin(data, salt, iterations=DEFAULT_PBKDF2_ITERATIONS,
                      string name of a known hash function or a function
                      from the hashlib module.  Defaults to sha256.
     """
-    if isinstance(hashfunc, string_types):
-        hashfunc = _hash_funcs[hashfunc]
-    elif not hashfunc:
-        hashfunc = hashlib.sha256
+    if not hashfunc:
+        hashfunc = "sha256"
+
     data = to_bytes(data)
     salt = to_bytes(salt)
 
-    # If we're on Python with pbkdf2_hmac we can try to use it for
-    # compatible digests.
-    if _has_native_pbkdf2:
+    if callable(hashfunc):
         _test_hash = hashfunc()
-        if hasattr(_test_hash, 'name') and \
-           _test_hash.name in _hash_funcs:
-            return hashlib.pbkdf2_hmac(_test_hash.name,
-                                       data, salt, iterations,
-                                       keylen)
-
-    mac = hmac.HMAC(data, None, hashfunc)
-    if not keylen:
-        keylen = mac.digest_size
-
-    def _pseudorandom(x, mac=mac):
-        h = mac.copy()
-        h.update(x)
-        return bytearray(h.digest())
-    buf = bytearray()
-    for block in range_type(1, -(-keylen // mac.digest_size) + 1):
-        rv = u = _pseudorandom(salt + _pack_int(block))
-        for i in range_type(iterations - 1):
-            u = _pseudorandom(bytes(u))
-            rv = bytearray(starmap(xor, izip(rv, u)))
-        buf.extend(rv)
-    return bytes(buf[:keylen])
+        hash_name = getattr(_test_hash, "name", None)
+    else:
+        hash_name = hashfunc
+    return hashlib.pbkdf2_hmac(hash_name, data, salt, iterations, keylen)
 
 
 def safe_str_cmp(a, b):
@@ -130,9 +96,9 @@ def safe_str_cmp(a, b):
     .. versionadded:: 0.7
     """
     if isinstance(a, text_type):
-        a = a.encode('utf-8')
+        a = a.encode("utf-8")
     if isinstance(b, text_type):
-        b = b.encode('utf-8')
+        b = b.encode("utf-8")
 
     if _builtin_safe_str_cmp is not None:
         return _builtin_safe_str_cmp(a, b)
@@ -154,8 +120,8 @@ def safe_str_cmp(a, b):
 def gen_salt(length):
     """Generate a random string of SALT_CHARS with specified ``length``."""
     if length <= 0:
-        raise ValueError('Salt length must be positive')
-    return ''.join(_sys_rng.choice(SALT_CHARS) for _ in range_type(length))
+        raise ValueError("Salt length must be positive")
+    return "".join(_sys_rng.choice(SALT_CHARS) for _ in range_type(length))
 
 
 def _hash_internal(method, salt, password):
@@ -163,45 +129,52 @@ def _hash_internal(method, salt, password):
     unsalted and salted passwords.  In case salted passwords are used
     hmac is used.
     """
-    if method == 'plain':
+    if method == "plain":
         return password, method
 
     if isinstance(password, text_type):
-        password = password.encode('utf-8')
+        password = password.encode("utf-8")
 
-    if method.startswith('pbkdf2:'):
-        args = method[7:].split(':')
+    if method.startswith("pbkdf2:"):
+        args = method[7:].split(":")
         if len(args) not in (1, 2):
-            raise ValueError('Invalid number of arguments for PBKDF2')
+            raise ValueError("Invalid number of arguments for PBKDF2")
         method = args.pop(0)
         iterations = args and int(args[0] or 0) or DEFAULT_PBKDF2_ITERATIONS
         is_pbkdf2 = True
-        actual_method = 'pbkdf2:%s:%d' % (method, iterations)
+        actual_method = "pbkdf2:%s:%d" % (method, iterations)
     else:
         is_pbkdf2 = False
         actual_method = method
 
-    hash_func = _hash_funcs.get(method)
-    if hash_func is None:
-        raise TypeError('invalid method %r' % method)
-
     if is_pbkdf2:
         if not salt:
-            raise ValueError('Salt is required for PBKDF2')
-        rv = pbkdf2_hex(password, salt, iterations,
-                        hashfunc=hash_func)
+            raise ValueError("Salt is required for PBKDF2")
+        rv = pbkdf2_hex(password, salt, iterations, hashfunc=method)
     elif salt:
         if isinstance(salt, text_type):
-            salt = salt.encode('utf-8')
-        rv = hmac.HMAC(salt, password, hash_func).hexdigest()
+            salt = salt.encode("utf-8")
+        mac = _create_mac(salt, password, method)
+        rv = mac.hexdigest()
     else:
-        h = hash_func()
-        h.update(password)
-        rv = h.hexdigest()
+        rv = hashlib.new(method, password).hexdigest()
     return rv, actual_method
 
 
-def generate_password_hash(password, method='pbkdf2:sha256', salt_length=8):
+def _create_mac(key, msg, method):
+    if callable(method):
+        return hmac.HMAC(key, msg, method)
+
+    def hashfunc(d=b""):
+        return hashlib.new(method, d)
+
+    # Python 2.7 used ``hasattr(digestmod, '__call__')``
+    # to detect if hashfunc is callable
+    hashfunc.__call__ = hashfunc
+    return hmac.HMAC(key, msg, hashfunc)
+
+
+def generate_password_hash(password, method="pbkdf2:sha256", salt_length=8):
     """Hash a password with the given method and salt with a string of
     the given length. The format of the string returned includes the method
     that was used so that :func:`check_password_hash` can check the hash.
@@ -226,9 +199,9 @@ def generate_password_hash(password, method='pbkdf2:sha256', salt_length=8):
                    to enable PBKDF2.
     :param salt_length: the length of the salt in letters.
     """
-    salt = method != 'plain' and gen_salt(salt_length) or ''
+    salt = gen_salt(salt_length) if method != "plain" else ""
     h, actual_method = _hash_internal(method, salt, password)
-    return '%s$%s$%s' % (actual_method, salt, h)
+    return "%s$%s$%s" % (actual_method, salt, h)
 
 
 def check_password_hash(pwhash, password):
@@ -242,9 +215,9 @@ def check_password_hash(pwhash, password):
                    :func:`generate_password_hash`.
     :param password: the plaintext password to compare against the hash.
     """
-    if pwhash.count('$') < 2:
+    if pwhash.count("$") < 2:
         return False
-    method, salt, hashval = pwhash.split('$', 2)
+    method, salt, hashval = pwhash.split("$", 2)
     return safe_str_cmp(_hash_internal(method, salt, password)[0], hashval)
 
 
@@ -257,14 +230,12 @@ def safe_join(directory, *pathnames):
     """
     parts = [directory]
     for filename in pathnames:
-        if filename != '':
+        if filename != "":
             filename = posixpath.normpath(filename)
         for sep in _os_alt_seps:
             if sep in filename:
                 return None
-        if os.path.isabs(filename) or \
-           filename == '..' or \
-           filename.startswith('../'):
+        if os.path.isabs(filename) or filename == ".." or filename.startswith("../"):
             return None
         parts.append(filename)
     return posixpath.join(*parts)

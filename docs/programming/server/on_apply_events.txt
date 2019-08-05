@@ -4,41 +4,44 @@ on_apply events
 
 When the ``apply`` method of the item is called 
 on the :doc:`client </refs/client/item/m_apply>` or the 
-:doc:`server </refs/server/item/m_apply>`, the server application
-calls the ``apply_changes`` method:
+:doc:`server </refs/server/item/m_apply>`, the server application, by default,
+generates SQL query, based on changes made to the dataset and executes it.
+
+This behavior can be changed by writing an 
+:doc:`on_apply </refs/server/item/on_apply>`
+event handler in the item server module.
+
+Sometimes it becomes necessary to execute some code, when changes are saved, for 
+all items. In this case the ``on_apply`` event handler of the task (declared 
+in the task server module) can be used.
+
+The following code describes how these events are handled:
 
 .. code-block:: py
 
-    def apply_changes(self, data, safe):
-        result = None
-        changes, params = data
-        if not params:
-            params = {}
-        delta = self.delta(changes)
-        if self.task.on_apply:
-            result = self.task.on_apply(self, delta, params)
-        if result is None and self.on_apply:
-            result = self.on_apply(self, delta, params)
-        if result is None:
-            result = self.apply_delta(delta, safe)
-        return result
+  #...
+  result = None
+  if self.task.on_apply:
+      result = self.task.on_apply(self, delta, params, connection)
+  if result is None and self.on_apply:
+      result = self.on_apply(self, delta, params, connection)
+  if result is None:
+      result = self.apply_delta(delta, params, connection)
+  #...
+  return result
 
-This method checks whether the task has an ``on_open`` event handler. If
-the ``on_open`` event handler is declared in the task server module, it is executed.
+It checks if the task has an ``on_apply`` event handler. If the ``on_apply`` 
+event handler is declared in the task server module, it is executed.
 
-If the result that the event handler returns is not ``None``, the method checks 
-whether the item has an on_open event handler. If the on_open event handler is 
-declared in the item server module, it is executed.
+If the ``on_apply`` event handler of the task is not declared or the result 
+of the event handler returns ``None``, the method checks whether the item has an 
+:doc:`on_apply </refs/server/item/on_apply>`
+event handler. If it is declared in the item server module, it is executed.
 
-If the result returned by the event handler is not ``None``, the method checks 
-whether the item has an ``on_open`` event handler. If the ``on_open event`` 
-handler is declared in the item server module, it is executed.
-
-If the result returned by the item event handler is not ``None``, the 
+If the result returned by the item event handler is ``None``, the 
 ``apply_delta`` method of the item is called that generates SQL query,
 execute it and returns the result
 
-For more information see :doc:`on_apply </refs/server/item/on_apply>`
 
 Example
 =======

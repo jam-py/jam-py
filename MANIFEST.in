@@ -3,6 +3,9 @@ include AUTHORS
 include INSTALL
 include LICENSE
 include MANIFEST.in
+recursive-include builder *
 recursive-include demo *
 recursive-include docs *
 prune docs/_build
+prune docs/prepare.py
+prune docs/set_scale.py

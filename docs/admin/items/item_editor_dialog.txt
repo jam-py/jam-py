@@ -8,7 +8,6 @@ a new item or modify a selected one. See
 :doc:`Items <index>`.
 
 .. image:: /admin/_images/item_editor_dialog.png
-	:scale: 70 %
 	:align: center
 	:alt: Item Editor Dialog
 	

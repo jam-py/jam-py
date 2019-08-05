@@ -58,7 +58,6 @@ the following code to the "Poll" client module:
   
 
 .. image:: _images/details.png
-	:scale: 70 %
 	:align: center
 	:alt: details.png
   

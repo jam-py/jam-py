@@ -18,11 +18,8 @@ changes to the item dataset data.
 
 Call 
 :doc:`enable_controls <m_enable_controls>` 
-to re-enable data display in data-aware controls associated with the dataset.
-
-Call
-:doc:`update_controls <m_update_controls>` to tell associated controls to redraw
-to reflect current data.
+to re-enable data display in data-aware controls associated with the dataset and
+update values they display.
 
 Example
 =======
@@ -69,6 +66,3 @@ See also
 :doc:`Data-aware controls </programming/interface/data_controls>`
 
 :doc:`enable_controls <m_enable_controls>` 
-
-:doc:`update_controls <m_update_controls>`
-

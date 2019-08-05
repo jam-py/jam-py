@@ -1,0 +1,18 @@
+This folder contains the Application Builder project, which is used to
+create the Jam.py Application Builder.
+
+After making and testing changes, click the "Prepare files" button. The
+application will create a “jam_files” folder, if it does not exist, with
+files that should be copied to the jam folder of the Jam.py package.
+
+The development process is similar to the development of a regular
+Jam.py application, except that all server code must be located in the
+task server module.
+
+All functions in this module that are called from client code using the
+server method should be registered in the register_events function at
+the end of the module using the register method, and server item events
+should be defined in this function.
+
+
+

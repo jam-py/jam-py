@@ -156,9 +156,6 @@ input.dropdown-toggle {
 
 input.input-integer {
   width: 26%;
-/*
-  min-width: 80px;
-*/
   max-width: 110px;
 }
 
@@ -213,13 +210,18 @@ input.input-file3 {
     width: -o-calc(100% - 4 * 40px + 7px);
 }
 
+input.input-lookupitem,
+input.input-lookupvalues {
+    min-width: 80px;
+}
+
 input.input-date {
-    min-width: 70px;
+    min-width: 69px;
     max-width: 110px;
 }
 
 input.input-datetime {
-    min-width: 110px;
+    min-width: 103px;
     max-width: 150px;
 }
 
@@ -229,10 +231,6 @@ input.input-text {
 
 .input-longtext {
   width: 80%;
-}
-
-.dbtable td input {
-    min-width: initial;
 }
 
 @media (max-width: 480px) {
@@ -296,6 +294,17 @@ input.input-text {
 .dbtable tr td:first-child {
     border-left-style: none;
 }
+
+
+/*
+.dbtable th.fake-column,
+.dbtable td.fake-column {
+    width: auto;
+    border-left-style: none;
+    padding: 0;
+    margin: 0;
+}
+*/
 
 .dbtable td,
 .dbtable th {
@@ -514,6 +523,16 @@ div.th-text {
     margin-bottom: 0;
     padding: 0 9px;
     *zoom: 1;
+}
+
+#app-title {
+    font-size: 20px;
+    margin: 4px 0;
+}
+
+#app-user {
+    margin-top: 14px;
+    text-align: right;
 }
 
 .logging-info {

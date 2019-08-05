@@ -24,6 +24,7 @@ textarea     { font-family: 'Consolas', 'Monaco', 'Bitstream Vera Sans Mono',
 div.debugger { text-align: left; padding: 12px; margin: auto;
                background-color: white; }
 h1           { font-size: 36px; margin: 0 0 0.3em 0; }
+div.detail { cursor: pointer; }
 div.detail p { margin: 0 0 8px 13px; font-size: 14px; white-space: pre-wrap;
                font-family: monospace; }
 div.explanation { margin: 20px 13px; font-size: 15px; color: #555; }
@@ -45,6 +46,8 @@ div.traceback ul { list-style: none; margin: 0; padding: 0 0 0 1em; }
 div.traceback h4 { font-size: 13px; font-weight: normal; margin: 0.7em 0 0.1em 0; }
 div.traceback pre { margin: 0; padding: 5px 0 3px 15px;
                     background-color: #E8EFF0; border: 1px solid #D3E7E9; }
+div.traceback .library .current { background: white; color: #555; }
+div.traceback .expanded .current { background: #E8EFF0; color: black; }
 div.traceback pre:hover { background-color: #DDECEE; color: black; cursor: pointer; }
 div.traceback div.source.expanded pre + pre { border-top: none; }
 
@@ -140,4 +143,12 @@ div.pin-prompt .inner {
     margin: 10% auto 0 auto;
     border: 1px solid #ccc;
     border-radius: 2px;
+}
+
+div.exc-divider {
+    margin: 0.7em 0 0 -1em;
+    padding: 0.5em;
+    background: #11557C;
+    color: #ddd;
+    border: 1px solid #ddd;
 }

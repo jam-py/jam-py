@@ -15,7 +15,6 @@ On the Layout tab, you can specify how the table is displayed in the view form o
 the item.
 
 .. image:: /admin/_images/view_form_layout.png
-	:scale: 70 %
 	:align: center
 	:alt: View Form Layout tab
 
@@ -100,7 +99,6 @@ Form tab
 ========
 
 .. image:: /admin/_images/view_form_form.png
-	:scale: 70 %
 	:align: center
 	:alt: View Form Form tab
 
@@ -139,7 +137,7 @@ view form
   details, that will be displayed in the view form
 
 * **Detail height** - an integer, the height of the details desplayed in the 
-  view form, if not set, the height of the detail table is 200px
+  view form, if not set, the height of the detail table is 232px
 
 * **Buttons on top** - if this check box is checked the buttons are displayed on 
   the top of the view form, when form has a default form template

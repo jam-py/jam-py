@@ -75,7 +75,6 @@ The following code will create a yes-no-cancel dialog:
 the result of the code above will be:
 
 .. image:: _images/message.png
-	:scale: 70 %
 	:width: 400
 	:align: center
 	:alt: Message methos example

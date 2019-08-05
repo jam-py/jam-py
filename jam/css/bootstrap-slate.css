@@ -7139,6 +7139,10 @@ textarea[readonly] {
     background-color: #0b0c0e;
 }
 
+.dbtable.striped tr:nth-child(odd):not(.selected-focused):not(.selected) > td {
+    background-color: #2e3236;
+}
+
 .dbtable.freezed tfoot {
     background-color: #272b30;
 }

@@ -57,7 +57,7 @@ def update_html(folder):
             if ext == '.html':
                 count += 1
                 process_html(os.path.join(root, name))
-    print 'total', count
+    print('total', count)
 
 if __name__ == '__main__':
     folder = os.path.join(os.getcwd(), '_build', 'html')

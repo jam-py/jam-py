@@ -16,7 +16,6 @@ At the bottom of the page there are 3 buttons:
   select a new group type in the Dialog box that will appear.
   
 .. image:: /admin/_images/group_type.png
-	:scale: 70 %
 	:align: center
 	:alt: Group type
 
@@ -40,6 +39,5 @@ a selected group, see
 * :doc:`Code editor </admin/code_editor>`
 
 .. image:: /admin/_images/groups.png
-	:scale: 70 %
 	:align: center
 	:alt: Group node

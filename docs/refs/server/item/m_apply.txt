@@ -18,7 +18,8 @@ database.
 
 The ``apply`` method
 
-* checks whether the item is a detail, and if it is, returns 
+* checks whether the item is a detail, and if it is, returns (the master saves the
+  details changes)
 
 * checks whether the item is in edit or insert 
   :doc:`state <at_item_state>`
@@ -72,6 +73,8 @@ Parameters
 
 Examples
 ========
+
+In the second example below, the changes are saved in one transaction.
 
 .. code-block:: py
 

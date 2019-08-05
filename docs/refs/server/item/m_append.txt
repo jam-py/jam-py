@@ -40,14 +40,10 @@ The ``append`` method
   :doc:`state <at_item_state>`
   , otherwise raises exception
 
-* triggers the ``on_before_append`` event handler if one is defined for the item 
-
 * open a new, empty record at the end of the dataset
 
 * puts the item into insert 
   :doc:`state <at_item_state>`
-
-* triggers the ``on_after_append`` event handler if one is defined for the item.
 
 See also
 ========

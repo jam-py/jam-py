@@ -10,7 +10,6 @@ The following figure shows a template of the Invoice report.
 
 
 .. image:: /programming/_images/template.png
-	:scale: 70 %
 	:align: center
 	:alt: Invoice report template
 
