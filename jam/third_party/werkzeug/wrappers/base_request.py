@@ -1,3 +1,4 @@
+import warnings
 from functools import update_wrapper
 from io import BytesIO
 
@@ -205,10 +206,11 @@ class BaseRequest(object):
 
     @classmethod
     def application(cls, f):
-        """Decorate a function as responder that accepts the request as first
-        argument.  This works like the :func:`responder` decorator but the
-        function is passed the request object as first argument and the
-        request object will be closed automatically::
+        """Decorate a function as responder that accepts the request as
+        the last argument.  This works like the :func:`responder`
+        decorator but the function is passed the request object as the
+        last argument and the request object will be closed
+        automatically::
 
             @Request.application
             def my_wsgi_app(request):
@@ -224,7 +226,8 @@ class BaseRequest(object):
         #: and calls the function with all the arguments up to that one and
         #: the request.  The return value is then called with the latest
         #: two arguments.  This makes it possible to use this decorator for
-        #: both methods and standalone WSGI functions.
+        #: both standalone WSGI functions as well as bound methods and
+        #: partially applied functions.
         from ..exceptions import HTTPException
 
         def application(*args):
@@ -630,6 +633,7 @@ class BaseRequest(object):
         script is protected, this attribute contains the username the
         user has authenticated as.""",
     )
+
     scheme = environ_property(
         "wsgi.url_scheme",
         doc="""
@@ -637,6 +641,29 @@ class BaseRequest(object):
 
         .. versionadded:: 0.7""",
     )
+
+    @property
+    def is_xhr(self):
+        """True if the request was triggered via a JavaScript XMLHttpRequest.
+        This only works with libraries that support the ``X-Requested-With``
+        header and set it to "XMLHttpRequest".  Libraries that do that are
+        prototype, jQuery and Mochikit and probably some more.
+
+        .. deprecated:: 0.13
+            ``X-Requested-With`` is not standard and is unreliable. You
+            may be able to use :attr:`AcceptMixin.accept_mimetypes`
+            instead.
+        """
+        warnings.warn(
+            "'Request.is_xhr' is deprecated as of version 0.13 and will"
+            " be removed in version 1.0. The 'X-Requested-With' header"
+            " is not standard and is unreliable. You may be able to use"
+            " 'accept_mimetypes' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.environ.get("HTTP_X_REQUESTED_WITH", "").lower() == "xmlhttprequest"
+
     is_secure = property(
         lambda self: self.environ["wsgi.url_scheme"] == "https",
         doc="`True` if the request is secure.",

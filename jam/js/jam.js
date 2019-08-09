@@ -3219,9 +3219,7 @@
                     result = record.slice(0, this.item._record_lookup_index);
                 }
                 info = this.item.get_rec_info(undefined, record);
-                result.push([info[0], {},
-                    info[2]
-                ]);
+                result.push([info[0], {}, info[2]]);
             }
             return result;
         },
@@ -6220,9 +6218,7 @@
             }
             if (record && (this._record_info_index > 0)) {
                 if (record.length < this._record_info_index + 1) {
-                    record.push([null, {},
-                        null
-                    ]);
+                    record.push([null, {}, null]);
                 }
                 return record[this._record_info_index];
             }
@@ -7679,7 +7675,9 @@
                     if (d.active) {
                         if ($.inArray(d.item_name, options.details) === -1)  {
                             options.details.push(d.item_name);
-                            options.filters[d.item_name] = d._open_params.__filters.slice();
+                            if (d._open_params.__filters) {
+                                options.filters[d.item_name] = d._open_params.__filters.slice();
+                            }
                         }
                     }
                 });

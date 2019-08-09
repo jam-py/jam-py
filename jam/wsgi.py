@@ -231,7 +231,7 @@ class App(object):
         if endpoint == 'root_file':
             if not file_name:
                 file_name = 'index.html'
-                environ['PATH_INFO'] = environ['PATH_INFO'] + '/index.html'
+                environ['PATH_INFO'] = environ['PATH_INFO'] + 'index.html'
             elif file_name == 'admin.html':
                 file_name = 'builder.html'
             if file_name == 'index.html':
@@ -239,7 +239,7 @@ class App(object):
                 self.check_project_modified()
             elif file_name == 'builder.html':
                 self.check_modified(os.path.join(to_unicode(self.jam_dir, 'utf-8'), file_name), environ)
-                environ['PATH_INFO'] = os.path.join('jam', file_name)
+                environ['PATH_INFO'] = os.path.join('/jam', file_name)
         if file_name:
             base, ext = os.path.splitext(file_name)
         init_path_info = None

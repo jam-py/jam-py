@@ -61,20 +61,21 @@ def _find_observable_paths(extra_files=None):
 
 
 def _get_args_for_reloading():
-    """Returns the executable. This contains a workaround for windows
-    if the executable is incorrectly reported to not have the .exe
-    extension which can cause bugs on reloading.  This also contains
-    a workaround for linux where the file is executable (possibly with
-    a program other than python)
+    """Determine how the script was executed, and return the args needed
+    to execute it again in a new process.
     """
     rv = [sys.executable]
-    py_script = os.path.abspath(sys.argv[0])
+    py_script = sys.argv[0]
     args = sys.argv[1:]
     # Need to look at main module to determine how it was executed.
     __main__ = sys.modules["__main__"]
 
-    if __main__.__package__ is None:
+    # The value of __package__ indicates how Python was called. It may
+    # not exist if a setuptools script is installed as an egg.
+    if getattr(__main__, "__package__", None) is None:
         # Executed a file, like "python app.py".
+        py_script = os.path.abspath(py_script)
+
         if os.name == "nt":
             # Windows entry points have ".exe" extension and should be
             # called directly.
@@ -87,11 +88,6 @@ def _get_args_for_reloading():
             ):
                 rv.pop(0)
 
-        elif os.path.isfile(py_script) and os.access(py_script, os.X_OK):
-            # The file is marked as executable. Nix adds a wrapper that
-            # shouldn't be called with the Python executable.
-            rv.pop(0)
-
         rv.append(py_script)
     else:
         # Executed a module, like "python -m werkzeug.serving".
@@ -101,11 +97,16 @@ def _get_args_for_reloading():
             # TODO remove this once Flask no longer misbehaves
             args = sys.argv
         else:
-            py_module = __main__.__package__
-            name = os.path.splitext(os.path.basename(py_script))[0]
+            if os.path.isfile(py_script):
+                # Rewritten by Python from "-m script" to "/path/to/script.py".
+                py_module = __main__.__package__
+                name = os.path.splitext(os.path.basename(py_script))[0]
 
-            if name != "__main__":
-                py_module += "." + name
+                if name != "__main__":
+                    py_module += "." + name
+            else:
+                # Incorrectly rewritten by pydevd debugger from "-m script" to "script".
+                py_module = py_script
 
             rv.extend(("-m", py_module.lstrip(".")))
 

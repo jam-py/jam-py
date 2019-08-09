@@ -17,19 +17,18 @@
     Afterwards this request object provides the extra functionality of the
     :class:`JSONRequestMixin`.
 
-    :copyright: (c) 2014 by the Werkzeug Team, see AUTHORS for more details.
-    :license: BSD, see LICENSE for more details.
+    :copyright: 2007 Pallets
+    :license: BSD-3-Clause
 """
 import codecs
-try:
-    from simplejson import loads
-except ImportError:
-    from json import loads
+import warnings
 
-from werkzeug.exceptions import BadRequest
-from werkzeug.utils import cached_property
-from werkzeug.http import dump_options_header, parse_options_header
-from werkzeug._compat import wsgi_decoding_dance
+from .._compat import wsgi_decoding_dance
+from ..exceptions import BadRequest
+from ..http import dump_options_header
+from ..http import parse_options_header
+from ..utils import cached_property
+from ..wrappers.json import JSONMixin as _JSONMixin
 
 
 def is_known_charset(charset):
@@ -41,24 +40,23 @@ def is_known_charset(charset):
     return True
 
 
-class JSONRequestMixin(object):
-
-    """Add json method to a request object.  This will parse the input data
-    through simplejson if possible.
-
-    :exc:`~werkzeug.exceptions.BadRequest` will be raised if the content-type
-    is not json or if the data itself cannot be parsed as json.
+class JSONRequestMixin(_JSONMixin):
+    """
+    .. deprecated:: 0.15
+        Moved to :class:`werkzeug.wrappers.json.JSONMixin`. This old
+        import will be removed in version 1.0.
     """
 
-    @cached_property
+    @property
     def json(self):
-        """Get the result of simplejson.loads if possible."""
-        if 'json' not in self.environ.get('CONTENT_TYPE', ''):
-            raise BadRequest('Not a JSON request')
-        try:
-            return loads(self.data.decode(self.charset, self.encoding_errors))
-        except Exception:
-            raise BadRequest('Unable to read JSON request')
+        warnings.warn(
+            "'werkzeug.contrib.wrappers.JSONRequestMixin' has moved to"
+            " 'werkzeug.wrappers.json.JSONMixin'. This old import will"
+            " be removed in version 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return super(JSONRequestMixin, self).json
 
 
 class ProtobufRequestMixin(object):
@@ -69,7 +67,10 @@ class ProtobufRequestMixin(object):
     :exc:`~werkzeug.exceptions.BadRequest` will be raised if the content-type
     is not protobuf or if the data itself cannot be parsed property.
 
-    .. _protobuf: http://code.google.com/p/protobuf/
+    .. _protobuf: https://github.com/protocolbuffers/protobuf
+
+    .. deprecated:: 0.15
+        This mixin will be removed in version 1.0.
     """
 
     #: by default the :class:`ProtobufRequestMixin` will raise a
@@ -80,8 +81,15 @@ class ProtobufRequestMixin(object):
 
     def parse_protobuf(self, proto_type):
         """Parse the data into an instance of proto_type."""
-        if 'protobuf' not in self.environ.get('CONTENT_TYPE', ''):
-            raise BadRequest('Not a Protobuf request')
+        warnings.warn(
+            "'werkzeug.contrib.wrappers.ProtobufRequestMixin' is"
+            " deprecated as of version 0.15 and will be removed in"
+            " version 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if "protobuf" not in self.environ.get("CONTENT_TYPE", ""):
+            raise BadRequest("Not a Protobuf request")
 
         obj = proto_type()
         try:
@@ -101,25 +109,56 @@ class RoutingArgsRequestMixin(object):
     """This request mixin adds support for the wsgiorg routing args
     `specification`_.
 
-    .. _specification: https://wsgi.readthedocs.io/en/latest/specifications/routing_args.html
+    .. _specification: https://wsgi.readthedocs.io/en/latest/
+       specifications/routing_args.html
+
+    .. deprecated:: 0.15
+        This mixin will be removed in version 1.0.
     """
 
     def _get_routing_args(self):
-        return self.environ.get('wsgiorg.routing_args', (()))[0]
+        warnings.warn(
+            "'werkzeug.contrib.wrappers.RoutingArgsRequestMixin' is"
+            " deprecated as of version 0.15 and will be removed in"
+            " version 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.environ.get("wsgiorg.routing_args", (()))[0]
 
     def _set_routing_args(self, value):
+        warnings.warn(
+            "'werkzeug.contrib.wrappers.RoutingArgsRequestMixin' is"
+            " deprecated as of version 0.15 and will be removed in"
+            " version 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if self.shallow:
-            raise RuntimeError('A shallow request tried to modify the WSGI '
-                               'environment.  If you really want to do that, '
-                               'set `shallow` to False.')
-        self.environ['wsgiorg.routing_args'] = (value, self.routing_vars)
+            raise RuntimeError(
+                "A shallow request tried to modify the WSGI "
+                "environment.  If you really want to do that, "
+                "set `shallow` to False."
+            )
+        self.environ["wsgiorg.routing_args"] = (value, self.routing_vars)
 
-    routing_args = property(_get_routing_args, _set_routing_args, doc='''
-        The positional URL arguments as `tuple`.''')
+    routing_args = property(
+        _get_routing_args,
+        _set_routing_args,
+        doc="""
+        The positional URL arguments as `tuple`.""",
+    )
     del _get_routing_args, _set_routing_args
 
     def _get_routing_vars(self):
-        rv = self.environ.get('wsgiorg.routing_args')
+        warnings.warn(
+            "'werkzeug.contrib.wrappers.RoutingArgsRequestMixin' is"
+            " deprecated as of version 0.15 and will be removed in"
+            " version 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        rv = self.environ.get("wsgiorg.routing_args")
         if rv is not None:
             return rv[1]
         rv = {}
@@ -128,14 +167,27 @@ class RoutingArgsRequestMixin(object):
         return rv
 
     def _set_routing_vars(self, value):
+        warnings.warn(
+            "'werkzeug.contrib.wrappers.RoutingArgsRequestMixin' is"
+            " deprecated as of version 0.15 and will be removed in"
+            " version 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if self.shallow:
-            raise RuntimeError('A shallow request tried to modify the WSGI '
-                               'environment.  If you really want to do that, '
-                               'set `shallow` to False.')
-        self.environ['wsgiorg.routing_args'] = (self.routing_args, value)
+            raise RuntimeError(
+                "A shallow request tried to modify the WSGI "
+                "environment.  If you really want to do that, "
+                "set `shallow` to False."
+            )
+        self.environ["wsgiorg.routing_args"] = (self.routing_args, value)
 
-    routing_vars = property(_get_routing_vars, _set_routing_vars, doc='''
-        The keyword URL arguments as `dict`.''')
+    routing_vars = property(
+        _get_routing_vars,
+        _set_routing_vars,
+        doc="""
+        The keyword URL arguments as `dict`.""",
+    )
     del _get_routing_vars, _set_routing_vars
 
 
@@ -161,6 +213,9 @@ class ReverseSlashBehaviorRequestMixin(object):
         +---------------+-------------------+---------------------+
         | `path`        | ``/foo/bar``      | ``foo/bar``         |
         +---------------+-------------------+---------------------+
+
+    .. deprecated:: 0.15
+        This mixin will be removed in version 1.0.
     """
 
     @cached_property
@@ -168,16 +223,32 @@ class ReverseSlashBehaviorRequestMixin(object):
         """Requested path as unicode.  This works a bit like the regular path
         info in the WSGI environment but will not include a leading slash.
         """
-        path = wsgi_decoding_dance(self.environ.get('PATH_INFO') or '',
-                                   self.charset, self.encoding_errors)
-        return path.lstrip('/')
+        warnings.warn(
+            "'werkzeug.contrib.wrappers.ReverseSlashBehaviorRequestMixin'"
+            " is deprecated as of version 0.15 and will be removed in"
+            " version 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        path = wsgi_decoding_dance(
+            self.environ.get("PATH_INFO") or "", self.charset, self.encoding_errors
+        )
+        return path.lstrip("/")
 
     @cached_property
     def script_root(self):
         """The root path of the script includling a trailing slash."""
-        path = wsgi_decoding_dance(self.environ.get('SCRIPT_NAME') or '',
-                                   self.charset, self.encoding_errors)
-        return path.rstrip('/') + '/'
+        warnings.warn(
+            "'werkzeug.contrib.wrappers.ReverseSlashBehaviorRequestMixin'"
+            " is deprecated as of version 0.15 and will be removed in"
+            " version 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        path = wsgi_decoding_dance(
+            self.environ.get("SCRIPT_NAME") or "", self.charset, self.encoding_errors
+        )
+        return path.rstrip("/") + "/"
 
 
 class DynamicCharsetRequestMixin(object):
@@ -202,6 +273,9 @@ class DynamicCharsetRequestMixin(object):
         class MyRequest(DynamicCharsetRequestMixin, Request):
             url_charset = 'utf-8'
 
+    .. deprecated:: 0.15
+        This mixin will be removed in version 1.0.
+
     .. versionadded:: 0.6
     """
 
@@ -210,7 +284,7 @@ class DynamicCharsetRequestMixin(object):
     #: is latin1 which is what HTTP specifies as default charset.
     #: You may however want to set this to utf-8 to better support
     #: browsers that do not transmit a charset for incoming data.
-    default_charset = 'latin1'
+    default_charset = "latin1"
 
     def unknown_charset(self, charset):
         """Called if a charset was provided but is not supported by
@@ -221,15 +295,22 @@ class DynamicCharsetRequestMixin(object):
         :param charset: the charset that was not found.
         :return: the replacement charset.
         """
-        return 'latin1'
+        return "latin1"
 
     @cached_property
     def charset(self):
         """The charset from the content type."""
-        header = self.environ.get('CONTENT_TYPE')
+        warnings.warn(
+            "'werkzeug.contrib.wrappers.DynamicCharsetRequestMixin'"
+            " is deprecated as of version 0.15 and will be removed in"
+            " version 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        header = self.environ.get("CONTENT_TYPE")
         if header:
             ct, options = parse_options_header(header)
-            charset = options.get('charset')
+            charset = options.get("charset")
             if charset:
                 if is_known_charset(charset):
                     return charset
@@ -255,30 +336,50 @@ class DynamicCharsetResponseMixin(object):
         class MyResponse(DynamicCharsetResponseMixin, Response):
             pass
 
+    .. deprecated:: 0.15
+        This mixin will be removed in version 1.0.
+
     .. versionadded:: 0.6
     """
 
     #: the default charset.
-    default_charset = 'utf-8'
+    default_charset = "utf-8"
 
     def _get_charset(self):
-        header = self.headers.get('content-type')
+        warnings.warn(
+            "'werkzeug.contrib.wrappers.DynamicCharsetResponseMixin'"
+            " is deprecated as of version 0.15 and will be removed in"
+            " version 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        header = self.headers.get("content-type")
         if header:
-            charset = parse_options_header(header)[1].get('charset')
+            charset = parse_options_header(header)[1].get("charset")
             if charset:
                 return charset
         return self.default_charset
 
     def _set_charset(self, charset):
-        header = self.headers.get('content-type')
+        warnings.warn(
+            "'werkzeug.contrib.wrappers.DynamicCharsetResponseMixin'"
+            " is deprecated as of version 0.15 and will be removed in"
+            " version 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        header = self.headers.get("content-type")
         ct, options = parse_options_header(header)
         if not ct:
-            raise TypeError('Cannot set charset if Content-Type '
-                            'header is missing.')
-        options['charset'] = charset
-        self.headers['Content-Type'] = dump_options_header(ct, options)
+            raise TypeError("Cannot set charset if Content-Type header is missing.")
+        options["charset"] = charset
+        self.headers["Content-Type"] = dump_options_header(ct, options)
 
-    charset = property(_get_charset, _set_charset, doc="""
+    charset = property(
+        _get_charset,
+        _set_charset,
+        doc="""
         The charset for the response.  It's stored inside the
-        Content-Type header as a parameter.""")
+        Content-Type header as a parameter.""",
+    )
     del _get_charset, _set_charset

@@ -838,7 +838,6 @@ class ChangeLog(object):
             if self.item.record_status == consts.RECORD_UNCHANGED:
                 self.remove_record_log()
 
-
     def prepare(self):
         if self.item.master:
             log = self.item.master.change_log.get_detail_log(str(self.item.ID))

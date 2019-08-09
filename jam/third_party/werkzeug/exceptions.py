@@ -84,7 +84,7 @@ class HTTPException(Exception):
     description = None
 
     def __init__(self, description=None, response=None):
-        super(Exception, self).__init__()
+        super(HTTPException, self).__init__()
         if description is not None:
             self.description = description
         self.response = response
@@ -96,14 +96,22 @@ class HTTPException(Exception):
 
         The first argument to the class will be passed to the
         wrapped ``exception``, the rest to the HTTP exception. If
-        ``self.args`` is not empty, the wrapped exception message is
-        added to the HTTP exception description.
+        ``e.args`` is not empty and ``e.show_exception`` is ``True``,
+        the wrapped exception message is added to the HTTP error
+        description.
 
-        .. versionchanged:: 0.15
+        .. versionchanged:: 0.15.5
+            The ``show_exception`` attribute controls whether the
+            description includes the wrapped exception message.
+
+        .. versionchanged:: 0.15.0
             The description includes the wrapped exception message.
         """
 
         class newcls(cls, exception):
+            _description = cls.description
+            show_exception = False
+
             def __init__(self, arg=None, *args, **kwargs):
                 super(cls, self).__init__(*args, **kwargs)
 
@@ -112,18 +120,22 @@ class HTTPException(Exception):
                 else:
                     exception.__init__(self, arg)
 
-            def get_description(self, environ=None):
-                out = super(cls, self).get_description(environ=environ)
-
-                if self.args:
-                    out += "<p><pre><code>{}: {}</code></pre></p>".format(
-                        exception.__name__, escape(exception.__str__(self))
+            @property
+            def description(self):
+                if self.show_exception:
+                    return "{}\n{}: {}".format(
+                        self._description, exception.__name__, exception.__str__(self)
                     )
 
-                return out
+                return self._description
+
+            @description.setter
+            def description(self, value):
+                self._description = value
 
         newcls.__module__ = sys._getframe(1).f_globals.get("__name__")
-        newcls.__name__ = name or cls.__name__ + exception.__name__
+        name = name or cls.__name__ + exception.__name__
+        newcls.__name__ = newcls.__qualname__ = name
         return newcls
 
     @property
@@ -133,7 +145,7 @@ class HTTPException(Exception):
 
     def get_description(self, environ=None):
         """Get the description."""
-        return u"<p>%s</p>" % escape(self.description)
+        return u"<p>%s</p>" % escape(self.description).replace("\n", "<br>")
 
     def get_body(self, environ=None):
         """Get the HTML body."""
@@ -153,7 +165,7 @@ class HTTPException(Exception):
 
     def get_headers(self, environ=None):
         """Get a list of headers."""
-        return [("Content-Type", "text/html; charset=utf-8")]
+        return [("Content-Type", "text/html")]
 
     def get_response(self, environ=None):
         """Get a response object.  If one was passed to the exception
@@ -765,8 +777,8 @@ def abort(status, *args, **kwargs):
 _aborter = Aborter()
 
 
-#: an exception that is used internally to signal both a key error and a
-#: bad request.  Used by a lot of the datastructures.
+#: An exception that is used to signal both a :exc:`KeyError` and a
+#: :exc:`BadRequest`. Used by many of the datastructures.
 BadRequestKeyError = BadRequest.wrap(KeyError)
 
 # imported here because of circular dependencies of werkzeug.utils
