@@ -50,8 +50,6 @@ def get_fields(query, fields, alias):
     for field in fields:
         if field.master_field:
             pass
-        elif field.calculated:
-            sql += 'NULL AS "%s", ' % field.db_field_name
         else:
             sql += '%s."%s", ' % (alias, field.db_field_name)
     if query['__expanded']:

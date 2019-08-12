@@ -52,8 +52,7 @@ def process_delta(cursor, db_module, delta, master_rec_id, result):
                 ids = execute_select(cursor, db_module, d_select)
                 for i in ids:
                     d_params[1] = i[0]
-                    d_params = db_module.process_sql_params(d_params, cursor)
-                    execute(cursor, d_sql, d_params)
+                    execute(cursor, d_sql, db_module.process_sql_params(d_params, cursor))
         if info:
             rec_id = info.get('pk')
             inserted = info.get('inserted')
