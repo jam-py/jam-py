@@ -41,6 +41,7 @@ def init_items(item):
         item.soft_delete = False
         item._primary_key_db_field_name = item._primary_key.upper()
         item._deleted_flag_db_field_name = item._deleted_flag.upper()
+        # item._record_version_db_field_name = item._record_version.upper()
         if item.master:
             item._master_id_db_field_name = item._master_id.upper()
             item._master_rec_id_db_field_name = item._master_rec_id.upper()
@@ -1014,7 +1015,7 @@ def create_system_item(task, field_name):
 
         sys_group = None
         params = task.sys_params.copy()
-        params.open()
+        params.open(fields=['id', 'f_sys_group', 'f_history_item', 'f_lock_item'])
 
         sys_group = params.f_sys_group.value
         if sys_group:
@@ -1230,7 +1231,7 @@ def item_children(task, item_id):
 
 def get_system_fields(item):
     result = []
-    atts = ['f_primary_key', 'f_deleted_flag', 'f_master_id', 'f_master_rec_id']
+    atts = ['f_primary_key', 'f_deleted_flag', 'f_record_version', 'f_master_id', 'f_master_rec_id']
     for at in atts:
         field = item.field_by_name(at)
         if field.value:

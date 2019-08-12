@@ -507,8 +507,8 @@ function Events0() { // app_builder
 		else if (item.item_name === 'sys_items') {
 			item.open({fields: [
 				'id', 'deleted', 'parent', 'task_id', 'type_id', 'table_id', 'has_children', 'f_index',
-				'f_name', 'f_item_name', 'f_table_name', 'f_gen_name', 'f_view_template', 'f_visible', 'f_soft_delete',
-				'f_virtual_table', 'f_js_external',
+				'f_name', 'f_item_name', 'f_table_name', 'f_gen_name', 'f_view_template', 'f_visible', 
+				'f_soft_delete', 'f_record_version', 'f_virtual_table', 'f_js_external',
 				'f_primary_key', 'f_deleted_flag', 'f_master_id', 'f_master_rec_id',
 				'f_keep_history', 'f_edit_lock', 'sys_id'
 			]});
@@ -1363,6 +1363,9 @@ function Events3() { // sys_items
 			if (item.f_soft_delete && item.f_deleted_flag) {
 				item.f_soft_delete.read_only = !item.f_deleted_flag.value;
 			}
+			if (item.f_record_version && item.f_edit_lock) {
+				item.f_edit_lock.read_only = !item.f_record_version.value;
+			}
 		}
 		item._import_info = undefined; //defined for imported items
 		if (item.type_id.value === types.ITEM_TYPE || item.type_id.value === types.TABLE_TYPE) {
@@ -1379,6 +1382,7 @@ function Events3() { // sys_items
 					fields = fields.concat(['f_master_id', 'f_master_rec_id'])
 				}
 			}
+			fields = fields.concat(['f_record_version']);
 			fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_keep_history', 'f_edit_lock'])
 		}
 		if (item.type_id.value === types.ITEMS_TYPE || item.type_id.value === types.TABLES_TYPE) {
@@ -1387,6 +1391,7 @@ function Events3() { // sys_items
 			if (item.type_id.value === types.TABLES_TYPE) {
 				fields = fields.concat(['f_master_id', 'f_master_rec_id'])
 			}
+			fields = fields.concat(['f_record_version']);
 		}
 		else if (item.type_id.value === types.REPORTS_TYPE) {
 			item.fields_editor = false;
@@ -1422,10 +1427,10 @@ function Events3() { // sys_items
 					else if (height > 520) {
 						height = 520;
 					}
-					if (item.id.value &&  !item.server('server_group_is_empty', [item.id.value])) {
+					if (item.id.value && !item.server('server_group_is_empty', [item.id.value])) {
 						item.edit_form.find("#new-btn").prop("disabled", true);
 						item.edit_form.find("#delete-btn").prop("disabled", true);
-						update_sys_fields_read_only(item, true);
+						update_sys_fields_read_only(item, true, true);
 					}
 					else {
 						item.edit_form.find("#new-btn").prop("disabled", false);
@@ -1569,9 +1574,15 @@ function Events3() { // sys_items
 		}
 	}
 	
-	function update_sys_fields_read_only(item, value) {
+	function update_sys_fields_read_only(item, value, group) {
 		item.f_primary_key.read_only = value;
 		item.f_deleted_flag.read_only = value;
+		if (group) {
+			item.f_record_version.read_only = value;
+		}
+		else {
+			item.f_record_version.read_only = false;
+		}
 		item.f_virtual_table.read_only = value;
 		if (item.f_master_id) {
 			item.f_master_id.read_only = value;
@@ -1598,6 +1609,8 @@ function Events3() { // sys_items
 			item.f_primary_key.lookup_value = parent.f_primary_key.lookup_value;
 			item.f_deleted_flag.value = parent.f_deleted_flag.value;
 			item.f_deleted_flag.lookup_value = parent.f_deleted_flag.lookup_value;
+			item.f_record_version.value = parent.f_record_version.value;
+			item.f_record_version.lookup_value = parent.f_record_version.lookup_value;
 			item.f_master_id.value = parent.f_master_id.value;
 			item.f_master_id.lookup_value = parent.f_master_id.lookup_value;
 			item.f_master_rec_id.value = parent.f_master_rec_id.value;
@@ -1710,7 +1723,17 @@ function Events3() { // sys_items
 				item.f_soft_delete.read_only = true;
 			}
 		}
-		if (field.field_name === 'f_virtual_table') {
+		else if (field.field_name === 'f_record_version') {
+			if (field.value) {
+				item.f_edit_lock.read_only = false;
+				// item.f_edit_lock.value = true;
+			}
+			else {
+				item.f_edit_lock.value = false;
+				item.f_edit_lock.read_only = true;
+			}
+		}
+		else if (field.field_name === 'f_virtual_table') {
 			if (field.value) {
 				item.f_table_name.value = null;
 				item.f_gen_name.value = null;
@@ -1751,16 +1774,6 @@ function Events3() { // sys_items
 					task.btns_panel.find('button.indices').prop("disabled", item.f_virtual_table.value);
 					task.btns_panel.find('button.foreign_keys').prop("disabled", item.f_virtual_table.value);
 				}
-	
-	//				item.f_table_name.read_only = !item.is_new();
-	//				item.f_gen_name.read_only = !item.is_new();
-	//				item.f_virtual_table.read_only = !item.is_new();
-	//				task.btns_panel.find('button.indices').prop("disabled", item.f_virtual_table.value);
-	//				task.btns_panel.find('button.foreign_keys').prop("disabled", item.f_virtual_table.value);
-	//			}
-	//			if (item.f_soft_delete && item.f_deleted_flag) {
-	//				item.f_soft_delete.read_only = !item.f_deleted_flag.value;
-	//			}
 			},
 			100
 		);
@@ -2228,7 +2241,8 @@ function Events3() { // sys_items
 	}
 	
 	function on_field_select_value(field, lookup_item) {
-		var item = field.owner;
+		var item = field.owner,
+			data_type = [item.task.consts.INTEGER];
 		if (lookup_item.item_name === 'sys_fields') {
 			lookup_item.set_view_fields(['f_field_name', 'f_name']);
 		}
@@ -2237,11 +2251,23 @@ function Events3() { // sys_items
 		}
 		if (field.field_name === 'f_primary_key' ||
 			field.field_name === 'f_deleted_flag' ||
+			field.field_name === 'f_record_version' ||
 			field.field_name === 'f_master_id' ||
 			field.field_name === 'f_master_rec_id') {
 			lookup_item.set_order_by(['f_field_name']);
-			lookup_item.set_where({owner_rec_id__in: [item.parent.value],
-				f_data_type__in: [item.task.consts.INTEGER, item.task.consts.TEXT]});
+			if (field.field_name === 'f_primary_key') {
+				data_type = [item.task.consts.INTEGER, item.task.consts.TEXT];
+			}
+			else if (field.field_name === 'f_deleted_flag') {
+				data_type = [item.task.consts.BOOLEAN];
+			}
+			lookup_item.set_where(
+				{
+					owner_rec_id__in: [item.parent.value],
+					f_data_type__in: data_type,
+					f_object__isnull: true,
+					f_lookup_values__isnull: true
+				});
 		}
 		lookup_item.on_after_open = function(it) {
 			var clone = item.sys_fields.clone()
@@ -2249,6 +2275,7 @@ function Events3() { // sys_items
 			while (!it.eof()) {
 				if (it.id.value === item.f_primary_key.value ||
 					it.id.value === item.f_deleted_flag.value ||
+					it.id.value === item.f_record_version.value ||
 					it.id.value === item.f_master_id.value ||
 					it.id.value === item.f_master_rec_id.value) {
 					it.delete();
@@ -2258,10 +2285,12 @@ function Events3() { // sys_items
 				}
 			}
 			clone.each(function(c) {
-				if ((c.f_data_type.value === item.task.consts.INTEGER ||
-					c.f_data_type.value === item.task.consts.TEXT) &&
+				if ($.inArray(c.f_data_type.value, data_type) !== -1 &&
+					!c.f_object.value &&
+					!c.f_lookup_values.value &&
 					c.id.value !== item.f_primary_key.value &&
 					c.id.value !== item.f_deleted_flag.value &&
+					c.id.value !== item.f_record_version.value &&
 					c.id.value !== item.f_master_id.value &&
 					c.id.value !== item.f_master_rec_id.value) {
 					it.append();

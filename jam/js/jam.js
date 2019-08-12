@@ -5169,7 +5169,7 @@
             if (rec_no !== null) {
                 this.rec_no = rec_no;
             }
-            this.update_controls(consts.UPDATE_OPEN);
+            //~ this.update_controls(consts.UPDATE_OPEN);
             if (callback) {
                 callback.call(this);
             }
@@ -11377,13 +11377,14 @@
         },
 
         init_table: function() {
-            if (!this.table_initiated) {
-                this.table_initiated = true;
+            if (!this.item._page_changed) {
                 this.init_fields();
                 this._sorted_fields = this.item._open_params.__order;
                 if (this.item._paginate) {
-                    this.page = 0;
-                    this.update_page_info();
+                    if (this.item._offset === 0) {
+                        this.page = 0;
+                        this.update_page_info();
+                    }
                     this.update_totals();
                 } else {
                     this.calc_summary();
@@ -12047,7 +12048,9 @@
                 if (this.item.record_count()) {
                     this.item._do_before_scroll();
                 }
+                this.item._page_changed = true;
                 this.item.open({offset: this.page * this.item._limit}, function() {
+                    self.item._page_changed = false;
                     if (callback) {
                         callback.call(self);
                     }
