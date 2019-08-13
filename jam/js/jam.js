@@ -5169,7 +5169,6 @@
             if (rec_no !== null) {
                 this.rec_no = rec_no;
             }
-            //~ this.update_controls(consts.UPDATE_OPEN);
             if (callback) {
                 callback.call(this);
             }
@@ -9842,6 +9841,7 @@
                 return;
             }
             this.item = item;
+            this.item._page_changed = false;
             this.id = item.task._grid_id++;
             this.datasource = [];
             this.$container = container;
