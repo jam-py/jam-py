@@ -1730,9 +1730,11 @@ class MasterDataSet(AbstractDataSet):
             changes = {}
             self.change_log.get_changes(changes)
         result = self.copy(filters=False, details=True, handlers=False)
+        result.log_changes = False
         result.expanded = False
         result._is_delta = True
         for detail in result.details:
+            detail.log_changes = False
             detail.expanded = False
             detail._is_delta = True
         result.details_active = True
