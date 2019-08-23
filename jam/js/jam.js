@@ -6860,19 +6860,21 @@
         update_controls: function(state) {
             var i = 0,
                 len = this.fields.length;
-            if (state === undefined) {
-                state = consts.UPDATE_CONTROLS;
-            }
-            if (this.controls_enabled()) {
-                for (i = 0; i < len; i++) {
-                    this.fields[i].update_controls(state, true);
+            if (this.active) {
+                if (state === undefined) {
+                    state = consts.UPDATE_CONTROLS;
                 }
-                len = this.controls.length;
-                if (this.on_update_controls) {
-                    this.on_update_controls.call(this, this);
-                }
-                for (i = 0; i < len; i++) {
-                    this.controls[i].update(state);
+                if (this.controls_enabled()) {
+                    for (i = 0; i < len; i++) {
+                        this.fields[i].update_controls(state, true);
+                    }
+                    len = this.controls.length;
+                    if (this.on_update_controls) {
+                        this.on_update_controls.call(this, this);
+                    }
+                    for (i = 0; i < len; i++) {
+                        this.controls[i].update(state);
+                    }
                 }
             }
         },
@@ -8258,18 +8260,18 @@
                         case consts.DATETIME:
                             result = this.datetime_to_str(result);
                             break;
-                        case consts.BOOLEAN:
-                            if (this.value) {
-                                result = language.yes;
-                            } else {
-                                result = language.no;
-                            }
-                            break;
                         case consts.KEYS:
                             if (result.length) {
                                 result = language.items_selected.replace('%s', result.length);
                             }
                             break;
+                    }
+                }
+                if (this.data_type === consts.BOOLEAN) {
+                    if (this.value) {
+                        result = language.true;
+                    } else {
+                        result = language.false;
                     }
                 }
             } catch (e) {
@@ -11540,7 +11542,7 @@
                             text;
                         copy.each_field(function(f, i) {
                             if (i == 0) {
-                                total_records = f.value;
+                                total_records = f.data;
                             }
                             else if (f.field_name !== search_field) {
                                 self.$foot.find('div.' + f.field_name).text(f.display_text);
