@@ -210,6 +210,7 @@ class ServerDataset(Dataset, SQL):
             db_module = self.task.db_module
         sql = delta.apply_sql(params)
         return self.task.execute(sql, None, connection=connection, db_module=db_module, autocommit=False)
+        # ~ return delta.save_changes(connection, params, db_module)
 
     def apply_changes(self, data, safe, connection=None):
         result = None
@@ -878,6 +879,9 @@ class AbstractServerTask(AbstrTask):
             item._events = []
             for func_name, func in funcs:
                 item._events.append((func_name, func))
+                if hasattr(item, func_name) and func_name[:3] != 'on_':
+                    item.log.info('Module %s: function "%s" will override "%s" default method. Please, rename the function.' % \
+                        (item.module_name, func_name, item.item_name))
                 setattr(item, func_name, func)
         del code
 

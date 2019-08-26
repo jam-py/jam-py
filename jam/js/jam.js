@@ -62,8 +62,7 @@
             "RECORD_DETAILS_MODIFIED": 4,
 
             "REC_STATUS": 0,
-            "REC_CONTROLS": 1,
-            "REC_LOG_REC": 2,
+            "REC_LOG_REC": 1,
 
             "UPDATE_OPEN": 0,
             "UPDATE_RECORD": 1,
@@ -387,6 +386,12 @@
             this._events = [];
             for (var event in events) {
                 if (events.hasOwnProperty(event)) {
+                    if (this[event]) {
+                    //~ if (this.task.ID && this[event]) {
+                        console.error(this.item_name + ' client module ' + ': function "' +
+                            event + '" will override "' + this.item_name +
+                            '" default method. Please, rename the function.');
+                    }
                     this[event] = events[event];
                     this._events.push([event, events[event]]);
                 }
@@ -402,22 +407,6 @@
             for (; i < len; i++) {
                 this.items[i].bind_events();
             }
-        },
-
-        view$: function(selector) {
-            return this.view_form.find(selector);
-        },
-
-        edit$: function(selector) {
-            return this.edit_form.find(selector);
-        },
-
-        filter$: function(selector) {
-            return this.filter_form.find(selector);
-        },
-
-        param$: function(selector) {
-            return this.param_form.find(selector);
         },
 
         can_view: function() {
@@ -3191,7 +3180,6 @@
                 item = this.item;
             }
             info = item.get_record_info(record).slice();
-            info[consts.REC_CONTROLS] = {};
             if (expanded) {
                 result = record.slice(0, item._record_info_index);
             } else {
@@ -6034,7 +6022,7 @@
                     record = this._dataset[this.rec_no];
                 }
                 if (record.length < this._record_info_index + 1) {
-                    record.push([null, {}, null, {}]);
+                    record.push([null, null]);
                 }
                 return record[this._record_info_index];
             }
@@ -6046,10 +6034,6 @@
 
         _set_record_status: function(value) {
             this.record_info[consts.REC_STATUS] = value;
-        },
-
-        rec_controls_info: function() {
-            return this.record_info[consts.REC_CONTROLS];
         },
 
         _get_record_log_rec: function() {
@@ -9256,14 +9240,12 @@
     /*                            DBTree class                            */
     /**********************************************************************/
 
-    function DBTree(item, container, parent_field, text_field, parent_of_root_value, options) {
-        this.init(item, container, parent_field, text_field, parent_of_root_value, options);
-    }
+    class DBTree {
+        constructor(item, container, parent_field, text_field, parent_of_root_value, options) {
+            this.init(item, container, parent_field, text_field, parent_of_root_value, options);
+        }
 
-    DBTree.prototype = {
-        constructor: DBTree,
-
-        init: function(item, container, options) {
+        init(item, container, options) {
             var self = this,
                 default_options = {
                     id_field: undefined,
@@ -9275,6 +9257,7 @@
                     on_dbl_click: undefined
                 };
             this.id = item.task.controlId++;
+            this.links = {};
             this.item = item;
             this.$container = container;
             this.form = container.closest('.jam-form');
@@ -9301,31 +9284,31 @@
             if (item._get_active() && this.$container.width()) {
                 this.build();
             }
-        },
+        }
 
-        form_closing: function() {
+        form_closing() {
             if (this.form) {
                 return this.form.data('_closing');
             }
-        },
+        }
 
-        height: function(value) {
+        height(value) {
             if (value) {
                 this.$element.height(value);
             } else {
                 return this.$element.height();
             }
-        },
+        }
 
-        is_focused: function() {
+        is_focused() {
             return this.$element.get(0) === document.activeElement;
-        },
+        }
 
-        scroll_into_view: function() {
+        scroll_into_view() {
             this.select_node(this.selected_node);
-        },
+        }
 
-        update: function(state) {
+        update(state) {
             var recNo,
                 self = this,
                 row;
@@ -9346,9 +9329,9 @@
                     this.$element.empty();
                     break;
             }
-        },
+        }
 
-        keydown: function(e) {
+        keydown(e) {
             var self = this,
                 $li,
                 code = e.keyCode || e.which;
@@ -9391,9 +9374,9 @@
                         break;
                 }
             }
-        },
+        }
 
-        keyup: function(e) {
+        keyup(e) {
             var self = this,
                 code = (e.keyCode ? e.keyCode : e.which);
             if (!e.ctrlKey && !e.shiftKey) {
@@ -9406,9 +9389,9 @@
                         break;
                 }
             }
-        },
+        }
 
-        build_child_nodes: function(tree, nodes) {
+        build_child_nodes(tree, nodes) {
             var i = 0,
                 len = nodes.length,
                 node,
@@ -9450,9 +9433,9 @@
                 tree += '</li>';
             }
             return tree
-        },
+        }
 
-        collect_nodes: function(clone) {
+        collect_nodes(clone) {
             var id_field = clone[this.options.id_field],
                 parent_field = clone[this.options.parent_field],
                 text_field = clone[this.options.text_field],
@@ -9472,9 +9455,9 @@
                 });
                 clone.next();
             }
-        },
+        }
 
-        build: function() {
+        build() {
             var self = this,
                 clone = this.item.clone(),
                 tree = '<ul>',
@@ -9502,8 +9485,7 @@
                 clone.rec_no = rec;
                 this.item._cur_row = rec;
                 $li.data("record", clone._dataset[rec]);
-                info = clone.rec_controls_info();
-                info[this.id] = $li.get(0);
+                this.links[clone.rec_no] = $li.get(0);
                 if (this.options.node_callback) {
                     this.options.node_callback($li, this.item);
                 }
@@ -9524,9 +9506,9 @@
                 var $li = $(this).parent().parent();
                 self.select_node($li);
             });
-        },
+        }
 
-        toggle_expanded: function($li) {
+        toggle_expanded($li) {
             var $span = $li.find('div:first span.tree-bullet'),
                 $ul;
             if ($li.hasClass('parent')) {
@@ -9539,9 +9521,9 @@
                 }
                 $ul.slideToggle(0);
             }
-        },
+        }
 
-        expand: function($li) {
+        expand($li) {
             if ($li.hasClass('parent') && $li.hasClass('collapsed')) {
                 this.toggle_expanded($li);
             }
@@ -9549,15 +9531,15 @@
             if ($li.prop("tagName") === "LI") {
                 this.expand($li);
             }
-        },
+        }
 
-        collapse: function($li) {
+        collapse($li) {
             if ($li.hasClass('parent') && !$li.hasClass('collapsed')) {
                 this.toggle_expanded($li);
             }
-        },
+        }
 
-        select_node: function($li, update_node) {
+        select_node($li, update_node) {
             var self = this,
                 $parent,
                 rec;
@@ -9586,9 +9568,9 @@
             if (update_node) {
                 this.update_selected_node(this.selected_node);
             }
-        },
+        }
 
-        update_selected_node: function($li) {
+        update_selected_node($li) {
             var containerTop,
                 containerBottom,
                 elemTop,
@@ -9605,46 +9587,40 @@
                     this.$element.scrollTop(elemBottom - this.$element.height());
                 }
             }
-        },
+        }
 
-        update_field: function() {
-        },
+        update_field() {
+        }
 
-        syncronize: function() {
+        syncronize() {
             var info,
-                $li;
+                li;
             if (this.item.record_count()) {
                 try {
-                    info = this.item.rec_controls_info(),
-                        $li = $(info[this.id]);
-                    this.select_node($li);
+                    li = this.links[this.item.rec_no]
+                    if (li) {
+                        this.select_node($(li));
+                    }
                 } catch (e) {
                     console.error(e);
                 }
             }
-        },
+        }
 
-        changed: function() {},
+        changed() {}
     }
 
     /**********************************************************************/
     /*                            DBTable class                           */
     /**********************************************************************/
 
-    function DBTable(item, container, options, master_table) {
-        this._editable_fields = [];
-        Object.defineProperty(this, "editable_fields", {
-            get: function() {
-                return this.get_editable_fields();
-            },
-        });
-        this.init(item, container, options, master_table);
-    }
 
-    DBTable.prototype = {
-        constructor: DBTable,
+    class DBTable {
+        constructor(item, container, options, master_table) {
+            this.init(item, container, options, master_table);
+        }
 
-        init: function(item, container, options, master_table) {
+        init(item, container, options, master_table) {
             var self = this;
 
             if (!container.length) {
@@ -9661,6 +9637,7 @@
             this.is_mac = navigator.platform.toLowerCase().indexOf('mac') + 1;
 
             this.edit_mode = false;
+            this._editable_fields = [];
             this._sorted_fields = [];
             this._multiple_sort = false;
             this.page = 0;
@@ -9707,24 +9684,9 @@
             if (item.active) {
                 setTimeout(function() { self.do_after_open() }, 0);
             }
-        },
+        }
 
-        resize: function() {
-            var self = this;
-            clearTimeout(this.timeOut);
-            self.timeOut = setTimeout(
-                function() {
-                    if (self.master_table && !self.master_table.freezed_table) {
-                        return;
-                    }
-                    self.build();
-                    self.sync_freezed();
-                },
-                100
-            );
-        },
-
-        init_options: function(options) {
+        init_options(options) {
             var default_options = {
                 table_class: undefined,
                 multiselect: false,
@@ -9797,9 +9759,24 @@
             }
 
             this.on_dblclick = this.options.on_dblclick;
-        },
+        }
 
-        get_editable_fields: function() {
+        resize() {
+            var self = this;
+            clearTimeout(this.timeOut);
+            self.timeOut = setTimeout(
+                function() {
+                    if (self.master_table && !self.master_table.freezed_table) {
+                        return;
+                    }
+                    self.build();
+                    self.sync_freezed();
+                },
+                100
+            );
+        }
+
+        get editable_fields() {
             var i,
                 field,
                 result = [];
@@ -9819,9 +9796,9 @@
                 }
             }
             return result;
-        },
+         }
 
-        init_fields: function() {
+        init_fields() {
             var i = 0,
                 len,
                 field,
@@ -9869,9 +9846,9 @@
             if (this.options.multiselect) {
                 this.colspan += 1;
             }
-        },
+         }
 
-        can_edit: function() {
+        can_edit() {
             if (this.item.read_only) {
                 return false;
             }
@@ -9879,9 +9856,9 @@
                 return false;
             }
             return this.options.editable;
-        },
+         }
 
-        get_freezed_fields: function(len) {
+        get_freezed_fields(len) {
             var i,
                 result = [];
             if (!len) {
@@ -9891,9 +9868,9 @@
                 result.push(this.fields[i].field_name);
             }
             return result;
-        },
+         }
 
-        create_freezed_table: function() {
+        create_freezed_table() {
             var i,
                 options,
                 container;
@@ -9915,16 +9892,15 @@
 
             this.freezed_table.$container = this.$container;
             this.$container.append(this.freezed_table.$element);
-            //~ this.freezed_table.focus();
-        },
+         }
 
-        delete_freezed_table: function() {
+        delete_freezed_table() {
             this.freezed_table.$element.remove();
             delete this.freezed_table
             this.freezed_table = undefined;
-        },
+         }
 
-        sync_freezed: function() {
+        sync_freezed() {
             var i,
                 col,
                 $th,
@@ -9964,8 +9940,6 @@
                         col += 1;
                     }
                     $th = this.$head.find('th').eq(col);
-                    //~ scroll_left = this.$element.find('.table-container')[0].scrollLeft;
-                    //~ width = scroll_left + ($th.position().left + $th.outerWidth(true) + 2);
                     width = ($th.position().left + $th.outerWidth(true) + 2);
 
                     this.freezed_table.$element.width(width);
@@ -9986,9 +9960,9 @@
                     this.sync_col_width();
                 }
             }
-        },
+         }
 
-        init_selections: function() {
+        init_selections() {
             var value;
             if (this.options.multiselect && !this.item.selections) {
                 this.item.selections = [];
@@ -10012,9 +9986,9 @@
                 this.options.multiselect = true;
             }
             this.item.select_all = this.options.select_all;
-        },
+         }
 
-        selections_update_selected: function() {
+        selections_update_selected() {
             var sel_count = this.$element.find('th .multi-select .sel-count');
             if (this.options.multiselect) {
                 sel_count.text(this.item.selections.length);
@@ -10034,13 +10008,13 @@
                     }
                 }
             }
-        },
+         }
 
-        selections_get_selected: function() {
+        selections_get_selected() {
             return this.item.selections.indexOf(this.item._primary_key_field.value) !== -1;
-        },
+         }
 
-        selections_can_change: function(value) {
+        selections_can_change(value) {
             var valid = true;
             if (value && this.options.selection_limit) {
                 valid = (this.options.selection_limit &&
@@ -10050,9 +10024,9 @@
                 }
             }
             return valid;
-        },
+         }
 
-        selections_set_selected: function(value) {
+        selections_set_selected(value) {
             var self = this,
                 result = value,
                 index,
@@ -10079,9 +10053,9 @@
                 result = false;
             }
             return result;
-        },
+         }
 
-        selections_get_all_selected: function() {
+        selections_get_all_selected() {
             var self = this,
                 clone = this.item.clone(),
                 result = false;
@@ -10092,9 +10066,9 @@
                 }
             })
             return result;
-        },
+         }
 
-        selections_set_all_selected_ex: function(value) {
+        selections_set_all_selected_ex(value) {
             var self = this,
                 i,
                 field,
@@ -10140,7 +10114,6 @@
                     });
                     for (var id in dict) {
                         sel.push(parseInt(id, 10))
-                        //~ self.item.selections.add(parseInt(id, 10));
                     }
                     self.item.selections = sel;
                     self.$table.find('td input.multi-select').prop('checked', value);
@@ -10149,9 +10122,9 @@
                     self.selections_update_selected();
                 })
             }
-        },
+         }
 
-        selections_set_all_selected: function(value) {
+        selections_set_all_selected(value) {
             var self = this,
                 i,
                 field,
@@ -10183,9 +10156,9 @@
                 self.$table.find('td input.multi-select').prop('checked', value);
             }
             this.selections_update_selected();
-        },
+         }
 
-        initKeyboardEvents: function() {
+        initKeyboardEvents() {
             var self = this,
                 timeout;
             this.$table.on('keydown', function(e) {
@@ -10201,9 +10174,9 @@
             this.$table.on('keypress', function(e) {
                 self.keypress(e);
             });
-        },
+         }
 
-        create_table: function() {
+        create_table() {
             var self = this,
                 $doc = $(document),
                 $selection,
@@ -10536,9 +10509,9 @@
 
             this.fill_footer();
             this.calculate();
-        },
+        }
 
-        change_field_width: function(field_name, delta) {
+        change_field_width(field_name, delta) {
             var cell_width;
             cell_width = this.get_cell_width(field_name) + delta;
 
@@ -10554,16 +10527,16 @@
                 this.sync_col_width(delta > 0);
             }
             this.sync_freezed();
-        },
+        }
 
-        remove_tooltip: function() {
+        remove_tooltip() {
             try {
                 $('body').find('.tooltip.table-tooltip').remove();
             }
             catch (e) {}
-        },
+        }
 
-        calculate: function() {
+        calculate() {
             var self = this,
                 i,
                 row_line_count,
@@ -10665,9 +10638,9 @@
                     300
                 );
             }
-        },
+        }
 
-        calc_row_count: function() {
+        calc_row_count() {
             if (this.master_table) {
                 return this.master_table.row_count;
             }
@@ -10687,9 +10660,9 @@
                 this.row_count = 1;
             }
             return this.row_count;
-        },
+        }
 
-        create_pager: function($element) {
+        create_pager($element) {
             var self = this,
                 $pagination,
                 $pager,
@@ -10793,9 +10766,9 @@
                     }
                 }
             }
-        },
+        }
 
-        init_selected_field: function() {
+        init_selected_field() {
             var field;
             if (!this.selected_field && this.editable_fields.length) {
                 this.selected_field = this.editable_fields[0];
@@ -10806,9 +10779,9 @@
                     }
                 }
             }
-        },
+        }
 
-        set_selected_field: function(field) {
+        set_selected_field(field) {
             var self = this,
                 field_changed = this.selected_field !== field;
             if (field_changed && this.can_edit()) {
@@ -10820,9 +10793,9 @@
                 this.selected_field = field
                 this.show_selection();
             }
-        },
+        }
 
-        next_field: function() {
+        next_field() {
             var index;
             if (this.selected_field) {
                 index = this.editable_fields.indexOf(this.selected_field);
@@ -10836,9 +10809,9 @@
                     }
                 }
             }
-        },
+        }
 
-        prior_field: function() {
+        prior_field() {
             var index;
             if (this.selected_field) {
                 index = this.editable_fields.indexOf(this.selected_field);
@@ -10852,9 +10825,9 @@
                     }
                 }
             }
-        },
+        }
 
-        hide_editor: function() {
+        hide_editor() {
             var width,
                 field,
                 $div,
@@ -10885,15 +10858,15 @@
                 }
                 this.focus();
             }
-        },
+        }
 
-        flush_editor: function() {
+        flush_editor() {
             if (this.editor && this.editing) {
                 this.editor.change_field_text();
             }
-        },
+        }
 
-        show_editor: function() {
+        show_editor() {
             var self = this,
                 width,
                 height,
@@ -10978,17 +10951,17 @@
                 }
                 this.editing = true;
             }
-        },
+        }
 
-        height: function(value) {
+        height(value) {
             if (value === undefined) {
                 return this.$element.height();
             } else {
                 this.$overlay_div.height(value - (this.$element.height() - this.$overlay_div.height()));
             }
-        },
+        }
 
-        fill_title: function($element) {
+        fill_title($element) {
             var i,
                 self = this,
                 field,
@@ -11128,9 +11101,9 @@
                 this.options.title_callback(heading, this.item)
             }
             this.selections_update_selected();
-        },
+        }
 
-        fill_footer: function($element) {
+        fill_footer($element) {
             var i,
                 len,
                 field,
@@ -11167,26 +11140,26 @@
             if (!this.options.show_footer) {
                 footer.hide();
             }
-        },
+        }
 
-        show_footer: function() {
+        show_footer() {
             this.$element.find("table.outer-table tfoot tr:first").show();
-        },
+        }
 
-        hideFooter: function() {
+        hideFooter() {
             this.$element.find("table.outer-table tfoot tr:first").hide();
-        },
+        }
 
-        get_cell_width: function(field_name) {
+        get_cell_width(field_name) {
             return this.cell_widths[field_name];
-        },
+        }
 
-        set_сell_width: function(field_name, value) {
+        set_сell_width(field_name, value) {
             value = parseInt(value, 10)
             this.cell_widths[field_name] = value;
-        },
+        }
 
-        init_table: function() {
+        init_table() {
             if (!this.item._page_changed) {
                 this.init_fields();
                 this._sorted_fields = this.item._open_params.__order;
@@ -11202,15 +11175,15 @@
             }
             this.datasource = [];
             this.refresh();
-        },
+        }
 
-        form_closing: function() {
+        form_closing() {
             if (this.form) {
                 return this.form.data('_closing');
             }
-        },
+        }
 
-        do_after_open: function() {
+        do_after_open() {
             var self = this;
             if (this.$table.is(':visible')) {
                 this.init_table();
@@ -11225,9 +11198,9 @@
                     1
                 );
             }
-        },
+        }
 
-        update: function(state) {
+        update(state) {
             var recNo,
                 self = this,
                 row;
@@ -11258,17 +11231,17 @@
                     this.update_summary();
                     break;
             }
-        },
+        }
 
-        update_summary: function() {
+        update_summary() {
             var field_name;
             for (field_name in this.item._summary) {
                 this.$foot.find('div.' + field_name).text(this.item._summary[field_name]);
             }
 
-        },
+        }
 
-        calc_summary: function(callback) {
+        calc_summary(callback) {
             var self = this,
                 i,
                 copy,
@@ -11365,9 +11338,9 @@
                     }
                 );
             }
-        },
+        }
 
-        update_field: function(field, refreshingRow) {
+        update_field(field, refreshingRow) {
             var self = this,
                 row = this.row_by_record(),
                 update,
@@ -11389,26 +11362,26 @@
                     }
                 }
             }
-        },
+        }
 
-        update_selected: function(row) {
+        update_selected(row) {
             if (!row) {
                 row = this.row_by_record();
             }
             if (this.options.row_callback) {
                 this.options.row_callback(row, this.item);
             }
-        },
+        }
 
-        record_by_row: function(row) {
+        record_by_row(row) {
             for (var i = 0; i < this.datasource.length; i++) {
                 if (this.datasource[i][1] === row[0]) {
                     return this.datasource[i][0]
                 }
             }
-        },
+        }
 
-        row_by_record: function() {
+        row_by_record() {
             if (this.item.rec_count) {
                 for (var i = 0; i < this.datasource.length; i++) {
                     if (this.datasource[i][0] === this.item.rec_no) {
@@ -11416,16 +11389,16 @@
                     }
                 }
             }
-        },
+        }
 
-        refresh_row: function() {
+        refresh_row() {
             var self = this;
             this.each_field(function(field, i) {
                 self.update_field(field, true);
             });
-        },
+        }
 
-        do_on_edit: function(field) {
+        do_on_edit(field) {
             if (this.item.lookup_field) {
                 this.item.set_lookup_field_value();
             } else {
@@ -11445,9 +11418,9 @@
                     }
                 }
             }
-        },
+        }
 
-        clicked: function(e, td) {
+        clicked(e, td) {
             var rec,
                 field = this.item.field_by_name(td.data('field_name')),
                 $row = td.parent();
@@ -11469,9 +11442,9 @@
             if (e.type === "dblclick") {
                 this.do_on_edit(field);
             }
-        },
+        }
 
-        hide_selection: function() {
+        hide_selection() {
             if (this.selected_row) {
                 if (this.selected_field) {
                     this.selected_row.removeClass("selected-focused selected");
@@ -11481,9 +11454,9 @@
                     this.selected_row.removeClass("selected-focused selected");
                 }
             }
-        },
+        }
 
-        table_focused: function() {
+        table_focused() {
             var focused = this.is_focused();
             if (this.master_table && !focused) {
                 focused = this.master_table.is_focused()
@@ -11492,9 +11465,9 @@
                 focused = this.freezed_table.is_focused()
             }
             return focused;
-        },
+        }
 
-        show_selection: function() {
+        show_selection() {
             var selClassName = 'selected',
                 selFieldClassName = 'field-selected';
             if (!this.is_showing_selection) {
@@ -11527,9 +11500,9 @@
                     this.is_showing_selection = false;
                 }
             }
-        },
+        }
 
-        select_row: function($row) {
+        select_row($row) {
             var divs,
                 textHeight = this.text_height;
             this.hide_selection();
@@ -11543,17 +11516,17 @@
                 divs.css('height', '');
                 divs.css('height', this.options.expand_selected_row * textHeight);
             }
-        },
+        }
 
-        cancel_sync: function() {
+        cancel_sync() {
             this.set_sync(true);
-        },
+        }
 
-        resume_sync: function() {
+        resume_sync() {
             this.set_sync(false);
-        },
+        }
 
-        set_sync: function(value) {
+        set_sync(value) {
             this.syncronizing = value;
             if (this.freezed_table) {
                 this.freezed_table.syncronizing = value;
@@ -11561,9 +11534,9 @@
             if (this.master_table) {
                 this.master_table.syncronizing = value;
             }
-        },
+        }
 
-        syncronize: function(noscroll) {
+        syncronize(noscroll) {
             var self = this,
                 page_rec,
                 row_changed,
@@ -11617,9 +11590,9 @@
                     this.syncronizing = false;
                 }
             }
-        },
+        }
 
-        get_field_text: function(field) {
+        get_field_text(field) {
             if (field.lookup_data_type === consts.BOOLEAN) {
                 if (this.owner && (this.owner.on_field_get_text || this.owner.on_get_field_text)) {
                     return field.display_text;
@@ -11631,9 +11604,9 @@
             else {
                 return field.display_text;
             }
-        },
+        }
 
-        get_field_html: function(field) {
+        get_field_html(field) {
             var result;
             result = field.get_html();
             if (!result) {
@@ -11649,9 +11622,9 @@
                 }
             }
             return result;
-        },
+        }
 
-        scroll: function(e) {
+        scroll(e) {
             var self = this,
                 scroll_el,
                 table_el;
@@ -11678,14 +11651,14 @@
                 this.scroll_table(e);
             }
             this.$table.css({'top': this.$overlay_div.scrollTop() + 'px'});
-        },
+        }
 
-        scroll_datasource: function(page_rec) {
+        scroll_datasource(page_rec) {
             this.datasource = [];
             this.fill_datasource(page_rec)
-        },
+        }
 
-        scroll_table: function(e) {
+        scroll_table(e) {
             var self = this,
                 page_rec = Math.round(this.$overlay_div.scrollTop() / this.row_height);
             if (this.item.paginate) {
@@ -11726,9 +11699,9 @@
                     this.resume_sync();
                 }
             }
-        },
+        }
 
-        scroll_height: function() {
+        scroll_height() {
             var delta = this.$overlay_div.innerHeight() - this.row_count * this.row_height;
             if (this.item.paginate) {
                 return Math.ceil(this.record_count / this.row_count) * this.row_count * this.row_height;
@@ -11736,18 +11709,18 @@
             else {
                 return this.item.record_count() * this.row_height + delta;
             }
-        },
+        }
 
-        scroll_pos_by_rec: function() {
+        scroll_pos_by_rec() {
             if (this.item.paginate) {
                 return Math.round((this.page * this.row_count + this.item.rec_no) * this.row_height);
             }
             else {
                 return Math.round(this.item.rec_no * this.row_height);
             }
-        },
+        }
 
-        keydown: function(e) {
+        keydown(e) {
             this.scroll_delta = 0;
             var self = this,
                 code = (e.keyCode ? e.keyCode : e.which);
@@ -11795,9 +11768,9 @@
                         break;
                 }
             }
-        },
+        }
 
-        keyup: function(e) {
+        keyup(e) {
             var self = this,
                 multi_sel,
                 code = (e.keyCode ? e.keyCode : e.which);
@@ -11825,9 +11798,9 @@
                         break
                 }
             }
-        },
+        }
 
-        keypress: function(e) {
+        keypress(e) {
             var self = this,
                 multi_sel,
                 code = e.which;
@@ -11836,9 +11809,9 @@
                     this.show_editor();
                 }
             }
-        },
+        }
 
-        set_page_number: function(value, callback, chech_last_page) {
+        set_page_number(value, callback, chech_last_page) {
             var self = this;
 
             if (chech_last_page === undefined) {
@@ -11880,17 +11853,17 @@
                     }
                 });
             }
-        },
+        }
 
-        reload: function(callback) {
+        reload(callback) {
             if (this.item._paginate) {
                 this.set_page_number(this.page, callback);
             } else {
                 this.open(callback);
             }
-        },
+        }
 
-        update_page_info: function(page) {
+        update_page_info(page) {
             var cur_page;
             if (page === undefined) {
                 cur_page = this.page;
@@ -11924,9 +11897,9 @@
             if (this.options.on_page_changed && page === undefined) {
                 this.options.on_page_changed.call(this.item, this.item, this);
             }
-        },
+        }
 
-        update_totals: function(callback) {
+        update_totals(callback) {
             var self = this;
             this.calc_summary(function(count) {
                 self.update_page_count(count);
@@ -11934,9 +11907,9 @@
                     callback();
                 }
             })
-        },
+        }
 
-        update_page_count: function(count) {
+        update_page_count(count) {
             if (this.item._paginate && self.record_count !== count) {
                 this.record_count = count;
                 this.$scroll_div.height(this.scroll_height())
@@ -11957,9 +11930,9 @@
                     this.options.on_page_changed.call(this.item, this.item, this);
                 }
             }
-        },
+        }
 
-        show_next_record: function() {
+        show_next_record() {
             var self = this,
                 row = this.row_by_record();
             if (!row) {
@@ -11974,9 +11947,9 @@
                 this.datasource.push([this.item.rec_no, row[0]]);
             }
 
-        },
+        }
 
-        next_record: function(noscroll) {
+        next_record(noscroll) {
             this.cancel_sync();
             try {
                 this.item.next();
@@ -12007,9 +11980,9 @@
             if (this.freezed_table) {
                 this.freezed_table.syncronize(noscroll);
             }
-        },
+        }
 
-        show_prior_record: function() {
+        show_prior_record() {
             var row = this.row_by_record(),
                 index;
             if (!row) {
@@ -12026,9 +11999,9 @@
                     this.datasource.splice(0, 0, [this.item.rec_no, row[0]]);
                 }
             }
-        },
+        }
 
-        prior_record: function(noscroll) {
+        prior_record(noscroll) {
             var self = this;
             this.cancel_sync();
             try {
@@ -12060,17 +12033,17 @@
             if (this.freezed_table) {
                 this.freezed_table.syncronize(noscroll);
             }
-        },
+        }
 
-        first_page: function(callback) {
+        first_page(callback) {
             if (this.item._paginate) {
                 this.set_page_number(0, callback);
             } else {
                 this.item.first();
             }
-        },
+        }
 
-        next_page: function(callback) {
+        next_page(callback) {
             var lines,
                 clone;
             if (this.item._paginate) {
@@ -12089,9 +12062,9 @@
                 }
                 this.item.rec_no = clone.rec_no;
             }
-        },
+        }
 
-        prior_page: function(callback) {
+        prior_page(callback) {
             var lines,
                 clone;
             if (this.item._paginate) {
@@ -12112,18 +12085,18 @@
                 }
                 this.item.rec_no = clone.rec_no;
             }
-        },
+        }
 
-        last_page: function(callback) {
+        last_page(callback) {
             var self = this;
             if (this.item._paginate) {
                 this.set_page_number(this.page_count - 1, callback);
             } else {
                 this.item.last();
             }
-        },
+        }
 
-        each_field: function(callback) {
+        each_field(callback) {
             var i = 0,
                 len = this.fields.length,
                 value;
@@ -12133,9 +12106,9 @@
                     break;
                 }
             }
-        },
+        }
 
-        new_column: function(columnName, align, text, index) {
+        new_column(columnName, align, text, index) {
             var cell_width = this.get_cell_width(columnName),
                 classStr = 'class="' + columnName + '"',
                 dataStr = 'data-field_name="' + columnName + '"',
@@ -12150,9 +12123,9 @@
                 '<div ' + classStr + ' ' + divStyleStr + '>' + text +
                 '</div>' +
                 '</td>';
-        },
+        }
 
-        new_row: function() {
+        new_row() {
             var f,
                 i,
                 len,
@@ -12181,9 +12154,9 @@
             }
             rowStr += '<td class="fake-column" style="display: None;"></td>'
             return '<tr class="inner">' + rowStr + '</tr>';
-        },
+        }
 
-        get_element_width: function(element) {
+        get_element_width(element) {
             if (!element.length) {
                 return 0;
             }
@@ -12192,9 +12165,9 @@
             } else {
                 return this.get_element_width(element.parent())
             }
-        },
+        }
 
-        sync_col_width: function(fake_column) {
+        sync_col_width(fake_column) {
             var $row,
                 field,
                 $td;
@@ -12216,14 +12189,14 @@
                     }
                 }
             }
-        },
+        }
 
-        remove_saved_width: function() {
+        remove_saved_width() {
             this.$outer_table.find('colgroup').remove();
             this.$table.find('colgroup').remove();
-        },
+        }
 
-        set_saved_width: function(row, all_cols) {
+        set_saved_width(row, all_cols) {
             var i,
                 col_group = '<colgroup>',
                 len = this.fields.length,
@@ -12245,9 +12218,9 @@
             col_group += '</colgroup>',
             this.$outer_table.prepend(col_group)
             this.$table.prepend(col_group);
-        },
+        }
 
-        fill_datasource: function(start_rec) {
+        fill_datasource(start_rec) {
             var self = this,
                 counter = 0,
                 clone = this.item.clone(true);
@@ -12266,9 +12239,9 @@
                     }
                 }
             }
-        },
+        }
 
-        fill_rows: function() {
+        fill_rows() {
             var i,
                 len,
                 row,
@@ -12296,9 +12269,9 @@
             } finally {
                 this.item._cur_row = item_rec_no;
             }
-        },
+        }
 
-        refresh: function() {
+        refresh() {
             var i,
                 len,
                 field,
@@ -12426,9 +12399,9 @@
                     .css('borderBottomStyle', this.$outer_table.css('borderTopStyle'))
                     .css('borderBottomColor', this.$outer_table.css('borderTopColor'));
             }
-        },
+        }
 
-        check_datasource: function() {
+        check_datasource() {
             var clone = this.item.clone(),
                 first_rec = undefined;
             for (var i = 0; i < this.datasource.length; i++) {
@@ -12439,9 +12412,9 @@
             }
             this.datasource = [];
             this.fill_datasource(first_rec);
-        },
+        }
 
-        build: function(same_field_width) {
+        build(same_field_width) {
             this.init_fields();
             this.check_datasource();
             if (this.field_width_updated !== undefined) {
@@ -12450,34 +12423,32 @@
             this.refresh();
             this.sync_col_width();
             this.syncronize();
-        },
+        }
 
-        is_focused: function() {
+        is_focused() {
             return this.$table.get(0) === document.activeElement;
-        },
+        }
 
-        focus: function() {
+        focus() {
             if (!this.is_focused()) {
                 this.$table.focus();
             }
         }
-    };
+    }
 
     /**********************************************************************/
     /*                      DBAbstractInput class                         */
     /**********************************************************************/
 
-    function DBAbstractInput(field) {
-        var self = this;
-        this.field = field;
-        this.read_only = false;
-        this.is_changing = true;
-    }
+    class DBAbstractInput {
+        constructor(field) {
+            var self = this;
+            this.field = field;
+            this.read_only = false;
+            this.is_changing = true;
+        }
 
-    DBAbstractInput.prototype = {
-        constructor: DBAbstractInput,
-
-        create_input: function(field, tabIndex, container) {
+        create_input(field, tabIndex, container) {
             var self = this,
                 align,
                 height,
@@ -12843,15 +12814,15 @@
             });
 
             this.update();
-        },
+        }
 
-        form_closing: function() {
+        form_closing() {
             if (this.form) {
                 return this.form.data('_closing')
             }
-        },
+        }
 
-        set_read_only: function(value) {
+        set_read_only(value) {
             if (this.$firstBtn) {
                 this.$firstBtn.prop('disabled', value);
             }
@@ -12878,9 +12849,9 @@
                     }
                 }
             }
-        },
+        }
 
-        init_camera: function(dblclick) {
+        init_camera(dblclick) {
             var self = this;
             if (this.field.field_image && this.field.field_image.camera && !this.$video) {
                 if (task._getUserMediaError && dblclick) {
@@ -12956,9 +12927,9 @@
                     alert('Sorry, your browser does not support getUserMedia');
                 }
             }
-        },
+        }
 
-        update: function(state) {
+        update(state) {
             var placeholder,
                 focused,
                 self = this,
@@ -13030,9 +13001,9 @@
                 this.$input.val('');
                 this.set_read_only(true);
             }
-        },
+        }
 
-        keydown: function(e) {
+        keydown(e) {
             var code = (e.keyCode ? e.keyCode : e.which);
             if (this.field.lookup_item && !this.field.enable_typeahead && !(code === 229 || code === 9 || code == 8)) {
                 e.preventDefault();
@@ -13047,9 +13018,9 @@
                     }
                 }
             }
-        },
+        }
 
-        enter_pressed: function(e) {
+        enter_pressed(e) {
             if (this.field.lookup_item && !this.field.enable_typeahead) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -13059,9 +13030,9 @@
                 e.preventDefault();
                 this.show_date_picker();
             }
-        },
+        }
 
-        keyup: function(e) {
+        keyup(e) {
             var typeahead,
                 code = (e.keyCode ? e.keyCode : e.which);
             if (this.field.enable_typeahead) {
@@ -13103,9 +13074,9 @@
                     e.stopPropagation();
                 }
             }
-        },
+        }
 
-        keypress: function(e) {
+        keypress(e) {
             var code = e.which;
             if (code === 13 && !(this.$input.get(0).tagName === 'TEXTAREA')) {
                 e.preventDefault();
@@ -13121,9 +13092,9 @@
                     e.preventDefault();
                 }
             }
-        },
+        }
 
-        show_date_picker: function() {
+        show_date_picker() {
             var self = this,
                 format;
             if (this.field.data_type === consts.DATE) {
@@ -13158,17 +13129,17 @@
                 });
             this.$input.datepicker('show');
             this.datepicker_shown = true;
-        },
+        }
 
-        select_value: function() {
+        select_value() {
             if (this.field.on_entry_button_click) {
                 this.field.on_entry_button_click.call(this.item, this.field);
             } else {
                 this.field.select_value();
             }
-        },
+        }
 
-        change_field_text: function() {
+        change_field_text() {
             var result = true,
                 data_type = this.field.data_type,
                 text;
@@ -13212,9 +13183,9 @@
                 }
             }
             return result;
-        },
+        }
 
-        focusIn: function(e) {
+        focusIn(e) {
             if (!this.form_closing()) {
                 this.hideError();
                 if (this.field.lookup_item && !this.field.enable_typeahead) {
@@ -13235,9 +13206,9 @@
                 this.mouseIsDown = false;
                 this.updateState(true);
             }
-        },
+        }
 
-        focusOut: function(e) {
+        focusOut(e) {
             var result = false;
 
             if (!this.changed) {
@@ -13265,9 +13236,9 @@
             }
             this.updateState(result);
             return result;
-        },
+        }
 
-        updateState: function(value) {
+        updateState(value) {
             if (value) {
                 if (this.$control_group) {
                     this.$control_group.removeClass('error');
@@ -13288,79 +13259,68 @@
                     .attr('data-original-title', this.error)
                     .tooltip('fixTitle');
             }
-        },
-
-        showError: function(value) {},
-
-        hideError: function(value) {},
-
-        focus: function() {
-            this.$input.focus();
         }
 
-    };
+        showError(value) {}
 
+        hideError(value) {}
+
+        focus() {
+            this.$input.focus();
+        }
+    }
     /**********************************************************************/
     /*                        DBTableInput class                          */
     /**********************************************************************/
 
-    DBTableInput.prototype = new DBAbstractInput();
-    DBTableInput.prototype.constructor = DBTableInput;
-
-    function DBTableInput(grid, field) {
-        DBAbstractInput.call(this, field);
-        this.grid = grid;
-        this.create_input(field, 0);
-        this.$input.attr("autocomplete", "off");
-        this.$input.addClass('dbtableinput');
+    class DBTableInput extends DBAbstractInput {
+        constructor(grid, field) {
+            super(field);
+            this.grid = grid;
+            this.create_input(field, 0);
+            this.$input.attr("autocomplete", "off");
+            this.$input.addClass('dbtableinput');
+        }
     }
-
-    $.extend(DBTableInput.prototype, {
-
-    });
 
     /**********************************************************************/
     /*                           DBInput class                            */
     /**********************************************************************/
 
-    DBInput.prototype = new DBAbstractInput();
-    DBInput.prototype.constructor = DBInput;
-
-    function DBInput(field, index, container, options, label) {
-        DBAbstractInput.call(this, field);
-        if (this.field.owner && this.field.owner.edit_form &&
-            this.field.owner.edit_form.hasClass("modal")) {
-            this.$edit_form = this.field.owner.edit_form;
+    class DBInput extends DBAbstractInput {
+        constructor(field, index, container, options, label) {
+            super(field);
+            if (this.field.owner && this.field.owner.edit_form &&
+                this.field.owner.edit_form.hasClass("modal")) {
+                this.$edit_form = this.field.owner.edit_form;
+            }
+            this.label = label;
+            this.label_width = options.label_width;
+            this.label_on_top = options.label_on_top;
+            this.label_size = options.label_size;
+            if (!this.label_size) {
+                this.label_size = 3;
+            }
+            if (!this.label) {
+                this.label = this.field.field_caption;
+            }
+            this.create_input(field, index, container);
         }
-        this.label = label;
-        this.label_width = options.label_width;
-        this.label_on_top = options.label_on_top;
-        this.label_size = options.label_size;
-        if (!this.label_size) {
-            this.label_size = 3;
-        }
-        if (!this.label) {
-            this.label = this.field.field_caption;
-        }
-        this.create_input(field, index, container);
-    }
 
-    $.extend(DBInput.prototype, {
-
-        showError: function(value) {
+        showError(value) {
             if (this.$edit_form && this.$edit_form.hasClass("normal-modal-border")) {
                 this.$edit_form.removeClass("nomal-modal-border");
                 this.$edit_form.addClass("error-modal-border");
             }
-        },
+        }
 
-        hideError: function(value) {
+        hideError(value) {
             if (this.$edit_form && this.$edit_form.hasClass("error-modal-border")) {
                 this.$edit_form.removeClass("error-modal-border");
                 this.$edit_form.addClass("nomal-modal-border");
             }
-        },
-    });
+        }
+    }
 
     /**********************************************************************/
     /*                           Dropdown class                           */

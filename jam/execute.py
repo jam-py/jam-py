@@ -175,6 +175,82 @@ def execute_sql(db_module, db_server, db_database, db_user, db_password,
 
 def apply_sql(item, params=None, db_module=None):
 
+    def insert_sql(item, db_module):
+        info = {
+            'gen_name': item.gen_name,
+            'inserted': True
+        }
+        if item._deleted_flag:
+            item._deleted_flag_field.data = 0
+        row = []
+        fields = []
+        values = []
+        index = 0
+        pk = None
+        if item._primary_key:
+            pk = item._primary_key_field
+        auto_pk = not db_module.get_lastrowid is None
+        if auto_pk and pk and pk.data:
+            if hasattr(db_module, 'set_identity_insert'):
+                info['before_command'] = db_module.set_identity_insert(item.table_name, True)
+                info['after_command'] = db_module.set_identity_insert(item.table_name, False)
+        for field in item.fields:
+            if not (field.master_field or (field == pk and auto_pk and not pk.data)):
+                if field == pk:
+                    info['pk_index'] = index
+                elif item.master and field == item._master_rec_id_field:
+                    info['master_pk_index'] = index
+                index += 1
+                fields.append('"%s"' % field.db_field_name)
+                values.append('%s' % db_module.value_literal(index))
+                value = (field.data, field.data_type)
+                row.append(value)
+
+        fields = ', '.join(fields)
+        values = ', '.join(values)
+        sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
+            (item.table_name, fields, values)
+        return sql, row, info
+
+    def update_sql(item, db_module):
+        row = []
+        fields = []
+        index = 0
+        pk = item._primary_key_field
+        command = 'UPDATE "%s" SET ' % item.table_name
+        for field in item.fields:
+            if not (field.master_field or field == pk):
+                index += 1
+                fields.append('"%s"=%s' % (field.db_field_name, db_module.value_literal(index)))
+                value = (field.data, field.data_type)
+                if field.field_name == item._deleted_flag:
+                    value = (0, field.data_type)
+                row.append(value)
+        fields = ', '.join(fields)
+        if item._primary_key_field.data_type == consts.TEXT:
+            id_literal = "'%s'" % item._primary_key_field.value
+        else:
+            id_literal = "%s" % item._primary_key_field.value
+        where = ' WHERE "%s" = %s' % (item._primary_key_db_field_name, id_literal)
+        return ''.join([command, fields, where]), row
+
+    def delete_sql(item, db_module):
+        soft_delete = item.soft_delete
+        if item.master:
+            soft_delete = item.master.soft_delete
+        if item._primary_key_field.data_type == consts.TEXT:
+            id_literal = "'%s'" % item._primary_key_field.value
+        else:
+            id_literal = "%s" % item._primary_key_field.value
+        if soft_delete:
+            sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s' % \
+                (item.table_name, item._deleted_flag_db_field_name,
+                item._primary_key_db_field_name, id_literal)
+        else:
+            sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
+                (item.table_name, item._primary_key_db_field_name, id_literal)
+        return sql
+
     def get_sql(item, safe, db_module):
         info = {}
         if item.master:
@@ -182,19 +258,19 @@ def apply_sql(item, params=None, db_module=None):
                 item._master_id_field.data = item.master.ID
             item._master_rec_id_field.data = item.master._primary_key_field.value
         if item.record_status == consts.RECORD_INSERTED:
-            if safe and not self.can_create():
-                raise Exception(consts.language('cant_create') % self.item_caption)
-            sql, param, info = item.insert_sql(db_module)
+            if safe and not item.can_create():
+                raise Exception(consts.language('cant_create') % item.item_caption)
+            sql, param, info = insert_sql(item, db_module)
         elif item.record_status == consts.RECORD_MODIFIED:
-            if safe and not self.can_edit():
-                raise Exception(consts.language('cant_edit') % self.item_caption)
-            sql, param = item.update_sql(db_module)
+            if safe and not item.can_edit():
+                raise Exception(consts.language('cant_edit') % item.item_caption)
+            sql, param = update_sql(item, db_module)
         elif item.record_status == consts.RECORD_DETAILS_MODIFIED:
             sql, param = '', None
         elif item.record_status == consts.RECORD_DELETED:
-            if safe and not self.can_delete():
-                raise Exception(consts.language('cant_delete') % self.item_caption)
-            sql = item.delete_sql(db_module)
+            if safe and not item.can_delete():
+                raise Exception(consts.language('cant_delete') % item.item_caption)
+            sql = delete_sql(item, db_module)
             param = None
         else:
             raise Exception('apply_sql - invalid %s record_status %s, record: %s' % \
@@ -282,7 +358,7 @@ def apply_sql(item, params=None, db_module=None):
                 except:
                     pass
             if item.record_status != consts.RECORD_DELETED:
-                old_rec = item.get_rec_info()[3]
+                old_rec = item.get_rec_info()[consts.REC_OLD_REC]
                 new_rec = item._dataset[item.rec_no]
                 f_list = []
                 for f in item.fields:
@@ -313,15 +389,15 @@ def apply_sql(item, params=None, db_module=None):
         ID, sql = result
         for it in item:
             details = []
-            sql.append((it.get_sql(safe, db_module), details))
+            sql.append((get_sql(it, safe, db_module), details))
             for detail in item.details:
                 detail_sql = []
                 detail_result = (str(detail.ID), detail_sql)
                 details.append(detail_result)
                 if item.record_status == consts.RECORD_DELETED:
-                    item.delete_detail_sql(detail, db_module, detail_result)
+                    delete_detail_sql(item, detail, db_module, detail_result)
                 else:
-                    detail.generate_sql(safe, db_module, detail_result)
+                    generate_sql(detail, safe, db_module, detail_result)
 
     safe = False
     if params:

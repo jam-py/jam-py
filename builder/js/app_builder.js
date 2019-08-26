@@ -1238,26 +1238,26 @@ function Events3() { // sys_items
 			it.edit_form.find("#ok-btn").off('click.task').on('click', function() {
 				it.post_record();
 			});
-		}
+		};
 		item.task.sys_new_group.on_after_post = function(it) {
 			var group_type = it.group_type.value,
 				group_type_ids = [types.ITEMS_TYPE, types.TABLES_TYPE, types.REPORTS_TYPE];
 			if (group_type) {
-				item.append()
+				item.append();
 				item.type_id.value = group_type_ids[group_type - 1];
 			}
-		setTimeout(
-			function() {
-					item.edit_record();
-			},
-			300
-		);
-		}
+			setTimeout(
+				function() {
+						item.edit_record();
+				},
+				300
+			);
+		};
 		item.task.sys_new_group.open({open_empty: true});
 		item.task.sys_new_group.append_record();
 	}
 	
-	function can_delete(item) {
+	function can_delete_item(item) {
 		var error = '';
 		if (item.id.value) {
 			if (item.type_id.value === item.task.item_types.ITEMS_TYPE ||
@@ -1313,7 +1313,7 @@ function Events3() { // sys_items
 		item.view_form.find('#delete-btn').off('click.task').on('click', function() {
 			if (item.record_count()) {
 				item.question(item.task.language.delete_record, function() {
-					var error = can_delete(item);
+					var error = can_delete_item(item);
 					if (error) {
 						item.warning(error);
 					}
@@ -1493,7 +1493,7 @@ function Events3() { // sys_items
 	}
 	
 	function do_delete_field(item) {
-		var error = item.sys_fields.can_delete(item.sys_fields);
+		var error = item.sys_fields.can_delete_field(item.sys_fields);
 		if (error) {
 			item.warning(error);
 		}
@@ -2564,7 +2564,7 @@ function Events3() { // sys_items
 	this.get_type_id = get_type_id;
 	this.save_order = save_order;
 	this.append_group = append_group;
-	this.can_delete = can_delete;
+	this.can_delete_item = can_delete_item;
 	this.on_view_form_created = on_view_form_created;
 	this.on_edit_form_created = on_edit_form_created;
 	this.delete_field = delete_field;
@@ -3164,7 +3164,7 @@ function Events11() { // app_builder.catalogs.sys_lookup_lists
 		options.height = 400;
 	}
 	
-	function can_delete(item) {
+	function can_delete_item(item) {
 		return item.task.server('server_can_delete_lookup_list', item.id.value);
 	}
 	
@@ -3172,7 +3172,7 @@ function Events11() { // app_builder.catalogs.sys_lookup_lists
 		item.view_form.find("#select-btn").hide();
 		item.view_form.find('#delete-btn').off('click.task').on('click', function() {
 			item.question(item.task.language.delete_record, function() {
-				var error = can_delete(item);
+				var error = can_delete_item(item);
 				if (error) {
 					item.warning(error);
 				}
@@ -3242,7 +3242,7 @@ function Events11() { // app_builder.catalogs.sys_lookup_lists
 		item.f_lookup_values_text.value = JSON.stringify(list);
 	}
 	this.init_view_table = init_view_table;
-	this.can_delete = can_delete;
+	this.can_delete_item = can_delete_item;
 	this.on_view_form_created = on_view_form_created;
 	this.on_edit_form_created = on_edit_form_created;
 	this.init_lookups = init_lookups;
@@ -4630,10 +4630,10 @@ function Events16() { // app_builder.catalogs.sys_search
 		item.edit_form.find("#ok-btn")
 			.text(task.language.find)
 			.off('click.task')
-			.on('click', function() {find(item)});
+			.on('click', function() {do_find(item)});
 	}
 	
-	function find(item) {
+	function do_find(item) {
 		var result,
 			i,
 			$p,
@@ -4671,12 +4671,12 @@ function Events16() { // app_builder.catalogs.sys_search
 		if (event.keyCode === 13){
 			event.preventDefault();
 			item.edit_form.find("#ok-btn").focus();
-			find(item);
+			do_find(item);
 		}
 	}
 	this.find_in_task = find_in_task;
 	this.on_edit_form_created = on_edit_form_created;
-	this.find = find;
+	this.do_find = do_find;
 	this.on_edit_form_keydown = on_edit_form_keydown;
 }
 
@@ -5768,7 +5768,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 		return result;
 	}
 	
-	function can_delete(item) {
+	function can_delete_field(item) {
 		var error,
 			clone;
 		if (item.f_object.value) {
@@ -5846,7 +5846,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	this.update_fields_read_only = update_fields_read_only;
 	this.update_lookup_attr = update_lookup_attr;
 	this.get_alignment = get_alignment;
-	this.can_delete = can_delete;
+	this.can_delete_field = can_delete_field;
 	this.on_after_append = on_after_append;
 	this.on_before_delete = on_before_delete;
 	this.on_before_post = on_before_post;

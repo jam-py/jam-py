@@ -659,7 +659,6 @@ class ChangeLog(object):
         if not item:
             item = self.item
         info = item.get_rec_info(record)[:]
-        info[consts.REC_CONTROLS] = {}
         if expanded:
             result = record[0:item._record_info_index]
         else:
@@ -1271,7 +1270,7 @@ class AbstractDataSet(object):
             if not record:
                 record = self._dataset[self.rec_no];
             if len(record) < self._record_info_index + 1:
-                record.append([None, {}, None, {}])
+                record.append([None, None])
             return record[self._record_info_index]
 
     def get_records_status(self):
@@ -1297,11 +1296,6 @@ class AbstractDataSet(object):
         info = self.get_rec_info()
         if info:
             info[consts.REC_LOG_REC] = value
-
-    def rec_controls_info(self):
-        info = self.get_rec_info()
-        if info:
-            return info[consts.REC_CONTROLS]
 
     def _bind_fields(self, expanded=True):
         for field in self.fields:

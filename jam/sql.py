@@ -136,7 +136,7 @@ class SQL(object):
                 except:
                     pass
             if self.record_status != consts.RECORD_DELETED:
-                old_rec = self.get_rec_info()[3]
+                old_rec = self.get_rec_info()[consts.REC_OLD_REC]
                 new_rec = self._dataset[self.rec_no]
                 f_list = []
                 for f in self.fields:
@@ -246,7 +246,7 @@ class SQL(object):
                 else:
                     detail.generate_sql(safe, db_module, detail_result)
 
-    def execute_delta(self, params=None, db_module=None):
+    def save_changes(self, connection, params=None, db_module=None):
         safe = False
         if params:
             safe = params['__safe']
