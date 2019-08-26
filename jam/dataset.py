@@ -572,287 +572,292 @@ class DBList(list):
 class ChangeLog(object):
     def __init__(self, item):
         self.item = item
-        self._change_id = 0
-        self.records = []
-        self.logs = {}
+        self.logs = []
         self.fields = []
-        self.expanded = True
+        self.db_fields = []
+        self.records = []
 
-    def get_change_id(self):
-        self._change_id += 1
-        return str(self._change_id)
+    def init_fields(self):
+        fields = []
+        db_fields = []
+        for field in self.item.fields:
+            fields.append(field.field_name)
+            if not field.master_field:
+                db_fields.append(field.field_name)
+        return fields, db_fields
 
-    def log_changes(self):
+
+    def refresh(self):
         if self.item.master:
-            return self.item.master.change_log.log_changes()
-        else:
-            return self.item.log_changes;
+            record_log = self.item.master.change_log.get_record_log()
+            details = record_log['details']
+            detail = details.get(str(self.item.ID))
+            if not detail:
+                detail = {
+                    'logs': [],
+                    'records': self.item._dataset
+                }
+                detail['fields'], detail['db_fields'] = self.init_fields()
+                details[self.item.ID] = detail
+            self.logs = detail['logs']
+            self.fields = detail['fields']
+            self.db_fields = detail['db_fields']
+            self.records = detail['records']
 
-    def find_record_log(self):
-        result = None
-        if self.item.master:
-            record_log = self.item.master.change_log.find_record_log()
-            if record_log:
-                details = record_log['details']
-                detail = details.get(str(self.item.ID))
-                if not detail:
-                    detail = {
-                        'logs': {},
-                        'records': self.item._dataset,
-                        'fields': [field.field_name for field in self.item.fields],
-                        'expanded': self.item.expanded
-                    }
-                    details[str(self.item.ID)] = detail
-                self.logs = detail['logs']
-                self.records = detail['records']
-                self.fields = detail['fields']
-                self.expanded = detail['expanded']
-        if self.item.record_count():
-            change_id = self.item.rec_change_id
-            if not change_id:
-                change_id = self.get_change_id()
-                self.item.rec_change_id = change_id;
-            result = self.logs.get(change_id)
-            if not result:
+    def get_record_log(self):
+        self.refresh()
+        if self.item.rec_count:
+            rec_no = self.item.record_log_rec
+            if rec_no != None:
+                result = self.logs[rec_no]
+            else:
                 result = {
-                    'old_record': None,
                     'record': self.cur_record(),
+                    'old_record': None,
                     'details': {}
                 }
-                self.logs[change_id] = result
+                self.logs.append(result)
+                self.item.record_log_rec = len(self.logs) - 1
             return result
+        else:
+            raise Exception('Can not find record log for empty dataset.')
 
-    def get_detail_log(self, detail_ID):
-        result = None
-        record_log = self.find_record_log()
-        details = record_log['details']
-        if details:
-            result = details.get(detail_ID)
-        if result is None and self.item._is_delta:
-            result = {'records': [], 'fields': [], 'expanded': False, 'logs': {}}
-        return result
+    def find_logs(self):
+        if self.item.master:
+            rec_no = self.item.master.record_log_rec
+            if not rec_no is None:
+                record_log = self.item.master.change_log.get_record_log()
+                detail = record_log['details'].get(self.item.ID)
+                if detail:
+                    return detail['logs']
+        else:
+            return self.logs
+
+    @property
+    def empty(self):
+        logs = self.find_logs()
+        if logs:
+            for log in logs:
+                if log:
+                    return False
+        return True
 
     def remove_record_log(self):
-        change_id = self.item.rec_change_id
-        if change_id:
-            self.find_record_log()
-            del self.logs[self.item.rec_change_id]
-            self.item.rec_change_id = None
+        if self.item.record_log_rec != None:
+            self.refresh()
+            self.logs[self.item.record_log_rec] = None
+            self.item.record_log_rec = None
             self.item.record_status = consts.RECORD_UNCHANGED
 
     def cur_record(self):
         return self.item._dataset[self.item.rec_no]
 
+    def copy_record(self, expanded=False, record=None, item=None):
+        result = None
+        if not record:
+            record = self.cur_record()
+        if not item:
+            item = self.item
+        info = item.get_rec_info(record)[:]
+        info[consts.REC_CONTROLS] = {}
+        if expanded:
+            result = record[0:item._record_info_index]
+        else:
+            result = record[0:item._record_lookup_index]
+        result.append(info)
+        return result
+
+    def record_refreshed(self):
+        if self.item.record_log_rec != None:
+            record_log = self.get_record_log()
+            record_log['old_record'] = self.copy_record()
+            record_log['details'] = {}
+
     def record_modified(self, record_log):
-        modified = False
         old_rec = record_log['old_record']
         cur_rec = record_log['record']
         for i in range(self.item._record_lookup_index):
             if old_rec[i] != cur_rec[i]:
-                modified = True
-                break
-        return modified
+                return True
 
-    def copy_record(self, record, expanded=True):
-        result = None
-        if record:
-            if expanded:
-                result = record[0:self.item._record_info_index]
-            else:
-                result = record[0:self.item._record_lookup_index]
-            info = self.item.get_rec_info(record=record)
-            result.append([info[0], {}, info[2]])
-        return result
+    def init_record_log(self):
+        if self.item.log_changes:
+            record_log = self.get_record_log()
+            if self.item.item_state == consts.STATE_BROWSE:
+                if self.item.record_status == consts.RECORD_UNCHANGED:
+                    record_log['old_record'] = self.copy_record()
+
+    def detail_modified(self):
+        if self.item.record_status == consts.RECORD_UNCHANGED:
+            record_log = self.item.change_log.get_record_log()
+            if not record_log.old_record:
+                record_log.old_record = self.item.change_log.copy_record()
+            self.item.record_status = consts.RECORD_DETAILS_MODIFIED
 
     def log_change(self):
-        if self.log_changes():
-            record_log = self.find_record_log()
-            if self.item.item_state == consts.STATE_BROWSE:
-                if (self.item.record_status == consts.RECORD_UNCHANGED) or \
-                    (self.item.record_status == consts.RECORD_DETAILS_MODIFIED and record_log['old_record'] is None):
-                    record_log['old_record'] = self.copy_record(self.cur_record(), False)
-                    return
-            elif self.item.item_state == consts.STATE_INSERT:
+        record_log = self.get_record_log()
+        state = self.item.item_state
+        if self.item.log_changes:
+            if state == consts.STATE_INSERT:
                 self.item.record_status = consts.RECORD_INSERTED
-            elif self.item.item_state == consts.STATE_EDIT:
+            elif state == consts.STATE_EDIT:
                 if self.item.record_status == consts.RECORD_UNCHANGED:
                     self.item.record_status = consts.RECORD_MODIFIED
                 elif self.item.record_status == consts.RECORD_DETAILS_MODIFIED:
                     if self.record_modified(record_log):
                         self.item.record_status = consts.RECORD_MODIFIED
-            elif self.item.item_state == consts.STATE_DELETE:
+            elif state == consts.STATE_DELETE:
                 if self.item.record_status == consts.RECORD_INSERTED:
                     self.remove_record_log()
                 else:
                     self.item.record_status = consts.RECORD_DELETED
             else:
-                raise Exception('Item %s: change log invalid records state' % self.item.item_name)
+                 raise Exception('Item %s: change log invalid records state' % self.item.item_name)
             if self.item.master:
                 if self.item.master.record_status == consts.RECORD_UNCHANGED:
+                    record_log = self.item.master.change_log.get_record_log()
+                    record_log.old_record = self.item.master.change_log.copy_record()
                     self.item.master.record_status = consts.RECORD_DETAILS_MODIFIED
+        else:
+            if state == consts.STATE_DELETE:
+                self.remove_record_log()
 
     def get_changes(self, result):
-        data = {}
-        result['fields'] = self.fields
-        result['expanded'] = False
+        data = []
+        counter = 0
+        result['fields'] = self.db_fields
         result['data'] = data
-        for key, record_log in iteritems(self.logs):
-            record = record_log['record']
-            info = self.item.get_rec_info(record=record)
-            if info[consts.REC_STATUS] != consts.RECORD_UNCHANGED:
-                old_record = record_log['old_record']
-                new_record = self.copy_record(record_log['record'], expanded=False)
-                new_details = {}
-                for detail_id, detail in iteritems(record_log['details']):
-                    new_detail = {}
-                    detail_item = self.item.item_by_ID(int(detail_id))
-                    detail_item.change_log.logs = detail['logs']
-                    detail_item.change_log.fields = detail['fields']
-                    detail_item.change_log.expanded = detail['expanded']
-                    detail_item.change_log.get_changes(new_detail)
-                    new_details[detail_id] = new_detail
-                data[key] = {
-                        'old_record': old_record,
+        for log in self.logs:
+            if log:
+                record = log['record']
+                info = self.item.get_rec_info(record)
+                if info[consts.REC_STATUS] != consts.RECORD_UNCHANGED:
+                    old_record = log['old_record']
+                    new_record = self.copy_record(False, record)
+                    details = log['details']
+                    new_details = {}
+                    for detail_id, detail in iteritems(log['details']):
+                        new_detail = {},
+                        detail_item = self.item.item_by_ID(detail_id)
+                        detail_item.change_log.logs = detail['logs']
+                        detail_item.change_log.get_changes(new_detail)
+                        new_details[detail_id] = new_detail
+                    data.append({
                         'record': new_record,
+                        'old_record': old_record,
                         'details': new_details
-                    }
+                    })
+                    counter += 1
+            else:
+                data.append(None);
+        return counter
 
     def set_changes(self, changes):
         new_records = []
         self.records = []
-        self.logs = {}
+        self.logs = []
         self.fields = changes['fields']
-        self.expanded = changes['expanded']
+        self.db_fields = self.fields
+        self.expanded = False
         data = changes['data']
-        self._change_id = 0
-        for key, record_log in iteritems(data):
-            if self._change_id < int(key):
-                self._change_id = int(key)
-            record = record_log['record']
-            record[len(record) - 1].append(record_log['old_record'])
-            new_records.append([int(key), record])
-            details = {}
-            self.logs[key] = {
-                'old_record': None,
-                'record': record,
-                'details': details
-            }
-            for detail_id, detail in iteritems(record_log['details']):
-                detail_item = self.item.item_by_ID(int(detail_id))
-                detail_item.change_log.set_changes(detail)
-                details[detail_id] = {
-                    'logs': detail_item.change_log.logs,
-                    'records': detail_item.change_log.records,
-                    'fields': detail_item.change_log.fields,
-                    'expanded': detail_item.change_log.expanded
-                }
-        new_records.sort(key=lambda x: x[0])
-        self.records = [rec for key, rec in new_records]
-
-    def copy_records(self, records):
-        result = []
-        for rec in records:
-            result.append(list(rec))
-        return result
-
-    def store_details(self, source, dest):
-        for detail_item in self.item.details:
-            detail_id = str(detail_item.ID)
-            detail = source.get(detail_id)
-            logs = {}
-            records = []
-            fields = []
-            expanded = True
-            if detail:
-                cur_logs = detail['logs']
-                cur_records = detail['records']
-                fields = detail['fields']
-                expanded = detail['expanded']
-                records = self.copy_records(cur_records)
-                for key, record_log in iteritems(cur_logs):
-                    cur_record = record_log['record']
-                    record = detail_item.change_log.copy_record(cur_record)
-                    index = None
-                    try:
-                        index = cur_records.index(cur_record)
-                    except:
-                        pass
-                    if not index is None:
-                        records[index] = record
-                    details = {}
-                    detail_item.change_log.store_details(record_log['details'], details)
-                    logs[key] = {
-                        'old_record': record_log['old_record'],
-                        'record': record,
-                        'details': details
+        for record_log in data:
+            if record_log:
+                record = record_log['record']
+                record[len(record) - 1].append(record_log['old_record'])
+                self.records.append(record)
+                details = {}
+                self.logs.append({
+                    'old_record': None,
+                    'record': record,
+                    'details': details
+                })
+                for detail_id, detail in iteritems(record_log['details']):
+                    detail_item = self.item.item_by_ID(int(detail_id))
+                    detail_item.change_log.set_changes(detail)
+                    details[detail_id] = {
+                        'logs': detail_item.change_log.logs,
+                        'records': detail_item.change_log.records,
+                        'fields': detail_item.change_log.fields,
+                        'db_fields': detail_item.change_log.fields
                     }
             else:
-                if detail_item._dataset:
-                    records = self.copy_records(detail_item._dataset)
-            if records or logs:
-                dest[detail_id] = {'logs': logs, 'records': records, 'fields': fields, 'expanded': expanded}
+                self.logs.append(None)
 
-    def store_record_log(self):
-        if not self.log_changes():
-            result = {}
-            result['record'] = self.copy_record(self.cur_record())
-            details = {}
-            for detail in self.item.details:
-                if not detail.disabled and detail._dataset:
-                    details[str(detail.ID)] = list(detail._dataset)
-            result['details'] = details
-        else:
-            record_log = self.find_record_log()
-            details = {}
-            self.store_details(record_log['details'], details)
-            result = {}
-            result['old_record'] = record_log['old_record']
-            result['record'] = self.copy_record(record_log['record'])
-            result['details'] = details
+    def store_change_log(self):
+        result = {}
+        new_records = []
+        new_logs = []
+        result['logs'] = new_logs
+        result['records'] = new_records
+        result['fields'] = self.fields
+        result['db_fields'] = self.db_fields
+        for rec_no, record in enumerate(self.records):
+            log_rec = self.item.get_rec_info(record)[consts.REC_LOG_REC]
+            new_records.append(self.copy_record(True, record, self.item))
+            if log_rec != None:
+                self.logs[log_rec]['rec_no'] = rec_no
+        for log in self.logs:
+            new_log = None
+            if log:
+                new_details = {}
+                record = log['record']
+                rec_no = log.get('rec_no')
+                del log['rec_no']
+                if rec_no != None:
+                    record = new_records[rec_no]
+                new_log = {
+                    'old_record': log['old_record'],
+                    'record': record,
+                    'details': new_details
+                }
+                for detail in self.item.details:
+                    detail.change_log.refresh()
+                    new_details[detail.ID] = detail.change_log.store_change_log()
+            new_logs.append(new_log)
         return result
 
-    def restore_record_log(self, log):
+    def store_record(self):
+        result = {}
+        details = {}
+        record = self.cur_record()
+        record_log = self.get_record_log()
 
-        def restore_record():
-            record = log['record']
-            cur_record = self.cur_record()
-            info_index = self.item._record_info_index
-            for i, it in enumerate(cur_record):
-                if i < info_index:
-                    cur_record[i] = record[i]
+        result['record'] = self.copy_record(True, record)
+        result['record_log'] = {
+            'old_record': record_log['old_record'],
+            'record': result['record'],
+            'details': details
+        }
+        for detail in self.item.details:
+            if detail.active:
+                detail.change_log.refresh()
+                details[detail.ID] = detail.change_log.store_change_log()
+        if self.item.log_changes and self.item.record_status == consts.RECORD_UNCHANGED:
+            record_log = self.get_record_log()
+            record_log['old_record'] = self.copy_record()
+        return result
 
-        if not self.log_changes():
-            restore_record()
-            for detail in self.item.details:
-                detail._dataset = log['details'][str(detail.ID)]
-        else:
-            record_log = self.find_record_log()
-            restore_record()
-            record_log['old_record'] = log['old_record']
-            record_log['record'] = self.cur_record()
-            record_log['details'] = log['details']
-            for detail in self.item.details:
-                detail_log = log['details'].get(str(detail.ID))
-                if detail_log:
-                    detail._dataset = detail_log['records']
-            if self.item.record_status == consts.RECORD_UNCHANGED:
-                self.remove_record_log()
+    def restore_details(self, details):
+        for detail_id, detail in iteritems(details):
+            self.item.item_by_ID(detail_id)._dataset = detail.records
+            for log in detail['logs']:
+                if log:
+                    self.restore_details(log.details)
+
+    def restore_record(self, data):
+        record_log = self.get_record_log()
+        self.item._dataset[self.item.rec_no] = data['record']
+        record_log['old_record'] = data['record_log']['old_record']
+        record_log['record'] = data['record_log']['record']
+        record_log['details'] = data['record_log']['details']
+        self.restore_details(record_log['details'])
 
     def prepare(self):
-        if self.item.master:
-            log = self.item.master.change_log.get_detail_log(str(self.item.ID))
-            if log:
-                log['records'] = []
-                log['logs'] = {}
-                log['fields'] = []
-                log['fields'] = [field.field_name for field in self.item.fields if not field.master_field]
-                log['expanded'] = self.item.expanded
-        else:
+        if not self.item.master:
+            self.refresh()
+            self.logs = []
             self.records = []
-            self.logs = {}
-            self.fields = []
-            self.fields = [field.field_name for field in self.item.fields if not field.master_field]
-            self.expanded = self.item.expanded
+            self.fields, self.db_fields = self.init_fields()
 
     def update(self, updates, master_rec_id=None):
         if updates:
@@ -861,10 +866,19 @@ class ChangeLog(object):
                 log_id = change['log_id']
                 rec_id = change['rec_id']
                 details = change['details']
-                record_log = self.logs.get(log_id)
+                record_log = self.logs[log_id]
                 if record_log:
                     record = record_log['record']
                     record_details = record_log['details']
+                    info = self.item.get_rec_info(record)
+                    info[consts.REC_STATUS] = consts.RECORD_UNCHANGED
+                    info[consts.REC_LOG_REC] = None
+                    if rec_id and self.item._primary_key:
+                        if not record[self.item._primary_key_field.bind_index]:
+                            record[self.item._primary_key_field.bind_index] = rec_id
+                    if master_rec_id:
+                        if not record[self.item._master_rec_id_field.bind_index]:
+                            record[self.item._master_rec_id_field.bind_index] = master_rec_id
                     for detail in details:
                         ID = detail['ID']
                         detail_item = self.item.detail_by_ID(int(ID))
@@ -872,16 +886,7 @@ class ChangeLog(object):
                         if item_detail:
                             detail_item.change_log.logs = item_detail['logs']
                             detail_item.change_log.update(detail, rec_id)
-                    if rec_id and self.item._primary_key:
-                        if not record[self.item._primary_key_field.bind_index]:
-                            record[self.item._primary_key_field.bind_index] = rec_id
-                    if master_rec_id:
-                        if not record[self.item._master_rec_id_field.bind_index]:
-                            record[self.item._master_rec_id_field.bind_index] = master_rec_id
-                    info = self.item.get_rec_info(record=record)
-                    info[consts.REC_STATUS] = consts.RECORD_UNCHANGED
-                    info[consts.REC_CHANGE_ID] = consts.RECORD_UNCHANGED
-                    del self.logs[log_id]
+                self.logs[log_id] = None;
 
 
 class AbstractDataSet(object):
@@ -1261,19 +1266,13 @@ class AbstractDataSet(object):
     def do_internal_open(self):
         pass
 
-    def find_rec_info(self, rec_no=None, record=None):
-        if record is None:
-            if rec_no is None:
-                rec_no = self.rec_no
-            if self.record_count() > 0:
-                record = self._dataset[rec_no];
-        if record and self._record_info_index > 0:
+    def get_rec_info(self, record=None):
+        if self._record_info_index > 0:
+            if not record:
+                record = self._dataset[self.rec_no];
             if len(record) < self._record_info_index + 1:
-                record.append([None, {}, None])
+                record.append([None, {}, None, {}])
             return record[self._record_info_index]
-
-    def get_rec_info(self, rec_no=None, record=None):
-        return self.find_rec_info(rec_no, record)
 
     def get_records_status(self):
         info = self.get_rec_info()
@@ -1287,22 +1286,22 @@ class AbstractDataSet(object):
 
     record_status = property (get_records_status, _set_record_status)
 
-    def _get_rec_change_id(self):
+    @property
+    def record_log_rec(self):
         info = self.get_rec_info()
         if info:
-            return info[consts.REC_CHANGE_ID]
+            return info[consts.REC_LOG_REC]
 
-    def _set_rec_change_id(self, value):
+    @record_log_rec.setter
+    def record_log_rec(self, value):
         info = self.get_rec_info()
         if info:
-            info[consts.REC_CHANGE_ID] = value
-
-    rec_change_id = property (_get_rec_change_id, _set_rec_change_id)
+            info[consts.REC_LOG_REC] = value
 
     def rec_controls_info(self):
         info = self.get_rec_info()
         if info:
-            return info[consts.REC_CONTROLS_INFO]
+            return info[consts.REC_CONTROLS]
 
     def _bind_fields(self, expanded=True):
         for field in self.fields:
@@ -1474,7 +1473,6 @@ class AbstractDataSet(object):
         if not open_empty:
             self.do_open(params)
         self._active = True
-        # ~ self.__cur_row = None
         self.item_state = consts.STATE_BROWSE
         self.first()
 
@@ -1534,8 +1532,7 @@ class AbstractDataSet(object):
             raise DatasetInvalidState(consts.language('edit_not_browse') % self.item_name)
         if self.record_count() == 0:
             raise DatasetEmpty(consts.language('edit_no_records') % self.item_name)
-        self.change_log.log_change()
-        self._buffer = self.change_log.store_record_log()
+        self._buffer = self.change_log.store_record()
         self.item_state = consts.STATE_EDIT
         self._old_status = self.record_status
         self._modified = False
@@ -1557,7 +1554,7 @@ class AbstractDataSet(object):
 
     def cancel(self):
         if self.item_state == consts.STATE_EDIT:
-            self.change_log.restore_record_log(self._buffer)
+            self.change_log.restore_record(self._buffer)
         elif self.item_state == consts.STATE_INSERT:
             self._do_before_scroll()
             self.change_log.remove_record_log()
@@ -1584,7 +1581,7 @@ class AbstractDataSet(object):
                 detail.post()
         if self.is_modified() or self.is_new():
             self.change_log.log_change()
-        elif self.record_status == consts.RECORD_UNCHANGED:
+        elif self.record_status == consts.RECORD_UNCHANGED and self.log_changes:
             self.change_log.remove_record_log()
         self._modified = False
         self.item_state = consts.STATE_BROWSE
@@ -1725,28 +1722,6 @@ class MasterDataSet(AbstractDataSet):
             if detail.ID == ID:
                 return detail
 
-    def delta(self, changes=None):
-        if not changes:
-            changes = {}
-            self.change_log.get_changes(changes)
-        result = self.copy(filters=False, details=True, handlers=False)
-        result.log_changes = False
-        result.expanded = False
-        result._is_delta = True
-        for detail in result.details:
-            detail.log_changes = False
-            detail.expanded = False
-            detail._is_delta = True
-        result.details_active = True
-        result.change_log.set_changes(changes)
-        result._dataset = result.change_log.records
-        result._update_fields(result.change_log.fields)
-        result._bind_fields(result.change_log.expanded)
-        result.item_state = consts.STATE_BROWSE
-        result._active = True
-        result.first()
-        return result
-
     def detail_by_name(self, name):
         for detail in self.details:
             if detail.item_name == name:
@@ -1756,6 +1731,33 @@ class MasterDataSet(AbstractDataSet):
         for detail in self.details:
             if not detail.disabled:
                 detail.open()
+
+    def init_delta_details(self):
+        for detail in self.details:
+            # ~ detail.log_changes = False
+            detail.expanded = False
+            detail._is_delta = True
+            detail.details_active = True
+            detail.init_delta_details()
+
+    def delta(self, changes=None):
+        if not changes:
+            changes = {}
+            self.change_log.get_changes(changes)
+        result = self.copy(filters=False, details=True, handlers=False)
+        result.log_changes = False
+        # ~ result.expanded = False
+        result._is_delta = True
+        result.init_delta_details()
+        result.details_active = True
+        result.change_log.set_changes(changes)
+        result._dataset = result.change_log.records
+        result._update_fields(result.change_log.fields)
+        result._bind_fields(result.change_log.expanded)
+        result.item_state = consts.STATE_BROWSE
+        result._active = True
+        result.first()
+        return result
 
     def _do_after_scroll(self):
         if self.details_active:
@@ -1815,15 +1817,20 @@ class MasterDetailDataset(MasterDataSet):
             params = {}
         if self.master:
             if not self.disabled and self.master.record_count() > 0:
+                params['__master_id'] = self.master.ID
+                params['__master_rec_id'] = self.master.field_by_name(self.master._primary_key).value
                 records = None
                 if self.master.is_new():
                     records = []
-                else:
-                    log = self.find_change_log()
-                    if log:
-                        records = log['records']
-                        fields = log['fields']
-                        expanded = log['expanded']
+                elif not self.change_log.empty or self._is_delta:
+                    self.change_log.refresh()
+                    records = self.change_log.records
+                    fields = self.change_log.fields
+                    if records is None and self._is_delta:
+                        records = []
+                        fields = []
+                elif self.master.record_status == consts.RECORD_INSERTED and not params['__master_rec_id']:
+                    records = []
                 if not records is None:
                     self._do_before_open(expanded, fields, where, order_by,
                         open_empty, params, offset, limit, funcs, group_by)
@@ -1835,8 +1842,6 @@ class MasterDetailDataset(MasterDataSet):
                     self.item_state = consts.STATE_BROWSE
                     self.first()
                 else:
-                    params['__master_id'] = self.master.ID
-                    params['__master_rec_id'] = self.master.field_by_name(self.master._primary_key).value
                     return super(MasterDetailDataset, self).open(expanded,
                         fields, where, order_by, open_empty, params, offset,
                         limit, funcs, group_by)

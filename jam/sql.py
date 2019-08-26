@@ -1,5 +1,4 @@
 import sys
-import json
 import zlib
 import base64
 import json
@@ -7,6 +6,7 @@ import pickle
 import datetime
 
 from .common import consts, error_message, json_defaul_handler
+from .execute import apply_sql
 import jam.db.db_modules as db_modules
 from werkzeug._compat import iteritems, text_type, integer_types, string_types, to_bytes, to_unicode
 
@@ -98,154 +98,166 @@ class SQL(object):
                 (self.table_name, self._primary_key_db_field_name, id_literal)
         return sql
 
-    def apply_sql(self, params=None, db_module=None):
+    def get_history_sql(self, db_module):
+        h_sql = None
+        h_params = None
+        h_del_details = None
+        if self.task.history_item and self.keep_history and self.record_status != consts.RECORD_DETAILS_MODIFIED:
+            deleted_flag = self.task.history_item._deleted_flag
+            user_info = None
+            if self.session:
+                user_info = self.session.get('user_info')
+            h_fields = ['item_id', 'item_rec_id', 'operation', 'changes', 'user', 'date']
+            table_name = self.task.history_item.table_name
+            fields = []
+            for f in h_fields:
+                fields.append(self.task.history_item._field_by_name(f).db_field_name)
+            h_fields = fields
+            index = 0
+            fields = []
+            values = []
+            index = 0
+            for f in h_fields:
+                index += 1
+                fields.append('"%s"' % f)
+                values.append('%s' % db_module.value_literal(index))
+            fields = ', '.join(fields)
+            values = ', '.join(values)
+            h_sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
+                (table_name, fields, values)
+            changes = None
+            user = None
+            item_id = self.ID
+            if self.master:
+                item_id = self.prototype.ID
+            if user_info:
+                try:
+                    user = user_info['user_name']
+                except:
+                    pass
+            if self.record_status != consts.RECORD_DELETED:
+                old_rec = self.get_rec_info()[3]
+                new_rec = self._dataset[self.rec_no]
+                f_list = []
+                for f in self.fields:
+                    if not f.system_field():
+                        new = new_rec[f.bind_index]
+                        old = None
+                        if old_rec:
+                            old = old_rec[f.bind_index]
+                        if old != new:
+                            f_list.append([f.ID, new])
+                changes_str = json.dumps(f_list, separators=(',',':'), default=json_defaul_handler)
+                changes = ('%s%s' % ('0', changes_str), consts.LONGTEXT)
+            elif not self.master and self.details:
+                h_del_details = []
+                for detail in self.details:
+                    if detail.keep_history:
+                        d_select = 'SELECT "%s" FROM "%s" WHERE "%s" = %s AND "%s" = %s' % \
+                            (detail._primary_key_db_field_name, detail.table_name,
+                            detail._master_id_db_field_name, self.ID,
+                            detail._master_rec_id_db_field_name, self._primary_key_field.value)
+                        d_sql = h_sql
+                        d_params = [detail.prototype.ID, None, consts.RECORD_DELETED, None, user, datetime.datetime.now()]
+                        h_del_details.append([d_select, d_sql, d_params])
+            h_params = [item_id, self._primary_key_field.value, self.record_status, changes, user, datetime.datetime.now()]
+        return h_sql, h_params, h_del_details
 
-        def get_sql(item, safe, db_module):
-            info = {}
-            if item.master:
-                if item._master_id:
-                    item._master_id_field.data = item.master.ID
-                item._master_rec_id_field.data = item.master._primary_key_field.value
-            if item.record_status == consts.RECORD_INSERTED:
-                if safe and not self.can_create():
-                    raise Exception(consts.language('cant_create') % self.item_caption)
-                sql, param, info = item.insert_sql(db_module)
-            elif item.record_status == consts.RECORD_MODIFIED:
-                if safe and not self.can_edit():
-                    raise Exception(consts.language('cant_edit') % self.item_caption)
-                sql, param = item.update_sql(db_module)
-            elif item.record_status == consts.RECORD_DETAILS_MODIFIED:
-                sql, param = '', None
-            elif item.record_status == consts.RECORD_DELETED:
-                if safe and not self.can_delete():
-                    raise Exception(consts.language('cant_delete') % self.item_caption)
-                sql = item.delete_sql(db_module)
-                param = None
-            else:
-                raise Exception('apply_sql - invalid %s record_status %s, record: %s' % \
-                    (item.item_name, item.record_status, item._dataset[item.rec_no]))
-            if item._primary_key:
-                info['pk'] = item._primary_key_field.value
-            info['ID'] = item.ID
-            info['log_id'] = item.get_rec_info()[consts.REC_CHANGE_ID]
-            h_sql, h_params, h_del_details = get_history_sql(item, db_module)
-            return sql, param, info, h_sql, h_params, h_del_details
+    def get_sql(self, safe, db_module):
+        info = {}
+        if self.master:
+            if self._master_id:
+                self._master_id_field.data = self.master.ID
+            self._master_rec_id_field.data = self.master._primary_key_field.value
+        if self.record_status == consts.RECORD_INSERTED:
+            if safe and not self.can_create():
+                raise Exception(consts.language('cant_create') % self.item_caption)
+            sql, param, info = self.insert_sql(db_module)
+        elif self.record_status == consts.RECORD_MODIFIED:
+            if safe and not self.can_edit():
+                raise Exception(consts.language('cant_edit') % self.item_caption)
+            sql, param = self.update_sql(db_module)
+        elif self.record_status == consts.RECORD_DETAILS_MODIFIED:
+            sql, param = '', None
+        elif self.record_status == consts.RECORD_DELETED:
+            if safe and not self.can_delete():
+                raise Exception(consts.language('cant_delete') % self.item_caption)
+            sql = self.delete_sql(db_module)
+            param = None
+        else:
+            raise Exception('execute_delta - invalid %s record_status %s, record: %s' % \
+                (self.item_name, self.record_status, self._dataset[self.rec_no]))
+        if self._primary_key:
+            info['pk'] = self._primary_key_field.value
+        info['ID'] = self.ID
+        info['log_id'] = self.get_rec_info()[consts.REC_LOG_REC]
+        h_sql, h_params, h_del_details = self.get_history_sql(db_module)
+        return sql, param, info, h_sql, h_params, h_del_details
 
-        def delete_detail_sql(item, detail, db_module):
-            h_sql = None
-            h_params = None
-            h_del_details = None
-            if self._primary_key_field.data_type == consts.TEXT:
-                id_literal = "'%s'" % self._primary_key_field.value
+    def delete_detail_sql(self, detail, db_module, result):
+        ID, delete_sql = result
+        h_sql = None
+        h_params = None
+        h_del_details = None
+        if self._primary_key_field.data_type == consts.TEXT:
+            id_literal = "'%s'" % self._primary_key_field.value
+        else:
+            id_literal = "%s" % self._primary_key_field.value
+        if detail._master_id:
+            if self.soft_delete:
+                sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s AND "%s" = %s' % \
+                    (detail.table_name, detail._deleted_flag_db_field_name, detail._master_id_db_field_name, \
+                    self.ID, detail._master_rec_id_db_field_name, id_literal)
             else:
-                id_literal = "%s" % self._primary_key_field.value
-            if detail._master_id:
-                if item.soft_delete:
-                    sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s AND "%s" = %s' % \
-                        (detail.table_name, detail._deleted_flag_db_field_name, detail._master_id_db_field_name, \
-                        item.ID, detail._master_rec_id_db_field_name, id_literal)
+                sql = 'DELETE FROM "%s" WHERE "%s" = %s AND "%s" = %s' % \
+                    (detail.table_name, detail._master_id_db_field_name, self.ID, \
+                    detail._master_rec_id_db_field_name, id_literal)
+        else:
+            if self.soft_delete:
+                sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s' % \
+                    (detail.table_name, detail._deleted_flag_db_field_name, \
+                    detail._master_rec_id_db_field_name, id_literal)
+            else:
+                sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
+                    (detail.table_name, detail._master_rec_id_db_field_name, id_literal)
+            h_sql, h_params, h_del_details = get_history_sql(detail, db_module)
+        details = []
+        if len(detail.details):
+            self.update_deleted([detail])
+            for it in detail:
+                for d in detail.details:
+                    d_sql = []
+                    d_result = (str(d.ID), d_sql)
+                    details.append(d_result)
+                    detail.delete_detail_sql(d, db_module, d_result)
+        delete_sql.append(((sql, None, {'ID': ID}, h_sql, h_params, h_del_details), details))
+
+    def generate_sql(self, safe, db_module, result):
+        ID, sql = result
+        for it in self:
+            details = []
+            sql.append((it.get_sql(safe, db_module), details))
+            for detail in self.details:
+                detail_sql = []
+                detail_result = (str(detail.ID), detail_sql)
+                details.append(detail_result)
+                if self.record_status == consts.RECORD_DELETED:
+                    self.delete_detail_sql(detail, db_module, detail_result)
                 else:
-                    sql = 'DELETE FROM "%s" WHERE "%s" = %s AND "%s" = %s' % \
-                        (detail.table_name, detail._master_id_db_field_name, item.ID, \
-                        detail._master_rec_id_db_field_name, id_literal)
-            else:
-                if item.soft_delete:
-                    sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s' % \
-                        (detail.table_name, detail._deleted_flag_db_field_name, \
-                        detail._master_rec_id_db_field_name, id_literal)
-                else:
-                    sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
-                        (detail.table_name, detail._master_rec_id_db_field_name, id_literal)
-                h_sql, h_params, h_del_details = get_history_sql(detail, db_module)
-            return sql, None, None, h_sql, h_params, h_del_details
+                    detail.generate_sql(safe, db_module, detail_result)
 
-        def get_history_sql(item, db_module):
-            h_sql = None
-            h_params = None
-            h_del_details = None
-            if item.task.history_item and item.keep_history and item.record_status != consts.RECORD_DETAILS_MODIFIED:
-                deleted_flag = item.task.history_item._deleted_flag
-                user_info = None
-                if item.session:
-                    user_info = item.session.get('user_info')
-                h_fields = ['item_id', 'item_rec_id', 'operation', 'changes', 'user', 'date']
-                table_name = item.task.history_item.table_name
-                fields = []
-                for f in h_fields:
-                    fields.append(item.task.history_item._field_by_name(f).db_field_name)
-                h_fields = fields
-                index = 0
-                fields = []
-                values = []
-                index = 0
-                for f in h_fields:
-                    index += 1
-                    fields.append('"%s"' % f)
-                    values.append('%s' % db_module.value_literal(index))
-                fields = ', '.join(fields)
-                values = ', '.join(values)
-                h_sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
-                    (table_name, fields, values)
-                changes = None
-                user = None
-                item_id = item.ID
-                if item.master:
-                    item_id = item.prototype.ID
-                if user_info:
-                    try:
-                        user = user_info['user_name']
-                    except:
-                        pass
-                if item.record_status != consts.RECORD_DELETED:
-                    old_rec = item.get_rec_info()[3]
-                    new_rec = item._dataset[item.rec_no]
-                    f_list = []
-                    for f in item.fields:
-                        if not f.system_field():
-                            new = new_rec[f.bind_index]
-                            old = None
-                            if old_rec:
-                                old = old_rec[f.bind_index]
-                            if old != new:
-                                f_list.append([f.ID, new])
-                    changes_str = json.dumps(f_list, separators=(',',':'), default=json_defaul_handler)
-                    changes = ('%s%s' % ('0', changes_str), consts.LONGTEXT)
-                elif not item.master and item.details:
-                    h_del_details = []
-                    for detail in item.details:
-                        if detail.keep_history:
-                            d_select = 'SELECT "%s" FROM "%s" WHERE "%s" = %s AND "%s" = %s' % \
-                                (detail._primary_key_db_field_name, detail.table_name,
-                                detail._master_id_db_field_name, item.ID,
-                                detail._master_rec_id_db_field_name, item._primary_key_field.value)
-                            d_sql = h_sql
-                            d_params = [detail.prototype.ID, None, consts.RECORD_DELETED, None, user, datetime.datetime.now()]
-                            h_del_details.append([d_select, d_sql, d_params])
-                h_params = [item_id, item._primary_key_field.value, item.record_status, changes, user, datetime.datetime.now()]
-            return h_sql, h_params, h_del_details
-
-        def generate_sql(item, safe, db_module, result):
-            ID, sql = result
-            for it in item:
-                details = []
-                sql.append((get_sql(it, safe, db_module), details))
-                for detail in item.details:
-                    detail_sql = []
-                    detail_result = (str(detail.ID), detail_sql)
-                    details.append(detail_result)
-                    if item.record_status == consts.RECORD_DELETED:
-                        detail_sql.append((delete_detail_sql(item, detail, db_module), []))
-                    else:
-                        generate_sql(detail, safe, db_module, detail_result)
-
+    def execute_delta(self, params=None, db_module=None):
         safe = False
         if params:
             safe = params['__safe']
         if db_module is None:
             db_module = self.task.db_module
         result = (self.ID, [])
-        generate_sql(self, safe, db_module, result)
+        self.generate_sql(safe, db_module, result)
         return {'delta': result}
+
+    def apply_sql(self, params=None, db_module=None):
+        return apply_sql(self, params=None, db_module=None)
 
     def table_alias(self):
         return '"%s"' % self.table_name
@@ -679,19 +691,7 @@ class SQL(object):
     def empty_table_sql(self):
         return 'DELETE FROM %s' % self.table_name
 
-    def create_table_sql(self, db_type, table_name, fields=None, gen_name=None, foreign_fields=None):
-        if not fields:
-            fields = []
-            for field in self.fields:
-                if not field.master_field:
-                    dic = {}
-                    dic['id'] = field.ID
-                    dic['field_name'] = field.db_field_name
-                    dic['data_type'] = field.data_type
-                    dic['size'] = field.field_size
-                    dic['default_value'] = ''
-                    dic['primary_key'] = field.id.value == item.f_primary_key.value
-                    fields.append(dic)
+    def create_table_sql(self, db_type, table_name, fields, gen_name=None, foreign_fields=None):
         result = []
         db_module = db_modules.get_db_module(db_type)
         result = db_module.create_table_sql(table_name, fields, gen_name, foreign_fields)

@@ -1,12 +1,13 @@
 from __future__ import division
 
 import sys, os
+import json
 import datetime
 import traceback
 
 from werkzeug._compat import string_types
 
-from .common import consts, error_message
+from .common import consts, error_message, json_defaul_handler
 
 def execute_select(cursor, db_module, command):
     # ~ print('')
@@ -172,3 +173,161 @@ def execute_sql(db_module, db_server, db_database, db_user, db_password,
             return  None, (None, str(x))
     return execute_sql_connection(connection, command, params, select, db_module, close_on_error=True)
 
+def apply_sql(item, params=None, db_module=None):
+
+    def get_sql(item, safe, db_module):
+        info = {}
+        if item.master:
+            if item._master_id:
+                item._master_id_field.data = item.master.ID
+            item._master_rec_id_field.data = item.master._primary_key_field.value
+        if item.record_status == consts.RECORD_INSERTED:
+            if safe and not self.can_create():
+                raise Exception(consts.language('cant_create') % self.item_caption)
+            sql, param, info = item.insert_sql(db_module)
+        elif item.record_status == consts.RECORD_MODIFIED:
+            if safe and not self.can_edit():
+                raise Exception(consts.language('cant_edit') % self.item_caption)
+            sql, param = item.update_sql(db_module)
+        elif item.record_status == consts.RECORD_DETAILS_MODIFIED:
+            sql, param = '', None
+        elif item.record_status == consts.RECORD_DELETED:
+            if safe and not self.can_delete():
+                raise Exception(consts.language('cant_delete') % self.item_caption)
+            sql = item.delete_sql(db_module)
+            param = None
+        else:
+            raise Exception('apply_sql - invalid %s record_status %s, record: %s' % \
+                (item.item_name, item.record_status, item._dataset[item.rec_no]))
+        if item._primary_key:
+            info['pk'] = item._primary_key_field.value
+        info['ID'] = item.ID
+        info['log_id'] = item.get_rec_info()[consts.REC_LOG_REC]
+        h_sql, h_params, h_del_details = get_history_sql(item, db_module)
+        return sql, param, info, h_sql, h_params, h_del_details
+
+    def delete_detail_sql(item, detail, db_module, result):
+        ID, delete_sql = result
+        h_sql = None
+        h_params = None
+        h_del_details = None
+        if item._primary_key_field.data_type == consts.TEXT:
+            id_literal = "'%s'" % item._primary_key_field.value
+        else:
+            id_literal = "%s" % item._primary_key_field.value
+        if detail._master_id:
+            if item.soft_delete:
+                sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s AND "%s" = %s' % \
+                    (detail.table_name, detail._deleted_flag_db_field_name, detail._master_id_db_field_name, \
+                    item.ID, detail._master_rec_id_db_field_name, id_literal)
+            else:
+                sql = 'DELETE FROM "%s" WHERE "%s" = %s AND "%s" = %s' % \
+                    (detail.table_name, detail._master_id_db_field_name, item.ID, \
+                    detail._master_rec_id_db_field_name, id_literal)
+        else:
+            if item.soft_delete:
+                sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s' % \
+                    (detail.table_name, detail._deleted_flag_db_field_name, \
+                    detail._master_rec_id_db_field_name, id_literal)
+            else:
+                sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
+                    (detail.table_name, detail._master_rec_id_db_field_name, id_literal)
+            h_sql, h_params, h_del_details = get_history_sql(detail, db_module)
+        details = []
+        if len(detail.details):
+            item.update_deleted([detail])
+            for it in detail:
+                for d in detail.details:
+                    d_sql = []
+                    d_result = (str(d.ID), d_sql)
+                    details.append(d_result)
+                    detail.delete_detail_sql(d, db_module, d_result)
+        delete_sql.append(((sql, None, {'ID': ID}, h_sql, h_params, h_del_details), details))
+
+    def get_history_sql(item, db_module):
+        h_sql = None
+        h_params = None
+        h_del_details = None
+        if item.task.history_item and item.keep_history and item.record_status != consts.RECORD_DETAILS_MODIFIED:
+            deleted_flag = item.task.history_item._deleted_flag
+            user_info = None
+            if item.session:
+                user_info = item.session.get('user_info')
+            h_fields = ['item_id', 'item_rec_id', 'operation', 'changes', 'user', 'date']
+            table_name = item.task.history_item.table_name
+            fields = []
+            for f in h_fields:
+                fields.append(item.task.history_item._field_by_name(f).db_field_name)
+            h_fields = fields
+            index = 0
+            fields = []
+            values = []
+            index = 0
+            for f in h_fields:
+                index += 1
+                fields.append('"%s"' % f)
+                values.append('%s' % db_module.value_literal(index))
+            fields = ', '.join(fields)
+            values = ', '.join(values)
+            h_sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
+                (table_name, fields, values)
+            changes = None
+            user = None
+            item_id = item.ID
+            if item.master:
+                item_id = item.prototype.ID
+            if user_info:
+                try:
+                    user = user_info['user_name']
+                except:
+                    pass
+            if item.record_status != consts.RECORD_DELETED:
+                old_rec = item.get_rec_info()[3]
+                new_rec = item._dataset[item.rec_no]
+                f_list = []
+                for f in item.fields:
+                    if not f.system_field():
+                        new = new_rec[f.bind_index]
+                        old = None
+                        if old_rec:
+                            old = old_rec[f.bind_index]
+                        if old != new:
+                            f_list.append([f.ID, new])
+                changes_str = json.dumps(f_list, separators=(',',':'), default=json_defaul_handler)
+                changes = ('%s%s' % ('0', changes_str), consts.LONGTEXT)
+            elif not item.master and item.details:
+                h_del_details = []
+                for detail in item.details:
+                    if detail.keep_history:
+                        d_select = 'SELECT "%s" FROM "%s" WHERE "%s" = %s AND "%s" = %s' % \
+                            (detail._primary_key_db_field_name, detail.table_name,
+                            detail._master_id_db_field_name, item.ID,
+                            detail._master_rec_id_db_field_name, item._primary_key_field.value)
+                        d_sql = h_sql
+                        d_params = [detail.prototype.ID, None, consts.RECORD_DELETED, None, user, datetime.datetime.now()]
+                        h_del_details.append([d_select, d_sql, d_params])
+            h_params = [item_id, item._primary_key_field.value, item.record_status, changes, user, datetime.datetime.now()]
+        return h_sql, h_params, h_del_details
+
+    def generate_sql(item, safe, db_module, result):
+        ID, sql = result
+        for it in item:
+            details = []
+            sql.append((it.get_sql(safe, db_module), details))
+            for detail in item.details:
+                detail_sql = []
+                detail_result = (str(detail.ID), detail_sql)
+                details.append(detail_result)
+                if item.record_status == consts.RECORD_DELETED:
+                    item.delete_detail_sql(detail, db_module, detail_result)
+                else:
+                    detail.generate_sql(safe, db_module, detail_result)
+
+    safe = False
+    if params:
+        safe = params['__safe']
+    if db_module is None:
+        db_module = item.task.db_module
+    result = (item.ID, [])
+    generate_sql(item, safe, db_module, result)
+    return {'delta': result}

@@ -98,8 +98,7 @@ class ServerDataset(Dataset, SQL):
     def do_apply(self, params=None, safe=False, connection=None):
         if not self.master and self.log_changes:
             changes = {}
-            self.change_log.get_changes(changes)
-            if changes['data']:
+            if self.change_log.get_changes(changes):
                 data, error = self.apply_changes((changes, params), safe, connection)
                 if error:
                     raise Exception(error)
@@ -257,13 +256,15 @@ class ServerDataset(Dataset, SQL):
                 connection.close()
         return result
 
-    def update_deleted(self):
+    def update_deleted(self, details=None):
         if self._is_delta:
+            if details is None:
+                details = self.details
             rec_no = self.rec_no
             try:
                 for it in self:
                     if it.rec_deleted():
-                        for detail in self.details:
+                        for detail in details:
                             fields = []
                             for field in detail.fields:
                                 fields.append(field.field_name)
@@ -318,7 +319,6 @@ class ServerDataset(Dataset, SQL):
                 con.rollback()
             finally:
                 con.close()
-
 
 
 class Group(AbstrGroup):

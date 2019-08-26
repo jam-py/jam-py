@@ -62,21 +62,19 @@
             "RECORD_DETAILS_MODIFIED": 4,
 
             "REC_STATUS": 0,
-            "REC_CONTROLS_INFO": 1,
-            "REC_CHANGE_ID": 2,
+            "REC_CONTROLS": 1,
+            "REC_LOG_REC": 2,
 
             "UPDATE_OPEN": 0,
             "UPDATE_RECORD": 1,
-            "UPDATE_DELETE": 2,
-            "UPDATE_CANCEL": 3,
-            "UPDATE_APPEND": 4,
-            "UPDATE_INSERT": 5,
-            "UPDATE_SCROLLED": 6,
-            "UPDATE_CONTROLS": 7,
-            "UPDATE_CLOSE": 8,
-            "UPDATE_STATE": 9,
-            "UPDATE_APPLIED": 10,
-            "UPDATE_SUMMARY": 11
+            "UPDATE_APPEND": 2,
+            "UPDATE_INSERT": 3,
+            "UPDATE_SCROLLED": 4,
+            "UPDATE_CONTROLS": 5,
+            "UPDATE_CLOSE": 6,
+            "UPDATE_STATE": 7,
+            "UPDATE_APPLIED": 8,
+            "UPDATE_SUMMARY": 9
         },
         align_value = ['', 'left', 'center', 'right'],
         filter_value = ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in',
@@ -3074,186 +3072,170 @@
     /*                         ChangeLog class                            */
     /**********************************************************************/
 
-    function ChangeLog(item) {
-        this.item = item;
-        this._change_id = 0;
-        this.records = [];
-        this.logs = {};
-        this.fields = [];
-        this.expanded = true;
-    }
+    class ChangeLog {
+        constructor(item) {
+            this.item = item;
+            this.logs = [];
+            this.fields = [];
+            this.db_fields = [];
+            this.records = [];
+        }
 
-    ChangeLog.prototype = {
-        constructor: ChangeLog,
-
-        get_change_id: function() {
-            this._change_id += 1;
-            return this._change_id + '';
-        },
-
-        is_empty_obj: function(obj) {
-            for (var prop in obj) {
-                if (obj.hasOwnProperty(prop))
-                    return false;
+        init_fields(log) {
+            if (!log) {
+                log = this;
             }
-            return true;
-        },
+            log.fields = [];
+            log.db_fields = [];
+            this.item.fields.forEach(function(field) {
+                log.fields.push(field.field_name);
+                if (!field.master_field) {
+                    log.db_fields.push(field.field_name);
+                }
+            })
+        }
 
-        log_changes: function() {
+        refresh() {
             if (this.item.master) {
-                return this.item.master.change_log.log_changes();
-            } else {
-                return this.item.log_changes;
-            }
-        },
-
-        find_record_log: function() {
-            var result,
-                record_log,
-                details,
-                detail,
-                i,
-                len,
-                fields = [],
-                change_id;
-            if (this.item.master) {
-                record_log = this.item.master.change_log.find_record_log();
-                if (record_log) {
-                    details = record_log.details;
+                let record_log;
+                record_log = this.item.master.change_log.get_record_log();
+                let details = record_log.details,
                     detail = details[this.item.ID];
-                    if (this.is_empty_obj(detail)) {
-                        len = this.item.fields.length;
-                        for (i = 0; i < len; i++) {
-                            fields.push(this.item.fields[i].field_name);
-                        }
-                        detail = {
-                            logs: {},
-                            records: this.item._dataset,
-                            fields: fields,
-                            expanded: this.item.expanded
-                        };
-                        details[this.item.ID] = detail;
-                    }
-                    this.logs = detail.logs;
-                    this.records = detail.records;
-                    this.fields = detail.fields;
-                    this.expanded = detail.expanded;
+                if (!detail) {
+                    detail = {
+                        logs: [],
+                        records: this.item._dataset
+                    };
+                    this.init_fields(detail);
+                    details[this.item.ID] = detail;
                 }
+                this.logs = detail.logs;
+                this.fields = detail.fields;
+                this.db_fields = detail.db_fields;
+                this.records = detail.records
             }
-            if (this.item.record_count()) {
-                change_id = this.item._get_rec_change_id();
-                if (!change_id) {
-                    change_id = this.get_change_id()
-                    this.item._set_rec_change_id(change_id);
+        }
+
+        get_record_log() {
+            this.refresh();
+            if (this.item.rec_count) {
+                let result,
+                    rec_no = this.item.record_log_rec;
+                if (rec_no !== null) {
+                    result = this.logs[rec_no]
                 }
-                result = this.logs[change_id];
-                if (this.is_empty_obj(result)) {
+                else {
                     result = {
-                        old_record: null,
                         record: this.cur_record(),
+                        old_record: null,
                         details: {}
                     };
-                    this.logs[change_id] = result;
+                    this.logs.push(result)
+                    this.item.record_log_rec = this.logs.length - 1;
+                }
+                return result;
+            }
+            else {
+                throw 'Can not find record log for empty dataset.'
+            }
+        }
+
+        find_logs() {
+            if (this.item.master) {
+                let rec_no = this.item.master.record_log_rec;
+                if (rec_no !== null) {
+                    let record_log = this.item.master.change_log.get_record_log(),
+                        detail = record_log.details[this.item.ID];
+                    if (detail) {
+                        return detail.logs;
+                    }
                 }
             }
-            return result;
-        },
-
-        get_detail_log: function(detail_ID) {
-            var result,
-                record_log,
-                details;
-            record_log = this.find_record_log();
-            details = record_log.details;
-            if (!this.is_empty_obj(details)) {
-                result = details[detail_ID];
+            else {
+                return this.logs;
             }
-            if (result === undefined && this._is_delta) {
-                result = {
-                    records: [],
-                    fields: [],
-                    expanded: false,
-                    logs: {}
-                };
-            }
-            return result;
-        },
+        }
 
-        remove_record_log: function() {
-            var change_id = this.item._get_rec_change_id();
-            if (change_id) {
-                this.find_record_log();
-                delete this.logs[change_id];
-                this.item._set_rec_change_id(null);
+        get empty() {
+            let logs = this.find_logs();
+            if (logs) {
+                for (let log of logs) {
+                    if (log) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        remove_record_log() {
+            if (this.item.record_log_rec !== null) {
+                this.refresh();
+                this.logs[this.item.record_log_rec] = undefined;
+                this.item.record_log_rec = null;
                 this.item.record_status = consts.RECORD_UNCHANGED;
             }
-        },
+        }
 
-        cur_record: function() {
+        cur_record() {
             return this.item._dataset[this.item.rec_no];
-        },
+        }
 
-        record_modified: function(record_log) {
-            var modified = false,
-                old_rec = record_log.old_record,
-                cur_rec = record_log.record;
-            for (var i = 0; i < this.item._record_lookup_index; i++) {
-                if (old_rec[i] !== cur_rec[i]) {
-                    modified = true;
-                    break;
-                }
-            }
-            return modified;
-        },
-
-        copy_record: function(record, expanded) {
-            var result = null,
+        copy_record(expanded, record, item) {
+            let result = null,
                 info;
-            if (record) {
-                if (expanded === undefined) {
-                    expanded = true;
-                }
-                if (expanded) {
-                    result = record.slice(0, this.item._record_info_index);
-                } else {
-                    result = record.slice(0, this.item._record_lookup_index);
-                }
-                info = this.item.get_rec_info(undefined, record);
-                result.push([info[0], {}, info[2]]);
+            if (!record) {
+                record = this.cur_record();
             }
+            if (!item) {
+                item = this.item;
+            }
+            info = item.get_record_info(record).slice();
+            info[consts.REC_CONTROLS] = {};
+            if (expanded) {
+                result = record.slice(0, item._record_info_index);
+            } else {
+                result = record.slice(0, item._record_lookup_index);
+            }
+            result.push(info);
             return result;
-        },
+        }
 
-        can_log_changes: function() {
-            var result = this.log_changes();
-            if (this.item.item_state === consts.STATE_EDIT) {}
-        },
+        record_refreshed() {
+            if (this.item.record_log_rec !== null) {
+                let record_log = this.get_record_log();
+                record_log.old_record = this.copy_record();
+                record_log.details = {};
+            }
+        }
 
-        record_refreshed: function() {
-            var record_log,
-                change_id = this.item._get_rec_change_id();
-            if (change_id) {
-                record_log = this.logs[change_id]
-                if (record_log) {
-                    record_log.old_record = this.copy_record(this.cur_record(), false);
-                    record_log.details = {};
+        record_modified(record_log) {
+            let old_rec = record_log.old_record,
+                cur_rec = record_log.record;
+            for (let i = 0; i < this.item._record_lookup_index; i++) {
+                if (old_rec[i] !== cur_rec[i]) {
+                    return true;
                 }
             }
-        },
+        }
 
-        log_change: function() {
-            var record_log;
-            if (this.log_changes()) {
-                record_log = this.find_record_log();
-                if (this.item.item_state === consts.STATE_BROWSE) {
-                    if ((this.item.record_status === consts.RECORD_UNCHANGED) ||
-                        (this.item.record_status === consts.RECORD_DETAILS_MODIFIED && record_log.old_record === null)) {
-                        record_log.old_record = this.copy_record(this.cur_record(), false);
-                        return;
-                    }
-                } else if (this.item.item_state === consts.STATE_INSERT) {
+        detail_modified() {
+            if (this.item.record_status === consts.RECORD_UNCHANGED) {
+                let record_log = this.item.change_log.get_record_log();
+                if (!record_log.old_record) {
+                    record_log.old_record = this.item.change_log.copy_record();
+                }
+                this.item.record_status = consts.RECORD_DETAILS_MODIFIED;
+            }
+        }
+
+        log_change() {
+            let record_log = this.get_record_log(),
+                state = this.item.item_state;
+            if (this.item.log_changes) {
+                if (state === consts.STATE_INSERT) {
                     this.item.record_status = consts.RECORD_INSERTED;
-                } else if (this.item.item_state === consts.STATE_EDIT) {
+                } else if (state === consts.STATE_EDIT) {
                     if (this.item.record_status === consts.RECORD_UNCHANGED) {
                         this.item.record_status = consts.RECORD_MODIFIED;
                     } else if (this.item.record_status === consts.RECORD_DETAILS_MODIFIED) {
@@ -3261,7 +3243,7 @@
                             this.item.record_status = consts.RECORD_MODIFIED;
                         }
                     }
-                } else if (this.item.item_state === consts.STATE_DELETE) {
+                } else if (state === consts.STATE_DELETE) {
                     if (this.item.record_status === consts.RECORD_INSERTED) {
                         this.remove_record_log();
                     } else {
@@ -3272,327 +3254,194 @@
                     throw this.item.item_name + ': change log invalid records state';
                 }
                 if (this.item.master) {
-                    if (this.item.master.record_status === consts.RECORD_UNCHANGED) {
-                        this.item.master.record_status = consts.RECORD_DETAILS_MODIFIED;
-                    }
+                    this.item.master.change_log.detail_modified();
                 }
             }
-        },
-
-        get_changes: function(result) {
-            var data = {},
-                record_log,
-                record,
-                old_record = null,
-                info,
-                new_record,
-                new_details,
-                detail_id,
-                detail,
-                details,
-                new_detail,
-                detail_item;
-            result.fields = this.fields;
-            result.expanded = false;
-            result.data = data;
-            for (var key in this.logs) {
-                if (this.logs.hasOwnProperty(key)) {
-                    record_log = this.logs[key];
-                    record = record_log.record;
-                    info = this.item.get_rec_info(undefined, record);
-                    if (info[consts.REC_STATUS] !== consts.RECORD_UNCHANGED) {
-                        details = record_log.details;
-                        old_record = record_log.old_record;
-                        new_record = this.copy_record(record, false)
-                        new_details = {};
-                        for (var detail_id in details) {
-                            if (details.hasOwnProperty(detail_id)) {
-                                detail = details[detail_id];
-                                new_detail = {};
-                                detail_item = this.item.item_by_ID(parseInt(detail_id, 10));
-                                detail_item.change_log.logs = detail.logs;
-                                detail_item.change_log.get_changes(new_detail);
-                                new_details[detail_id] = new_detail;
-                            }
-                        }
-                        data[key] = {
-                            record: new_record,
-                            details: new_details,
-                            old_record: old_record
-                        };
-                    }
-                }
-            }
-        },
-
-        set_changes: function(changes) {
-            var data = changes.data,
-                record_log,
-                record,
-                record_details,
-                details,
-                detail,
-                detail_item;
-            this.records = [];
-            this.logs = {};
-            this.fields = changes.fields
-            this.expanded = changes.expanded;
-            this._change_id = 0;
-            for (var key in data) {
-                if (data.hasOwnProperty(key)) {
-                    record_log = data[key];
-                    if (this._change_id < parseInt(key, 10)) {
-                        this._change_id = parseInt(key, 10);
-                    }
-                    record = record_log.record;
-                    this.records.push(record);
-                    details = {};
-                    this.logs[key] = {
-                        old_record: null,
-                        record: record,
-                        details: details
-                    };
-                    record_details = record_log.details;
-                    for (var detail_id in record_details) {
-                        if (record_details.hasOwnProperty(detail_id)) {
-                            detail = record_details[detail_id];
-                            detail_item = this.item.item_by_ID(parseInt(detail_id, 10));
-                            detail_item.change_log.set_changes(detail);
-                            details[detail_id] = {
-                                logs: detail_item.change_log.logs,
-                                records: detail_item.change_log.records,
-                                fields: detail_item.change_log.fields,
-                                expanded: detail_item.change_log.expanded
-                            };
-                        }
-                    }
-                }
-            }
-        },
-
-        copy_records: function(records) {
-            var i = 0,
-                len = records.length,
-                result = [];
-            for (i = 0; i < len; i++) {
-                result.push(records[i].slice(0));
-            }
-            return result;
-        },
-
-        store_details: function(source, dest) {
-            var detail_item,
-                cur_logs,
-                record_log,
-                logs,
-                cur_records,
-                records,
-                cur_record,
-                record,
-                fields,
-                expanded,
-                index,
-                detail,
-                detail_id,
-                details;
-            for (var i = 0; i < this.item.details.length; i++) {
-                detail_item = this.item.details[i];
-                detail_id = detail_item.ID;
-                detail = source[detail_id];
-                logs = {};
-                records = [];
-                fields = [];
-                expanded = true;
-                if (detail) {
-                    cur_logs = detail.logs;
-                    cur_records = detail.records;
-                    fields = detail.fields;
-                    expanded = detail.expanded;
-                    records = this.copy_records(cur_records);
-                    for (var key in cur_logs) {
-                        if (cur_logs.hasOwnProperty(key)) {
-                            record_log = cur_logs[key];
-                            cur_record = record_log.record;
-                            record = detail_item.change_log.copy_record(cur_record);
-                            index = cur_records.indexOf(cur_record);
-                            if (index !== -1) {
-                                records[index] = record;
-                            }
-                            details = {};
-                            detail_item.change_log.store_details(record_log.details, details);
-                            logs[key] = {
-                                old_record: record_log.old_record,
-                                record: record,
-                                details: details
-                            };
-                        }
-                    }
-                } else {
-                    if (detail_item._dataset) {
-                        records = this.copy_records(detail_item._dataset);
-                    }
-                }
-                dest[detail_id] = {
-                    logs: logs,
-                    records: records,
-                    fields: fields,
-                    expanded: expanded
-                };
-            }
-        },
-
-        store_record_log: function() {
-            var record_log,
-                details,
-                detail,
-                result;
-            if (this.log_changes()) {
-                record_log = this.find_record_log();
-                details = {};
-                this.store_details(record_log.details, details);
-                result = {};
-                result.old_record = record_log.old_record;
-                result.record = this.copy_record(record_log.record);
-                result.details = details;
-            } else {
-                result = {};
-                result.record = this.copy_record(this.cur_record());
-                details = {};
-                for (var i = 0; i < this.item.details.length; i++) {
-                    detail = this.item.details[i];
-                    if (!detail.disabled && detail._dataset) {
-                        details[detail.ID] = detail._dataset.slice(0);
-                    }
-                }
-                result.details = details;
-            }
-            return result;
-        },
-
-        restore_record_log: function(log) {
-            var record_log,
-                record,
-                detail,
-                detail_log,
-                cur_record,
-                info_index;
-            if (this.log_changes()) {
-                record_log = this.find_record_log();
-                record = log.record;
-                cur_record = this.cur_record();
-                info_index = this.item._record_info_index;
-                for (var i = 0; i < info_index; i++) {
-                    cur_record[i] = record[i];
-                }
-                record_log.old_record = log.old_record;
-                record_log.record = cur_record;
-                record_log.details = log.details;
-                for (var i = 0; i < this.item.details.length; i++) {
-                    detail = this.item.details[i];
-                    detail_log = log.details[detail.ID];
-                    if (!this.is_empty_obj(detail_log)) {
-                        detail._dataset = detail_log.records;
-                    }
-                }
-                if (this.item.record_status === consts.RECORD_UNCHANGED) {
+            else {
+                if (state === consts.STATE_DELETE) {
                     this.remove_record_log();
                 }
-            } else {
-                record = log.record;
-                cur_record = this.cur_record();
-                info_index = this.item._record_info_index;
-                for (var i = 0; i < info_index; i++) {
-                    cur_record[i] = record[i];
-                }
-                for (var i = 0; i < this.item.details.length; i++) {
-                    detail = this.item.details[i];
-                    detail._dataset = log.details[detail.ID];
-                }
-            }
-        },
-
-        update: function(updates, master_rec_id) {
-            var change,
-                changes,
-                log_id,
-                rec_id,
-                detail,
-                details,
-                record_log,
-                record,
-                record_details,
-                len,
-                ID,
-                detail_item,
-                item_detail,
-                info,
-                primary_key_field,
-                master_rec_id_field;
-            if (updates) {
-                changes = updates.changes;
-                for (var key in changes) {
-                    if (changes.hasOwnProperty(key)) {
-                        change = changes[key];
-                        log_id = change.log_id;
-                        rec_id = change.rec_id;
-                        details = change.details;
-                        record_log = this.logs[log_id];
-                        if (record_log) {
-                            record = record_log.record;
-                            record_details = record_log.details;
-                            len = details.length;
-                            for (var i = 0; i < len; i++) {
-                                detail = details[i];
-                                ID = detail.ID;
-                                detail_item = this.item.detail_by_ID(parseInt(ID, 10));
-                                item_detail = record_details[ID];
-                                if (!this.is_empty_obj(item_detail)) {
-                                    detail_item.change_log.logs = item_detail.logs;
-                                    detail_item.change_log.update(detail, rec_id);
-                                }
-                            }
-                            if (rec_id) {
-                                if (!record[this.item._primary_key_field.bind_index]) {
-                                    record[this.item._primary_key_field.bind_index] = rec_id;
-                                }
-                            }
-                            if (master_rec_id) {
-                                if (!record[this.item._master_rec_id_field.bind_index]) {
-                                    record[this.item._master_rec_id_field.bind_index] = master_rec_id;
-                                }
-                            }
-                            info = this.item.get_rec_info(undefined, record);
-                            info[consts.REC_STATUS] = consts.RECORD_UNCHANGED;
-                            info[consts.REC_CHANGE_ID] = consts.RECORD_UNCHANGED;
-                            delete this.logs[log_id];
-                        }
-                    }
-                }
-            }
-        },
-
-        prepare: function() {
-            var log = this,
-                i,
-                len = this.item.fields.length;
-
-            if (this.item.master) {
-                log = this.item.master.change_log.get_detail_log(this.item.ID);
-            }
-            if (log) {
-                log.records = [];
-                log.logs = {};
-                log.fields = [];
-                for (i = 0; i < len; i++) {
-                    if (!this.item.fields[i].master_field) {
-                        log.fields.push(this.item.fields[i].field_name);
-                    }
-                }
-                log.expanded = this.item.expanded;
             }
         }
-    };
 
+        get_changes(result) {
+            let self = this,
+                data = [],
+                counter = 0;
+            result.fields = this.db_fields;
+            result.data = data;
+            this.logs.forEach(function(log) {
+                if (log) {
+                    let record = log.record,
+                        info = self.item.get_record_info(record);
+                    if (info[consts.REC_STATUS] !== consts.RECORD_UNCHANGED) {
+                        let old_record = log.old_record,
+                            new_record = self.copy_record(false, record),
+                            details = log.details,
+                            new_details = {};
+                        for (var detail_id in details) {
+                            let detail = details[detail_id],
+                                new_detail = {},
+                                detail_item = self.item.item_by_ID(parseInt(detail_id, 10));
+                            detail_item.change_log.logs = detail.logs;
+                            detail_item.change_log.get_changes(new_detail);
+                            new_details[detail_id] = new_detail;
+                        }
+                        data.push({
+                            record: new_record,
+                            old_record: old_record,
+                            details: new_details
+                        });
+                        counter += 1;
+                    }
+                }
+                else {
+                    data.push(null);
+                }
+            });
+            return counter;
+        }
+
+        store_change_log() {
+            let self = this,
+                result = {},
+                new_records = [],
+                new_logs = [];
+            result.logs = new_logs;
+            result.records = new_records;
+            result.fields = this.fields;
+            result.db_fields = this.db_fields;
+
+            this.records.forEach(function(record, rec_no) {
+                let log_rec = self.item.get_record_info(record)[consts.REC_LOG_REC];
+                new_records.push(self.copy_record(true, record, self.item));
+                if (log_rec !== null) {
+                    self.logs[log_rec].rec_no = rec_no;
+                }
+            });
+
+            this.logs.forEach(function(log) {
+                let new_log;
+                if (log) {
+                    let new_details = {},
+                        record = log.record,
+                        rec_no = log.rec_no;
+                    delete log.rec_no;
+                    if (rec_no !== undefined) {
+                        record = new_records[rec_no];
+                    }
+                    new_log = {
+                        old_record: log.old_record,
+                        record: record,
+                        details: new_details
+                    }
+                    self.item.each_detail(function(detail) {
+                        detail.change_log.refresh();
+                        new_details[detail.ID] = detail.change_log.store_change_log();
+                    })
+                }
+                new_logs.push(new_log);
+            })
+            return result;
+        }
+
+        store_record() {
+            let result = {},
+                details = {},
+                record = this.cur_record(),
+                record_log = this.get_record_log();
+
+            result.record = this.copy_record(true, record);
+            result.record_log =
+                {
+                    old_record: record_log.old_record,
+                    record: result.record,
+                    details: details
+                };
+                this.item.each_detail(function(detail) {
+                    if (detail.active) {
+                        detail.change_log.refresh();
+                        details[detail.ID] = detail.change_log.store_change_log();
+                    }
+                })
+            if (this.item.log_changes && this.item.record_status === consts.RECORD_UNCHANGED) {
+                let record_log = this.get_record_log();
+                record_log.old_record = this.copy_record();
+            }
+            return result;
+        }
+
+        restore_details(details) {
+            let self = this;
+            for (var detail_id in details) {
+                let detail = details[detail_id];
+                task.item_by_ID(parseInt(detail_id, 10))._dataset = detail.records;
+                detail.logs.forEach(function(log) {
+                    if (log) {
+                        self.restore_details(log.details);
+                    }
+                });
+            }
+        }
+
+        restore_record(data) {
+            let record_log = this.get_record_log();
+            this.item._dataset[this.item.rec_no] = data.record;
+            record_log.old_record = data.record_log.old_record;
+            record_log.record = data.record_log.record;
+            record_log.details = data.record_log.details;
+            this.restore_details(record_log.details);
+        }
+
+        update(updates, master_rec_id) {
+            if (updates) {
+                let self = this,
+                    changes = updates.changes;
+                changes.forEach(function(change) {
+                    let log_id = change.log_id,
+                        rec_id = change.rec_id,
+                        details = change.details,
+                        record_log = self.logs[log_id];
+                    if (record_log) {
+                        let record = record_log.record,
+                            record_details = record_log.details,
+                            info = self.item.get_record_info(record);
+                        info[consts.REC_STATUS] = consts.RECORD_UNCHANGED;
+                        info[consts.REC_LOG_REC] = null;
+                        if (rec_id) {
+                            if (!record[self.item._primary_key_field.bind_index]) {
+                                record[self.item._primary_key_field.bind_index] = rec_id;
+                            }
+                        }
+                        if (master_rec_id) {
+                            if (!record[self.item._master_rec_id_field.bind_index]) {
+                                record[self.item._master_rec_id_field.bind_index] = master_rec_id;
+                            }
+                        }
+                        details.forEach(function(detail) {
+                            let detail_item = self.item.detail_by_ID(parseInt(detail.ID, 10)),
+                                item_detail = record_details[detail.ID];
+                            if (item_detail) {
+                                detail_item.change_log.logs = item_detail.logs;
+                                detail_item.change_log.update(detail, rec_id);
+                            }
+                        });
+                        self.logs[log_id] = undefined;
+                    }
+                });
+            }
+        }
+
+        prepare() {
+            if (!this.item.master) {
+                this.refresh();
+                this.logs = [];
+                this.records = [];
+                this.init_fields();
+            }
+        }
+
+    }
 
     /**********************************************************************/
     /*                            Item class                              */
@@ -3644,7 +3493,6 @@
         this._select_field_list = [];
         this._record_lookup_index = -1
         this._record_info_index = -1
-        this._is_delta = false;
         this._limit = 1;
         this._offset = 0;
         this._selections = undefined;
@@ -3714,12 +3562,25 @@
                 this._set_item_state(new_value);
             }
         });
+        Object.defineProperty(this, "record_info", {
+            get: function() {
+                return this.get_record_info();
+            },
+        });
         Object.defineProperty(this, "record_status", {
             get: function() {
                 return this._get_record_status();
             },
             set: function(new_value) {
                 this._set_record_status(new_value);
+            }
+        });
+        Object.defineProperty(this, "record_log_rec", {
+            get: function() {
+                return this._get_record_log_rec();
+            },
+            set: function(new_value) {
+                this._set_record_log_rec(new_value);
             }
         });
         Object.defineProperty(this, "log_changes", {
@@ -4543,7 +4404,11 @@
         },
 
         _get_log_changes: function() {
-            return this._log_changes;
+            if (this.master) {
+                return this.master._get_log_changes()
+            } else {
+                return this._log_changes
+            }
         },
 
         _set_log_changes: function(value) {
@@ -4629,7 +4494,7 @@
                 try {
                     fld = this.field_by_name(field_name);
                 } catch (e) {
-                    console.trace();
+                    console.error(e);
                     throw this.item_name + ': set_order_by method arument error - ' + field + ' ' + e;
                 }
                 result.push([fld.field_name, desc]);
@@ -4898,14 +4763,6 @@
             }
         },
 
-        find_change_log: function() {
-            if (this.master) {
-                if (this.master.record_status !== consts.RECORD_UNCHANGED) {
-                    return this.master.change_log.get_detail_log(this.ID)
-                }
-            }
-        },
-
         _update_params: function(params, new_params) {
             var i,
                 s,
@@ -5028,11 +4885,13 @@
                     if (this.master.is_new()) {
                         records = [];
                     } else {
-                        log = this.find_change_log();
-                        if (log) {
-                            records = log['records']
-                            fields = log['fields']
-                            expanded = log['expanded']
+                        if (!this.change_log.empty) {
+                            this.change_log.refresh();
+                            records = this.change_log.records;
+                            fields = this.change_log.fields;
+                        }
+                        else if (this.master.record_status === consts.RECORD_INSERTED && !params.__master_rec_id) {
+                            records = [];
                         }
                     }
                     if (records !== undefined) {
@@ -5221,9 +5080,9 @@
             var len = this.details.length;
             this.update_controls(consts.UPDATE_CLOSE);
             this._do_close();
-            for (var i = 0; i < len; i++) {
-                this.details[i].close();
-            }
+            this.each_detail(function(d) {
+                d.close();
+            });
         },
 
         sort: function(field_list) {
@@ -5490,8 +5349,7 @@
                 throw language.edit_not_browse.replace('%s', this.item_name);
             }
             this._do_before_edit();
-            this.change_log.log_change();
-            this._buffer = this.change_log.store_record_log();
+            this._buffer = this.change_log.store_record();
             this.item_state = consts.STATE_EDIT;
             this._old_status = this.record_status;
             this._modified = false;
@@ -5510,13 +5368,12 @@
             this._canceling = true;
             try {
                 if (this.item_state === consts.STATE_EDIT) {
-                    this.change_log.restore_record_log(this._buffer)
-                    this.update_controls(consts.UPDATE_CANCEL)
+                    this.change_log.restore_record(this._buffer)
+                    this.update_controls();
                     for (var i = 0; i < this.details.length; i++) {
                         this.details[i].update_controls(consts.UPDATE_OPEN);
                     }
                 } else if (this.item_state === consts.STATE_INSERT) {
-                    //~ this._do_before_scroll();
                     this.change_log.remove_record_log();
                     this._dataset.splice(this.rec_no, 1);
                 } else {
@@ -5584,7 +5441,7 @@
                     this.master._detail_changed(this, true);
                 }
             } catch (e) {
-                console.trace();
+                console.error(e);
                 throw e;
             } finally {
                 this.item_state = consts.STATE_BROWSE;
@@ -5631,7 +5488,7 @@
                 i,
                 len,
                 old_state = this.item_state,
-                modified = this._modified;
+                was_modified = this._modified;
 
             if (!this.is_changing()) {
                 console.trace();
@@ -5652,7 +5509,7 @@
             }
             if (this.is_modified() || this.is_new()) {
                 this.change_log.log_change();
-            } else if (this.record_status === consts.RECORD_UNCHANGED) {
+            } else if (this.record_status === consts.RECORD_UNCHANGED && this.log_changes) {
                 this.change_log.remove_record_log();
             }
             this._modified = false;
@@ -5661,10 +5518,10 @@
                 this.on_after_post.call(this, this);
             }
             if (!this._valid_record()) {
-                this.update_controls(consts.UPDATE_DELETE);
                 this._search_record(this.rec_no, 0);
+                this.update_controls(consts.UPDATE_CONTROLS);
             }
-            if (this.master && modified) {
+            if (this.master && was_modified) {
                 this.master._detail_changed(this, true);
             }
         },
@@ -5688,8 +5545,8 @@
             if (this.is_changing()) {
                 this.post();
             }
-            this.change_log.get_changes(changes);
-            if (!this.change_log.is_empty_obj(changes.data)) {
+            //~ if (!this.change_log.empty) {
+            if (this.change_log.get_changes(changes)) {
                 params = $.extend({}, params);
                 params.__edit_record_version = this.edit_record_version;
                 if (this.on_before_apply) {
@@ -5736,41 +5593,6 @@
                     this.update_controls(consts.UPDATE_APPLIED);
                 }
             }
-        },
-
-        delta: function(changes) {
-            var i,
-                len,
-                field,
-                result;
-            if (changes === undefined) {
-                changes = {}
-                this.change_log.get_changes(changes);
-            }
-            result = this.copy({
-                filters: false,
-                details: true,
-                handlers: false
-            });
-            result.on_after_scroll = function(result) {
-                result.open_details();
-            }
-            result.expanded = false;
-            result._is_delta = true;
-            len = result.details.length;
-            for (i = 0; i < len; i++) {
-                result.details[i].expanded = false;
-                result.details[i]._is_delta = true;
-            }
-            result.change_log.set_changes(changes);
-            result._dataset = result.change_log.records;
-            result._update_fields(result.change_log.fields);
-            result._bind_fields(result.change_log.expanded)
-            result.item_state = consts.STATE_BROWSE;
-            result._cur_row = null;
-            result._active = true;
-            result.first();
-            return result;
         },
 
         field_by_id: function(id_value, fields, callback) {
@@ -6206,60 +6028,36 @@
             }
         },
 
-        find_rec_info: function(rec_no, record) {
-            if (record === undefined) {
-                if (rec_no === undefined) {
-                    rec_no = this.rec_no;
-                    if (this.record_count() > 0) {
-                        record = this._dataset[rec_no];
-                    }
+        get_record_info: function(record) {
+            if (this._record_info_index > 0) {
+                if (!record) {
+                    record = this._dataset[this.rec_no];
                 }
-            }
-            if (record && (this._record_info_index > 0)) {
                 if (record.length < this._record_info_index + 1) {
-                    record.push([null, {}, null]);
+                    record.push([null, {}, null, {}]);
                 }
                 return record[this._record_info_index];
             }
         },
 
-        get_rec_info: function(rec_no, record) {
-            return this.find_rec_info(rec_no, record);
-        },
-
         _get_record_status: function() {
-            var info = this.get_rec_info();
-            if (info) {
-                return info[consts.REC_STATUS];
-            }
+            return this.record_info[consts.REC_STATUS];
         },
 
         _set_record_status: function(value) {
-            var info = this.get_rec_info();
-            if (info && this.log_changes) {
-                info[consts.REC_STATUS] = value;
-            }
+            this.record_info[consts.REC_STATUS] = value;
         },
 
         rec_controls_info: function() {
-            var info = this.get_rec_info();
-            if (info) {
-                return info[consts.REC_CONTROLS_INFO];
-            }
+            return this.record_info[consts.REC_CONTROLS];
         },
 
-        _get_rec_change_id: function() {
-            var info = this.get_rec_info();
-            if (info) {
-                return info[consts.REC_CHANGE_ID];
-            }
+        _get_record_log_rec: function() {
+            return this.record_info[consts.REC_LOG_REC];
         },
 
-        _set_rec_change_id: function(value) {
-            var info = this.get_rec_info();
-            if (info) {
-                info[consts.REC_CHANGE_ID] = value;
-            }
+        _set_record_log_rec: function(value) {
+            this.record_info[consts.REC_LOG_REC] = value;
         },
 
         rec_unchanged: function() {
@@ -6399,10 +6197,11 @@
                         self.create_edit_form(container);
                     }
                     catch (e) {
+                        console.error(e);
                         self.edit_record_version = 0;
                     }
                 };
-            if (this.master) {
+            if (this.master && !this.edit_options.edit_details.length) {
                 create_form();
             }
             else {
@@ -6412,9 +6211,21 @@
                     if (task.lock_item && this.edit_lock) {
                         options.params = {__edit_record_id: this.field_by_name(this._primary_key).value}
                     }
-                    this.refresh_record(options, function(error) {
+                    if (this.log_changes) {
+                        if (this.master) {
+                            this.open_details(function() {
+                                create_form();
+                            });
+                        }
+                        else {
+                            this.refresh_record(options, function(error) {
+                                create_form()
+                            });
+                        }
+                    }
+                    else (
                         create_form()
-                    });
+                    )
                 }
                 else if (this.edit_options.edit_details.length) {
                     options.filters = this.edit_options.edit_detail_filters;
@@ -6508,7 +6319,7 @@
 
         cancel_edit: function() {
             var self = this,
-                refresh = !this.master &&
+                refresh = !this.master && this.log_changes &&
                     this.item_state === consts.STATE_EDIT && this.record_status;
             if (this.is_changing()) {
                 this.cancel();
@@ -6646,6 +6457,7 @@
                     });
                 }
                 catch (e) {
+                    console.error(e);
                     this.alert_error(e);
                     if (this.edit_form_disabled()) {
                         this.enable_edit_form();
@@ -6844,7 +6656,6 @@
         enable_controls: function() {
             this._disabled_count -= 1;
             if (this.controls_enabled()) {
-                //~ this.update_controls(consts.UPDATE_SCROLLED);
                 this.update_controls();
             }
         },
@@ -6858,21 +6669,18 @@
         },
 
         update_controls: function(state) {
-            var i = 0,
-                len = this.fields.length;
             if (this.active) {
                 if (state === undefined) {
                     state = consts.UPDATE_CONTROLS;
                 }
                 if (this.controls_enabled()) {
-                    for (i = 0; i < len; i++) {
-                        this.fields[i].update_controls(state, true);
-                    }
-                    len = this.controls.length;
+                    this.each_field(function(field) {
+                        field.update_controls(state, true);
+                    });
                     if (this.on_update_controls) {
                         this.on_update_controls.call(this, this);
                     }
-                    for (i = 0; i < len; i++) {
+                    for (var i = 0; i < this.controls.length; i++) {
                         this.controls[i].update(state);
                     }
                 }
@@ -8033,7 +7841,7 @@
     }
 
     Detail.prototype.getChildClass = function() {
-        return undefined;
+        return Detail;
     };
 
     /**********************************************************************/
@@ -9811,7 +9619,7 @@
                         $li = $(info[this.id]);
                     this.select_node($li);
                 } catch (e) {
-                    console.log(e);
+                    console.error(e);
                 }
             }
         },
