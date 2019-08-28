@@ -22,44 +22,59 @@ class SQL(object):
                 if rec[0][0]:
                     return int(rec[0][0])
 
-    def insert_sql(self, db_module):
-        info = {
-            'gen_name': self.gen_name,
-            'inserted': True
-        }
+    def __execute(self, cursor, sql, params=None):
+        try:
+            if params:
+                cursor.execute(sql, params)
+            else:
+                cursor.execute(sql)
+        except Exception as x:
+            consts.app.log.exception('Error: %s\n query: %s\n params: %s' % (str(x), sql, params))
+            raise
+
+    def __insert_record(self, cursor, db_module, changes, details_changes):
         if self._deleted_flag:
             self._deleted_flag_field.data = 0
-        row = []
-        fields = []
-        values = []
-        index = 0
         pk = None
         if self._primary_key:
             pk = self._primary_key_field
         auto_pk = not db_module.get_lastrowid is None
-        if auto_pk and pk and pk.data:
-            if hasattr(db_module, 'set_identity_insert'):
-                info['before_command'] = db_module.set_identity_insert(self.table_name, True)
-                info['after_command'] = db_module.set_identity_insert(self.table_name, False)
+        after_sql = None
+        if pk :
+            if auto_pk:
+                if pk.data and hasattr(db_module, 'set_identity_insert'):
+                    sql = db_module.set_identity_insert(self.table_name, True)
+                    self.__execute(cursor, sql)
+                    after_sql = db_module.set_identity_insert(self.table_name, False)
+            else:
+                sql = db_module.next_sequence_value_sql(self.gen_name)
+                self.__execute(cursor, sql)
+                r = cursor.fetchone()
+                pk.data = r[0]
+        row = []
+        fields = []
+        values = []
+        index = 0
         for field in self.fields:
             if not (field.master_field or (field == pk and auto_pk and not pk.data)):
-                if field == pk:
-                    info['pk_index'] = index
-                elif self.master and field == self._master_rec_id_field:
-                    info['master_pk_index'] = index
                 index += 1
                 fields.append('"%s"' % field.db_field_name)
                 values.append('%s' % db_module.value_literal(index))
                 value = (field.data, field.data_type)
                 row.append(value)
-
         fields = ', '.join(fields)
         values = ', '.join(values)
         sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
             (self.table_name, fields, values)
-        return sql, row, info
+        row = db_module.process_sql_params(row, cursor)
+        self.__execute(cursor, sql, row)
+        if after_sql:
+            self.__execute(cursor, after_sql)
+        if db_module.get_lastrowid and not pk.data:
+            pk.data = db_module.get_lastrowid(cursor)
+            changes.append([self.get_rec_info()[consts.REC_LOG_REC], pk.data, details_changes])
 
-    def update_sql(self, db_module):
+    def __update_record(self, cursor, db_module, changes, details_changes):
         row = []
         fields = []
         index = 0
@@ -79,9 +94,11 @@ class SQL(object):
         else:
             id_literal = "%s" % self._primary_key_field.value
         where = ' WHERE "%s" = %s' % (self._primary_key_db_field_name, id_literal)
-        return ''.join([command, fields, where]), row
+        sql = ''.join([command, fields, where])
+        row = db_module.process_sql_params(row, cursor)
+        self.__execute(cursor, sql, row)
 
-    def delete_sql(self, db_module):
+    def __delete_record(self, cursor, db_module):
         soft_delete = self.soft_delete
         if self.master:
             soft_delete = self.master.soft_delete
@@ -96,12 +113,19 @@ class SQL(object):
         else:
             sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
                 (self.table_name, self._primary_key_db_field_name, id_literal)
-        return sql
+        self.__execute(cursor, sql)
 
-    def get_history_sql(self, db_module):
-        h_sql = None
-        h_params = None
-        h_del_details = None
+    def __save_del_details_history(self, cursor, db_module, user, sql):
+        for detail in self.details:
+            if detail.keep_history:
+                self.update_deleted([detail])
+                for d in detail:
+                    params = [detail.prototype.ID, d._primary_key_field.data,
+                        consts.RECORD_DELETED, None, user, datetime.datetime.now()]
+                    self.__execute(cursor, sql, db_module.process_sql_params(params, cursor))
+            detail.__save_del_details_history(cursor, db_module, user, sql)
+
+    def __save_history(self, cursor, db_module):
         if self.task.history_item and self.keep_history and self.record_status != consts.RECORD_DETAILS_MODIFIED:
             deleted_flag = self.task.history_item._deleted_flag
             user_info = None
@@ -123,7 +147,7 @@ class SQL(object):
                 values.append('%s' % db_module.value_literal(index))
             fields = ', '.join(fields)
             values = ', '.join(values)
-            h_sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
+            sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
                 (table_name, fields, values)
             changes = None
             user = None
@@ -150,55 +174,12 @@ class SQL(object):
                 changes_str = json.dumps(f_list, separators=(',',':'), default=json_defaul_handler)
                 changes = ('%s%s' % ('0', changes_str), consts.LONGTEXT)
             elif not self.master and self.details:
-                h_del_details = []
-                for detail in self.details:
-                    if detail.keep_history:
-                        d_select = 'SELECT "%s" FROM "%s" WHERE "%s" = %s AND "%s" = %s' % \
-                            (detail._primary_key_db_field_name, detail.table_name,
-                            detail._master_id_db_field_name, self.ID,
-                            detail._master_rec_id_db_field_name, self._primary_key_field.value)
-                        d_sql = h_sql
-                        d_params = [detail.prototype.ID, None, consts.RECORD_DELETED, None, user, datetime.datetime.now()]
-                        h_del_details.append([d_select, d_sql, d_params])
-            h_params = [item_id, self._primary_key_field.value, self.record_status, changes, user, datetime.datetime.now()]
-        return h_sql, h_params, h_del_details
+                self.__save_del_details_history(cursor, db_module, user, sql)
+            params = [item_id, self._primary_key_field.value, self.record_status, changes, user, datetime.datetime.now()]
+            params = db_module.process_sql_params(params, cursor)
+            self.__execute(cursor, sql, params)
 
-    def get_sql(self, safe, db_module):
-        info = {}
-        if self.master:
-            if self._master_id:
-                self._master_id_field.data = self.master.ID
-            self._master_rec_id_field.data = self.master._primary_key_field.value
-        if self.record_status == consts.RECORD_INSERTED:
-            if safe and not self.can_create():
-                raise Exception(consts.language('cant_create') % self.item_caption)
-            sql, param, info = self.insert_sql(db_module)
-        elif self.record_status == consts.RECORD_MODIFIED:
-            if safe and not self.can_edit():
-                raise Exception(consts.language('cant_edit') % self.item_caption)
-            sql, param = self.update_sql(db_module)
-        elif self.record_status == consts.RECORD_DETAILS_MODIFIED:
-            sql, param = '', None
-        elif self.record_status == consts.RECORD_DELETED:
-            if safe and not self.can_delete():
-                raise Exception(consts.language('cant_delete') % self.item_caption)
-            sql = self.delete_sql(db_module)
-            param = None
-        else:
-            raise Exception('execute_delta - invalid %s record_status %s, record: %s' % \
-                (self.item_name, self.record_status, self._dataset[self.rec_no]))
-        if self._primary_key:
-            info['pk'] = self._primary_key_field.value
-        info['ID'] = self.ID
-        info['log_id'] = self.get_rec_info()[consts.REC_LOG_REC]
-        h_sql, h_params, h_del_details = self.get_history_sql(db_module)
-        return sql, param, info, h_sql, h_params, h_del_details
-
-    def delete_detail_sql(self, detail, db_module, result):
-        ID, delete_sql = result
-        h_sql = None
-        h_params = None
-        h_del_details = None
+    def __delete_detail_records(self, cursor, detail, db_module):
         if self._primary_key_field.data_type == consts.TEXT:
             id_literal = "'%s'" % self._primary_key_field.value
         else:
@@ -220,41 +201,68 @@ class SQL(object):
             else:
                 sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
                     (detail.table_name, detail._master_rec_id_db_field_name, id_literal)
-            h_sql, h_params, h_del_details = get_history_sql(detail, db_module)
-        details = []
+        self.__execute(cursor, sql)
+        detail.__save_history(cursor, db_module)
         if len(detail.details):
             self.update_deleted([detail])
             for it in detail:
                 for d in detail.details:
-                    d_sql = []
-                    d_result = (str(d.ID), d_sql)
-                    details.append(d_result)
-                    detail.delete_detail_sql(d, db_module, d_result)
-        delete_sql.append(((sql, None, {'ID': ID}, h_sql, h_params, h_del_details), details))
+                    detail.__delete_detail_records(cursor, d, db_module)
 
-    def generate_sql(self, safe, db_module, result):
-        ID, sql = result
+
+    def __process_record(self, cursor, safe, db_module, changes, details_changes):
+        if self.master:
+            if self._master_id:
+                self._master_id_field.data = self.master.ID
+            self._master_rec_id_field.data = self.master._primary_key_field.value
+        if self.record_status == consts.RECORD_INSERTED:
+            if safe and not self.can_create():
+                raise Exception(consts.language('cant_create') % self.item_caption)
+            self.__insert_record(cursor, db_module, changes, details_changes)
+        elif self.record_status == consts.RECORD_MODIFIED:
+            if safe and not self.can_edit():
+                raise Exception(consts.language('cant_edit') % self.item_caption)
+            self.__update_record(cursor, db_module, changes, details_changes)
+        elif self.record_status == consts.RECORD_DETAILS_MODIFIED:
+            pass
+        elif self.record_status == consts.RECORD_DELETED:
+            if safe and not self.can_delete():
+                raise Exception(consts.language('cant_delete') % self.item_caption)
+            self.__delete_record(cursor, db_module)
+        else:
+            raise Exception('execute_delta - invalid %s record_status %s, record: %s' % \
+                (self.item_name, self.record_status, self._dataset[self.rec_no]))
+        self.__save_history(cursor, db_module)
+
+    def __process_records(self, cursor, safe, db_module, changes):
         for it in self:
             details = []
-            sql.append((it.get_sql(safe, db_module), details))
+            it.__process_record(cursor, safe, db_module, changes, details)
             for detail in self.details:
-                detail_sql = []
-                detail_result = (str(detail.ID), detail_sql)
+                detail_changes = []
+                detail_result = {'ID': str(detail.ID), 'changes': detail_changes}
                 details.append(detail_result)
                 if self.record_status == consts.RECORD_DELETED:
-                    self.delete_detail_sql(detail, db_module, detail_result)
+                    self.__delete_detail_records(cursor, detail, db_module)
                 else:
-                    detail.generate_sql(safe, db_module, detail_result)
+                    detail.__process_records(cursor, safe, db_module, detail_changes)
 
-    def save_changes(self, connection, params=None, db_module=None):
+    def process_changes(self, connection, params=None, db_module=None):
+        error = None
         safe = False
         if params:
             safe = params['__safe']
         if db_module is None:
             db_module = self.task.db_module
-        result = (self.ID, [])
-        self.generate_sql(safe, db_module, result)
-        return {'delta': result}
+        changes = []
+        result = {'ID': str(self.ID), 'changes': changes}
+        cursor = connection.cursor()
+        try:
+            self.__process_records(cursor, safe, db_module, changes)
+        except Exception as e:
+            self.log.exception(error_message(e))
+            error = str(e)
+        return result, error
 
     def apply_sql(self, params=None, db_module=None):
         return apply_sql(self, params=None, db_module=None)

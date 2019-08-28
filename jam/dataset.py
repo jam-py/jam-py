@@ -598,7 +598,7 @@ class ChangeLog(object):
                     'records': self.item._dataset
                 }
                 detail['fields'], detail['db_fields'] = self.init_fields()
-                details[self.item.ID] = detail
+                details[str(self.item.ID)] = detail
             self.logs = detail['logs']
             self.fields = detail['fields']
             self.db_fields = detail['db_fields']
@@ -627,7 +627,7 @@ class ChangeLog(object):
             rec_no = self.item.master.record_log_rec
             if not rec_no is None:
                 record_log = self.item.master.change_log.get_record_log()
-                detail = record_log['details'].get(self.item.ID)
+                detail = record_log['details'].get(str(self.item.ID))
                 if detail:
                     return detail['logs']
         else:
@@ -688,9 +688,8 @@ class ChangeLog(object):
 
     def detail_modified(self):
         if self.item.record_status == consts.RECORD_UNCHANGED:
-            record_log = self.item.change_log.get_record_log()
-            if not record_log.old_record:
-                record_log.old_record = self.item.change_log.copy_record()
+            record_log = self.get_record_log()
+            record_log['old_record'] = self.copy_record()
             self.item.record_status = consts.RECORD_DETAILS_MODIFIED
 
     def log_change(self):
@@ -713,10 +712,7 @@ class ChangeLog(object):
             else:
                  raise Exception('Item %s: change log invalid records state' % self.item.item_name)
             if self.item.master:
-                if self.item.master.record_status == consts.RECORD_UNCHANGED:
-                    record_log = self.item.master.change_log.get_record_log()
-                    record_log.old_record = self.item.master.change_log.copy_record()
-                    self.item.master.record_status = consts.RECORD_DETAILS_MODIFIED
+                self.item.master.change_log.detail_modified()
         else:
             if state == consts.STATE_DELETE:
                 self.remove_record_log()
@@ -736,8 +732,8 @@ class ChangeLog(object):
                     details = log['details']
                     new_details = {}
                     for detail_id, detail in iteritems(log['details']):
-                        new_detail = {},
-                        detail_item = self.item.item_by_ID(detail_id)
+                        new_detail = {}
+                        detail_item = self.item.item_by_ID(int(detail_id))
                         detail_item.change_log.logs = detail['logs']
                         detail_item.change_log.get_changes(new_detail)
                         new_details[detail_id] = new_detail
@@ -811,7 +807,7 @@ class ChangeLog(object):
                 }
                 for detail in self.item.details:
                     detail.change_log.refresh()
-                    new_details[detail.ID] = detail.change_log.store_change_log()
+                    new_details[str(detail.ID)] = detail.change_log.store_change_log()
             new_logs.append(new_log)
         return result
 
@@ -830,7 +826,7 @@ class ChangeLog(object):
         for detail in self.item.details:
             if detail.active:
                 detail.change_log.refresh()
-                details[detail.ID] = detail.change_log.store_change_log()
+                details[str(detail.ID)] = detail.change_log.store_change_log()
         if self.item.log_changes and self.item.record_status == consts.RECORD_UNCHANGED:
             record_log = self.get_record_log()
             record_log['old_record'] = self.copy_record()
@@ -838,7 +834,7 @@ class ChangeLog(object):
 
     def restore_details(self, details):
         for detail_id, detail in iteritems(details):
-            self.item.item_by_ID(detail_id)._dataset = detail.records
+            self.item.item_by_ID(int(detail_id))._dataset = detail.records
             for log in detail['logs']:
                 if log:
                     self.restore_details(log.details)
@@ -862,9 +858,7 @@ class ChangeLog(object):
         if updates:
             changes = updates['changes']
             for change in changes:
-                log_id = change['log_id']
-                rec_id = change['rec_id']
-                details = change['details']
+                log_id, rec_id, details = change
                 record_log = self.logs[log_id]
                 if record_log:
                     record = record_log['record']
@@ -878,13 +872,14 @@ class ChangeLog(object):
                     if master_rec_id:
                         if not record[self.item._master_rec_id_field.bind_index]:
                             record[self.item._master_rec_id_field.bind_index] = master_rec_id
-                    for detail in details:
-                        ID = detail['ID']
-                        detail_item = self.item.detail_by_ID(int(ID))
-                        item_detail = record_details.get(str(ID))
-                        if item_detail:
-                            detail_item.change_log.logs = item_detail['logs']
-                            detail_item.change_log.update(detail, rec_id)
+                    if details:
+                        for detail in details:
+                            ID = detail['ID']
+                            detail_item = self.item.detail_by_ID(int(ID))
+                            item_detail = record_details.get(str(ID))
+                            if item_detail:
+                                detail_item.change_log.logs = item_detail['logs']
+                                detail_item.change_log.update(detail, rec_id)
                 self.logs[log_id] = None;
 
 
@@ -900,7 +895,7 @@ class AbstractDataSet(object):
         self.master = None
         self.change_log = ChangeLog(self)
         self._log_changes = True
-        self._dataset = None
+        self._dataset = []
         self._primary_key = None
         self._deleted_flag = None
         self._master_id = None
@@ -1481,7 +1476,7 @@ class AbstractDataSet(object):
 
     def close(self):
         self._active = False
-        self._dataset = None
+        self._dataset = []
         self.skip(0)
         self.close_details()
 

@@ -85,7 +85,7 @@ def process_delta(cursor, db_module, delta, master_rec_id, result):
                 rec_id = db_module.get_lastrowid(cursor)
             result_details = []
             if rec_id:
-                changes.append({'log_id': info['log_id'], 'rec_id': rec_id, 'details': result_details})
+                changes.append([info['log_id'], rec_id, result_details])
             for detail in details:
                 result_detail = {}
                 result_details.append(result_detail)

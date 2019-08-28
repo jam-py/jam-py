@@ -208,9 +208,9 @@ class ServerDataset(Dataset, SQL):
     def apply_delta(self, delta, params=None, connection=None, db_module=None):
         if not db_module:
             db_module = self.task.db_module
-        sql = delta.apply_sql(params)
-        return self.task.execute(sql, None, connection=connection, db_module=db_module, autocommit=False)
-        # ~ return delta.save_changes(connection, params, db_module)
+        # ~ sql = delta.apply_sql(params)
+        # ~ return self.task.execute(sql, None, connection=connection, db_module=db_module, autocommit=False)
+        return delta.process_changes(connection, params, db_module)
 
     def apply_changes(self, data, safe, connection=None):
         result = None
@@ -880,7 +880,7 @@ class AbstractServerTask(AbstrTask):
             for func_name, func in funcs:
                 item._events.append((func_name, func))
                 if hasattr(item, func_name) and func_name[:3] != 'on_':
-                    item.log.info('Module %s: function "%s" will override "%s" default method. Please, rename the function.' % \
+                    item.log.warning('Module %s: function "%s" will override "%s" default method. Please, rename the function.' % \
                         (item.module_name, func_name, item.item_name))
                 setattr(item, func_name, func)
         del code
@@ -934,11 +934,6 @@ class Task(AbstractServerTask):
             if old_case('a') != new_case('a'):
                 if new_case(item.table_name) == item.table_name:
                     sql = sql.replace(item.table_name, old_case(item.table_name))
-                for field in item.fields:
-                    if new_case(field.db_field_name) == field.db_field_name and \
-                        not field.db_field_name.upper() in consts.SQL_KEYWORDS:
-                        field_name = '"%s"' % field.db_field_name
-                        sql = sql.replace(field_name, old_case(field_name))
             return sql
 
         def drop_indexes():
@@ -974,7 +969,13 @@ class Task(AbstractServerTask):
                 con.close()
 
         def get_rows(item, db_module, con, loaded, limit):
-            params = {'__expanded': False, '__offset': loaded, '__limit': limit, '__fields': [], '__filters': []}
+            order_by = []
+            if item._primary_key_db_field_name:
+                order_by = [item._primary_key_db_field_name]
+            elif item == item.task.history_item:
+                order_by = [item.item_id.db_field_name, item.item_rec_id.db_field_name]
+            params = {'__expanded': False, '__offset': loaded, '__limit': limit,
+                '__fields': [], '__filters': [], '__order': order_by}
             sql = item.get_select_statement(params, db_module)
             sql = convert_sql(item, sql, db_module)
             con, (rows, error) = execute_sql(db_module, server, database, user, password,

@@ -94,7 +94,7 @@
             "edit_visible",
             "_read_only",
             "default",
-            "default_value",
+            "default_value",  
             "master_field",
             "_alignment",
             "lookup_values",
@@ -3386,9 +3386,9 @@
                 let self = this,
                     changes = updates.changes;
                 changes.forEach(function(change) {
-                    let log_id = change.log_id,
-                        rec_id = change.rec_id,
-                        details = change.details,
+                    let log_id = change[0],
+                        rec_id = change[1],
+                        details = change[2],
                         record_log = self.logs[log_id];
                     if (record_log) {
                         let record = record_log.record,
@@ -7832,111 +7832,28 @@
     /*                             Field class                            */
     /**********************************************************************/
 
-    function Field(owner, info) {
-        this.owner = owner;
-        this.set_info(info);
-        this.controls = [];
-        this.bind_index = null;
-        this.lookup_index = null;
-        this.field_type = field_type_names[this.data_type];
-        this.field_kind = consts.ITEM_FIELD;
-        if (owner) {
-            owner._fields.push(this);
+    class Field {
+        constructor(owner, info) {
+            this.owner = owner;
+            this.set_info(info);
+            this.controls = [];
+            this.bind_index = null;
+            this.lookup_index = null;
+            this.field_type = field_type_names[this.data_type];
+            this.field_kind = consts.ITEM_FIELD;
+            if (owner) {
+                owner._fields.push(this);
+            }
         }
-        Object.defineProperty(this, "data", {
-            get: function() {
-                return this.get_data();
-            },
-            set: function(new_value) {
-                this.set_data(new_value);
-            }
-        });
-        Object.defineProperty(this, "lookup_data", {
-            get: function() {
-                return this.get_lookup_data();
-            },
-            set: function(new_value) {
-                this.set_lookup_data(new_value);
-            }
-        });
-        Object.defineProperty(this, "lookup_data_type", {
-            get: function() {
-                return this.get_lookup_data_type();
-            }
-        });
-        Object.defineProperty(this, "value", {
-            get: function() {
-                return this.get_value();
-            },
-            set: function(new_value) {
-                this.set_value(new_value);
-            }
-        });
-        Object.defineProperty(this, "raw_value", { // depricated
-            get: function() {
-                return this.data;
-            },
-        });
-        Object.defineProperty(this, "text", {
-            get: function() {
-                return this.get_text();
-            },
-            set: function(new_value) {
-                this.set_text(new_value);
-            }
-        });
-        Object.defineProperty(this, "display_text", {
-            get: function() {
-                return this.get_display_text();
-            }
-        });
-        Object.defineProperty(this, "lookup_text", {
-            get: function() {
-                return this.get_lookup_text();
-            }
-        });
-        Object.defineProperty(this, "lookup_value", {
-            get: function() {
-                return this.get_lookup_value();
-            },
-            set: function(new_value) {
-                this.set_lookup_value(new_value);
-            }
-        });
-        Object.defineProperty(this, "lookup_type", {
-            get: function() {
-                return field_type_names[this.lookup_data_type];
-            },
-        });
-        Object.defineProperty(this, "alignment", {
-            get: function() {
-                return this.get_alignment();
-            },
-            set: function(new_value) {
-                this.set_alignment(new_value);
-            }
-        });
-        Object.defineProperty(this, "read_only", {
-            get: function() {
-                return this._get_read_only();
-            },
-            set: function(new_value) {
-                this._set_read_only(new_value);
-            }
-        });
-    }
 
-    Field.prototype = {
-        constructor: Field,
-
-        copy: function(owner) {
+        copy(owner) {
             var result = new Field(owner, this.get_info());
             result.lookup_item = this.lookup_item;
             result.lookup_field = this.lookup_field;
             return result;
-        },
+        }
 
-        get_info: function() {
+        get_info() {
             var i,
                 len = field_attr.length,
                 result = [];
@@ -7944,9 +7861,9 @@
                 result.push(this[field_attr[i]]);
             }
             return result;
-        },
+        }
 
-        set_info: function(info) {
+        set_info(info) {
             if (info) {
                 var i,
                     len = field_attr.length;
@@ -7954,9 +7871,9 @@
                     this[field_attr[i]] = info[i];
                 }
             }
-        },
+        }
 
-        get_row: function() {
+        get_row() {
             if (this.owner._dataset && this.owner._dataset.length) {
                 return this.owner._dataset[this.owner.rec_no];
             } else {
@@ -7967,9 +7884,9 @@
                 console.trace();
                 throw mess
             }
-        },
+        }
 
-        get_data: function() {
+        get data() {
             var row,
                 result;
             if (this.field_kind === consts.ITEM_FIELD) {
@@ -7985,9 +7902,9 @@
             } else {
                 return this._value;
             }
-        },
+        }
 
-        set_data: function(value) {
+        set data(value) {
             var row;
             if (this.field_kind === consts.ITEM_FIELD) {
                 row = this.get_row();
@@ -7997,9 +7914,17 @@
             } else {
                 this._value = value;
             }
-        },
+        }
 
-        get_lookup_data: function() {
+        get raw_value() {
+            return this.data;
+        }
+
+        get lookup_type() {
+            return field_type_names[this.lookup_data_type];
+        }
+
+        get lookup_data() {
             var row,
                 result;
             if (this.field_kind === consts.ITEM_FIELD) {
@@ -8014,9 +7939,9 @@
             } else {
                 return this._lookup_value;
             }
-        },
+        }
 
-        set_lookup_data: function(value) {
+        set lookup_data(value) {
             var row;
             if (this.field_kind === consts.ITEM_FIELD) {
                 row = this.get_row();
@@ -8026,9 +7951,9 @@
             } else {
                 this._lookup_value = value
             }
-        },
+        }
 
-        get_text: function() {
+        get text() {
             var result = "",
                 error = "";
             try {
@@ -8074,9 +7999,9 @@
                 result = ''
             }
             return result;
-        },
+        }
 
-        set_text: function(value) {
+        set text(value) {
             var error = "";
             if (value !== this.text) {
                 switch (this.data_type) {
@@ -8111,9 +8036,9 @@
                         this.value = value;
                 }
             }
-        },
+        }
 
-          get_value: function() {
+          get value() {
             var value = this.data;
             if (value === null) {
                 if (this.field_kind === consts.ITEM_FIELD) {
@@ -8167,9 +8092,13 @@
                 }
             }
             return value;
-        },
+        }
 
-        _change_lookup_field: function(lookup_value, slave_field_values) {
+        set value(value) {
+            this.set_value(value);
+        }
+
+        _change_lookup_field(lookup_value, slave_field_values) {
             var self = this,
                 item = this.owner,
                 master_field;
@@ -8195,9 +8124,9 @@
                     this.lookup_value = lookup_value;
                 }
             }
-        },
+        }
 
-        _do_before_changed: function() {
+        _do_before_changed() {
             if (this.field_kind === consts.ITEM_FIELD) {
                 if (!this.owner.is_changing()) {
                     console.trace();
@@ -8207,9 +8136,9 @@
                     this.owner.on_before_field_changed.call(this.owner, this);
                 }
             }
-        },
+        }
 
-        _do_after_changed: function(lookup_item) {
+        _do_after_changed(lookup_item) {
             if (this.owner && this.owner.on_field_changed) {
                 this.owner.on_field_changed.call(this.owner, this, lookup_item);
             }
@@ -8219,9 +8148,9 @@
                     this.filter.owner.on_filter_changed.call(this.filter.owner, this.filter);
                 }
             }
-        },
+        }
 
-        _check_system_field_value: function(value) {
+        _check_system_field_value(value) {
             if (this.field_kind === consts.ITEM_FIELD) {
                 if (this.field_name === this.owner._primary_key && this.value && this.value !== value) {
                     console.trace();
@@ -8232,9 +8161,9 @@
                     throw language.no_deleted_field_changing.replace('%s', this.owner.item_name);
                 }
             }
-        },
+        }
 
-        set_value: function(value, lookup_value, slave_field_values, lookup_item) {
+        set_value(value, lookup_value, slave_field_values, lookup_item) {
             if (value === undefined) {
                 value = null;
             }
@@ -8281,17 +8210,17 @@
             }
             this.new_value = null;
             this.update_controls();
-        },
+        }
 
-        _set_modified: function(value) {
+        _set_modified(value) {
             if (this.field_kind === consts.ITEM_FIELD) {
                 if (this.owner._set_modified) {
                     this.owner._set_modified(value);
                 }
             }
-        },
+        }
 
-        get_lookup_data_type: function() {
+        get lookup_data_type() {
             if (this.lookup_values) {
                 return consts.TEXT;
             } else if (this.lookup_item) {
@@ -8307,9 +8236,9 @@
             } else {
                 return this.data_type
             }
-        },
+        }
 
-        _get_value_in_list: function(value) {
+        _get_value_in_list(value) {
             var i = 0,
                 len = this.lookup_values.length,
                 result = '';
@@ -8322,9 +8251,9 @@
                 }
             }
             return result
-        },
+        }
 
-        get_lookup_value: function() {
+        get lookup_value() {
             var value = null;
             if (this.lookup_values) {
                 try {
@@ -8332,7 +8261,7 @@
                 } catch (e) {}
             }
             else if (this.lookup_item) {
-                if (this.get_value()) {
+                if (this.value) {
                     value = this.lookup_data;
                     switch (this.lookup_data_type) {
                         case consts.DATE:
@@ -8363,16 +8292,16 @@
                 value = this.value;
             }
             return value;
-        },
+        }
 
-        set_lookup_value: function(value) {
+        set lookup_value(value) {
             if (this.lookup_item) {
                 this.lookup_data = value;
                 this.update_controls();
             }
-        },
+        }
 
-        get_lookup_text: function() {
+        get lookup_text() {
             var self = this,
                 data_type,
                 lookup_field,
@@ -8423,9 +8352,9 @@
                 }
             } catch (e) {}
             return result;
-        },
+        }
 
-        _get_image_size: function(edit_image) {
+        _get_image_size(edit_image) {
             var width,
                 height,
                 value,
@@ -8460,9 +8389,9 @@
             result.width = width;
             result.height = height;
             return result
-        },
+        }
 
-        _get_image: function(edit_image) {
+        _get_image(edit_image) {
             var size,
                 field_image,
                 value,
@@ -8495,17 +8424,17 @@
                     return '<img src="' + placeholder + '" alt="Image placeholder" style="width:' + size.width + ';height:' + size.height + '">';
                 }
             }
-        },
+        }
 
-        get_html: function() {
+        get_html() {
             var img_scr;
             if (this.owner && this.owner.on_field_get_html) {
                 return this.owner.on_field_get_html.call(this.owner, this);
             }
             return this._get_image();
-        },
+        }
 
-        get_display_text: function() {
+        get display_text() {
             var res,
                 len,
                 value,
@@ -8525,14 +8454,14 @@
                 }
             }
             else if (this.lookup_values) {
-                result = this.get_lookup_text();
+                result = this.lookup_text;
                 if (result === '&nbsp') result = '';
             } else if (this.lookup_item) {
                 if (this.field_kind === consts.ITEM_FIELD && !this.owner.expanded) {
                     result = this.text;
                 }
                 else {
-                    result = this.get_lookup_text();
+                    result = this.lookup_text;
                 }
             } else {
                 if (this.data_type === consts.CURRENCY) {
@@ -8565,9 +8494,9 @@
                 result = '';
             }
             return result;
-        },
+        }
 
-        assign_default_value: function() {
+        assign_default_value() {
             if (this.default_value) {
                 try {
                     switch (this.data_type) {
@@ -8606,9 +8535,9 @@
                     console.error(e)
                 }
             }
-        },
+        }
 
-        upload_image: function() {
+        upload_image() {
             var self = this;
             this.owner.task.upload(
                 {
@@ -8618,9 +8547,9 @@
                     }
                 }
             );
-        },
+        }
 
-        upload: function() {
+        upload() {
             var self = this;
             this.owner.task.upload(
                 {
@@ -8630,9 +8559,9 @@
                     }
                 }
             );
-        },
+        }
 
-        open: function() {
+        open() {
             var url,
                 link = document.createElement('a');
             if (this.data) {
@@ -8645,9 +8574,9 @@
                 }
                 window.open(encodeURI(url));
             }
-        },
+        }
 
-        download: function() {
+        download() {
             var url,
                 link = document.createElement('a');
             if (this.data) {
@@ -8670,74 +8599,47 @@
                     this.open();
                 }
             }
-        },
+        }
 
-        _set_read_only: function(value) {
+        set read_only(value) {
             this._read_only = value;
             this.update_controls();
-        },
+        }
 
-        _get_read_only: function() {
+        get read_only() {
             var result = this._read_only;
             if (this.owner && this.owner.owner_read_only && this.owner.read_only) {
                 result = this.owner.read_only;
             }
             return result;
-        },
+        }
 
-        set_visible: function(value) {
-            this._visible = value;
-            this.update_controls();
-        },
-
-        get_visible: function() {
-            return this._visible;
-        },
-
-        set_alignment: function(value) {
+        set alignment(value) {
             this._alignment = value;
             this.update_controls();
-        },
+        }
 
-        get_alignment: function() {
+        get alignment() {
             return this._alignment;
-        },
+        }
 
-        set_expand: function(value) {
-            this._expand = value;
-            this.update_controls();
-        },
-
-        get_expand: function() {
-            return this._expand;
-        },
-
-        set_word_wrap: function(value) {
-            this._word_wrap = value;
-            this.update_controls();
-        },
-
-        get_word_wrap: function() {
-            return this._word_wrap;
-        },
-
-        check_type: function() {
+        check_type() {
             if ((this.data_type === consts.TEXT) && (this.field_size !== 0) && (this.text.length > this.field_size)) {
                 console.trace();
                 throw this.field_caption + ': ' + language.invalid_length.replace('%s', this.field_size);
             }
             return true;
-        },
+        }
 
-        check_reqired: function() {
+        check_reqired() {
             if (this.required && this.data === null) {
                 console.trace();
                 throw this.field_caption + ': ' + language.value_required;
             }
             return true;
-        },
+        }
 
-        get_mask: function() {
+        get_mask() {
             var ch = '',
                 format,
                 result = '';
@@ -8771,9 +8673,9 @@
                 }
             }
             return result;
-        },
+        }
 
-        check_valid: function() {
+        check_valid() {
             var err;
             if (this.check_reqired()) {
                 if (this.check_type()) {
@@ -8796,9 +8698,9 @@
                     return true;
                 }
             }
-        },
+        }
 
-        typeahead_options: function() {
+        typeahead_options() {
             var self = this,
                 length = 10,
                 lookup_item = self.lookup_item.copy(),
@@ -8822,9 +8724,9 @@
                 }
             }
             return result;
-        },
+        }
 
-        get_typeahead_defs: function($input) {
+        get_typeahead_defs($input) {
             var self = this,
                 lookup_item,
                 items = 10,
@@ -8851,36 +8753,36 @@
                 },
             }
             return def;
-        },
+        }
 
-        numeric_field: function() {
+        numeric_field() {
             if (!this.lookup_item && (
                 this.data_type === consts.INTEGER ||
                 this.data_type === consts.FLOAT ||
                 this.data_type === consts.CURRENCY)) {
                 return true;
             }
-        },
+        }
 
-        system_field: function() {
+        system_field() {
             if (this.field_name === this.owner._primary_key ||
                 this.field_name === this.owner._deleted_flag ||
                 this.field_name === this.owner._master_id ||
                 this.field_name === this.owner._master_rec_id) {
                 return true;
             }
-        },
+        }
 
-        _check_args: function(args) {
+        _check_args(args) {
             var i,
                 result = {};
             for (i = 0; i < args.length; i++) {
                 result[typeof args[i]] = args[i];
             }
             return result;
-        },
+        }
 
-        update_controls: function() {
+        update_controls() {
             var i,
                 len,
                 args = this._check_args(arguments),
@@ -8897,16 +8799,16 @@
                     this.owner.controls[i].update_field(this);
                 }
             }
-        },
+        }
 
-        update_control_state: function(error) {
+        update_control_state(error) {
             for (var i = 0; i < this.controls.length; i++) {
                 this.controls[i].error = error;
                 this.controls[i].updateState(false);
             }
-        },
+        }
 
-        type_error: function() {
+        type_error() {
             switch (this.data_type) {
                 case consts.INTEGER:
                     return language.invalid_int.replace('%s', '');
@@ -8923,9 +8825,9 @@
                 default:
                     return language.invalid_value.replace('%s', '');
             }
-        },
+        }
 
-        valid_char_code: function(code) {
+        valid_char_code(code) {
             var ch = String.fromCharCode(code),
                 isDigit = code >= 48 && code <= 57,
                 decPoint = ch === '.' || ch === locale.DECIMAL_POINT || ch === locale.MON_DECIMAL_POINT,
@@ -8942,57 +8844,57 @@
                 }
             }
             return true;
-        },
+        }
 
-        str_to_int: function(str) {
+        str_to_int(str) {
             return task.str_to_int(str);
-        },
+        }
 
-        str_to_date: function(str) {
+        str_to_date(str) {
             return task.str_to_date(str);
-        },
+        }
 
-        str_to_datetime: function(str) {
+        str_to_datetime(str) {
             return task.str_to_datetime(str);
-        },
+        }
 
-        str_to_float: function(str) {
+        str_to_float(str) {
             return task.str_to_float(str);
-        },
+        }
 
-        str_to_cur: function(str) {
+        str_to_cur(str) {
             return task.str_to_cur(str);
-        },
+        }
 
-        int_to_str: function(value) {
+        int_to_str(value) {
             return task.int_to_str(value);
-        },
+        }
 
-        float_to_str: function(value) {
+        float_to_str(value) {
             return task.float_to_str(value);
-        },
+        }
 
-        date_to_str: function(value) {
+        date_to_str(value) {
             return task.date_to_str(value);
-        },
+        }
 
-        datetime_to_str: function(value) {
+        datetime_to_str(value) {
             return task.datetime_to_str(value);
-        },
+        }
 
-        cur_to_str: function(value) {
+        cur_to_str(value) {
             return task.cur_to_str(value);
-        },
+        }
 
-        format_string_to_date: function(value, format) {
+        format_string_to_date(value, format) {
             return task.format_string_to_date(value, format);
-        },
+        }
 
-        format_date_to_string: function(value, format) {
+        format_date_to_string(value, format) {
             return task.format_date_to_string(value, format);
-        },
+        }
 
-        _do_select_value: function(lookup_item) {
+        _do_select_value(lookup_item) {
             if (this.owner && this.owner.on_param_select_value) {
                 this.owner.on_param_select_value.call(this.owner, this, lookup_item);
             }
@@ -9002,9 +8904,9 @@
             if (this.filter && this.filter.owner.on_filter_select_value) {
                 this.filter.owner.on_filter_select_value.call(this.filter.owner, this.filter, lookup_item);
             }
-        },
+        }
 
-        select_value: function() {
+        select_value() {
             var self = this,
                 copy = this.lookup_item.copy(),
                 on_view_form_closed = copy.on_view_form_closed;
@@ -9026,66 +8928,51 @@
             this._do_select_value(copy);
             copy.view();
         }
-    };
+    }
 
     /**********************************************************************/
     /*                            Filter class                            */
     /**********************************************************************/
 
-    function Filter(owner, info) {
-        var self = this,
-            field;
+    class Filter {
+        constructor (owner, info) {
+            var self = this,
+                field;
 
-        this.owner = owner;
-        this.set_info(info);
-        if (owner) {
-            owner.filters.push(this);
-            if (!(this.filter_name in owner.filters)) {
-                owner.filters[this.filter_name] = this;
-            }
-            if (this.field_name) {
-                field = this.owner._field_by_ID(this.field_name);
-                this.field = this.create_field(field);
-                this.field.required = false;
-                if (this.field.lookup_values && (typeof this.field.lookup_values === "number")) {
-                    this.field.lookup_values = this.owner.task.lookup_lists[this.field.lookup_values];
+            this.owner = owner;
+            this.set_info(info);
+            if (owner) {
+                owner.filters.push(this);
+                if (!(this.filter_name in owner.filters)) {
+                    owner.filters[this.filter_name] = this;
                 }
-                this.field.field_help = this.filter_help;
-                this.field.field_placeholder = this.filter_placeholder;
-                this.field.multi_select_all = this.multi_select_all;
-                if (this.filter_type === consts.FILTER_IN || this.filter_type === consts.FILTER_NOT_IN) {
-                    this.field.multi_select = true;
-                }
-                if (this.filter_type === consts.FILTER_RANGE) {
-                    this.field1 = this.create_field(field);
-                    this.field1.field_help = undefined;
-                }
-                if (this.field.data_type === consts.BOOLEAN || this.filter_type === consts.FILTER_ISNULL) {
-                    this.field.bool_filter = true;
-                    this.field.data_type = consts.INTEGER;
-                    this.field.lookup_values = [[null, ''], [0, language.no], [1, language.yes]];
+                if (this.field_name) {
+                    field = this.owner._field_by_ID(this.field_name);
+                    this.field = this.create_field(field);
+                    this.field.required = false;
+                    if (this.field.lookup_values && (typeof this.field.lookup_values === "number")) {
+                        this.field.lookup_values = this.owner.task.lookup_lists[this.field.lookup_values];
+                    }
+                    this.field.field_help = this.filter_help;
+                    this.field.field_placeholder = this.filter_placeholder;
+                    this.field.multi_select_all = this.multi_select_all;
+                    if (this.filter_type === consts.FILTER_IN || this.filter_type === consts.FILTER_NOT_IN) {
+                        this.field.multi_select = true;
+                    }
+                    if (this.filter_type === consts.FILTER_RANGE) {
+                        this.field1 = this.create_field(field);
+                        this.field1.field_help = undefined;
+                    }
+                    if (this.field.data_type === consts.BOOLEAN || this.filter_type === consts.FILTER_ISNULL) {
+                        this.field.bool_filter = true;
+                        this.field.data_type = consts.INTEGER;
+                        this.field.lookup_values = [[null, ''], [0, language.no], [1, language.yes]];
+                    }
                 }
             }
         }
-        Object.defineProperty(this, "value", {
-            get: function() {
-                return this.get_value();
-            },
-            set: function(new_value) {
-                this.set_value(new_value);
-            }
-        });
-        Object.defineProperty(this, "text", {
-            get: function() {
-                return this.get_text();
-            }
-        });
-    }
 
-    Filter.prototype = {
-        constructor: Filter,
-
-        create_field: function(field) {
+        create_field(field) {
             var result = new Field();
             result.set_info(field.get_info());
             result._read_only = false;
@@ -9094,14 +8981,14 @@
             result._lookup_value = null;
             result.field_kind = consts.FILTER_FIELD;
             return result;
-        },
+        }
 
-        copy: function(owner) {
+        copy(owner) {
             var result = new Filter(owner, this.get_info());
             return result;
-        },
+        }
 
-        get_info: function() {
+        get_info() {
             var i,
                 len = filter_attr.length,
                 result = [];
@@ -9109,9 +8996,9 @@
                 result.push(this[filter_attr[i]]);
             }
             return result;
-        },
+        }
 
-        set_info: function(info) {
+        set_info(info) {
             if (info) {
                 var i,
                     len = filter_attr.length;
@@ -9119,9 +9006,9 @@
                     this[filter_attr[i]] = info[i];
                 }
             }
-        },
+        }
 
-        get_value: function() {
+        get value() {
             var result;
             if (this.filter_type === consts.FILTER_RANGE) {
                 if (this.field.data !== null && this.field1.data !== null) {
@@ -9134,9 +9021,13 @@
             else {
                 return this.field.data;
             }
-        },
+        }
 
-        set_value: function(value, lookup_value) {
+        set value(value) {
+            this.set_value(value);
+        }
+
+        set_value(value, lookup_value) {
             var new_value;
             if (this.filter_type === consts.FILTER_RANGE) {
                 if (value === null) {
@@ -9151,9 +9042,9 @@
             else {
                 this.field.set_value(value, lookup_value);
             }
-        },
+        }
 
-        update: function(field) {
+        update(field) {
             var other_field = this.field,
                 value;
             if (this.filter_type === consts.FILTER_RANGE) {
@@ -9166,17 +9057,17 @@
                     }
                 }
             }
-        },
+        }
 
-        check_valid: function() {
+        check_valid() {
             var error = this.check_value(this.field);
             if (error) {
                 console.trace();
                 throw error;
             }
-        },
+        }
 
-        check_value: function(field) {
+        check_value(field) {
             if (this.filter_type === consts.FILTER_RANGE) {
                 if (this.field.data === null && this.field1.data !== null ||
                     this.field.data !== null && this.field1.data === null ||
@@ -9184,9 +9075,9 @@
                     return language.invalid_range;
                 }
             }
-        },
+        }
 
-        get_text: function() {
+        get text() {
             var result = '';
             if (this.visible && this.value != null) {
                 result = this.filter_caption + ': ';
@@ -9197,9 +9088,9 @@
                 }
             }
             return result;
-        },
+        }
 
-        get_html: function() {
+        get_html() {
             var val,
                 result = '';
             if (this.visible && this.value != null) {
@@ -9212,29 +9103,29 @@
                 result += '<b>' + val + '</b>';
             }
             return result;
-        },
-    };
+        }
+    }
 
     /**********************************************************************/
     /*                             Param class                            */
     /**********************************************************************/
 
-    Param.prototype = new Field();
-    Param.prototype.constructor = Field;
-
-    function Param(owner, info) {
-        Field.call(this, owner, info);
-        this.param_name = this.field_name;
-        this.param_caption = this.field_caption;
-        this.field_size = 0;
-        this.report = owner;
-        this._value = null;
-        this._lookup_value = null;
-        this.field_kind = consts.PARAM_FIELD;
-        if (this.owner[this.param_name] === undefined) {
-            this.owner[this.param_name] = this;
+    class Param extends Field {
+        constructor(owner, info) {
+            super(owner, info);
+            this.param_name = this.field_name;
+            this.param_caption = this.field_caption;
+            this.field_size = 0;
+            this.report = owner;
+            this._value = null;
+            this._lookup_value = null;
+            this.field_kind = consts.PARAM_FIELD;
+            if (this.owner[this.param_name] === undefined) {
+                this.owner[this.param_name] = this;
+            }
         }
     }
+
 
     /**********************************************************************/
     /*                            DBTree class                            */
@@ -13146,7 +13037,7 @@
             this.errorValue = undefined;
             this.error = undefined;
             if (this.field.lookup_item || this.field.lookup_values) {
-                if (this.$input.val() !== this.field.get_lookup_text()) {
+                if (this.$input.val() !== this.field.lookup_text) {
                     this.$input.val(this.field.display_text);
                 }
             } else {
@@ -13159,7 +13050,7 @@
                         if (text === '') {
                             this.field.value = null;
                         } else {
-                            this.field.set_text(text);
+                            this.field.text = text;
                             if (!(this.field.field_kind === consts.ITEM_FIELD && !this.field.owner.rec_count)) {
                                 this.field.check_valid();
                                 if (this.$input.is(':visible')) {
