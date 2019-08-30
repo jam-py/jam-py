@@ -2960,15 +2960,11 @@
 
         format_string_to_date: function(str, format) {
             var ch = '',
-                substr,
+                substr = str,
                 day, month, year,
                 hour = 0,
                 min = 0,
                 sec = 0;
-            if (str && str.search('.') !== -1) {
-                str = str.split('.')[0];
-            }
-            substr = str;
             for (var i = 0; i < format.length; ++i) {
                 ch = format.charAt(i);
                 switch (ch) {

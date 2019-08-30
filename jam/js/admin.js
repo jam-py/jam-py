@@ -2501,18 +2501,24 @@ function Events3() { // sys_items
 					import_table(item, imp);
 				}
 			}
-			imp.on_view_form_created = function(imp) {
+			imp.on_view_form_shown = function(imp) {
 				imp.view_form.find('.modal-footer').show();
 				imp.view_form.find('#import-btn').click(function() {
 					import_table(item, imp);
 				});
 				imp.task.server('server_get_table_names', function(table_names) {
-					for (var i = 0; i < table_names.length; i++) {
-						imp.append()
-						imp.f_table_name.value = table_names[i]
-						imp.post()
+					imp.disable_controls();
+					try {
+						for (var i = 0; i < table_names.length; i++) {
+							imp.append()
+							imp.f_table_name.value = table_names[i]
+							imp.post()
+						}
+						imp.first();
 					}
-					imp.first();
+					finally {
+						imp.enable_controls();
+					}
 				});
 			}
 			imp.view_options.template_class = 'import-tables-view';
