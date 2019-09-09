@@ -251,8 +251,8 @@ class MetaDataImport(object):
                             db_sql.append(indices_delete_sql(task.sys_indices, d))
                 adm_sql.append(delta.apply_sql())
 
-                for item_name in ['sys_report_params', 'sys_roles',
-                    'sys_params', 'sys_privileges', 'sys_lookup_lists']:
+                for item_name in ['sys_filters', 'sys_report_params', 'sys_roles', 'sys_params',
+                    'sys_privileges', 'sys_lookup_lists']:
                     delta = self.get_delta(item_name)
                     adm_sql.append(delta.apply_sql())
 
