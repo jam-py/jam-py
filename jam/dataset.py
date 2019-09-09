@@ -161,13 +161,13 @@ class DBField(object):
             elif self.data_type == consts.INTEGER:
                 self.value =  int(value)
             if self.data_type == consts.FLOAT:
-                self.value = str_to_float(value)
+                self.value = consts.str_to_float(value)
             elif self.data_type == consts.CURRENCY:
-                self.value = str_to_cur(value)
+                self.value = consts.str_to_cur(value)
             elif self.data_type == consts.DATE:
-                self.value = str_to_date(value)
+                self.value = consts.str_to_date(value)
             elif self.data_type == consts.DATETIME:
-                self.value = str_to_datetime(value)
+                self.value = consts.str_to_datetime(value)
             elif self.data_type == consts.BOOLEAN:
                 if value.upper() == consts.language('yes').upper():
                     self.value = True
