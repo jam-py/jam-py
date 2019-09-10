@@ -176,8 +176,9 @@ def change_field_sql(table_name, old_field, new_field):
             or old_field['size'] != new_field['size']:
         raise Exception(u"Don't know how to change field's size or type of %s" % old_field['field_name'])
     if old_field['field_name'] != new_field['field_name']:
-        result.append('ALTER TABLE "%s" RENAME COLUMN  "%s" TO "%s"' %
-                      (table_name, old_field['field_name'], new_field['field_name']))
+        raise Exception(u"Don't know how to rename field %s" % old_field['field_name'])
+        # ~ result.append('ALTER TABLE "%s" RENAME COLUMN  "%s" TO "%s"' %
+                      # ~ (table_name, old_field['field_name'], new_field['field_name']))
     if old_field['default_value'] != new_field['default_value']:
         if new_field['default_value']:
             if new_field['data_type'] == TEXT:

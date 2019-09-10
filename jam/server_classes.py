@@ -5,6 +5,7 @@ from xml.sax.saxutils import escape
 import datetime, time
 import inspect
 import json
+import types
 from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_bytes, to_unicode
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -57,14 +58,17 @@ class ServerDataset(Dataset, SQL):
         result.gen_name = self.gen_name
         result._order_by = self._order_by
         result.soft_delete = self.soft_delete
+        result.edit_lock = self.edit_lock
         result._primary_key = self._primary_key
         result._deleted_flag = self._deleted_flag
+        result._record_version = self._record_version
         result._master_id = self._master_id
         result._master_rec_id = self._master_rec_id
         result._primary_key_db_field_name = self._primary_key_db_field_name
         result._deleted_flag_db_field_name = self._deleted_flag_db_field_name
         result._master_id_db_field_name = self._master_id_db_field_name
         result._master_rec_id_db_field_name = self._master_rec_id_db_field_name
+        result._record_version_db_field_name = self._record_version_db_field_name
         return result
 
     def get_event(self, caption):
@@ -102,7 +106,7 @@ class ServerDataset(Dataset, SQL):
                 data, error = self.apply_changes((changes, params), safe, connection)
                 if error:
                     raise Exception(error)
-                else:
+                elif data:
                     self.change_log.update(data)
 
     def add_detail(self, table):
@@ -134,20 +138,6 @@ class ServerDataset(Dataset, SQL):
                 count += rows[0][0]
             result = count, error_mess
         return result
-
-    def find_rec_version(self, params):
-        item_id = params.get('__edit_record_id')
-        if item_id and self.task.lock_item:
-            locks = self.task.lock_item.copy()
-            return self.get_version(locks, item_id)
-
-    def get_version(self, locks, item_id):
-        locks.set_where(item_id=self.ID, item_rec_id=item_id)
-        locks.open()
-        if locks.rec_count:
-            return locks.version.value
-        else:
-            return 1
 
     def execute_open(self, params, connection=None, db_module=None):
         error_mes = ''
@@ -181,29 +171,7 @@ class ServerDataset(Dataset, SQL):
         if result is None:
             result = self.execute_open(params)
         result = list(result)
-        result.append(self.find_rec_version(params))
         return result
-
-    def update_rec_version(self, delta, params, connection):
-        version = params.get('__edit_record_version')
-        if version and delta.rec_count == 1 and self.task.lock_item:
-            item_id = delta._primary_key_field.value
-            locks = self.task.lock_item.copy()
-            new_version = self.get_version(locks, item_id)
-            if new_version != version:
-                raise Exception(consts.language('edit_record_modified'))
-            locks.set_where(item_id=self.ID, item_rec_id=item_id)
-            locks.open()
-            if locks.rec_count:
-                locks.edit()
-            else:
-                locks.append()
-            locks.item_id.value = self.ID
-            locks.item_rec_id.value = item_id
-            locks.version.value = version + 1
-            locks.post()
-            locks.apply(connection)
-            return locks.version.value
 
     def apply_delta(self, delta, params=None, connection=None, db_module=None):
         if not db_module:
@@ -214,23 +182,20 @@ class ServerDataset(Dataset, SQL):
 
     def apply_changes(self, data, safe, connection=None):
         result = None
+        autocommit = False
         changes, params = data
         if not params:
             params = {}
         params['__safe'] = safe
         delta = self.delta(changes)
-        if connection:
-            autocommit = False
-        else:
+        if not connection:
             autocommit = True
             connection = self.task.connect()
         try:
-            rec_version = self.update_rec_version(delta, params, connection)
             if self.task.on_apply:
                 try:
                     result = self.task.on_apply(self, delta, params, connection)
-                except:
-                    # for compatibility with previous versions
+                except: # for compatibility with previous versions
                     if get_function_code(self.task.on_apply).co_argcount == 3:
                         result = self.task.on_apply(self, delta, params)
                     else:
@@ -238,20 +203,15 @@ class ServerDataset(Dataset, SQL):
             if result is None and self.on_apply:
                 try:
                     result = self.on_apply(self, delta, params, connection)
-                except:
-                    # for compatibility with previous versions
+                except: # for compatibility with previous versions
                     if get_function_code(self.on_apply).co_argcount == 3:
                         result = self.on_apply(self, delta, params)
                     else:
                         raise
             if result is None:
                 result = self.apply_delta(delta, params, connection)
-                if autocommit:
-                    connection.commit()
-            try:
-                result[0]['__edit_record_version'] = rec_version
-            except:
-                pass
+            if autocommit:
+                connection.commit()
         finally:
             if connection and autocommit:
                 connection.close()
@@ -1090,7 +1050,7 @@ class Task(AbstractServerTask):
                                             break
                                     if item.gen_name:
                                         cursor = con.cursor()
-                                        cursor.execute('SELECT MAX(%s) FROM %s' % (item._primary_key, item.table_name))
+                                        cursor.execute('SELECT MAX("%s") FROM "%s"' % (item._primary_key_db_field_name, item.table_name))
                                         res = cursor.fetchall()
                                         max_pk = res[0][0]
                                         sql = self.db_module.restart_sequence_sql(item.gen_name, max_pk + 1)

@@ -56,7 +56,7 @@ class SQL(object):
         values = []
         index = 0
         for field in self.fields:
-            if not (field.master_field or (field == pk and auto_pk and not pk.data)):
+            if not (field == pk and auto_pk and not pk.data):
                 index += 1
                 fields.append('"%s"' % field.db_field_name)
                 values.append('%s' % db_module.value_literal(index))
@@ -72,16 +72,17 @@ class SQL(object):
             self.__execute(cursor, after_sql)
         if db_module.get_lastrowid and not pk.data:
             pk.data = db_module.get_lastrowid(cursor)
-            changes.append([self.get_rec_info()[consts.REC_LOG_REC], pk.data, details_changes])
+        changes.append([self.get_rec_info()[consts.REC_LOG_REC], self._dataset[self.rec_no], details_changes])
 
     def __update_record(self, cursor, db_module, changes, details_changes):
+        now0 = datetime.datetime.now()
         row = []
         fields = []
         index = 0
         pk = self._primary_key_field
         command = 'UPDATE "%s" SET ' % self.table_name
         for field in self.fields:
-            if not (field.master_field or field == pk):
+            if field.field_name != self._record_version and field != pk:
                 index += 1
                 fields.append('"%s"=%s' % (field.db_field_name, db_module.value_literal(index)))
                 value = (field.data, field.data_type)
@@ -89,6 +90,9 @@ class SQL(object):
                     value = (0, field.data_type)
                 row.append(value)
         fields = ', '.join(fields)
+        if self._record_version:
+            fields = ' %s, "%s"=COALESCE("%s", 0)+1' % \
+            (fields, self._record_version_db_field_name, self._record_version_db_field_name)
         if self._primary_key_field.data_type == consts.TEXT:
             id_literal = "'%s'" % self._primary_key_field.value
         else:
@@ -97,6 +101,17 @@ class SQL(object):
         sql = ''.join([command, fields, where])
         row = db_module.process_sql_params(row, cursor)
         self.__execute(cursor, sql, row)
+        # ~ print 222, self.item_name, datetime.datetime.now() - now0
+        if self.edit_lock and self._record_version:
+            now = datetime.datetime.now()
+            self.__execute(cursor, 'SELECT "%s" FROM "%s" WHERE "%s"=%s' % \
+                (self._record_version_db_field_name, self.table_name, \
+                self._primary_key_db_field_name, pk.data))
+            # ~ print 111, datetime.datetime.now() - now
+            r = cursor.fetchone()
+            if r[0] != self._record_version_field.value + 1:
+                raise Exception(consts.language('edit_record_modified'))
+        changes.append([self.get_rec_info()[consts.REC_LOG_REC], self._dataset[self.rec_no], details_changes])
 
     def __delete_record(self, cursor, db_module):
         soft_delete = self.soft_delete

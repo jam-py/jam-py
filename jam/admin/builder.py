@@ -1015,7 +1015,7 @@ def create_system_item(task, field_name):
 
         sys_group = None
         params = task.sys_params.copy()
-        params.open(fields=['id', 'f_sys_group', 'f_history_item', 'f_lock_item'])
+        params.open(fields=['id', 'f_sys_group', 'f_history_item'])
 
         sys_group = params.f_sys_group.value
         if sys_group:
@@ -1050,14 +1050,6 @@ def create_system_item(task, field_name):
             table_name, gen_name = get_new_table_name(task, item_name)
             gen_name = None
             sys_id = 1
-        elif field_name == 'f_lock_item':
-            name = 'Locks'
-            item_name = check_item_name('locks')
-            fields = consts.LOCKS_FIELDS
-            index_fields = consts.LOCKS_INDEX_FIELDS
-            param_field = 'f_lock_item'
-            table_name, gen_name = get_new_table_name(task, item_name)
-            sys_id = 2
         items.open(open_empty=True)
         items.append()
         items.parent.value = sys_group
@@ -1380,8 +1372,6 @@ def sys_item_deleted_sql(delta):
     sys_params.open()
     if delta.id.value == sys_params.f_history_item.value:
         result.append('UPDATE SYS_PARAMS SET F_HISTORY_ITEM=NULL')
-    if delta.id.value == sys_params.f_lock_item.value:
-        result.append('UPDATE SYS_PARAMS SET F_LOCK_ITEM=NULL')
     if delta.id.value == sys_params.f_sys_group.value:
         result.append('UPDATE SYS_PARAMS SET F_SYS_GROUP=NULL')
     return result

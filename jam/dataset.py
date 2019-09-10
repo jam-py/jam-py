@@ -161,13 +161,13 @@ class DBField(object):
             elif self.data_type == consts.INTEGER:
                 self.value =  int(value)
             if self.data_type == consts.FLOAT:
-                self.value = str_to_float(value)
+                self.value = consts.str_to_float(value)
             elif self.data_type == consts.CURRENCY:
-                self.value = str_to_cur(value)
+                self.value = consts.str_to_cur(value)
             elif self.data_type == consts.DATE:
-                self.value = str_to_date(value)
+                self.value = consts.str_to_date(value)
             elif self.data_type == consts.DATETIME:
-                self.value = str_to_datetime(value)
+                self.value = consts.str_to_datetime(value)
             elif self.data_type == consts.BOOLEAN:
                 if value.upper() == consts.language('yes').upper():
                     self.value = True
@@ -858,7 +858,7 @@ class ChangeLog(object):
         if updates:
             changes = updates['changes']
             for change in changes:
-                log_id, rec_id, details = change
+                log_id, rec, details = change
                 record_log = self.logs[log_id]
                 if record_log:
                     record = record_log['record']
@@ -866,11 +866,15 @@ class ChangeLog(object):
                     info = self.item.get_rec_info(record)
                     info[consts.REC_STATUS] = consts.RECORD_UNCHANGED
                     info[consts.REC_LOG_REC] = None
-                    if rec_id and self.item._primary_key:
-                        if not record[self.item._primary_key_field.bind_index]:
+                    if isinstance(rec, list):
+                        rec = rec[:self.item._record_lookup_index]
+                        record[:self.item._record_lookup_index] = rec
+                        rec_id = record[self.item._primary_key_field.bind_index];
+                    else:
+                        rec_id = rec;
+                        if rec_id and not record[self.item._primary_key_field.bind_index]:
                             record[self.item._primary_key_field.bind_index] = rec_id
-                    if master_rec_id:
-                        if not record[self.item._master_rec_id_field.bind_index]:
+                        if master_rec_id and not record[self.item._master_rec_id_field.bind_index]:
                             record[self.item._master_rec_id_field.bind_index] = master_rec_id
                     if details:
                         for detail in details:
@@ -898,10 +902,12 @@ class AbstractDataSet(object):
         self._dataset = []
         self._primary_key = None
         self._deleted_flag = None
+        self._record_version = None
         self._master_id = None
         self._master_rec_id = None
         self._primary_key_db_field_name = None
         self._deleted_flag_db_field_name = None
+        self._record_version_db_field_name = None
         self._master_id_db_field_name = None
         self._master_rec_id_db_field_name = None
         self.__eof = False
@@ -1109,7 +1115,7 @@ class AbstractDataSet(object):
         for field in self.fields:
             if not hasattr(self, field.field_name):
                 setattr(self, field.field_name, field)
-        for sys_field_name in ['_primary_key', '_deleted_flag', '_master_id', '_master_rec_id']:
+        for sys_field_name in ['_primary_key', '_deleted_flag', '_master_id', '_master_rec_id', '_record_version']:
             sys_field = getattr(self, sys_field_name)
             if sys_field and type(sys_field) == int:
                 field = self.field_by_ID(sys_field)
@@ -1380,7 +1386,6 @@ class AbstractDataSet(object):
         self._order_by_list = self.get_order_by_list(field_list)
 
     def _update_fields(self, fields):
-
         for field in self.fields:
             if hasattr(self, field.field_name):
                 delattr(self, field.field_name)
@@ -1397,7 +1402,7 @@ class AbstractDataSet(object):
         for field in self.fields:
             if not hasattr(self, field.field_name):
                 setattr(self, field.field_name, field)
-        for sys_field_name in ['_primary_key', '_deleted_flag', '_master_id', '_master_rec_id']:
+        for sys_field_name in ['_primary_key', '_deleted_flag', '_master_id', '_master_rec_id', '_record_version']:
             sys_field = getattr(self, sys_field_name)
             if sys_field:
                 field = self.field_by_name(sys_field)
@@ -1468,7 +1473,7 @@ class AbstractDataSet(object):
     def do_open(self, params=None):
         if not params:
             params = self._open_params
-        rows, error_mes, info = self.do_internal_open(params)
+        rows, error_mes = self.do_internal_open(params)
         if error_mes:
             raise RuntimeError(error_mes)
         else:

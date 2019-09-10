@@ -38,7 +38,13 @@ class MetaDataImport(object):
         self.db_sql = None
         self.adm_sql = None
         self.db_module = task.task_db_module
-
+        self.items_hidden_fields = []
+        self.params_hidden_fields = [
+                'f_safe_mode', 'f_debugging', 'f_modification',
+                'f_client_modified', 'f_server_modified',
+                'f_build_version', 'f_params_version',
+                'f_maintenance', 'f_import_delay', 'f_production'
+            ]
 
     def import_metadata(self):
         self.check_can_import()
@@ -57,6 +63,54 @@ class MetaDataImport(object):
             self.success = False
             self.error = 'Metadata can not be imported into an existing SQLITE project'
             self.show_error(self.error)
+
+    def update_gen_names(self):
+        new_gen = get_db_module(self.new_db_type).NEED_GENERATOR
+        old_gen = get_db_module(self.db_type).NEED_GENERATOR
+        if new_gen != old_gen:
+            self.items_hidden_fields.append('f_gen_name')
+
+    def update_indexes(self):
+        if self.new_db_type == FIREBIRD or self.db_type == FIREBIRD:
+            item = self.new_items['sys_indices']
+            for it in item:
+                if it.f_fields_list.value:
+                    field_list = it.load_index_fields(it.f_fields_list.value)
+                    desc = it.descending.value
+                    if field_list:
+                        it.edit()
+                        if self.new_db_type == FIREBIRD:
+                            l = []
+                            for f in field_list:
+                                l.append([f[0], desc])
+                            field_list = l
+                        elif self.db_type == FIREBIRD:
+                            desc = field_list[0][1]
+                        it.descending.value = desc
+                        it.f_fields_list.value = it.store_index_fields(field_list)
+                        it.post()
+
+    def update_item_idents(self, item_name, field_names, old_case, new_case):
+        item = self.new_items[item_name]
+        fields = []
+        for field_name in field_names:
+            fields.append(item.field_by_name(field_name))
+        item.log_changes = False
+        for it in item:
+            it.edit()
+            for field in fields:
+                if new_case(field.value) == field.value:
+                    field.value = old_case(field.value)
+            it.post()
+
+    def update_idents(self):
+        new_case = get_db_module(self.new_db_type).identifier_case
+        old_case = get_db_module(self.db_type).identifier_case
+        if old_case('a') != new_case('a'):
+            self.update_item_idents('sys_items', ['f_table_name', 'f_gen_name'], old_case, new_case)
+            self.update_item_idents('sys_fields', ['f_db_field_name'], old_case, new_case)
+            self.update_item_idents('sys_indices', ['f_index_name'], old_case, new_case)
+        self.update_indexes()
 
     def prepare_data(self):
         if self.success:
@@ -82,8 +136,9 @@ class MetaDataImport(object):
                         self.old_items[item.item_name] = old_item
                     os.remove(file_name)
                     self.new_db_type = data_lists.get('db_type')
-                    if self.new_db_type:
-                        self.new_db_type = self.db_type
+                    if self.new_db_type != self.db_type:
+                        self.update_gen_names()
+                        self.update_idents()
             except Exception as e:
                 self.task.log.exception(e)
                 self.success = False
@@ -196,8 +251,8 @@ class MetaDataImport(object):
                             db_sql.append(indices_delete_sql(task.sys_indices, d))
                 adm_sql.append(delta.apply_sql())
 
-                for item_name in ['sys_report_params', 'sys_roles',
-                    'sys_params', 'sys_privileges', 'sys_lookup_lists']:
+                for item_name in ['sys_filters', 'sys_report_params', 'sys_roles', 'sys_params',
+                    'sys_privileges', 'sys_lookup_lists']:
                     delta = self.get_delta(item_name)
                     adm_sql.append(delta.apply_sql())
 
@@ -251,12 +306,10 @@ class MetaDataImport(object):
 
     def can_copy_field(self, field):
         if field.owner.item_name == 'sys_params':
-            if field.field_name in [
-                'f_safe_mode', 'f_debugging', 'f_modification',
-                'f_client_modified', 'f_server_modified',
-                'f_build_version', 'f_params_version',
-                'f_maintenance', 'f_import_delay', 'f_production'
-            ]:
+            if field.field_name in self.params_hidden_fields:
+                return False
+        if field.owner.item_name == 'sys_items':
+            if field.field_name in self.items_hidden_fields:
                 return False
         return True
 
@@ -406,7 +459,7 @@ class MetaDataImport(object):
                     try:
                         cursor.execute(sql)
                     except Exception as x:
-                        self.task.log.exception(x)
+                        self.task.log.exception('Error: %s query: %s' % (x, sql))
                         error = error_message(x)
                     info.append({'sql': sql, 'error': error})
                     if error and self.db_module.DDL_ROLLBACK:
