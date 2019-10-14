@@ -5998,7 +5998,8 @@
                 }
                 this._eof = eof;
                 this._bof = bof;
-                if (old_row !== new_row) {
+                //~ if (old_row !== new_row) {
+                if (old_row !== new_row || eof || bof) {
                     if (trigger_events) this._do_before_scroll();
                     this._cur_row = new_row;
                     if (trigger_events) this._do_after_scroll();

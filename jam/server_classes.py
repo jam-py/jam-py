@@ -5,6 +5,12 @@ from xml.sax.saxutils import escape
 import datetime, time
 import inspect
 import json
+if os.name == "nt":
+    try:
+        from winreg import OpenKey, QueryValue, HKEY_LOCAL_MACHINE
+    except:
+        from _winreg import OpenKey, QueryValue, HKEY_LOCAL_MACHINE
+
 from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_bytes, to_unicode
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -887,10 +893,9 @@ class AbstractServerTask(AbstrTask):
             try:
                 from subprocess import Popen, STDOUT, PIPE
                 if os.name == "nt":
-                    import _winreg
                     regpath = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\soffice.exe"
-                    root = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, regpath)
-                    s_office = _winreg.QueryValue(root, "")
+                    root = OpenKey(HKEY_LOCAL_MACHINE, regpath)
+                    s_office = QueryValue(root, "")
                 else:
                     s_office = "soffice"
                 convertion = Popen([s_office, '--headless', '--convert-to', ext,
