@@ -743,6 +743,8 @@ class ChangeLog(object):
                         'details': new_details
                     })
                     counter += 1
+                else:
+                    data.append(None);
             else:
                 data.append(None);
         return counter
@@ -1456,7 +1458,7 @@ class AbstractDataSet(object):
             self._open_params = params
 
     def open(self, expanded, fields, where, order_by, open_empty, params,
-        offset, limit, funcs, group_by):
+        offset, limit, funcs, group_by, connection):
         if not params:
             params = {}
         self._do_before_open(expanded, fields, where, order_by, open_empty,
@@ -1465,15 +1467,15 @@ class AbstractDataSet(object):
         self._bind_fields(expanded)
         self._dataset = []
         if not open_empty:
-            self.do_open(params)
+            self.do_open(params, connection)
         self._active = True
         self.item_state = consts.STATE_BROWSE
         self.first()
 
-    def do_open(self, params=None):
+    def do_open(self, params, connection):
         if not params:
             params = self._open_params
-        rows, error_mes = self.do_internal_open(params)
+        rows, error_mes = self.do_internal_open(params, connection)
         if error_mes:
             raise RuntimeError(error_mes)
         else:
@@ -1495,7 +1497,7 @@ class AbstractDataSet(object):
             result += [None for field in self.fields if field.lookup_item]
         return result
 
-    def append(self, index=None):
+    def __append(self, index=None):
         if not self.active:
             raise DatasetException(consts.language('append_not_active') % self.item_name)
         if self.item_state != consts.STATE_BROWSE:
@@ -1514,8 +1516,11 @@ class AbstractDataSet(object):
         self._modified = False
         self._do_after_scroll()
 
+    def append(self):
+        self.__append()
+
     def insert(self):
-        self.append(0)
+        self.__append(0)
 
     def edit(self):
         if not self.active:
@@ -1728,7 +1733,6 @@ class MasterDataSet(AbstractDataSet):
 
     def init_delta_details(self):
         for detail in self.details:
-            # ~ detail.log_changes = False
             detail.expanded = False
             detail._is_delta = True
             detail.details_active = True
@@ -1740,7 +1744,6 @@ class MasterDataSet(AbstractDataSet):
             self.change_log.get_changes(changes)
         result = self.copy(filters=False, details=True, handlers=False)
         result.log_changes = False
-        # ~ result.expanded = False
         result._is_delta = True
         result.init_delta_details()
         result.details_active = True
@@ -1778,28 +1781,19 @@ class MasterDetailDataset(MasterDataSet):
 
     def open(self, options=None, expanded=None, fields=None, where=None, order_by=None,
         open_empty=False, params=None, offset=None, limit=None, funcs=None,
-        group_by=None, safe=False):
+        group_by=None, safe=False, connection=None):
         if safe and not self.can_view():
             raise Exception(consts.language('cant_view') % self.item_caption)
         if options and type(options) == dict:
-            if options.get('expanded'):
-                expanded = options['expanded']
-            if options.get('fields'):
-                fields = options['fields']
-            if options.get('where'):
-                where = options['where']
-            if options.get('order_by'):
-                order_by = options['order_by']
-            if options.get('open_empty'):
-                open_empty = False
-            if options.get('params'):
-                params = options['params']
-            if options.get('offset'):
-                offset = options['offset']
-            if options.get('limit'):
-                limit = options['limit']
-            if options.get('funcs'):
-                funcs = options['funcs']
+            expanded = options.get('expanded')
+            fields = options.get('fields')
+            where = options.get('where')
+            order_by = options.get('order_by')
+            open_empty = options.get('open_empty')
+            params = options.get('params')
+            offset = options.get('offset')
+            limit = options.get('limit')
+            funcs = options.get('funcs')
         if expanded is None:
             expanded = self.expanded
         else:
@@ -1816,13 +1810,15 @@ class MasterDetailDataset(MasterDataSet):
                 records = None
                 if self.master.is_new():
                     records = []
-                elif not self.change_log.empty or self._is_delta:
+                elif not self.change_log.empty:
                     self.change_log.refresh()
                     records = self.change_log.records
                     fields = self.change_log.fields
                     if records is None and self._is_delta:
                         records = []
                         fields = []
+                elif self._is_delta:
+                    records = []
                 elif self.master.record_status == consts.RECORD_INSERTED and not params['__master_rec_id']:
                     records = []
                 if not records is None:
@@ -1838,13 +1834,13 @@ class MasterDetailDataset(MasterDataSet):
                 else:
                     return super(MasterDetailDataset, self).open(expanded,
                         fields, where, order_by, open_empty, params, offset,
-                        limit, funcs, group_by)
+                        limit, funcs, group_by, connection)
             else:
                 return
         else:
             return super(MasterDetailDataset, self).open(expanded,
                 fields, where, order_by, open_empty, params, offset, limit,
-                funcs, group_by)
+                funcs, group_by, connection)
 
     def open__in(self, ids, expanded=None, fields=None, where=None, order_by=None, open_empty=False, params=None, offset=None, limit=None): #depricated
 

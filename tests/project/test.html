@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Jam.py tests</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mocha/6.1.4/mocha.css">
+    </head>
+    <body>
+        <div id="mocha"></div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/mocha/6.1.4/mocha.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/chai/4.2.0/chai.min.js"></script>
+
+        <script>mocha.setup('bdd')</script>
+        <script src="jam/js/jquery.js"></script>
+        <script src="jam/js/bootstrap.js"></script>
+        <script src="jam/js/bootstrap-modal.js"></script>
+        <script src="jam/js/bootstrap-modalmanager.js"></script>
+        <script src="jam/js/bootstrap-datepicker.js"></script>
+        <script src="jam/js/jquery.maskedinput.js"></script>
+        <script src="jam/js/jam.js"></script>
+
+        <script src="test_locale.js"></script>
+        <script src="test_dataset.js"></script>
+        <script src="test_details.js"></script>
+        <script>
+            $(document).ready(function(){
+                task.load(function() {
+                    mocha.run();
+                });
+            });
+        </script>
+    </body>
+</html>

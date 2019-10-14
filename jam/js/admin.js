@@ -5440,7 +5440,11 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 			field,
 			check_item;
 		if (!item.owner.valid_identifier(field_name)) {
-			error = item.task.language.invalid_field_name
+			return item.task.language.invalid_field_name
+		}
+		error = task.server('server_valid_field_name', [field_name])
+		if (error) {
+			return error;
 		}
 		clone = item.clone()
 		clone.each(function(c) {
@@ -5454,8 +5458,6 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 			if (check_item[field_name] !== undefined) {
 				error = item.task.language.reserved_word;
 			}
-		}
-		if (!error) {
 		}
 		return error;
 	}

@@ -447,34 +447,33 @@ class App(object):
                     self.save_build_id()
                 return result
 
-    def get_under_maintenance(self):
+    @property
+    def under_maintenance(self):
         return consts.MAINTENANCE
 
-    under_maintenance = property(get_under_maintenance)
-
-    def __get_client_modified(self):
+    @property
+    def client_modified(self):
         return consts.CLIENT_MODIFIED
 
-    def __set_client_modified(self, value):
+    @client_modified.setter
+    def client_modified(self, value):
         consts.CLIENT_MODIFIED = value
         consts.MODIFICATION += 1
         consts.PARAMS_VERSION += 1
         consts.write_settings()
         self.save_build_id()
 
-    client_modified = property(__get_client_modified, __set_client_modified)
-
-    def __get_server_modified(self):
+    @property
+    def server_modified(self):
         return consts.SERVER_MODIFIED
 
-    def __set_server_modified(self, value):
+    @server_modified.setter
+    def server_modified(self, value):
         consts.SERVER_MODIFIED = value
         consts.MODIFICATION += 1
         consts.PARAMS_VERSION += 1
         consts.write_settings()
         self.save_build_id()
-
-    server_modified = property(__get_server_modified, __set_server_modified)
 
     def check_project_modified(self):
         if self.task:

@@ -18,7 +18,7 @@
 
 
 ================
-Jam.py Application Builder (web framework)
+Jam.py framework
 ================
 
 
@@ -31,7 +31,7 @@ Click on the image to see the online demo
     :width: 100%
     :align: center
     :alt: Online demo
-    :target: http://oazis.ms/jam/
+    :target: http://ms71.pro:1083/
 
 If you are not a professional programmer or an expert in databases, you can use
 Jam.py to store, share and analyze your data.
@@ -51,15 +51,11 @@ to see some applications written in Jam.py.
 More demos on Heroku:
 
 * `The RedHat Satellite 5.x Dashboard utility Demo <https://redhatsatellite.herokuapp.com>`_
-* `The Postfix email aliases utility Demo <https://jampy-aliases.herokuapp.com>`_
-* `The Samba Shares utility Demo <https://sambashares.herokuapp.com>`_
+* `The Postfix email aliases utility Demo <https://jampy-aliases.herokuapp.com/>`_
+* `Jam.py Demo Application <https://jampy.herokuapp.com/>`_
 
 `Here <https://youtu.be/pQYer6po820>`_ is a video showing how to publish a
 Jam.py application from GitHub repo on Heroku
-
-Demo on PythonAnywhere:
-
-* `Jam.py Assets/Parts Application (wip) <https://jampy.pythonanywhere.com>`_
 
 Main features
 =============

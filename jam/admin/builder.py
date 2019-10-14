@@ -29,7 +29,7 @@ LOOKUP_LISTS = {
         'group_type': consts.GROUP_TYPES,
 
     }
-    
+
 def get_value_list(str_list):
     result = []
     for i, s in enumerate(str_list):
@@ -66,17 +66,17 @@ def restore_caption_keys(task):
     def restore_keys(item):
         if hasattr(item, 'field_defs'):
             for field_def in item.field_defs:
-                field_def[FIELD_CAPTION] = item.__caption_keys[field_def[FIELD_NAME]] 
+                field_def[FIELD_CAPTION] = item.__caption_keys[field_def[FIELD_NAME]]
 
     task.all(restore_keys)
 
 def change_language(task):
-    
+
     def change_fields_lang(item):
         if hasattr(item, 'field_defs'):
             for field_def in item.field_defs:
                 field_def[FIELD_CAPTION] = item.task.language(field_def[FIELD_CAPTION])
-    
+
     restore_caption_keys(task)
     consts.read_language()
     task.all(change_fields_lang)
@@ -511,8 +511,8 @@ def update_events_code(task):
     if it.task.app.task:
         it.task.app.task.all(update_task)
     try:
-        from utils.js_code import update_js
-        update_js(task)
+        from utils.update_version import update
+        update(task)
     except:
         pass
 
@@ -718,11 +718,11 @@ def server_save_edit(task, item_id, text, is_server):
 def set_server_modified(task):
     if task.item_name == 'admin':
         task.app.server_modified = True
-    
+
 def set_client_modified(task):
     if task.item_name == 'admin':
         task.app.client_modified = True
-    
+
 def server_file_info(task, file_name):
     result = {}
     file_path = file_name
@@ -801,8 +801,15 @@ def server_can_delete_lookup_list(task, list_id):
         mess = task.language('lookup_list_is_used_in') % names
         return mess
 
+def server_valid_field_name(task, name):
+    result = ''
+    if name.upper() in consts.KEYWORDS:
+        return task.language('reserved_word')
+
 def server_valid_item_name(task, item_id, parent_id, name, type_id):
     result = ''
+    if name.upper() in consts.KEYWORDS:
+        return task.language('reserved_word')
     items = task.sys_items.copy(handlers=False, details=False)
     if name.upper() in ['SYSTEM', 'HISTORY']:
         items.set_where(id=item_id)
@@ -865,7 +872,7 @@ def server_lang_modified(task):
     consts.read_language()
     change_language(task)
 
-def do_on_apply_param_changes(item, delta, params):
+def do_on_apply_param_changes(item, delta, params, connection):
     task = item.task
     language = consts.LANGUAGE
     debugging = consts.DEBUGGING
@@ -1320,18 +1327,20 @@ def items_insert_sql(item, delta, manual_update=False, new_fields=None, foreign_
                 fields, delta.f_gen_name.value, foreign_fields=foreign_fields)
             return sql
 
-def items_execute_insert(item, delta, manual_update):
+def items_execute_insert(item, delta, connection, manual_update):
     sql = items_insert_sql(item, delta, manual_update)
     if sql:
         error = execute_db(item.task, delta.task_id.value, sql)
         if error:
             raise Exception(item.task.language('error_creating_table') % (error))
-    sql = delta.apply_sql()
-    result = item.task.execute(sql)
-    exec_result = result[0]
-    result_id = exec_result['changes'][0]['rec_id']
-    init_priviliges(item, result_id)
-    update_interface(delta, delta.type_id.value, result_id)
+    result = item.apply_delta(delta, connection=connection)
+    connection.commit()
+    # ~ sql = delta.apply_sql()
+    # ~ result = item.task.execute(sql)
+    # ~ exec_result = result[0]
+    # ~ result_id = exec_result['changes'][0]['rec_id']
+    init_priviliges(item, delta.id.value)
+    update_interface(delta, delta.type_id.value, delta.id.value)
     return result
 
 def items_update_sql(item, delta, manual_update=False):
@@ -1391,13 +1400,13 @@ def items_execute_delete(item, delta, manual_update):
     result = item.task.execute(commands)
     return result
 
-def items_apply_changes(item, delta, params):
+def items_apply_changes(item, delta, params, connection):
     manual_update = params['manual_update']
     for f in delta.sys_fields:
         if not f.id.value:
             raise Exception(item.task.language('field_no_id') % (f.field_name))
     if delta.rec_inserted():
-        result = items_execute_insert(item, delta, manual_update)
+        result = items_execute_insert(item, delta, connection, manual_update)
     elif delta.rec_modified():
         result = items_execute_update(item, delta, manual_update)
     elif delta.rec_deleted():
@@ -1406,7 +1415,7 @@ def items_apply_changes(item, delta, params):
     roles_changed(item)
     return result
 
-def do_on_apply_changes(item, delta, params):
+def do_on_apply_changes(item, delta, params, connection):
     sql = delta.apply_sql()
     result = item.task.execute(sql)
     set_server_modified(item.task)
@@ -1480,7 +1489,7 @@ def server_store_interface(item, id_value, info):
     item.open(fields=['id', 'f_info'])
     item._view_list = info['view_list']
     item._edit_list = info['edit_list']
-    item._order_list = info['order_list'] 
+    item._order_list = info['order_list']
     item._reports_list = info['reports_list']
     item.store_interface()
     set_server_modified(item.task)
@@ -1745,7 +1754,7 @@ def indices_execute_delete(item, delta, manual_update):
     sql = delta.apply_sql()
     return item.task.execute(sql)
 
-def indices_apply_changes(item, delta, params):
+def indices_apply_changes(item, delta, params, connection):
     manual_update = params['manual_update']
     table_name = item.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
     if table_name:
@@ -1831,7 +1840,7 @@ def privileges_open(item, params):
 #                               sys_lookup_lists                              #
 ###############################################################################
 
-def lookup_lists_apply_changes(item, delta, params):
+def lookup_lists_apply_changes(item, delta, params, connection):
     set_server_modified(item.task)
 
 ###############################################################################
@@ -2038,6 +2047,7 @@ def register_events(task):
     task.register(server_get_task_info)
     task.register(server_can_delete_lookup_list)
     task.register(server_valid_item_name)
+    task.register(server_valid_field_name)
     task.register(server_get_primary_key_type)
     task.register(server_set_literal_case)
     task.register(server_lang_modified)

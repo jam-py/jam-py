@@ -54,7 +54,6 @@ method generates and executes SQL query to save changes to the database.
    :header: Client, Server, Description
    :widths: 20, 20, 100
    
-   :doc:`log_changes </refs/client/item/at_log_changes>`, :doc:`log_changes </refs/server/item/at_log_changes>`, "Indicates whether to log data changes."
    :doc:`apply </refs/client/item/m_apply>`, :doc:`apply </refs/server/item/m_apply>`, "Sends all updated, inserted, and deleted records from the item dataset to the server for writing to the database."
 
 

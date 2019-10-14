@@ -1408,7 +1408,8 @@
                     center_buttons: false,
                     close_button: true,
                     close_on_escape: true,
-                    focus_last_btn: false
+                    focus_last_btn: false,
+                    hide: true
                 },
                 buttons,
                 key,
@@ -1474,7 +1475,9 @@
                                     catch (e) {
                                         console.error(e);
                                     }
-                                    $element.modal('hide');
+                                    if (options.hide) {
+                                        $element.modal('hide');
+                                    }
                                 },
                                 100
                             );
@@ -2622,6 +2625,7 @@
                 div.append('<ul class="nav nav-tabs">');
                 div.append('<div class="tab-content">');
             }
+            div.hide();
         }
 
         can_add_tab(container) {
@@ -3246,6 +3250,9 @@
                             details: new_details
                         });
                         counter += 1;
+                    }
+                    else {
+                        data.push(null);
                     }
                 }
                 else {
@@ -5626,7 +5633,7 @@
         }
 
         _do_before_scroll() {
-            if (this.is_changing()) {// && !this._canceling) {
+            if (this.is_changing()) {
                 this.post();
             }
             if (this.on_before_scroll) {
@@ -5875,7 +5882,7 @@
         }
 
         get_record_info(record) {
-            if (this._record_info_index > 0) {
+            if (this._record_info_index >= 0) {
                 if (!record) {
                     record = this._dataset[this.rec_no];
                 }
@@ -5891,7 +5898,9 @@
         }
 
         set record_status(value) {
-            this.record_info[consts.REC_STATUS] = value;
+            if (this.log_changes) {
+                this.record_info[consts.REC_STATUS] = value;
+            }
         }
 
         get record_log_rec() {
@@ -6194,10 +6203,11 @@
             }
             if (this.can_delete()) {
                 if (this.rec_count > 0) {
-                    this.question(language.delete_record, function() {
+                    let mess = this.question(language.delete_record, function() {
                         self.delete();
                         self.apply(function(e) {
                             var error;
+                            self.hide_message(mess);
                             if (e) {
                                 error = (e + '').toUpperCase();
                                 if (error && (error.indexOf('FOREIGN KEY') !== -1 ||
@@ -6206,7 +6216,6 @@
                                     )
                                 ) {
                                     self.alert_error(language.cant_delete_used_record);
-                                    //~ self.warning(language.cant_delete_used_record);
                                 } else {
                                     self.warning(e);
                                 }
@@ -6221,7 +6230,9 @@
                                 }
                             }
                         });
-                    });
+                    },
+                    null,
+                    {hide: false});
                 } else {
                     this.warning(language.no_record);
                 }
@@ -6811,13 +6822,14 @@
                                 clone = self.clone();
                             self.disable_controls();
                             self.last();
+                            self._records_selected = true;
                             last_rec_no = self.rec_no;
-                            if (!all_records) {
-                                clone.each(function(c) {
-                                    existing_recs[c[field_name].value] = true;
-                                });
-                            }
                             try {
+                                if (!all_records) {
+                                    clone.each(function(c) {
+                                        existing_recs[c[field_name].value] = true;
+                                    });
+                                }
                                 copy.each(function(c){
                                     if (all_records || !existing_recs[pk_field.value]) {
                                         found = true;
@@ -6842,8 +6854,11 @@
                                 else {
                                     self.rec_no = rec_no;
                                 }
+                                self._records_selected = false;
+                                if (self.master) {
+                                    self.master._detail_changed(self, true);
+                                }
                                 self.enable_controls();
-                                self.update_controls();
                             }
                         })
                     }
@@ -6854,29 +6869,24 @@
         }
 
         _detail_changed(detail, modified) {
-            if (modified && !detail.paginate && this.on_detail_changed ||
-                detail.controls.length && detail.table_options.summary_fields.length) {
-                //~ detail._summary = undefined;
-                //~ if (modified && this.on_detail_changed) {
-                    //~ this.on_detail_changed.call(this, this, detail);
-                //~ }
-                //~ if (detail._summary === undefined) {
-                    //~ this.calc_summary(detail);
-                //~ }
-                var self = this;
-                clearTimeout(this._detail_changed_time_out);
-                this._detail_changed_time_out = setTimeout(
-                    function() {
-                        detail._summary = undefined;
-                        if (modified && self.on_detail_changed) {
-                            self.on_detail_changed.call(self, self, detail);
-                        }
-                        if (detail._summary === undefined) {
-                            self.calc_summary(detail);
-                        }
-                    },
-                    0
-                );
+            if (!detail._records_selected) {
+                if (modified && !detail.paginate && this.on_detail_changed ||
+                    detail.controls.length && detail.table_options.summary_fields.length) {
+                    detail._summary = undefined;
+                    if (modified && this.on_detail_changed) {
+                        this.on_detail_changed.call(this, this, detail);
+                    }
+                    if (detail._summary === undefined) {
+                        let self = this;
+                        clearTimeout(this._detail_changed_time_out);
+                        this._detail_changed_time_out = setTimeout(
+                            function() {
+                                self.calc_summary(detail);
+                            },
+                            0
+                        );
+                    }
+                }
             }
         }
 
@@ -7334,6 +7344,9 @@
                 else if (callback) {
                     callback.call(this);
                 }
+            }
+            else {
+                console.error('Refresh record, the record is not found in the database table.')
             }
         }
 
@@ -9403,6 +9416,7 @@
                 table_class: undefined,
                 multiselect: false,
                 height: undefined,
+                exact_height: false,
                 row_count: undefined,
                 fields: [],
                 column_width: {},
@@ -9874,13 +9888,15 @@
             var self = this,
                 timeout;
             this.$table.on('keydown', function(e) {
-                clearTimeout(timeout);
-                timeout = setTimeout( function() { self.keydown(e) }, 10 );
+                //~ clearTimeout(timeout);
+                //~ timeout = setTimeout( function() { self.keydown(e) }, 10 );
+                self.keydown(e);
             });
 
             this.$table.on('keyup', function(e) {
-                clearTimeout(timeout);
-                timeout = setTimeout( function() { self.keyup(e) }, 10 );
+                //~ clearTimeout(timeout);
+                //~ timeout = setTimeout( function() { self.keyup(e) }, 10 );
+                self.keyup(e);
             });
 
             this.$table.on('keypress', function(e) {
@@ -10059,7 +10075,7 @@
 
             this.initKeyboardEvents();
 
-            this.$element.on('mousemove.grid-title', 'table.outer-table thead tr:first th', function(e) {
+            this.$element.on('mousemove.table-title', 'table.outer-table thead tr:first th', function(e) {
                 var $this = $(this),
                     field_name = $this.data('field_name'),
                     lastCell = self.$element.find("thead tr:first th:last").get(0);
@@ -10096,8 +10112,8 @@
                     $td,
                     $tf,
                     cell_width;
-                $doc.off("mousemove.grid-title");
-                $doc.off("mouseup.grid-title");
+                $doc.off("mousemove.table-title");
+                $doc.off("mouseup.table-title");
 
                 change_field_width($th, delta);
 
@@ -10105,7 +10121,7 @@
                 $selection.remove()
             }
 
-            this.$element.on('mousedown.grid-title', 'table.outer-table thead tr:first th', function(e) {
+            this.$element.on('mousedown.table-title', 'table.outer-table thead tr:first th', function(e) {
                 var $this = $(this),
                     index,
                     lastCell,
@@ -10127,8 +10143,8 @@
                     $th = $this;
                     index = self.fields.indexOf(self.item.field_by_name(field_name))
                     delta = 0;
-                    $doc.on("mousemove.grid-title", captureMouseMove);
-                    $doc.on("mouseup.grid-title", release_mouse_move);
+                    $doc.on("mousemove.table-title", captureMouseMove);
+                    $doc.on("mouseup.table-title", release_mouse_move);
                     parent = self.$container.closest('.modal');
                     if (parent.length) {
                         left = $this.offset().left - parent.offset().left;
@@ -10205,12 +10221,10 @@
 
             this.$table.focus(function(e) {
                 if (self.master_table) {
-                    self.master_table.flush_editor();
-                    self.master_table.hide_editor()
+                    self.master_table.close_editor();
                 }
                 if (self.freezed_table) {
-                    self.freezed_table.flush_editor();
-                    self.freezed_table.hide_editor()
+                    self.freezed_table.close_editor();
                 }
                 self.syncronize(true);
             });
@@ -10371,6 +10385,12 @@
             if (this.row_count <= 0) {
                 this.row_count = 1;
             }
+            if (!this.options.exact_height) {
+                this.$overlay_div.height(this.row_height * this.row_count);
+                if (this.options.expand_selected_row) {
+                    this.$overlay_div.height(this.row_height * (this.row_count - 1) + this.selected_row_height + this.row_margin);
+                }
+            }
             return this.row_count;
         }
 
@@ -10497,8 +10517,7 @@
             var self = this,
                 field_changed = this.selected_field !== field;
             if (field_changed && this.can_edit()) {
-                this.flush_editor();
-                this.hide_editor();
+                this.close_editor();
             }
             if (this.editable_fields.indexOf(field) !== -1) {
                 this.hide_selection();
@@ -10572,6 +10591,18 @@
             }
         }
 
+        close_editor() {
+            if (this.editor) {
+                if (!this.item.is_changing()) {
+                    this.item.edit();
+                }
+                this.flush_editor();
+                this.hide_editor();
+                this.item.post();
+                this.item.apply(true);
+            }
+        }
+
         flush_editor() {
             if (this.editor && this.editing) {
                 this.editor.change_field_text();
@@ -10588,8 +10619,7 @@
                 $td,
                 $row = this.row_by_record(),
                 freezed_table = this.freezed_table;
-            if ($row && this.can_edit() && !this.editing && this.selected_field &&
-                this.item.rec_count) {
+            if ($row && this.can_edit() && !this.editing && this.selected_field && this.item.rec_count) {
                 if (!this.item.is_changing()) {
                     this.item.edit();
                 }
@@ -11138,11 +11168,7 @@
                 $row = td.parent();
             rec = this.record_by_row($row);
             if (this.edit_mode && rec !== this.item.rec_no) {
-                if (!this.item.is_edited()) {
-                    this.item.edit();
-                }
-                this.flush_editor();
-                this.item.post();
+                this.close_editor();
             }
             this.item.rec_no = rec;
             if (!this.editing && !this.is_focused()) {
@@ -11448,8 +11474,7 @@
                             return
                         }
                         e.preventDefault();
-                        this.flush_editor();
-                        this.hide_editor();
+                        this.close_editor();
                         if (code === 33) {
                             this.prior_page();
                         } else if (code === 34) {
@@ -11662,6 +11687,7 @@
         }
 
         next_record(noscroll) {
+            let eof;
             this.cancel_sync();
             try {
                 this.item.next();
@@ -11670,6 +11696,9 @@
                         this.item.append();
                     } else if (this.item.paginate) {
                         this.next_page();
+                    }
+                    else {
+                        eof = true;
                     }
                 }
                 else if (!this.item.paginate) {
@@ -11685,12 +11714,14 @@
             finally {
                 this.resume_sync();
             }
-            this.syncronize(noscroll);
-            if (this.master_table) {
-                this.master_table.syncronize(noscroll);
-            }
-            if (this.freezed_table) {
-                this.freezed_table.syncronize(noscroll);
+            if (!eof) {
+                this.syncronize(noscroll);
+                if (this.master_table) {
+                    this.master_table.syncronize(noscroll);
+                }
+                if (this.freezed_table) {
+                    this.freezed_table.syncronize(noscroll);
+                }
             }
         }
 
@@ -12464,11 +12495,11 @@
                     }
                 });
 
-                if (!this.grid && this.field.field_placeholder) {
+                if (!this.table && this.field.field_placeholder) {
                     this.$input.attr('placeholder', this.field.field_placeholder);
                 }
 
-                if (!this.grid && this.field.field_help) {
+                if (!this.table && this.field.field_help) {
                     $help = $('<a href="#" tabindex="-1"><span class="badge help-badge">?</span></a>');
                     this.$help = $help;
                     $help.find('span')
@@ -12718,12 +12749,12 @@
                 e.preventDefault();
             }
             if (code === 9) {
-                if (this.grid && this.grid.edit_mode) {
+                if (this.table && this.table.edit_mode) {
                     e.preventDefault();
                     if (e.shiftKey) {
-                        this.grid.prior_field();
+                        this.table.prior_field();
                     } else {
-                        this.grid.next_field();
+                        this.table.next_field();
                     }
                 }
             }
@@ -12751,26 +12782,19 @@
                 }
             }
             if (code === 13 && !e.ctrlKey && !e.shiftKey) {
-                if (this.grid && this.grid.edit_mode) {
+                if (this.table && this.table.edit_mode) {
                     e.stopPropagation();
                     e.preventDefault();
-                    if (!this.grid.item.is_changing()) {
-                        this.grid.item.edit();
-                    }
-                    this.grid.flush_editor();
-                    this.grid.hide_editor();
-                    if (this.grid.item.is_changing()) {
-                        this.grid.item.post();
-                    }
+                    this.table.close_editor();
                 } else {
                     this.enter_pressed(e);
                 }
             } else if (code === 27) {
-                if (this.grid && this.grid.edit_mode) {
+                if (this.table && this.table.edit_mode) {
                     e.preventDefault();
                     e.stopPropagation();
-                    this.grid.item.cancel();
-                    this.grid.hide_editor();
+                    this.table.item.cancel();
+                    this.table.hide_editor();
                 } else if (this.field.lookup_values) {
                     if (this.$input.parent().hasClass('open')) {
                         this.$input.parent().removeClass('open');
@@ -12926,18 +12950,13 @@
                 }
                 return;
             }
-            if (this.grid && this.grid.edit_mode) {
-                if (this.grid.item.is_changing()) {
-                    this.grid.flush_editor();
-                    this.grid.item.post();
-                    this.grid.item.apply(true);
-                    this.grid.hide_editor();
-                }
+            if (this.table && this.table.edit_mode) {
+                this.table.close_editor();
                 result = true;
             }
             if (this.field.data_type === consts.BOOLEAN) {
                 result = true;
-            } else if (!this.grid && this.change_field_text()) {
+            } else if (!this.table && this.change_field_text()) {
                 if (this.$input.is(':visible')) {
                     this.$input.val(this.field.display_text);
                 }
@@ -12981,9 +13000,9 @@
 
 
     class DBTableInput extends DBAbstractInput {
-        constructor(grid, field) {
+        constructor(table, field) {
             super(field);
-            this.grid = grid;
+            this.table = table;
             this.create_input(field, 0);
             this.$input.attr("autocomplete", "off");
             this.$input.addClass('dbtableinput');
@@ -13234,7 +13253,7 @@
                     case 9: // tab
                     case 13: // enter
                         if (!this.shown) {
-                            if (e.keyCode === 13 && this.$element && !this.$element.grid) {
+                            if (e.keyCode === 13 && this.$element && !this.$element.table) {
                                 this.enter_pressed();
                             }
                         }

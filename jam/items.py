@@ -18,7 +18,6 @@ class AbstractItem(object):
         self.items = []
         self.ID = None
         self._events = []
-        self.master = None
         self.js_filename = js_filename
         if owner:
             if not owner.find(name):
@@ -117,6 +116,11 @@ class AbstractItem(object):
             child = self.get_child_class()(self.task, self, item_info['name'])
             child.item_type_id = item_type_id
             child.set_info(item_info)
+
+    def compile(self):
+        self.task.compile_item(self)
+        for item in self.items:
+            item.compile()
 
     def bind_item(self):
         pass
@@ -232,24 +236,11 @@ class AbstrTask(AbstractItem):
                     if item.item_name == item_name:
                         return item
 
-    def compile_item(self, item):
-        pass
-
     def compile_all(self):
         for module in self.modules:
             del sys.modules[module]
         self.modules = []
-        self.compile_item(self)
-        for group in self.items:
-            self.compile_item(group)
-        for group in self.items:
-            for item in group.items:
-                self.compile_item(item)
-        for group in self.items:
-            for item in group.items:
-                if group.item_type_id != consts.REPORTS_TYPE:
-                    for detail in item.details:
-                        self.compile_item(detail)
+        self.compile()
 
     def language(self, key):
         return consts.language(key)
@@ -257,6 +248,7 @@ class AbstrTask(AbstractItem):
 class AbstrItem(AbstractItem):
     def __init__(self, task, owner, name, caption, visible = True, item_type_id=0, js_filename=''):
         AbstractItem.__init__(self, task, owner, name, caption, visible, item_type_id, js_filename)
+        self.master = None
         if not isinstance(self, AbstrDetail):
             if self.owner and not hasattr(self.task, self.item_name):
                 setattr(self.task, self.item_name, self)

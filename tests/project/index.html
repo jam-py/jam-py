@@ -3,11 +3,11 @@
 <html lang="en">
     <head>
         <meta charset="utf-8">  
-        <title>Jam.py demo</title> 
+        <title></title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="icon" href="static/img/j.png" type="image/png">
+        <link rel="icon" href="/jam/img/j.png" type="image/png">
     
-        <link href="jam/css/bootstrap-cerulean.css" rel="stylesheet">            <!--do not modify-->
+        <link href="jam/css/bootstrap.css" rel="stylesheet">            <!--do not modify-->
         <link href="jam/css/bootstrap-responsive.css" rel="stylesheet">
         <link href="jam/css/bootstrap-modal.css" rel="stylesheet">
         <link href="jam/css/datepicker.css" rel="stylesheet">
@@ -18,9 +18,9 @@
         <div id="container" class="container" style="display: none">
             <div class="row-fluid">
                 <div class="span6">
-                    <h3 id="app-title" class="muted"></h3>
+                    <p id="project-title" class="muted"></p>
                 </div>
-                <div id="app-user" class="span6">
+                <div id="logging-info" class="span6">
                     <span id="user-info"></span>
                     <a id="log-out" href="#" style="display: none">Log out</a>
                 </div>
@@ -29,17 +29,12 @@
                 <div class="navbar-inner">
                     <ul id="menu" class="nav">
                     </ul>
-                    <ul id="menu-right" class="nav pull-right">
-                        <!--<li id="admin"><a href="#">Application builder</a></li>-->
-                        <li id="about"><a href="#">About</a></li>                        
-                        <li id="jam"><a href="http://jam-py.com/" target="_blank">Jam.py</a></li>                        
-                    </ul>
                 </div>
             </div>            
             <div id="content">
             </div>
         </div>
-    
+       
         <div class="templates" style="display: none">
             
             <div class="default-top-view">
@@ -50,7 +45,7 @@
                     <button id="edit-btn" class="btn expanded-btn" type="button">
                         <i class="icon-edit"></i> Edit
                     </button>
-                    <div id="report-btn" class="btn-group dropdown">
+                    <div id="report-btn" class="btn-group dropup">
                         <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
                             <i class="icon-print"></i> Reports
                             <span class="caret"></span>
@@ -67,7 +62,7 @@
                     <div class="view-detail"></div>
                 </div>
             </div>
-    
+            
             <div class="default-view">
                 <div class="form-body">
                     <div class="view-table"></div>
@@ -93,10 +88,10 @@
                     </button>
                 </div>
             </div>
-    
+
             <div class="default-top-edit">
                 <div class="form-header">            
-                    <button type="button" id="ok-btn" class="btn expanded-btn">
+                    <button type="button" id="ok-btn" class="btn btn-ary expanded-btn">
                         <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
                     </button>
                     <button type="button" id="cancel-btn" class="btn expanded-btn">
@@ -115,7 +110,7 @@
                     <div class="edit-detail"></div>
                 </div>
                 <div class="form-footer">
-                    <button type="button" id="ok-btn" class="btn expanded-btn">
+                    <button type="button" id="ok-btn" class="btn btn-ary expanded-btn">
                         <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
                     </button>
                     <button type="button" id="cancel-btn" class="btn expanded-btn">
@@ -123,7 +118,7 @@
                     </button>
                 </div>
             </div>
-     
+    
             <div class="default-param">
                 <div class="form-body">
                     <div class="edit-body">
@@ -160,27 +155,6 @@
                 </div>
             </div>
     
-            <div class="dashboard-view">
-                <div class="row-fluid">
-                    <div class="span6">                
-                        <canvas id="cutomers-canvas"></canvas>                
-                        <div id="customer-table"></div>
-                    </div>                            
-                    <div class="span6">                        
-                        <canvas id="tracks-canvas"></canvas>
-                        <div id="tracks-table"></div>
-                    </div>                
-                </div>
-            </div>
-    
-            <div class="about">
-                <a href="http://jam-py.com/" target="_blank"><h3>Jam.py</h3></a>
-                <h3>Demo application</h3>
-                with <a href="http://chinookdatabase.codeplex.com/" target="_blank">Chinook Database</a>
-                <p>by Andrew Yushev</p>
-                <p>2015-2017</p>
-            </div>
-    
             <form id="login-form" target="dummy" class="form-horizontal" data-caption="Log in" style="margin: 10px 0 0; padding: 0px">
                 <div class="control-group">
                     <label class="control-label" for="input-login">Login</label>
@@ -198,9 +172,8 @@
                     <input type="submit" class="btn expanded-btn pull-right" id="login-btn" value="OK" tabindex="3">
                 </div>
             </form>
-            
+
         </div>
-        
         <iframe src="dummy.html" name="dummy" style="display: none"></iframe>
     
         <script src="jam/js/jquery.js"></script>
@@ -208,9 +181,9 @@
         <script src="jam/js/bootstrap-modal.js"></script>
         <script src="jam/js/bootstrap-modalmanager.js"></script>
         <script src="jam/js/bootstrap-datepicker.js"></script>
-        <script src="jam/js/jquery.maskedinput.js"></script>    
+        <script src="jam/js/jquery.maskedinput.js"></script>        
         <script src="jam/js/jam.js"></script>
-        <script src="static/js/Chart.min.js"></script>
+        <!--<script src="static/js/Chart.min.js"></script>-->
     
     
         <script>

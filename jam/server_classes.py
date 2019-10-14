@@ -6,6 +6,12 @@ import datetime, time
 import inspect
 import json
 import types
+if os.name == "nt":
+    try:
+        from winreg import OpenKey, QueryValue, HKEY_LOCAL_MACHINE
+    except:
+        from _winreg import OpenKey, QueryValue, HKEY_LOCAL_MACHINE
+
 from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_bytes, to_unicode
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -96,11 +102,11 @@ class ServerDataset(Dataset, SQL):
         for filter_def in info:
             self.add_filter(*filter_def)
 
-    def do_internal_open(self, params):
-        return self.select_records(params)
+    def do_internal_open(self, params, connection):
+        return self.select_records(params, connection)
 
     def do_apply(self, params=None, safe=False, connection=None):
-        if not self.master and self.log_changes:
+        if not self.master:
             changes = {}
             if self.change_log.get_changes(changes):
                 data, error = self.apply_changes((changes, params), safe, connection)
@@ -139,28 +145,47 @@ class ServerDataset(Dataset, SQL):
             result = count, error_mess
         return result
 
+    def __execute_select(self, cursor, sql, db_module):
+        try:
+            cursor.execute(sql)
+            return db_module.process_sql_result(cursor.fetchall())
+        except Exception as x:
+            self.log.exception(error_message(x))
+
     def execute_open(self, params, connection=None, db_module=None):
+        rows = None
         error_mes = ''
-        limit = params['__limit']
-        offset = params['__offset']
+        if not db_module:
+            db_module = self.task.db_module
         sqls = self.get_select_queries(params, db_module)
-        if len(sqls) == 1:
-            rows = self.task.select(sqls[0], connection, db_module)
+        if connection:
+            con = connection
         else:
-            rows = []
-            cut = False
-            for sql in sqls:
-                rows += self.task.select(sql, connection, db_module)
-                if limit or offset:
-                    if len(rows) >= offset + limit:
-                        rows = rows[offset:offset + limit]
-                        cut = True
-                        break
-            if (limit or offset) and not cut:
-                rows = rows[offset:offset + limit]
+            con = self.task.connect()
+        cursor = con.cursor()
+        try:
+            if len(sqls) == 1:
+                rows = self.__execute_select(cursor, sqls[0], db_module)
+            else:
+                rows = []
+                limit = params['__limit']
+                offset = params['__offset']
+                cut = False
+                for sql in sqls:
+                    rows += self.__execute_select(cursor, sql, db_module)
+                    if limit or offset:
+                        if len(rows) >= offset + limit:
+                            rows = rows[offset:offset + limit]
+                            cut = True
+                            break
+                if (limit or offset) and not cut:
+                    rows = rows[offset:offset + limit]
+        finally:
+            if not connection:
+                con.close()
         return rows, error_mes
 
-    def select_records(self, params, safe=False):
+    def select_records(self, params, connection=None, safe=False):
         if safe and not self.can_view():
             raise Exception(consts.language('cant_view') % self.item_caption)
         result = None
@@ -169,7 +194,7 @@ class ServerDataset(Dataset, SQL):
         if result is None and self.on_open:
             result = self.on_open(self, params)
         if result is None:
-            result = self.execute_open(params)
+            result = self.execute_open(params, connection)
         result = list(result)
         return result
 
@@ -182,19 +207,19 @@ class ServerDataset(Dataset, SQL):
 
     def apply_changes(self, data, safe, connection=None):
         result = None
-        autocommit = False
         changes, params = data
         if not params:
             params = {}
         params['__safe'] = safe
         delta = self.delta(changes)
-        if not connection:
-            autocommit = True
-            connection = self.task.connect()
+        if connection:
+            con = connection
+        else:
+            con = self.task.connect()
         try:
             if self.task.on_apply:
                 try:
-                    result = self.task.on_apply(self, delta, params, connection)
+                    result = self.task.on_apply(self, delta, params, con)
                 except: # for compatibility with previous versions
                     if get_function_code(self.task.on_apply).co_argcount == 3:
                         result = self.task.on_apply(self, delta, params)
@@ -202,22 +227,22 @@ class ServerDataset(Dataset, SQL):
                         raise
             if result is None and self.on_apply:
                 try:
-                    result = self.on_apply(self, delta, params, connection)
+                    result = self.on_apply(self, delta, params, con)
                 except: # for compatibility with previous versions
                     if get_function_code(self.on_apply).co_argcount == 3:
                         result = self.on_apply(self, delta, params)
                     else:
                         raise
             if result is None:
-                result = self.apply_delta(delta, params, connection)
-            if autocommit:
-                connection.commit()
+                result = self.apply_delta(delta, params, con)
+            if not connection and con:
+                con.commit()
         finally:
-            if connection and autocommit:
-                connection.close()
+            if not connection and con:
+                con.close()
         return result
 
-    def update_deleted(self, details=None):
+    def update_deleted(self, details=None, connection=None):
         if self._is_delta:
             if details is None:
                 details = self.details
@@ -234,7 +259,7 @@ class ServerDataset(Dataset, SQL):
                                 prototype._master_id: self.ID,
                                 prototype._master_rec_id: self._primary_key_field.value
                             }
-                            prototype.open(fields=fields, expanded=detail.expanded, where=where)
+                            prototype.open(fields=fields, expanded=detail.expanded, where=where, connection=connection)
                             if prototype.record_count():
                                 it.edit()
                                 for p in prototype:
@@ -781,6 +806,8 @@ class AbstractServerTask(AbstrTask):
     def execute(self, command, params=None, connection=None, db_module=None, \
         select=False, autocommit=True):
         if connection:
+            if not db_module:
+                db_module = self.db_module
             connection, result = execute_sql_connection(connection, command, \
                 params, select, db_module, autocommit=autocommit)
         elif self.persist_con:
@@ -851,10 +878,9 @@ class AbstractServerTask(AbstrTask):
             try:
                 from subprocess import Popen, STDOUT, PIPE
                 if os.name == "nt":
-                    import _winreg
                     regpath = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\soffice.exe"
-                    root = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, regpath)
-                    s_office = _winreg.QueryValue(root, "")
+                    root = OpenKey(HKEY_LOCAL_MACHINE, regpath)
+                    s_office = QueryValue(root, "")
                 else:
                     s_office = "soffice"
                 convertion = Popen([s_office, '--headless', '--convert-to', ext,

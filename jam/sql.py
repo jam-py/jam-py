@@ -29,7 +29,7 @@ class SQL(object):
             else:
                 cursor.execute(sql)
         except Exception as x:
-            consts.app.log.exception('Error: %s\n query: %s\n params: %s' % (str(x), sql, params))
+            self.log.exception('Error: %s\n query: %s\n params: %s' % (str(x), sql, params))
             raise
 
     def __insert_record(self, cursor, db_module, changes, details_changes):
@@ -90,7 +90,7 @@ class SQL(object):
                     value = (0, field.data_type)
                 row.append(value)
         fields = ', '.join(fields)
-        if self._record_version:
+        if self.edit_lock and self._record_version:
             fields = ' %s, "%s"=COALESCE("%s", 0)+1' % \
             (fields, self._record_version_db_field_name, self._record_version_db_field_name)
         if self._primary_key_field.data_type == consts.TEXT:
@@ -101,13 +101,11 @@ class SQL(object):
         sql = ''.join([command, fields, where])
         row = db_module.process_sql_params(row, cursor)
         self.__execute(cursor, sql, row)
-        # ~ print 222, self.item_name, datetime.datetime.now() - now0
         if self.edit_lock and self._record_version:
             now = datetime.datetime.now()
             self.__execute(cursor, 'SELECT "%s" FROM "%s" WHERE "%s"=%s' % \
                 (self._record_version_db_field_name, self.table_name, \
                 self._primary_key_db_field_name, pk.data))
-            # ~ print 111, datetime.datetime.now() - now
             r = cursor.fetchone()
             if r[0] != self._record_version_field.value + 1:
                 raise Exception(consts.language('edit_record_modified'))
@@ -130,17 +128,17 @@ class SQL(object):
                 (self.table_name, self._primary_key_db_field_name, id_literal)
         self.__execute(cursor, sql)
 
-    def __save_del_details_history(self, cursor, db_module, user, sql):
+    def __save_del_details_history(self, connection, cursor, db_module, user, sql):
         for detail in self.details:
             if detail.keep_history:
-                self.update_deleted([detail])
+                self.update_deleted([detail], connection)
                 for d in detail:
                     params = [detail.prototype.ID, d._primary_key_field.data,
                         consts.RECORD_DELETED, None, user, datetime.datetime.now()]
                     self.__execute(cursor, sql, db_module.process_sql_params(params, cursor))
-            detail.__save_del_details_history(cursor, db_module, user, sql)
+            detail.__save_del_details_history(connection, cursor, db_module, user, sql)
 
-    def __save_history(self, cursor, db_module):
+    def __save_history(self, connection, cursor, db_module):
         if self.task.history_item and self.keep_history and self.record_status != consts.RECORD_DETAILS_MODIFIED:
             deleted_flag = self.task.history_item._deleted_flag
             user_info = None
@@ -189,12 +187,12 @@ class SQL(object):
                 changes_str = json.dumps(f_list, separators=(',',':'), default=json_defaul_handler)
                 changes = ('%s%s' % ('0', changes_str), consts.LONGTEXT)
             elif not self.master and self.details:
-                self.__save_del_details_history(cursor, db_module, user, sql)
+                self.__save_del_details_history(connection, cursor, db_module, user, sql)
             params = [item_id, self._primary_key_field.value, self.record_status, changes, user, datetime.datetime.now()]
             params = db_module.process_sql_params(params, cursor)
             self.__execute(cursor, sql, params)
 
-    def __delete_detail_records(self, cursor, detail, db_module):
+    def __delete_detail_records(self, connection, cursor, detail, db_module):
         if self._primary_key_field.data_type == consts.TEXT:
             id_literal = "'%s'" % self._primary_key_field.value
         else:
@@ -217,15 +215,15 @@ class SQL(object):
                 sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
                     (detail.table_name, detail._master_rec_id_db_field_name, id_literal)
         self.__execute(cursor, sql)
-        detail.__save_history(cursor, db_module)
+        detail.__save_history(connection, cursor, db_module)
         if len(detail.details):
             self.update_deleted([detail])
             for it in detail:
                 for d in detail.details:
-                    detail.__delete_detail_records(cursor, d, db_module)
+                    detail.__delete_detail_records(connection, cursor, d, db_module)
 
 
-    def __process_record(self, cursor, safe, db_module, changes, details_changes):
+    def __process_record(self, connection, cursor, safe, db_module, changes, details_changes):
         if self.master:
             if self._master_id:
                 self._master_id_field.data = self.master.ID
@@ -247,20 +245,20 @@ class SQL(object):
         else:
             raise Exception('execute_delta - invalid %s record_status %s, record: %s' % \
                 (self.item_name, self.record_status, self._dataset[self.rec_no]))
-        self.__save_history(cursor, db_module)
+        self.__save_history(connection, cursor, db_module)
 
-    def __process_records(self, cursor, safe, db_module, changes):
+    def __process_records(self, connection, cursor, safe, db_module, changes):
         for it in self:
             details = []
-            it.__process_record(cursor, safe, db_module, changes, details)
+            it.__process_record(connection, cursor, safe, db_module, changes, details)
             for detail in self.details:
                 detail_changes = []
                 detail_result = {'ID': str(detail.ID), 'changes': detail_changes}
                 details.append(detail_result)
                 if self.record_status == consts.RECORD_DELETED:
-                    self.__delete_detail_records(cursor, detail, db_module)
+                    self.__delete_detail_records(connection, cursor, detail, db_module)
                 else:
-                    detail.__process_records(cursor, safe, db_module, detail_changes)
+                    detail.__process_records(connection, cursor, safe, db_module, detail_changes)
 
     def process_changes(self, connection, params=None, db_module=None):
         error = None
@@ -273,7 +271,7 @@ class SQL(object):
         result = {'ID': str(self.ID), 'changes': changes}
         cursor = connection.cursor()
         try:
-            self.__process_records(cursor, safe, db_module, changes)
+            self.__process_records(connection, cursor, safe, db_module, changes)
         except Exception as e:
             self.log.exception(error_message(e))
             error = str(e)
@@ -943,7 +941,7 @@ class SQL(object):
             if lists.get('reports'):
                 self._reports_list = lists['reports']
 
-    def store_interface(self):
+    def store_interface(self, connection=None):
         handlers = self.store_handlers()
         self.clear_handlers()
         try:
@@ -954,7 +952,7 @@ class SQL(object):
                     'reports': self._reports_list}
             self.f_info.value = 'json' + json.dumps(dic, default=json_defaul_handler)
             self.post()
-            self.apply()
+            self.apply(connection)
         finally:
             handlers = self.load_handlers(handlers)
 
