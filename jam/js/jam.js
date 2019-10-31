@@ -2741,7 +2741,11 @@
         },
 
         round: function(num, dec) {
-            return Number(Math.round(num + 'e' + dec) + 'e-' + dec);
+            let result = Number(Math.round(num + 'e' + dec) + 'e-' + dec);
+            if (isNaN(result)) {
+                result = 0;
+            }
+            return result;
         },
 
         str_to_int: function(str) {
