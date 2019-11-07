@@ -36,9 +36,16 @@ def get_value_list(str_list):
         result.append([i + 1, s])
     return result
 
+def get_lang(task, text):
+    last = text[-1:]
+    if last in ['1', '2', '3']:
+        return task.language(text[0:-1]) + ' ' + last
+    else:
+        return task.language(text)
+
 def init_items(item):
     if hasattr(item, 'field_defs'):
-        item.soft_delete = False
+        item.soft_delete = True
         item._primary_key_db_field_name = item._primary_key.upper()
         item._deleted_flag_db_field_name = item._deleted_flag.upper()
         # item._record_version_db_field_name = item._record_version.upper()
@@ -46,7 +53,8 @@ def init_items(item):
             item._master_id_db_field_name = item._master_id.upper()
             item._master_rec_id_db_field_name = item._master_rec_id.upper()
         for field_def in item.field_defs:
-            field_def[FIELD_CAPTION] = item.task.language(field_def[FIELD_CAPTION])
+            # field_def[FIELD_CAPTION] = item.task.language(field_def[FIELD_CAPTION])
+            field_def[FIELD_CAPTION] = get_lang(item.task, field_def[FIELD_CAPTION])
             lookup_list = LOOKUP_LISTS.get(field_def[FIELD_NAME])
             if lookup_list:
                 field_def[FIELD_LOOKUP_VALUES] = get_value_list(lookup_list)
@@ -75,7 +83,8 @@ def change_language(task):
     def change_fields_lang(item):
         if hasattr(item, 'field_defs'):
             for field_def in item.field_defs:
-                field_def[FIELD_CAPTION] = item.task.language(field_def[FIELD_CAPTION])
+                # field_def[FIELD_CAPTION] = item.task.language(field_def[FIELD_CAPTION])
+                field_def[FIELD_CAPTION] = get_lang(item.task, field_def[FIELD_CAPTION])
 
     restore_caption_keys(task)
     consts.read_language()
@@ -510,11 +519,6 @@ def update_events_code(task):
     it.task.execute(sql)
     if it.task.app.task:
         it.task.app.task.all(update_task)
-    try:
-        from utils.update_version import update
-        update(task)
-    except:
-        pass
 
 def get_minified_name(file_name):
     result = file_name
@@ -872,10 +876,18 @@ def server_lang_modified(task):
     consts.read_language()
     change_language(task)
 
+def update_version(task, version):
+    try:
+        from utils.update_version import update
+        update(task, version)
+    except:
+        pass
+
 def do_on_apply_param_changes(item, delta, params, connection):
     task = item.task
     language = consts.LANGUAGE
     debugging = consts.DEBUGGING
+    version = consts.VERSION
     # single_file_js = consts.SINGLE_FILE_JS
     # compressed_js = consts.COMPRESSED_JS
     theme = consts.THEME
@@ -897,7 +909,8 @@ def do_on_apply_param_changes(item, delta, params, connection):
     # if single_file_js != consts.SINGLE_FILE_JS:
     #     set_client_modified(task)
     #     set_server_modified(task)
-
+    if version != consts.VERSION:
+        update_version(task, consts.VERSION)
     if language != consts.LANGUAGE:
         server_lang_modified(task)
     if theme != consts.THEME or small_font != consts.SMALL_FONT:

@@ -191,6 +191,33 @@ class AbstractItem(object):
     def can_view(self):
         return self.check_operation('can_view')
 
+    def round(self, value, dec):
+        return consts.round(value, dec)
+
+    def float_to_str(self, value):
+        return consts.float_to_str(value)
+
+    def cur_to_str(self, value):
+        return consts.cur_to_str(value)
+
+    def date_to_str(self, value):
+        return consts.date_to_str(value)
+
+    def datetime_to_str(self, value):
+        return consts.datetime_to_str(value)
+
+    def str_to_date(self, value):
+        return consts.str_to_date(value)
+
+    def str_to_datetime(self, value):
+        return consts.str_to_datetime(value)
+
+    def str_to_float(self, value):
+        return consts.str_to_float(value)
+
+    def str_to_cur(self, value):
+        return consts.str_to_cur(value)
+
 
 class AbstrGroup(AbstractItem):
     pass
@@ -202,7 +229,6 @@ class AbstrTask(AbstractItem):
         self.task = self
         self.item_type_id = consts.TASK_TYPE
         self.history_item = None
-        self.lock_item = None
         self.log = None
 
     def task_locked(self):
@@ -217,8 +243,6 @@ class AbstrTask(AbstractItem):
         info['lookup_lists'] = self.lookup_lists
         if self.history_item:
             info['history_item'] = self.history_item.ID
-        if self.lock_item:
-            info['lock_item'] = self.lock_item.ID
 
     def set_info(self, info):
         super(AbstrTask, self).set_info(info)
@@ -264,7 +288,7 @@ class AbstrItem(AbstractItem):
         info['virtual_table'] = self.virtual_table
         info['master_id'] = self._master_id
         info['master_rec_id'] = self._master_rec_id
-        info['keep_history'] = self.keep_history
+        info['keep_history'] = self._keep_history
         info['edit_lock'] = self.edit_lock
         info['view_params'] = self._view_list
         info['edit_params'] = self._edit_list
@@ -301,7 +325,6 @@ class AbstrItem(AbstractItem):
 
     def can_delete(self):
         return self.check_operation('can_delete')
-
 
 class AbstrDetail(AbstrItem):
 

@@ -150,7 +150,7 @@ function Events1() { // demo
 		item.edit_options.inputs_container_class = 'edit-body';
 		item.edit_options.detail_container_class = 'edit-detail';
 		
-		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
+		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit() });
 		item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
 		if (!item.is_new() && !item.can_modify) {
 			item.edit_form.find("#ok-btn").prop("disabled", true);
@@ -587,14 +587,9 @@ function Events18() { // demo.journals.invoices.invoice_table
 			item.select_records('track');
 		});
 	}
-	
-	function on_after_append(item) {
-		item.invoice_date.value = new Date();
-	}
 	this.calc = calc;
 	this.on_field_changed = on_field_changed;
 	this.on_view_form_created = on_view_form_created;
-	this.on_after_append = on_after_append;
 }
 
 task.events.events18 = new Events18();

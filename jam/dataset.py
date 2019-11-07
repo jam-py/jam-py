@@ -125,8 +125,8 @@ class DBField(object):
 
     @property
     def text(self):
-        result = self.value
-        if not result is None:
+        if not self.data is None:
+            result = self.value
             if self.data_type == consts.INTEGER:
                 result = str(result)
             elif self.data_type == consts.FLOAT:
@@ -255,17 +255,19 @@ class DBField(object):
         if not value is None:
             self.new_value = value
             try:
-                if self.data_type == consts.BOOLEAN:
-                    if bool(value):
-                        self.new_value = 1
-                    else:
-                        self.new_value = 0
+                if self.data_type == consts.TEXT:
+                    self.new_value = to_unicode(value, 'utf-8')
                 elif self.data_type == consts.FLOAT:
                     self.new_value = float(value)
                 elif self.data_type == consts.CURRENCY:
                     self.new_value = consts.round(value, consts.FRAC_DIGITS)
                 elif self.data_type == consts.INTEGER:
                     self.new_value = int(value)
+                elif self.data_type == consts.BOOLEAN:
+                    if bool(value):
+                        self.new_value = 1
+                    else:
+                        self.new_value = 0
                 elif self.data_type == consts.KEYS:
                     self.new_value = ';'.join([str(v) for v in value])
                     lookup_value = value
@@ -323,8 +325,17 @@ class DBField(object):
 
     @property
     def lookup_data_type(self):
-        if self.lookup_item:
-            return self.lookup_item._field_by_name(self.lookup_field).data_type;
+        if self.lookup_values:
+            return consts.TEXT;
+        elif self.lookup_item:
+            if self.lookup_field2:
+                return self.lookup_item2._field_by_name(self.lookup_field2).data_type
+            elif self.lookup_field1:
+                return self.lookup_item1._field_by_name(self.lookup_field1).data_type
+            else:
+                return self.lookup_item._field_by_name(self.lookup_field).data_type
+        else:
+            return self.data_type
 
     def _get_value_in_list(self, value=None):
         result = '';
@@ -349,10 +360,10 @@ class DBField(object):
                 data_type = self.lookup_data_type
                 if data_type == consts.DATE:
                     if isinstance(value, text_type):
-                        value = self.convert_date(value)
+                        value = consts.convert_date(value)
                 elif data_type == consts.DATETIME:
                     if isinstance(value, text_type):
-                        value = self.convert_date_time(value)
+                        value = consts.convert_date_time(value)
                 elif self.data_type == consts.BOOLEAN:
                     value = bool(value)
         return value
@@ -721,6 +732,7 @@ class ChangeLog(object):
         data = []
         counter = 0
         result['fields'] = self.db_fields
+        result['edit_lock'] = self.item.edit_lock;
         result['data'] = data
         for log in self.logs:
             if log:
@@ -756,6 +768,7 @@ class ChangeLog(object):
         self.fields = changes['fields']
         self.db_fields = self.fields
         self.expanded = False
+        self.item.edit_lock = changes['edit_lock']
         data = changes['data']
         for record_log in data:
             if record_log:
@@ -862,7 +875,7 @@ class ChangeLog(object):
             for change in changes:
                 log_id, rec, details = change
                 record_log = self.logs[log_id]
-                if record_log:
+                if record_log and not rec is None:
                     record = record_log['record']
                     record_details = record_log['details']
                     info = self.item.get_rec_info(record)
@@ -887,6 +900,13 @@ class ChangeLog(object):
                                 detail_item.change_log.logs = item_detail['logs']
                                 detail_item.change_log.update(detail, rec_id)
                 self.logs[log_id] = None;
+            l = len(self.logs)
+            index = -1
+            for i in range(l):
+                if not self.logs[l - i - 1] is None:
+                    index = l - i - 1
+                    break
+            self.logs = self.logs[0:index+1]
 
 
 class AbstractDataSet(object):
@@ -1036,6 +1056,7 @@ class AbstractDataSet(object):
         result.filter_defs = self.filter_defs
         result._virtual_table = self._virtual_table
         result._keep_history = self._keep_history
+        result.edit_lock = self.edit_lock
         result.select_all = self.select_all
 
         for field_def in result.field_defs:
@@ -1506,10 +1527,10 @@ class AbstractDataSet(object):
         self.item_state = consts.STATE_INSERT
         if index == 0:
             self._dataset.insert(0, self.new_record())
-            self.skip(0, trigger_events=False)
         else:
             self._dataset.append(self.new_record())
-            self.skip(len(self._dataset) - 1)
+            index = len(self._dataset) - 1
+        self.skip(index, False)
         self.record_status = consts.RECORD_INSERTED
         for field in self.fields:
             field.assign_default_value()
@@ -1547,7 +1568,7 @@ class AbstractDataSet(object):
         if self.master:
             self.master._set_modified(True)
         self._dataset.remove(self._dataset[self.rec_no])
-        self.skip(self.rec_no, trigger_events=False)
+        self.skip(self.rec_no, False)
         self._do_after_scroll()
         self.item_state = consts.STATE_BROWSE
 
@@ -1561,7 +1582,7 @@ class AbstractDataSet(object):
         else:
             raise Exception(consts.language('cancel_invalid_state') % self.item_name)
         prev_state = self.item_state
-        self.skip(self.__old_row, trigger_events=False)
+        self.skip(self.__old_row, False)
         self.item_state = consts.STATE_BROWSE
         self._set_modified(False)
         if prev_state == consts.STATE_EDIT:
@@ -1677,9 +1698,6 @@ class AbstractDataSet(object):
             self.open(params=params)
         else:
             self.open()
-
-    def round(self, value, dec):
-        return consts.round(value, dec)
 
 class MasterDataSet(AbstractDataSet):
     def __init__(self):

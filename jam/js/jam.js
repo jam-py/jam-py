@@ -379,11 +379,10 @@
             this._events = [];
             for (var event in events) {
                 if (events.hasOwnProperty(event)) {
-                    if (this[event]) {
-                        console.error(this.item_name + ' client module ' + ': function "' +
-                            event + '" will override "' + this.item_name +
-                            '" default method. Please, rename the function.');
-                    }
+                    //~ if (this[event]) {
+                        //~ console.error(this.item_name + ' client module ' + ': method "' +
+                            //~ event + '" will override existing attribute. Please, rename the function.');
+                    //~ }
                     this[event] = events[event];
                     this._events.push([event, events[event]]);
                 }
@@ -1779,6 +1778,312 @@
                 console.log(this.item_name + message);
             }
         }
+
+        round(num, dec) {
+            let result = Number(Math.round(num + 'e' + dec) + 'e-' + dec);
+            if (isNaN(result)) {
+                result = 0;
+            }
+            return result;
+        }
+
+        str_to_int(str) {
+            var result = parseInt(str, 10);
+            if (isNaN(result)) {
+                console.trace();
+                throw "invalid integer value";
+            }
+            return result;
+        }
+
+        str_to_date(str) {
+            return this.format_string_to_date(str, locale.D_FMT);
+        }
+
+        str_to_datetime(str) {
+            return this.format_string_to_date(str, locale.D_T_FMT);
+        }
+
+        str_to_float(text) {
+            var result;
+            text = text.replace(locale.DECIMAL_POINT, ".")
+            text = text.replace(locale.MON_DECIMAL_POINT, ".")
+            result = parseFloat(text);
+            if (isNaN(result)) {
+                console.trace();
+                throw "invalid float value";
+            }
+            return result;
+        }
+
+        str_to_cur(val) {
+            var result = '';
+            if (val) {
+                result = $.trim(val);
+                result = result.replace(' ', '')
+                if (locale.MON_THOUSANDS_SEP.length) {
+                    result = result.replace(new RegExp(locale.MON_THOUSANDS_SEP, 'g'), '');
+                }
+                if (locale.CURRENCY_SYMBOL) {
+                    result = $.trim(result.replace(locale.CURRENCY_SYMBOL, ''));
+                }
+                if (locale.POSITIVE_SIGN) {
+                    result = result.replace(locale.POSITIVE_SIGN, '');
+                }
+                if (locale.N_SIGN_POSN === 0 || locale.P_SIGN_POSN === 0) {
+                    result = result.replace('(', '').replace(')', '')
+                }
+                if (locale.NEGATIVE_SIGN && result.indexOf(locale.NEGATIVE_SIGN) !== -1) {
+                    result = result.replace(locale.NEGATIVE_SIGN, '')
+                    result = '-' + result
+                }
+                result = $.trim(result.replace(locale.MON_DECIMAL_POINT, '.'));
+                result = parseFloat(result);
+            }
+            return result;
+        }
+
+        int_to_str(value) {
+            if (value || value === 0) {
+                return value.toString();
+            }
+            else {
+                return '';
+            }
+        }
+
+        float_to_str(value) {
+            var str,
+                i,
+                result = '';
+            if (value || value === 0) {
+                str = ('' + value.toFixed(6)).replace(".", locale.DECIMAL_POINT);
+                i = str.length - 1;
+                for (; i >= 0; i--) {
+                    if ((str[i] === '0') && (result.length === 0)) {
+                        continue;
+                    } else {
+                        result = str[i] + result;
+                    }
+                }
+                if (result.slice(result.length - 1) === locale.DECIMAL_POINT) {
+                    result = result + '0';
+                }
+            }
+            return result;
+        }
+
+        date_to_str(value) {
+            if (value) {
+                return this.format_date_to_string(value, locale.D_FMT);
+            }
+            else {
+                return '';
+            }
+        }
+
+        datetime_to_str(value) {
+            if (value) {
+                return this.format_date_to_string(value, locale.D_T_FMT);
+            }
+            else {
+                return '';
+            }
+        }
+
+        cur_to_str(value) {
+            var point,
+                dec,
+                digits,
+                i,
+                d,
+                count = 0,
+                len,
+                result = '';
+
+            if (value || value === 0) {
+                result = value.toFixed(locale.FRAC_DIGITS);
+                if (isNaN(result[0])) {
+                    result = result.slice(1, result.length);
+                }
+                point = result.indexOf('.');
+                dec = '';
+                digits = result;
+                if (point >= 0) {
+                    digits = result.slice(0, point);
+                    dec = result.slice(point + 1, result.length);
+                }
+                result = '';
+                len = digits.length;
+                for (i = 0; i < len; i++) {
+                    d = digits[len - i - 1];
+                    result = d + result;
+                    count += 1;
+                    if ((count % 3 === 0) && (i !== len - 1)) {
+                        result = locale.MON_THOUSANDS_SEP + result;
+                    }
+                }
+                if (dec) {
+                    result = result + locale.MON_DECIMAL_POINT + dec;
+                }
+                if (value < 0) {
+                    if (locale.N_SIGN_POSN === 3) {
+                        result = locale.NEGATIVE_SIGN + result;
+                    } else if (locale.N_SIGN_POSN === 4) {
+                        result = result + locale.NEGATIVE_SIGN;
+                    }
+                } else {
+                    if (locale.P_SIGN_POSN === 3) {
+                        result = locale.POSITIVE_SIGN + result;
+                    } else if (locale.P_SIGN_POSN === 4) {
+                        result = result + locale.POSITIVE_SIGN;
+                    }
+                }
+                if (locale.CURRENCY_SYMBOL) {
+                    if (value < 0) {
+                        if (locale.N_CS_PRECEDES) {
+                            if (locale.N_SEP_BY_SPACE) {
+                                result = locale.CURRENCY_SYMBOL + ' ' + result;
+                            } else {
+                                result = locale.CURRENCY_SYMBOL + result;
+                            }
+                        } else {
+                            if (locale.N_SEP_BY_SPACE) {
+                                result = result + ' ' + locale.CURRENCY_SYMBOL;
+                            } else {
+                                result = result + locale.CURRENCY_SYMBOL;
+                            }
+                        }
+                    } else {
+                        if (locale.P_CS_PRECEDES) {
+                            if (locale.P_SEP_BY_SPACE) {
+                                result = locale.CURRENCY_SYMBOL + ' ' + result;
+                            } else {
+                                result = locale.CURRENCY_SYMBOL + result;
+                            }
+                        } else {
+                            if (locale.P_SEP_BY_SPACE) {
+                                result = result + ' ' + locale.CURRENCY_SYMBOL;
+                            } else {
+                                result = result + locale.CURRENCY_SYMBOL;
+                            }
+                        }
+                    }
+                }
+                if (value < 0) {
+                    if (locale.N_SIGN_POSN === 0 && locale.NEGATIVE_SIGN) {
+                        result = locale.NEGATIVE_SIGN + '(' + result + ')';
+                    } else if (locale.N_SIGN_POSN === 1) {
+                        result = locale.NEGATIVE_SIGN + result;
+                    } else if (locale.N_SIGN_POSN === 2) {
+                        result = result + locale.NEGATIVE_SIGN;
+                    }
+                } else {
+                    if (locale.P_SIGN_POSN === 0 && locale.POSITIVE_SIGN) {
+                        result = locale.POSITIVE_SIGN + '(' + result + ')';
+                    } else if (locale.P_SIGN_POSN === 1) {
+                        result = locale.POSITIVE_SIGN + result;
+                    } else if (locale.P_SIGN_POSN === 2) {
+                        result = result + locale.POSITIVE_SIGN;
+                    }
+                }
+            }
+            return result;
+        }
+
+        parseDateInt(str, digits) {
+            var result = parseInt(str.substring(0, digits), 10);
+            if (isNaN(result)) {
+                //            result = 0
+                console.trace();
+                throw 'invalid date';
+            }
+            return result;
+        }
+
+        format_string_to_date(str, format) {
+            var ch = '',
+                substr = str,
+                day, month, year,
+                hour = 0,
+                min = 0,
+                sec = 0;
+            for (var i = 0; i < format.length; ++i) {
+                ch = format.charAt(i);
+                switch (ch) {
+                    case "%":
+                        break;
+                    case "d":
+                        day = this.parseDateInt(substr, 2);
+                        substr = substr.slice(2);
+                        break;
+                    case "m":
+                        month = this.parseDateInt(substr, 2);
+                        substr = substr.slice(2);
+                        break;
+                    case "Y":
+                        year = this.parseDateInt(substr, 4);
+                        substr = substr.slice(4);
+                        break;
+                    case "H":
+                        hour = this.parseDateInt(substr, 2);
+                        substr = substr.slice(2);
+                        break;
+                    case "M":
+                        min = this.parseDateInt(substr, 2);
+                        substr = substr.slice(2);
+                        break;
+                    case "S":
+                        sec = this.parseDateInt(substr, 2);
+                        substr = substr.slice(2);
+                        break;
+                    default:
+                        substr = substr.slice(ch.length);
+                }
+            }
+            return new Date(year, month - 1, day, hour, min, sec);
+        }
+
+        leftPad(value, len, ch) {
+            var result = value.toString();
+            while (result.length < len) {
+                result = ch + result;
+            }
+            return result;
+        }
+
+        format_date_to_string(date, format) {
+            var ch = '',
+                result = '';
+            for (var i = 0; i < format.length; ++i) {
+                ch = format.charAt(i);
+                switch (ch) {
+                    case "%":
+                        break;
+                    case "d":
+                        result += this.leftPad(date.getDate(), 2, '0');
+                        break;
+                    case "m":
+                        result += this.leftPad(date.getMonth() + 1, 2, '0');
+                        break;
+                    case "Y":
+                        result += date.getFullYear();
+                        break;
+                    case "H":
+                        result += this.leftPad(date.getHours(), 2, '0');
+                        break;
+                    case "M":
+                        result += this.leftPad(date.getMinutes(), 2, '0');
+                        break;
+                    case "S":
+                        result += this.leftPad(date.getSeconds(), 2, '0');
+                        break;
+                    default:
+                        result += ch;
+                }
+            }
+            return result;
+        }
     }
 
 
@@ -2222,7 +2527,6 @@
                 self.visible = info.task.visible;
                 self.lookup_lists = info.task.lookup_lists;
                 self.history_item = info.task.history_item;
-                self.lock_item = info.task.lock_item;
                 self.item_type = "";
                 if (info.task.type) {
                     self.item_type = self.types[info.task.type - 1];
@@ -2244,9 +2548,6 @@
                 self.init_modules(callback);
                 if (self.history_item) {
                     self._set_history_item(self.item_by_ID(self.history_item))
-                }
-                if (self.lock_item) {
-                    self.lock_item = self.item_by_ID(self.lock_item)
                 }
                 window.onbeforeunload = function() {
                     var i,
@@ -2711,308 +3012,6 @@
                 return cur_tab_content
             }
         }
-
-        round(num, dec) {
-            return Number(Math.round(num + 'e' + dec) + 'e-' + dec);
-        }
-
-        str_to_int(str) {
-            var result = parseInt(str, 10);
-            if (isNaN(result)) {
-                console.trace();
-                throw "invalid integer value";
-            }
-            return result;
-        }
-
-        str_to_date(str) {
-            return this.format_string_to_date(str, locale.D_FMT);
-        }
-
-        str_to_datetime(str) {
-            return this.format_string_to_date(str, locale.D_T_FMT);
-        }
-
-        str_to_float(text) {
-            var result;
-            text = text.replace(locale.DECIMAL_POINT, ".")
-            text = text.replace(locale.MON_DECIMAL_POINT, ".")
-            result = parseFloat(text);
-            if (isNaN(result)) {
-                console.trace();
-                throw "invalid float value";
-            }
-            return result;
-        }
-
-        str_to_cur(val) {
-            var result = '';
-            if (val) {
-                result = $.trim(val);
-                result = result.replace(' ', '')
-                if (locale.MON_THOUSANDS_SEP.length) {
-                    result = result.replace(new RegExp(locale.MON_THOUSANDS_SEP, 'g'), '');
-                }
-                if (locale.CURRENCY_SYMBOL) {
-                    result = $.trim(result.replace(locale.CURRENCY_SYMBOL, ''));
-                }
-                if (locale.POSITIVE_SIGN) {
-                    result = result.replace(locale.POSITIVE_SIGN, '');
-                }
-                if (locale.N_SIGN_POSN === 0 || locale.P_SIGN_POSN === 0) {
-                    result = result.replace('(', '').replace(')', '')
-                }
-                if (locale.NEGATIVE_SIGN && result.indexOf(locale.NEGATIVE_SIGN) !== -1) {
-                    result = result.replace(locale.NEGATIVE_SIGN, '')
-                    result = '-' + result
-                }
-                result = $.trim(result.replace(locale.MON_DECIMAL_POINT, '.'));
-                result = parseFloat(result);
-            }
-            return result;
-        }
-
-        int_to_str(value) {
-            if (value || value === 0) {
-                return value.toString();
-            }
-            else {
-                return '';
-            }
-        }
-
-        float_to_str(value) {
-            var str,
-                i,
-                result = '';
-            if (value || value === 0) {
-                str = ('' + value.toFixed(6)).replace(".", locale.DECIMAL_POINT);
-                i = str.length - 1;
-                for (; i >= 0; i--) {
-                    if ((str[i] === '0') && (result.length === 0)) {
-                        continue;
-                    } else {
-                        result = str[i] + result;
-                    }
-                }
-                if (result.slice(result.length - 1) === locale.DECIMAL_POINT) {
-                    result = result + '0';
-                }
-            }
-            return result;
-        }
-
-        date_to_str(value) {
-            if (value) {
-                return this.format_date_to_string(value, locale.D_FMT);
-            }
-            else {
-                return '';
-            }
-        }
-
-        datetime_to_str(value) {
-            if (value) {
-                return this.format_date_to_string(value, locale.D_T_FMT);
-            }
-            else {
-                return '';
-            }
-        }
-
-        cur_to_str(value) {
-            var point,
-                dec,
-                digits,
-                i,
-                d,
-                count = 0,
-                len,
-                result = '';
-
-            if (value || value === 0) {
-                result = value.toFixed(locale.FRAC_DIGITS);
-                if (isNaN(result[0])) {
-                    result = result.slice(1, result.length);
-                }
-                point = result.indexOf('.');
-                dec = '';
-                digits = result;
-                if (point >= 0) {
-                    digits = result.slice(0, point);
-                    dec = result.slice(point + 1, result.length);
-                }
-                result = '';
-                len = digits.length;
-                for (i = 0; i < len; i++) {
-                    d = digits[len - i - 1];
-                    result = d + result;
-                    count += 1;
-                    if ((count % 3 === 0) && (i !== len - 1)) {
-                        result = locale.MON_THOUSANDS_SEP + result;
-                    }
-                }
-                if (dec) {
-                    result = result + locale.MON_DECIMAL_POINT + dec;
-                }
-                if (value < 0) {
-                    if (locale.N_SIGN_POSN === 3) {
-                        result = locale.NEGATIVE_SIGN + result;
-                    } else if (locale.N_SIGN_POSN === 4) {
-                        result = result + locale.NEGATIVE_SIGN;
-                    }
-                } else {
-                    if (locale.P_SIGN_POSN === 3) {
-                        result = locale.POSITIVE_SIGN + result;
-                    } else if (locale.P_SIGN_POSN === 4) {
-                        result = result + locale.POSITIVE_SIGN;
-                    }
-                }
-                if (locale.CURRENCY_SYMBOL) {
-                    if (value < 0) {
-                        if (locale.N_CS_PRECEDES) {
-                            if (locale.N_SEP_BY_SPACE) {
-                                result = locale.CURRENCY_SYMBOL + ' ' + result;
-                            } else {
-                                result = locale.CURRENCY_SYMBOL + result;
-                            }
-                        } else {
-                            if (locale.N_SEP_BY_SPACE) {
-                                result = result + ' ' + locale.CURRENCY_SYMBOL;
-                            } else {
-                                result = result + locale.CURRENCY_SYMBOL;
-                            }
-                        }
-                    } else {
-                        if (locale.P_CS_PRECEDES) {
-                            if (locale.P_SEP_BY_SPACE) {
-                                result = locale.CURRENCY_SYMBOL + ' ' + result;
-                            } else {
-                                result = locale.CURRENCY_SYMBOL + result;
-                            }
-                        } else {
-                            if (locale.P_SEP_BY_SPACE) {
-                                result = result + ' ' + locale.CURRENCY_SYMBOL;
-                            } else {
-                                result = result + locale.CURRENCY_SYMBOL;
-                            }
-                        }
-                    }
-                }
-                if (value < 0) {
-                    if (locale.N_SIGN_POSN === 0 && locale.NEGATIVE_SIGN) {
-                        result = locale.NEGATIVE_SIGN + '(' + result + ')';
-                    } else if (locale.N_SIGN_POSN === 1) {
-                        result = locale.NEGATIVE_SIGN + result;
-                    } else if (locale.N_SIGN_POSN === 2) {
-                        result = result + locale.NEGATIVE_SIGN;
-                    }
-                } else {
-                    if (locale.P_SIGN_POSN === 0 && locale.POSITIVE_SIGN) {
-                        result = locale.POSITIVE_SIGN + '(' + result + ')';
-                    } else if (locale.P_SIGN_POSN === 1) {
-                        result = locale.POSITIVE_SIGN + result;
-                    } else if (locale.P_SIGN_POSN === 2) {
-                        result = result + locale.POSITIVE_SIGN;
-                    }
-                }
-            }
-            return result;
-        }
-
-        parseDateInt(str, digits) {
-            var result = parseInt(str.substring(0, digits), 10);
-            if (isNaN(result)) {
-                //            result = 0
-                console.trace();
-                throw 'invalid date';
-            }
-            return result;
-        }
-
-        format_string_to_date(str, format) {
-            var ch = '',
-                substr = str,
-                day, month, year,
-                hour = 0,
-                min = 0,
-                sec = 0;
-            for (var i = 0; i < format.length; ++i) {
-                ch = format.charAt(i);
-                switch (ch) {
-                    case "%":
-                        break;
-                    case "d":
-                        day = this.parseDateInt(substr, 2);
-                        substr = substr.slice(2);
-                        break;
-                    case "m":
-                        month = this.parseDateInt(substr, 2);
-                        substr = substr.slice(2);
-                        break;
-                    case "Y":
-                        year = this.parseDateInt(substr, 4);
-                        substr = substr.slice(4);
-                        break;
-                    case "H":
-                        hour = this.parseDateInt(substr, 2);
-                        substr = substr.slice(2);
-                        break;
-                    case "M":
-                        min = this.parseDateInt(substr, 2);
-                        substr = substr.slice(2);
-                        break;
-                    case "S":
-                        sec = this.parseDateInt(substr, 2);
-                        substr = substr.slice(2);
-                        break;
-                    default:
-                        substr = substr.slice(ch.length);
-                }
-            }
-            return new Date(year, month - 1, day, hour, min, sec);
-        }
-
-        leftPad(value, len, ch) {
-            var result = value.toString();
-            while (result.length < len) {
-                result = ch + result;
-            }
-            return result;
-        }
-
-        format_date_to_string(date, format) {
-            var ch = '',
-                result = '';
-            for (var i = 0; i < format.length; ++i) {
-                ch = format.charAt(i);
-                switch (ch) {
-                    case "%":
-                        break;
-                    case "d":
-                        result += this.leftPad(date.getDate(), 2, '0');
-                        break;
-                    case "m":
-                        result += this.leftPad(date.getMonth() + 1, 2, '0');
-                        break;
-                    case "Y":
-                        result += date.getFullYear();
-                        break;
-                    case "H":
-                        result += this.leftPad(date.getHours(), 2, '0');
-                        break;
-                    case "M":
-                        result += this.leftPad(date.getMinutes(), 2, '0');
-                        break;
-                    case "S":
-                        result += this.leftPad(date.getSeconds(), 2, '0');
-                        break;
-                    default:
-                        result += ch;
-                }
-            }
-            return result;
-        }
     }
 
 
@@ -3226,6 +3225,7 @@
                 data = [],
                 counter = 0;
             result.fields = this.db_fields;
+            result.edit_lock = this.item.edit_lock;
             result.data = data;
             this.logs.forEach(function(log) {
                 if (log) {
@@ -3363,7 +3363,7 @@
                         details = change[2],
                         record_log = self.logs[log_id],
                         rec_id;
-                    if (record_log) {
+                    if (record_log && rec !== null) {
                         let record = record_log.record,
                             record_details = record_log.details,
                             info = self.item.get_record_info(record);
@@ -3391,9 +3391,18 @@
                                 detail_item.change_log.update(detail, rec_id);
                             }
                         });
-                        self.logs[log_id] = undefined;
                     }
+                    self.logs[log_id] = undefined;
                 });
+                let l = this.logs.length,
+                    index = -1;
+                for(let i = 0; i < l; i++) {
+                    if (this.logs[l - i - 1] !== undefined) {
+                        index = l - i - 1;
+                        break
+                    }
+                }
+                this.logs.length = index + 1
                 this.item.update_controls();
             }
         }
@@ -4081,6 +4090,7 @@
             result.expanded = this.expanded;
             result.field_defs = this.field_defs;
             result.filter_defs = this.filter_defs;
+            result.prototype_ID = this.prototype_ID;
             result._primary_key = this._primary_key
             result._deleted_flag = this._deleted_flag
             result._master_id = this._master_id
@@ -4089,8 +4099,8 @@
             result._view_options = this._view_options;
             result._table_options = this._table_options;
             result._virtual_table = this._virtual_table;
-            result.prototype_ID = this.prototype_ID;
             result._keep_history = this._keep_history;
+            result.edit_lock = this.edit_lock;
             result._view_params = this._view_params;
             result._edit_params = this._edit_params;
 
@@ -4519,9 +4529,9 @@
             if (this.on_after_open) {
                 this.on_after_open.call(this, this, err);
             }
-            if (this.master) {
-                this.master._detail_changed(this);
-            }
+            //~ if (this.master) {
+                //~ this.master._detail_changed(this);
+            //~ }
         }
 
         open_details() {
@@ -5380,7 +5390,6 @@
             if (this.is_changing()) {
                 this.post();
             }
-            //~ if (!this.change_log.empty) {
             if (this.change_log.get_changes(changes)) {
                 params = $.extend({}, params);
                 if (this.on_before_apply) {
@@ -5928,46 +5937,118 @@
                 this.record_status === consts.RECORD_DETAILS_MODIFIED;
         }
 
-        insert_record(container, options) {
+        get _record_copy() {
+            let self = this,
+                fields = {},
+                details = {},
+                result = {record: fields, details: details};
+            this.each_field(function(f) {
+                if (!f.system_field()) {
+                    let field = self.field_by_name(f.field_name);
+                    fields[f.field_name] = [field.data, field.lookup_data]
+                }
+            });
+            this.each_detail(function(d) {
+                let records = [],
+                    clone = d.clone();
+                details[d.ID] = records;
+                clone.each(function(c) {
+                    records.push(c._record_copy);
+                });
+            });
+            return result;
+        }
+
+        set _record_copy(copy) {
+            let self = this,
+                handlers = this.store_handlers();
+            try {
+                this.clear_handlers();
+                this.each_field(function(f) {
+                    let vals = copy.record[f.field_name];
+                    if (vals) {
+                        f.data = vals[0];
+                        f.lookup_data = vals[1];
+                    }
+                });
+                this.each_detail(function(d) {
+                    let records = copy.details[d.ID],
+                        handlers = d.store_handlers();
+                    d.clear_handlers();
+                    d.disable_controls();
+                    try {
+                        records.forEach(function(record) {
+                            if (!d.active) {
+                                d.open();
+                            }
+                            d.append();
+                            d._record_copy = record;
+                            d.post();
+                        });
+                        d.first();
+                        //~ self.calc_summary(d, true);
+                    }
+                    finally {
+                        d.enable_controls();
+                        d.load_handlers(handlers);
+                    }
+                })
+            }
+            finally {
+                this.load_handlers(handlers);
+            }
+        }
+
+        copy_record(container, options) {
+            let rec_copy = this._record_copy,
+                on_detail_changed = this.on_detail_changed,
+                on_after_scroll_internal = this._on_after_scroll_internal;
+            this.on_detail_changed = function() {};
+            this._on_after_scroll_internal = undefined;
+            try {
+                this.insert_record(container, options, rec_copy);
+            }
+            finally {
+                this._on_after_scroll_internal = on_after_scroll_internal;
+                this.on_detail_changed = on_detail_changed;
+            }
+        }
+
+        insert_record(container, options, rec_copy) {
             container = this._check_container(container);
             if (container && this.task.can_add_tab(container) && $('.modal').length === 0) {
-                this._append_record_in_tab(container, options);
+                this._append_record_in_tab(container, options, rec_copy);
             }
             else {
-                this._insert_record();
+                this._append_record(container, rec_copy, 0);
             }
         }
 
-        _insert_record(container) {
-            if (this.can_create()) {
-                if (!this.is_changing()) {
-                    this.insert();
-                }
-                this.open_details({details: this.edit_options.edit_details});
-                this.create_edit_form(container);
-            }
-        }
-
-        append_record(container, options) {
+        append_record(container, options, rec_copy) {
             if (container && this.task.can_add_tab(container) && $('.modal').length === 0) {
-                this._append_record_in_tab(container, options);
+                this._append_record_in_tab(container, options, rec_copy);
             }
             else {
-                this._append_record();
+                this._append_record(container, rec_copy);
             }
         }
 
-        _append_record(container) {
+        _append_record(container, rec_copy, index) {
             if (this.can_create()) {
                 if (!this.is_changing()) {
-                    this.append();
+                    this.append(index);
                 }
-                this.open_details({details: this.edit_options.edit_details});
+                if (rec_copy) {
+                    this._record_copy = rec_copy;
+                }
+                else {
+                    this.open_details({details: this.edit_options.edit_details});
+                }
                 this.create_edit_form(container);
             }
         }
 
-        _append_record_in_tab(container, options) {
+        _append_record_in_tab(container, options, rec_copy) {
             var tab_id = this.item_name + 0,
                 tab,
                 tab_name,
@@ -5998,10 +6079,10 @@
                     copy._source_item = this;
                     copy._tab_info = {container: container, tab_id: tab_id}
                     copy.open({open_empty: true}, function() {
-                        var on_after_apply = copy.on_after_apply;
+                        let on_after_apply = copy.on_after_apply;
                         this.edit_options.edit_details
                         copy.edit_options.tab_id = tab_id;
-                        copy._append_record(content);
+                        copy._append_record(content, rec_copy);
                         copy.on_after_apply = function(item) {
                             if (on_after_apply) {
                                 on_after_apply(copy, copy);
@@ -6056,9 +6137,6 @@
                 options.details = this.edit_options.edit_details;
                 options.default_order = true;
                 if (!in_tab) {
-                    if (task.lock_item && this.edit_lock) {
-                        options.params = {__edit_record_id: this.field_by_name(this._primary_key).value}
-                    }
                     if (this.log_changes) {
                         if (this.master) {
                             this.open_details(function() {
@@ -6122,9 +6200,6 @@
                 copy.can_modify = this.can_modify;
                 where[pk] = pk_value;
                 copy.set_where(where);
-                if (task.lock_item && this.edit_lock) {
-                    params = {__edit_record_id: pk_value};
-                }
                 copy.edit_options.edit_detail_filters = {};
                 this.each_detail(function(d) {
                     if (d._open_params.__filters) {
@@ -6282,27 +6357,36 @@
         }
 
         apply_record() {
-            var args = this._check_args(arguments),
+            let args = this._check_args(arguments),
                 callback = args['function'],
-                params = args['object'],
-                self = this;
+                options = args['object'],
+                self = this,
+                default_options = {
+                    close_form: true,
+                    apply_params: {}
+                };
+            options = $.extend({}, default_options, options);
             if (this.is_changing()) {
                 this.disable_edit_form();
                 try {
                     this.post();
-                    this.apply(params, function(error) {
+                    this.apply(options.apply_params, function(error) {
                         if (error) {
                             self.alert_error(error, {duration: 10});
                             this.enable_edit_form();
-                            if (!self.is_changing()) {
-                                self.edit();
-                            }
+                            self.edit();
                         }
                         else {
                             if (callback) {
                                 callback.call(self, self);
                             }
-                            self.close_edit_form();
+                            if (options.close_form) {
+                                self.close_edit_form();
+                            }
+                            else {
+                                this.enable_edit_form();
+                                self.edit();
+                            }
                         }
                     });
                 }
@@ -6311,11 +6395,14 @@
                     this.alert_error(e);
                     if (this.edit_form_disabled()) {
                         this.enable_edit_form();
+                        this.edit();
                     }
                 }
             }
             else {
-                this.close_edit_form();
+                if (options.close_form) {
+                    this.close_edit_form();
+                }
             }
         }
 
@@ -6883,7 +6970,7 @@
                             function() {
                                 self.calc_summary(detail);
                             },
-                            0
+                            100
                         );
                     }
                 }
@@ -7302,10 +7389,6 @@
 
         set_view_fields(fields) {
             this.view_options.fields = fields;
-        }
-
-        round(num, dec) {
-            return task.round(num, dec)
         }
 
         refresh(callback) {
@@ -8694,6 +8777,10 @@
             return true;
         }
 
+        round(num, dec) {
+            return task.round(num, dec);
+        }
+
         str_to_int(str) {
             return task.str_to_int(str);
         }
@@ -9888,15 +9975,15 @@
             var self = this,
                 timeout;
             this.$table.on('keydown', function(e) {
-                //~ clearTimeout(timeout);
-                //~ timeout = setTimeout( function() { self.keydown(e) }, 10 );
-                self.keydown(e);
+                clearTimeout(timeout);
+                timeout = setTimeout( function() { self.keydown(e) }, 10 );
+                //~ self.keydown(e);
             });
 
             this.$table.on('keyup', function(e) {
-                //~ clearTimeout(timeout);
-                //~ timeout = setTimeout( function() { self.keyup(e) }, 10 );
-                self.keyup(e);
+                clearTimeout(timeout);
+                timeout = setTimeout( function() { self.keyup(e) }, 10 );
+                //~ self.keyup(e);
             });
 
             this.$table.on('keypress', function(e) {

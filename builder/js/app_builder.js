@@ -1825,23 +1825,30 @@ function Events3() { // sys_items
 	}
 	
 	function view_form_options_list(item) {
-		var result = [
-			['form_border', true],
-			['form_header', true],
-			['history_button', true],
-			['refresh_button', true],
-			['enable_search', true],
-			['search_field', []],
-			['enable_filters', true],
-			['close_button', true],
-			['close_on_escape', true],
-			['width', 0],
-			['view_detail', []],
-			['detail_height', 0],
-			['buttons_on_top', false]
-		];
+		let result;
 		if (item.table_id.value) {
-			return [];
+			result = [
+				['view_detail', []],
+				['detail_height', 0],
+				['buttons_on_top', false]
+			];
+		}
+		else {
+			result = [
+				['form_border', true],
+				['form_header', true],
+				['history_button', true],
+				['refresh_button', true],
+				['enable_search', true],
+				['search_field', []],
+				['enable_filters', true],
+				['close_button', true],
+				['close_on_escape', true],
+				['width', 0],
+				['view_detail', []],
+				['detail_height', 0],
+				['buttons_on_top', false]
+			];
 		}
 		for (var i = 0; i < result.length; i++) {
 			if (item.task.view_options[result[i][0]]) {
@@ -5440,7 +5447,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 			field,
 			check_item;
 		if (!item.owner.valid_identifier(field_name)) {
-			return item.task.language.invalid_field_name
+			return item.task.language.invalid_field_name + ' - "' + field_name + '"';
 		}
 		error = task.server('server_valid_field_name', [field_name])
 		if (error) {
@@ -5456,7 +5463,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 		if (!error) {
 			check_item = new item.task.constructors.item();
 			if (check_item[field_name] !== undefined) {
-				error = item.task.language.reserved_word;
+				error = item.task.language.reserved_word  + ' - "' + field_name + '"';
 			}
 		}
 		return error;

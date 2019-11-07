@@ -108,12 +108,12 @@ def execute_list(cursor, db_module, command, delta_result, params, select):
         command_type = type(com)
         if command_type in string_types:
             res = execute_command(cursor, db_module, com, params, select)
-        elif command_type == dict:
-            res = execute_delta(cursor, db_module, com, params, delta_result)
         elif command_type == list:
             res = execute_list(cursor, db_module, com, delta_result, params, select)
         elif command_type == tuple:
             res = execute_command(cursor, db_module, com[0], com[1], select)
+        elif command_type == dict:
+            res = execute_delta(cursor, db_module, com, params, delta_result)
         elif not com:
             pass
         else:
@@ -174,6 +174,15 @@ def execute_sql(db_module, db_server, db_database, db_user, db_password,
     return execute_sql_connection(connection, command, params, select, db_module, close_on_error=True)
 
 def apply_sql(item, params=None, db_module=None):
+
+    def get_user(item):
+        user = None
+        if item.session:
+            try:
+                user = item.session.get('user_info')['user_name']
+            except:
+                pass
+        return user
 
     def insert_sql(item, db_module):
         info = {

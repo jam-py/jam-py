@@ -48,15 +48,6 @@ Please watch the
 `Jam.py framework applications <https://youtu.be/qkJvGlgoabU>`_  video
 to see some applications written in Jam.py.
 
-More demos on Heroku:
-
-* `The RedHat Satellite 5.x Dashboard utility Demo <https://redhatsatellite.herokuapp.com>`_
-* `The Postfix email aliases utility Demo <https://jampy-aliases.herokuapp.com/>`_
-* `Jam.py Demo Application <https://jampy.herokuapp.com/>`_
-
-`Here <https://youtu.be/pQYer6po820>`_ is a video showing how to publish a
-Jam.py application from GitHub repo on Heroku
-
 Main features
 =============
 

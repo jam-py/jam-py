@@ -284,6 +284,28 @@ def remove_attr(task):
 def history_on_apply(item, delta, params):
     raise Exception('Changing of history is not allowed.')
 
+def history_sql(task):
+    h_fields = ['item_id', 'item_rec_id', 'operation', 'changes', 'user', 'date']
+    table_name = task.task.history_item.table_name
+    fields = []
+    for f in h_fields:
+        fields.append(task.history_item._field_by_name(f).db_field_name)
+    h_fields = fields
+    index = 0
+    fields = []
+    values = []
+    index = 0
+    for f in h_fields:
+        index += 1
+        fields.append('"%s"' % f)
+        values.append('%s' % task.db_module.value_literal(index))
+    fields = ', '.join(fields)
+    values = ', '.join(values)
+    sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \
+        (table_name, fields, values)
+    return sql
+
+
 def load_task(task, app, first_build=True, after_import=False):
     task.pool.dispose()
     task.pool.recreate()
@@ -298,13 +320,12 @@ def load_task(task, app, first_build=True, after_import=False):
     task.compile_all()
 
     params = admin.sys_params.copy()
-    params.open(fields=['f_history_item', 'f_lock_item'])
+    params.open(fields=['f_history_item'])
     task.history_item = None
     if params.f_history_item.value:
         task.history_item = task.item_by_ID(params.f_history_item.value)
         task.history_item.on_apply = history_on_apply
-    if params.f_lock_item.value:
-        task.lock_item = task.item_by_ID(params.f_lock_item.value)
+        task.history_sql = history_sql(task)
 
     task.first_build = first_build
     task.after_import = after_import

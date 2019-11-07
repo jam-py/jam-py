@@ -15,3 +15,15 @@ def admin(app):
 def task(app):
     return app.task
 
+@pytest.fixture(scope="module")
+def fields_item(task):
+    item = task.item.copy()
+    item.empty()
+    item.open(open_empty=True)
+    item.append()
+    item.post()
+    item.apply()
+    return item
+
+
+

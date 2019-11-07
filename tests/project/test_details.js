@@ -1,5 +1,4 @@
-var assert = chai.assert,
-    expect = chai.expect;
+var assert = chai.assert;
 
 describe('Details', function() {
     var master;

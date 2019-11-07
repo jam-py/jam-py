@@ -65,9 +65,7 @@ class MetaDataImport(object):
             self.show_error(self.error)
 
     def update_gen_names(self):
-        new_gen = get_db_module(self.new_db_type).NEED_GENERATOR
-        old_gen = get_db_module(self.db_type).NEED_GENERATOR
-        if new_gen != old_gen:
+        if not get_db_module(self.db_type).NEED_GENERATOR:
             self.items_hidden_fields.append('f_gen_name')
 
     def update_indexes(self):
@@ -90,7 +88,7 @@ class MetaDataImport(object):
                         it.f_fields_list.value = it.store_index_fields(field_list)
                         it.post()
 
-    def update_item_idents(self, item_name, field_names, old_case, new_case):
+    def update_item_idents(self, item_name, field_names, case):
         item = self.new_items[item_name]
         fields = []
         for field_name in field_names:
@@ -99,17 +97,14 @@ class MetaDataImport(object):
         for it in item:
             it.edit()
             for field in fields:
-                if new_case(field.value) == field.value:
-                    field.value = old_case(field.value)
+                field.value = case(field.value)
             it.post()
 
     def update_idents(self):
-        new_case = get_db_module(self.new_db_type).identifier_case
-        old_case = get_db_module(self.db_type).identifier_case
-        if old_case('a') != new_case('a'):
-            self.update_item_idents('sys_items', ['f_table_name', 'f_gen_name'], old_case, new_case)
-            self.update_item_idents('sys_fields', ['f_db_field_name'], old_case, new_case)
-            self.update_item_idents('sys_indices', ['f_index_name'], old_case, new_case)
+        case = get_db_module(self.db_type).identifier_case
+        self.update_item_idents('sys_items', ['f_table_name', 'f_gen_name'], case)
+        self.update_item_idents('sys_fields', ['f_db_field_name'], case)
+        self.update_item_idents('sys_indices', ['f_index_name'], case)
         self.update_indexes()
 
     def prepare_data(self):

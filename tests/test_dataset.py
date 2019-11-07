@@ -155,3 +155,12 @@ class TestDataset:
         for i, d in enumerate(ds):
             assert ds.rec_no == i
         assert ds.rec_no == 2
+
+    def test_rec_no(self, ds):
+        for i in range(2):
+            ds.append()
+            ds.post()
+        ds.rec_no = 0
+        assert ds.rec_no == 0
+        ds.rec_no = 1
+        assert ds.rec_no == 1

@@ -64,7 +64,6 @@ class ServerDataset(Dataset, SQL):
         result.gen_name = self.gen_name
         result._order_by = self._order_by
         result.soft_delete = self.soft_delete
-        result.edit_lock = self.edit_lock
         result._primary_key = self._primary_key
         result._deleted_flag = self._deleted_flag
         result._record_version = self._record_version
@@ -108,6 +107,8 @@ class ServerDataset(Dataset, SQL):
     def do_apply(self, params=None, safe=False, connection=None):
         if not self.master:
             changes = {}
+            if not params:
+                params = {}
             if self.change_log.get_changes(changes):
                 data, error = self.apply_changes((changes, params), safe, connection)
                 if error:
@@ -150,7 +151,7 @@ class ServerDataset(Dataset, SQL):
             cursor.execute(sql)
             return db_module.process_sql_result(cursor.fetchall())
         except Exception as x:
-            self.log.exception(error_message(x))
+            self.log.exception('%s:\n%s' % (error_message(x), sql))
 
     def execute_open(self, params, connection=None, db_module=None):
         rows = None
@@ -201,12 +202,11 @@ class ServerDataset(Dataset, SQL):
     def apply_delta(self, delta, params=None, connection=None, db_module=None):
         if not db_module:
             db_module = self.task.db_module
-        # ~ sql = delta.apply_sql(params)
-        # ~ return self.task.execute(sql, None, connection=connection, db_module=db_module, autocommit=False)
         return delta.process_changes(connection, params, db_module)
 
     def apply_changes(self, data, safe, connection=None):
         result = None
+        error = None
         changes, params = data
         if not params:
             params = {}
@@ -218,21 +218,9 @@ class ServerDataset(Dataset, SQL):
             con = self.task.connect()
         try:
             if self.task.on_apply:
-                try:
-                    result = self.task.on_apply(self, delta, params, con)
-                except: # for compatibility with previous versions
-                    if get_function_code(self.task.on_apply).co_argcount == 3:
-                        result = self.task.on_apply(self, delta, params)
-                    else:
-                        raise
+                result = self.task.on_apply(self, delta, params, con)
             if result is None and self.on_apply:
-                try:
-                    result = self.on_apply(self, delta, params, con)
-                except: # for compatibility with previous versions
-                    if get_function_code(self.on_apply).co_argcount == 3:
-                        result = self.on_apply(self, delta, params)
-                    else:
-                        raise
+                result = self.on_apply(self, delta, params, con)
             if result is None:
                 result = self.apply_delta(delta, params, con)
             if not connection and con:
@@ -712,15 +700,6 @@ class Report(AbstrReport, ParamReport):
                         if hours > consts.DELETE_REPORTS_AFTER:
                             os.remove(file_name)
 
-    def cur_to_str(self, value):
-        return consts.cur_to_str(value)
-
-    def date_to_str(self, value):
-        return consts.date_to_str(value)
-
-    def datetime_to_str(self, value):
-        return consts.datetime_to_str(value)
-
 
 class AbstractServerTask(AbstrTask):
     def __init__(self, app, name, caption, js_filename, db_type, db_server = '',
@@ -866,9 +845,9 @@ class AbstractServerTask(AbstrTask):
             item._events = []
             for func_name, func in funcs:
                 item._events.append((func_name, func))
-                if hasattr(item, func_name) and func_name[:3] != 'on_':
-                    item.log.warning('Module %s: function "%s" will override "%s" default method. Please, rename the function.' % \
-                        (item.module_name, func_name, item.item_name))
+                # ~ if hasattr(item, func_name) and func_name[:3] != 'on_':
+                    # ~ item.log.warning('Module %s: method "%s" will override "%s" existing attribute. Please, rename the function.' % \
+                        # ~ (item.module_name, func_name, item.item_name))
                 setattr(item, func_name, func)
         del code
 
@@ -1113,33 +1092,15 @@ class Detail(AbstrDetail, ServerDataset):
         for field_def in self.field_defs:
             field = DBField(self, field_def)
             self._fields.append(field)
+        self.edit_lock = self.prototype.edit_lock
         self._primary_key = self.prototype._primary_key
         self._deleted_flag = self.prototype._deleted_flag
+        self._record_version = self.prototype._record_version
         self._master_id = self.prototype._master_id
         self._master_rec_id = self.prototype._master_rec_id
 
     def do_internal_post(self):
         return {'success': True, 'id': None, 'message': '', 'detail_ids': None}
-
-    def where_clause(self, query, db_module):
-        master_id = query['__master_id']
-        master_rec_id = query['__master_rec_id']
-        if master_id and master_rec_id:
-            result = super(Detail, self).where_clause(query, db_module)
-            if self._master_id:
-                clause = '%s."%s"=%s AND %s."%s"=%s' % \
-                    (self.table_alias(), self._master_id_db_field_name, str(master_id),
-                    self.table_alias(), self._master_rec_id_db_field_name, str(master_rec_id))
-            else:
-                clause = '%s."%s"=%s' % \
-                    (self.table_alias(), self._master_rec_id_db_field_name, str(master_rec_id))
-            if result:
-                result += ' AND ' + clause
-            else:
-                result = ' WHERE ' + clause
-            return result
-        else:
-            raise Exception('Invalid request parameter')
 
     def get_filters(self):
         return self.prototype.filters

@@ -10,6 +10,27 @@ def master(task):
     detail2.empty()
     return master
 
+@pytest.fixture
+def master2(task):
+    master = task.master.copy()
+    master.empty()
+    detail1 = task.detail1.copy()
+    detail1.empty()
+    detail2 = task.detail2.copy()
+    detail2.empty()
+    master.open()
+    for i in range(2):
+        master.append()
+        master.val.value = i
+        master.detail1.open()
+        for j in range(2):
+            master.detail1.append()
+            master.detail1.val.value = j
+            master.detail1.post()
+        master.post()
+    master.apply()
+    return task.master.copy()
+
 class TestDetails:
 
     def test_master(self, master):
@@ -77,9 +98,8 @@ class TestDetails:
                 counter2 += j
             master.post()
             counter1 += i
-
         master.apply()
-        # ~ master.open()
+        master.open()
         counter3 = 0
         counter4 = 0
         for m in master:
