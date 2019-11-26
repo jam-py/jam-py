@@ -4719,7 +4719,7 @@ function Events21() { // app_builder.details.sys_report_params
 	}
 	
 	function on_after_append(item) {
-		item.task_id.value = item.task_id.value;
+		// item.task_id.value = item.task_id.value;
 		item.f_data_type.read_only = false;
 		item.f_visible.value = true;
 	}
@@ -5589,8 +5589,8 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 					if (item.f_data_type.value === item.task.consts.TEXT) {
 						item.f_size.value = 100;
 					}
-					else if (item.f_data_type.value === item.task.consts.BOOLEAN) {
-						item.f_default_lookup_value.value = 0;
+					else if (item.f_data_type.value === item.task.consts.BOOLEAN && item.f_default_lookup_value) {
+						item.f_default_lookup_value.value = null;
 					}
 					else {
 						item.f_size.value = null;
@@ -5820,6 +5820,11 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	function on_field_get_text(field) {
 		if (field.field_name === 'f_size' && field.value === 0) {
 			return '';
+		}
+		if (field.field_name === 'f_db_field_name') {
+			if (field.owner.f_master_field.value || field.owner.owner.f_virtual_table.value) {
+				return '';			
+			}
 		}
 	}
 	

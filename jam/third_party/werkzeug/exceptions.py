@@ -59,18 +59,12 @@
 """
 import sys
 
-import werkzeug
-
-# Because of bootstrapping reasons we need to manually patch ourselves
-# onto our parent module.
-werkzeug.exceptions = sys.modules[__name__]
-
 from ._compat import implements_to_string
 from ._compat import integer_types
 from ._compat import iteritems
 from ._compat import text_type
 from ._internal import _get_environ
-from .wrappers import Response
+from .utils import escape
 
 
 @implements_to_string
@@ -141,6 +135,8 @@ class HTTPException(Exception):
     @property
     def name(self):
         """The status name."""
+        from .http import HTTP_STATUS_CODES
+
         return HTTP_STATUS_CODES.get(self.code, "Unknown Error")
 
     def get_description(self, environ=None):
@@ -165,7 +161,7 @@ class HTTPException(Exception):
 
     def get_headers(self, environ=None):
         """Get a list of headers."""
-        return [("Content-Type", "text/html")]
+        return [("Content-Type", "text/html; charset=utf-8")]
 
     def get_response(self, environ=None):
         """Get a response object.  If one was passed to the exception
@@ -176,6 +172,8 @@ class HTTPException(Exception):
                         on how the request looked like.
         :return: a :class:`Response` object or a subclass thereof.
         """
+        from .wrappers.response import Response
+
         if self.response is not None:
             return self.response
         if environ is not None:
@@ -636,6 +634,9 @@ class InternalServerError(HTTPException):
 
     Raise if an internal server error occurred.  This is a good fallback if an
     unknown error occurred in the dispatcher.
+
+    .. versionchanged:: 1.0.0
+        Added the :attr:`original_exception` attribute.
     """
 
     code = 500
@@ -644,6 +645,15 @@ class InternalServerError(HTTPException):
         " complete your request. Either the server is overloaded or"
         " there is an error in the application."
     )
+
+    def __init__(self, description=None, response=None, original_exception=None):
+        #: The original exception that caused this 500 error. Can be
+        #: used by frameworks to provide context when handling
+        #: unexpected errors.
+        self.original_exception = original_exception
+        super(InternalServerError, self).__init__(
+            description=description, response=response
+        )
 
 
 class NotImplemented(HTTPException):
@@ -776,11 +786,6 @@ def abort(status, *args, **kwargs):
 
 _aborter = Aborter()
 
-
 #: An exception that is used to signal both a :exc:`KeyError` and a
 #: :exc:`BadRequest`. Used by many of the datastructures.
 BadRequestKeyError = BadRequest.wrap(KeyError)
-
-# imported here because of circular dependencies of werkzeug.utils
-from .http import HTTP_STATUS_CODES
-from .utils import escape

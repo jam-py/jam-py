@@ -304,6 +304,19 @@ def dump_header(iterable, allow_token=True):
     return ", ".join(items)
 
 
+def dump_csp_header(header):
+    """Dump a Content Security Policy header.
+
+    These are structured into policies such as "default-src 'self';
+    script-src 'self'".
+
+    .. versionadded:: 1.0.0
+       Support for Content Security Policy headers was added.
+
+    """
+    return "; ".join("%s %s" % (key, value) for key, value in iteritems(header))
+
+
 def parse_list_header(value):
     """Parse lists as described by RFC 2068 Section 2.
 
@@ -502,6 +515,32 @@ def parse_cache_control_header(value, on_update=None, cls=None):
     if not value:
         return cls(None, on_update)
     return cls(parse_dict_header(value), on_update)
+
+
+def parse_csp_header(value, on_update=None, cls=None):
+    """Parse a Content Security Policy header.
+
+    .. versionadded:: 1.0.0
+       Support for Content Security Policy headers was added.
+
+    :param value: a csp header to be parsed.
+    :param on_update: an optional callable that is called every time a value
+                      on the object is changed.
+    :param cls: the class for the returned object.  By default
+                :class:`~werkzeug.datastructures.ContentSecurityPolicy` is used.
+    :return: a `cls` object.
+    """
+
+    if cls is None:
+        cls = ContentSecurityPolicy
+    items = []
+    for policy in value.split(";"):
+        policy = policy.strip()
+        # Ignore badly formatted policies (no space)
+        if " " in policy:
+            directive, value = policy.strip().split(" ", 1)
+            items.append((directive.strip(), value.strip()))
+    return cls(items, on_update)
 
 
 def parse_set_header(value, on_update=None):
@@ -928,13 +967,14 @@ def is_resource_modified(
     :param ignore_if_range: If `False`, `If-Range` header will be taken into
                             account.
     :return: `True` if the resource was modified, otherwise `False`.
+
+    .. versionchanged:: 1.0.0
+        The check is run for methods other than ``GET`` and ``HEAD``.
     """
     if etag is None and data is not None:
         etag = generate_etag(data)
     elif data is not None:
         raise TypeError("both data and etag given")
-    if environ["REQUEST_METHOD"] not in ("GET", "HEAD"):
-        return False
 
     unmodified = False
     if isinstance(last_modified, string_types):
@@ -1039,38 +1079,40 @@ def is_hop_by_hop_header(header):
 
 
 def parse_cookie(header, charset="utf-8", errors="replace", cls=None):
-    """Parse a cookie.  Either from a string or WSGI environ.
+    """Parse a cookie from a string or WSGI environ.
 
-    Per default encoding errors are ignored.  If you want a different behavior
-    you can set `errors` to ``'replace'`` or ``'strict'``.  In strict mode a
-    :exc:`HTTPUnicodeError` is raised.
+    The same key can be provided multiple times, the values are stored
+    in-order. The default :class:`MultiDict` will have the first value
+    first, and all values can be retrieved with
+    :meth:`MultiDict.getlist`.
+
+    :param header: The cookie header as a string, or a WSGI environ dict
+        with a ``HTTP_COOKIE`` key.
+    :param charset: The charset for the cookie values.
+    :param errors: The error behavior for the charset decoding.
+    :param cls: A dict-like class to store the parsed cookies in.
+        Defaults to :class:`MultiDict`.
+
+    .. versionchanged:: 1.0.0
+        Returns a :class:`MultiDict` instead of a
+        ``TypeConversionDict``.
 
     .. versionchanged:: 0.5
-       This function now returns a :class:`TypeConversionDict` instead of a
-       regular dict.  The `cls` parameter was added.
-
-    :param header: the header to be used to parse the cookie.  Alternatively
-                   this can be a WSGI environment.
-    :param charset: the charset for the cookie values.
-    :param errors: the error behavior for the charset decoding.
-    :param cls: an optional dict class to use.  If this is not specified
-                       or `None` the default :class:`TypeConversionDict` is
-                       used.
+       Returns a :class:`TypeConversionDict` instead of a regular dict.
+       The ``cls`` parameter was added.
     """
     if isinstance(header, dict):
         header = header.get("HTTP_COOKIE", "")
     elif header is None:
         header = ""
 
-    # If the value is an unicode string it's mangled through latin1.  This
-    # is done because on PEP 3333 on Python 3 all headers are assumed latin1
-    # which however is incorrect for cookies, which are sent in page encoding.
-    # As a result we
+    # On Python 3, PEP 3333 sends headers through the environ as latin1
+    # decoded strings. Encode strings back to bytes for parsing.
     if isinstance(header, text_type):
         header = header.encode("latin1", "replace")
 
     if cls is None:
-        cls = TypeConversionDict
+        cls = MultiDict
 
     def _parse_pairs():
         for key, val in _cookie_parse_impl(header):
@@ -1135,15 +1177,20 @@ def dump_cookie(
     :param max_size: Warn if the final header value exceeds this size. The
         default, 4093, should be safely `supported by most browsers
         <cookie_>`_. Set to 0 to disable this check.
-    :param samesite: Limits the scope of the cookie such that it will only
-                     be attached to requests if those requests are "same-site".
+    :param samesite: Limits the scope of the cookie such that it will
+        only be attached to requests if those requests are same-site.
 
     .. _`cookie`: http://browsercookielimits.squawky.net/
+
+    .. versionchanged:: 1.0.0
+        The string ``'None'`` is accepted for ``samesite``.
     """
     key = to_bytes(key, charset)
     value = to_bytes(value, charset)
 
     if path is not None:
+        from .urls import iri_to_uri
+
         path = iri_to_uri(path, charset)
     domain = _make_cookie_domain(domain)
     if isinstance(max_age, timedelta):
@@ -1154,9 +1201,11 @@ def dump_cookie(
     elif max_age is not None and sync_expires:
         expires = to_bytes(cookie_date(time() + max_age))
 
-    samesite = samesite.title() if samesite else None
-    if samesite not in ("Strict", "Lax", None):
-        raise ValueError("invalid SameSite value; must be 'Strict', 'Lax' or None")
+    if samesite is not None:
+        samesite = samesite.title()
+
+        if samesite not in {"Strict", "Lax", "None"}:
+            raise ValueError("SameSite must be 'Strict', 'Lax', or 'None'.")
 
     buf = [key + b"=" + _cookie_quote(value)]
 
@@ -1195,9 +1244,9 @@ def dump_cookie(
     if not PY2:
         rv = rv.decode("latin1")
 
-    # Warn if the final value of the cookie is less than the limit. If the
-    # cookie is too large, then it may be silently ignored, which can be quite
-    # hard to debug.
+    # Warn if the final value of the cookie is larger than the limit. If the
+    # cookie is too large, then it may be silently ignored by the browser,
+    # which can be quite hard to debug.
     cookie_size = len(rv)
 
     if max_size and cookie_size > max_size:
@@ -1235,69 +1284,15 @@ def is_byte_range_valid(start, stop, length):
     return 0 <= start < length
 
 
-# circular dependency fun
+# circular dependencies
 from .datastructures import Accept
 from .datastructures import Authorization
 from .datastructures import ContentRange
+from .datastructures import ContentSecurityPolicy
 from .datastructures import ETags
 from .datastructures import HeaderSet
 from .datastructures import IfRange
+from .datastructures import MultiDict
 from .datastructures import Range
 from .datastructures import RequestCacheControl
-from .datastructures import TypeConversionDict
 from .datastructures import WWWAuthenticate
-from .urls import iri_to_uri
-
-# DEPRECATED
-from .datastructures import CharsetAccept as _CharsetAccept
-from .datastructures import Headers as _Headers
-from .datastructures import LanguageAccept as _LanguageAccept
-from .datastructures import MIMEAccept as _MIMEAccept
-
-
-class MIMEAccept(_MIMEAccept):
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "'werkzeug.http.MIMEAccept' has moved to 'werkzeug"
-            ".datastructures.MIMEAccept' as of version 0.5. This old"
-            " import will be removed in version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super(MIMEAccept, self).__init__(*args, **kwargs)
-
-
-class CharsetAccept(_CharsetAccept):
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "'werkzeug.http.CharsetAccept' has moved to 'werkzeug"
-            ".datastructures.CharsetAccept' as of version 0.5. This old"
-            " import will be removed in version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super(CharsetAccept, self).__init__(*args, **kwargs)
-
-
-class LanguageAccept(_LanguageAccept):
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "'werkzeug.http.LanguageAccept' has moved to 'werkzeug"
-            ".datastructures.LanguageAccept' as of version 0.5. This"
-            " old import will be removed in version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super(LanguageAccept, self).__init__(*args, **kwargs)
-
-
-class Headers(_Headers):
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "'werkzeug.http.Headers' has moved to 'werkzeug"
-            ".datastructures.Headers' as of version 0.5. This old"
-            " import will be removed in version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super(Headers, self).__init__(*args, **kwargs)

@@ -40,7 +40,7 @@ def get_lang(task, text):
     last = text[-1:]
     if last in ['1', '2', '3']:
         return task.language(text[0:-1]) + ' ' + last
-    else:
+    else:        
         return task.language(text)
 
 def init_items(item):
@@ -519,6 +519,11 @@ def update_events_code(task):
     it.task.execute(sql)
     if it.task.app.task:
         it.task.app.task.all(update_task)
+    try:
+        from utils.js_code import update_js
+        update_js(task)
+    except:
+        pass
 
 def get_minified_name(file_name):
     result = file_name
@@ -887,7 +892,7 @@ def do_on_apply_param_changes(item, delta, params, connection):
     task = item.task
     language = consts.LANGUAGE
     debugging = consts.DEBUGGING
-    version = consts.VERSION
+    version = consts.VERSION    
     # single_file_js = consts.SINGLE_FILE_JS
     # compressed_js = consts.COMPRESSED_JS
     theme = consts.THEME

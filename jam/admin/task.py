@@ -3,7 +3,7 @@ import json
 from werkzeug._compat import iterkeys
 
 from ..common import consts, ProjectNotCompleted
-from ..server_classes import Task, Group
+from ..server_classes import Task, Group, ReportGroup
 
 def create_task(app):
     result = None
@@ -13,7 +13,7 @@ def create_task(app):
     it.open()
     if adm.task_db_type:
         result = Task(app, it.f_item_name.value, it.f_name.value,
-            it.f_js_filename.value, adm.task_db_type, adm.task_db_server,
+            adm.task_db_type, adm.task_db_server,
             adm.task_db_database, adm.task_db_user, adm.task_db_password,
             adm.task_db_host, adm.task_db_port, adm.task_db_encoding,
             adm.task_con_pool_size, adm.task_persist_con
@@ -129,36 +129,35 @@ def create_items(group, item_dict):
     if recs:
         for r in recs:
             items.rec_no = r
-            if group.type_id == consts.REPORTS_TYPE:
+            if group.item_type_id == consts.REPORTS_TYPE:
                 add_item = group.add_report
             else:
                 add_item = group.add_item
-            item = add_item(
-                items.f_item_name.value,
-                items.f_name.value,
-                items.f_table_name.value,
-                items.f_visible.value,
-                items.f_view_template.value,
-                items.f_js_filename.value,
-                items.f_soft_delete.value)
+            item = add_item(items.f_item_name.value, items.f_name.value)
             if item:
                 item.ID = items.id.value
-                item.gen_name = items.f_gen_name.value
-                item._virtual_table = items.f_virtual_table.value
+                item.item_type_id = items.type_id.value
+                item.visible = items.f_visible.value
+                item.js_filename = items.f_js_filename.value
                 item.server_code = items.f_server_module.value
-                item._keep_history = items.f_keep_history.value
-                item.edit_lock = items.f_edit_lock.value
-                item.select_all = items.f_select_all.value
-                item._primary_key = items.f_primary_key.value
-                item._deleted_flag = items.f_deleted_flag.value
-                item._master_id = items.f_master_id.value
-                item._master_rec_id = items.f_master_rec_id.value
-                item._record_version = items.f_record_version.value
-                item._sys_id = items.sys_id.value
-                if group.type_id == consts.REPORTS_TYPE:
+                if group.item_type_id == consts.REPORTS_TYPE:
+                    item.template = items.f_view_template.value
+                    item.select_all = items.f_select_all.value
                     create_params(item, items.id.value, item_dict)
                     item.rep_ids = []
                 else:
+                    item.table_name = items.f_table_name.value
+                    item.gen_name = items.f_gen_name.value
+                    item.soft_delete = items.f_soft_delete.value
+                    item.edit_lock = items.f_edit_lock.value
+                    item._virtual_table = items.f_virtual_table.value
+                    item._keep_history = items.f_keep_history.value
+                    item._primary_key = items.f_primary_key.value
+                    item._deleted_flag = items.f_deleted_flag.value
+                    item._master_id = items.f_master_id.value
+                    item._master_rec_id = items.f_master_rec_id.value
+                    item._record_version = items.f_record_version.value
+                    item._sys_id = items.sys_id.value
                     items.load_interface()
                     item._view_list = items._view_list
                     item._edit_list = items._edit_list
@@ -175,23 +174,23 @@ def create_groups(task, item_dict):
     for rec in items:
         if rec.id.value == task.ID:
             task.table_name = rec.f_table_name.value
-            task.template = rec.f_view_template.value
             task.js_filename = rec.f_js_filename.value
             items.load_interface()
             task.server_code = rec.f_server_module.value
         if rec.parent.value == task.ID:
-            group = Group(
+            const_class = Group
+            if rec.type_id.value == consts.REPORTS_TYPE:
+                const_class = ReportGroup
+            group = const_class(
                 task,
                 task,
                 rec.f_item_name.value,
                 rec.f_name.value,
-                rec.f_view_template.value,
-                rec.f_js_filename.value,
-                rec.f_visible.value,
-                rec.type_id.value
             )
             group.ID = rec.id.value
-            group.type_id = rec.type_id.value
+            group.item_type_id = rec.type_id.value
+            group.js_filename = rec.f_js_filename.value
+            group.visible = rec.f_visible.value
             group.server_code = rec.f_server_module.value
             groups.append(group)
     for group in groups:
@@ -207,12 +206,12 @@ def create_details(task, item_dict):
                 detail = item.add_detail(table)
                 detail.item_name = it.f_item_name.value
                 detail.ID = it.id.value
+                detail.item_type_id = it.type_id.value
+                detail.table_name = it.f_table_name.value
                 detail.gen_name = table.gen_name
                 detail.visible = it.f_visible.value
-                detail.view_template = it.f_view_template.value
                 detail.js_filename = it.f_js_filename.value
                 detail.server_code = it.f_server_module.value
-                detail.item_type = consts.ITEM_TYPES[detail.item_type_id - 1]
                 items.load_interface()
                 detail._view_list = items._view_list
                 detail._edit_list = items._edit_list
@@ -329,6 +328,7 @@ def load_task(task, app, first_build=True, after_import=False):
 
     task.first_build = first_build
     task.after_import = after_import
+    task.safe_mode = consts.SAFE_MODE
     if task.on_created:
         task.on_created(task)
 

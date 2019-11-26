@@ -272,14 +272,6 @@
             }
         }
 
-        script_loaded() {
-            if (this.js_filename) {
-                return this.task._script_cache[this.js_filename];
-            } else {
-                return true;
-            }
-        }
-
         _check_args(args) {
             var i,
                 result = {};
@@ -289,12 +281,31 @@
             return result;
         }
 
+        _file_loaded(js_filename) {
+            for (let i = 0; i < document.scripts.length; i++) {
+                let script = document.scripts[i].src.split('?')[0],
+                    file_name = js_filename.split('?')[0],
+                    arr1 = js_filename.split('/'),
+                    arr2 = script.split('/'),
+                    found = true;
+                for (let j = 0;  j < arr1.length; j++) {
+                    if (arr1[arr1.length - 1 - j] !== arr2[arr2.length - 1 - j]) {
+                        found = false;
+                        break;
+                    }
+                }
+                if (found) {
+                    return true;
+                }
+            }
+        }
+
         load_script(js_filename, callback, onload) {
             var self = this,
                 url,
                 s0,
                 s;
-            if (js_filename && !this.task._script_cache[js_filename]) {
+            if (js_filename && !this._file_loaded(js_filename)) {
                 s = document.createElement('script');
                 s0 = document.getElementsByTagName('script')[0];
                 url = js_filename;
@@ -304,7 +315,6 @@
                 s.async = true;
                 s0.parentNode.insertBefore(s, s0);
                 s.onload = function() {
-                    self.task._script_cache[js_filename] = true;
                     if (onload) {
                         onload.call(self, self);
                     }
@@ -349,14 +359,10 @@
                 };
             for (; i < len; i++) {
                 item = item_list[i];
-                if (!item.script_loaded()) {
-                    list.push(item);
-                }
-                if (item.details && item.each_detail) {
+                if (item.js_filename) list.push(item);
+                if (item.details) {
                     item.each_detail(function(d) {
-                        if (!d.script_loaded()) {
-                            list.push(d);
-                        }
+                        if (d.js_filename) list.push(d);
                     });
                 }
             }
@@ -1780,9 +1786,12 @@
         }
 
         round(num, dec) {
-            let result = Number(Math.round(num + 'e' + dec) + 'e-' + dec);
+            let result = Number(Math.round(Math.abs(num) + 'e' + dec) + 'e-' + dec);
             if (isNaN(result)) {
                 result = 0;
+            }
+            if (num < 0) {
+                result = -result;
             }
             return result;
         }
@@ -2093,7 +2102,6 @@
             this.consts = consts;
             this.task = this;
             this.user_info = {};
-            this._script_cache = {};
             this._grid_id = 0;
             this._edited_items = [];
             this.events = {};
@@ -3422,7 +3430,7 @@
     class Item extends AbsrtactItem {
         constructor(owner, ID, item_name, caption, visible, type, js_filename) {
             super(owner, ID, item_name, caption, visible, type, js_filename);
-            if (this.task && type !== 0 && !(item_name in this.task)) {
+            if (this.task && this.item_type !== 'detail' && !(item_name in this.task)) {
                 this.task[item_name] = this;
             }
             this.field_defs = [];
@@ -4103,6 +4111,7 @@
             result.edit_lock = this.edit_lock;
             result._view_params = this._view_params;
             result._edit_params = this._edit_params;
+            result.js_filename = this.js_filename;
 
 
             len = result.field_defs.length;
@@ -4387,8 +4396,13 @@
                         throw this.item_name + ': set_where method arument error - ' + field_arg;
                     }
                     if (value !== null) {
-                        if (field.data_type === consts.DATETIME && filter_type !== consts.FILTER_ISNULL) {
-                            value = task.format_date_to_string(value, '%Y-%m-%d %H:%M:%S')
+                        if (value instanceof Date) {
+                            if (field.data_type === consts.DATE) {
+                                value = task.format_date_to_string(value, '%Y-%m-%d')
+                            }
+                            else if (field.data_type === consts.DATETIME) {
+                                value = task.format_date_to_string(value, '%Y-%m-%d %H:%M:%S')
+                            }
                         }
                         result.push([field_name, filter_type, value, -1])
                     }
@@ -4529,9 +4543,9 @@
             if (this.on_after_open) {
                 this.on_after_open.call(this, this, err);
             }
-            //~ if (this.master) {
-                //~ this.master._detail_changed(this);
-            //~ }
+            this.each_detail(function(d) {
+                d.update_controls();
+            })
         }
 
         open_details() {
@@ -4916,18 +4930,17 @@
         }
 
         _do_close() {
-            this._active = false;
             this._dataset = null;
             this._cur_row = null;
+            this._active = false;
         }
 
         close() {
-            var len = this.details.length;
-            this.update_controls(consts.UPDATE_CLOSE);
             this._do_close();
             this.each_detail(function(d) {
                 d.close();
             });
+            this.update_controls(consts.UPDATE_CLOSE);
         }
 
         sort(field_list) {
@@ -6605,20 +6618,18 @@
         }
 
         update_controls(state) {
-            if (this.active) {
-                if (state === undefined) {
-                    state = consts.UPDATE_CONTROLS;
+            if (state === undefined) {
+                state = consts.UPDATE_CONTROLS;
+            }
+            if (this.controls_enabled()) {
+                this.each_field(function(field) {
+                    field.update_controls(state, true);
+                });
+                if (this.on_update_controls) {
+                    this.on_update_controls.call(this, this);
                 }
-                if (this.controls_enabled()) {
-                    this.each_field(function(field) {
-                        field.update_controls(state, true);
-                    });
-                    if (this.on_update_controls) {
-                        this.on_update_controls.call(this, this);
-                    }
-                    for (var i = 0; i < this.controls.length; i++) {
-                        this.controls[i].update(state);
-                    }
+                for (var i = 0; i < this.controls.length; i++) {
+                    this.controls[i].update(state);
                 }
             }
         }
@@ -6650,6 +6661,9 @@
                         }
                         this.create_detail_table(detail_container, {height: height});
                         this.table_options.height -= height;
+                        if (this.table_options.height < 180) {
+                            this.table_options.height = 180;
+                        }
                     }
                 }
                 if (this.master) {
@@ -7754,7 +7768,6 @@
                 owner.details.push(this);
                 owner.details[item_name] = this;
             }
-            this.item_type = "detail";
         }
 
         getChildClass() {
@@ -7884,52 +7897,60 @@
             }
         }
 
-        get text() {
-            var result = "",
-                error = "";
-            try {
-                if (this.data !== null) {
-                    result = this.value;
-                    switch (this.data_type) {
-                        case consts.TEXT:
-                            break;
-                        case consts.INTEGER:
-                            result = this.int_to_str(result);
-                            break;
-                        case consts.FLOAT:
-                            result = this.float_to_str(result);
-                            break;
-                        case consts.CURRENCY:
-                            result = this.float_to_str(result);
-                            break;
-                        case consts.DATE:
-                            result = this.date_to_str(result);
-                            break;
-                        case consts.DATETIME:
-                            result = this.datetime_to_str(result);
-                            break;
-                        case consts.KEYS:
-                            if (result.length) {
-                                result = language.items_selected.replace('%s', result.length);
-                            }
-                            break;
-                    }
+        _value_to_text(data, value, data_type) {
+            let result = '';
+            if (data === null) {
+                if (data_type === consts.BOOLEAN) {
+                    result = language.false;
                 }
-                if (this.data_type === consts.BOOLEAN) {
-                    if (this.value) {
-                        result = language.true;
-                    } else {
-                        result = language.false;
-                    }
-                }
-            } catch (e) {
-                result = '';
-                console.error(e);
             }
-            if (typeof result !== 'string') {
-                result = ''
+            else {
+                result = value;
+                switch (data_type) {
+                    case consts.TEXT:
+                    case consts.LONGTEXT:
+                    case consts.IMAGE:
+                        result = value + '';
+                        break;
+                    case consts.INTEGER:
+                        result = this.int_to_str(result);
+                        break;
+                    case consts.FLOAT:
+                        result = this.float_to_str(result);
+                        break;
+                    case consts.CURRENCY:
+                        result = this.float_to_str(result);
+                        break;
+                    case consts.DATE:
+                        result = this.date_to_str(result);
+                        break;
+                    case consts.DATETIME:
+                        result = this.datetime_to_str(result);
+                        break;
+                    case consts.BOOLEAN:
+                        if (result) {
+                            result = language.true;
+                        } else {
+                            result = language.false;
+                        }
+                        break;
+                    case consts.KEYS:
+                        if (result.length) {
+                            result = language.items_selected.replace('%s', result.length);
+                        }
+                        break;
+                    case consts.FILE:
+                        result = this.get_secure_file_name(result);
+                        break;
+                    default:
+                        result = ''
+                }
             }
             return result;
+        }
+
+        get text() {
+            return this._value_to_text(this.data, this.value, this.data_type);
         }
 
         set text(value) {
@@ -7937,7 +7958,7 @@
             if (value !== this.text) {
                 switch (this.data_type) {
                     case consts.TEXT:
-                        this.value = value;
+                        this.value = value + '';
                         break;
                     case consts.INTEGER:
                         this.value = this.str_to_int(value);
@@ -7955,7 +7976,8 @@
                         this.value = this.str_to_datetime(value);
                         break;
                     case consts.BOOLEAN:
-                        if (value.toUpperCase() === language.yes.toUpperCase()) {
+                        if (value.toUpperCase() === language.yes.toUpperCase() ||
+                            value.toUpperCase() === language.true.toUpperCase()) {
                             this.value = true;
                         } else {
                             this.value = false;
@@ -7981,7 +8003,6 @@
                             break;
                         case consts.TEXT:
                         case consts.LONGTEXT:
-                        case consts.FILE:
                             value = '';
                             break;
                         case consts.BOOLEAN:
@@ -7992,12 +8013,13 @@
                             break;
                     }
                 }
-                else if (this.data_type === consts.KEYS) {
-                    value = [];
-                }
             }
             else {
                 switch (this.data_type) {
+                    case consts.TEXT:
+                    case consts.LONGTEXT:
+                        value = value + '';
+                        break;
                     case consts.DATE:
                         value = task.format_string_to_date(value, '%Y-%m-%d');
                         break;
@@ -8005,20 +8027,13 @@
                         value = task.format_string_to_date(value, '%Y-%m-%d %H:%M:%S');
                         break;
                     case consts.BOOLEAN:
-                        return value ? true : false;
+                        value = Boolean(value);
                         break;
                     case consts.KEYS:
-                        let result = this.lookup_data;
-                        if (!result) {
-                            result = value.split(';').map(function(i) { return parseInt(i, 10) });
-                            this.lookup_data = result;
-                        }
-                        return result;
+                        value = value.split(';').map(function(i) { return parseInt(i, 10) });
                         break;
                     case consts.FILE:
-                        if (value) {
-                            return value.substr(value.indexOf('?') + 1);
-                        }
+                        value = this.get_secure_file_name(value);
                         break;
                 }
             }
@@ -8106,6 +8121,10 @@
                 }
                 else {
                     switch (this.data_type) {
+                        case consts.TEXT:
+                        case consts.LONGTEXT:
+                            value = value + '';
+                            break;
                         case consts.CURRENCY:
                             value = task.round(value, locale.FRAC_DIGITS);
                             break;
@@ -8118,12 +8137,8 @@
                         case consts.DATETIME:
                             value = task.format_date_to_string(value, '%Y-%m-%d %H:%M:%S');
                             break;
-                        case consts.TEXT:
-                            value = value + '';
-                            break;
                         case consts.KEYS:
-                            lookup_value = value;
-                            value = value.join(';')
+                            value = value.join(';');
                             break;
                     }
                     this.new_value = value;
@@ -8151,78 +8166,109 @@
             }
         }
 
+        get _lookup_field() {
+            if (this.lookup_item) {
+                if (this.lookup_field2) {
+                    return this.lookup_item2._field_by_name(this.lookup_field2);
+                }
+                else if (this.lookup_field1) {
+                    return this.lookup_item1._field_by_name(this.lookup_field1);
+                }
+                else {
+                    return this.lookup_item._field_by_name(this.lookup_field);
+                }
+            }
+        }
+
         get lookup_data_type() {
             if (this.lookup_values) {
                 return consts.TEXT;
-            } else if (this.lookup_item) {
-                if (this.lookup_field2) {
-                    return this.lookup_item2._field_by_name(this.lookup_field2).data_type;
-                }
-                else if (this.lookup_field1) {
-                    return this.lookup_item1._field_by_name(this.lookup_field1).data_type;
-                }
-                else {
-                    return this.lookup_item._field_by_name(this.lookup_field).data_type;
-                }
-            } else {
-                return this.data_type
+            }
+            else if (this.lookup_item) {
+                return this._lookup_field.data_type;
+            }
+            else {
+                return this.data_type;
             }
         }
 
         _get_value_in_list(value) {
-            var i = 0,
+            let i = 0,
                 len = this.lookup_values.length,
                 result = '';
-            if (value === undefined) {
-                value = this.data;
-            }
-            for (; i < len; i++) {
-                if (this.lookup_values[i][0] === value) {
-                    result = this.lookup_values[i][1];
+            try {
+                for (; i < len; i++) {
+                    if (this.lookup_values[i][0] === value) {
+                        result = this.lookup_values[i][1];
+                    }
                 }
-            }
+            } catch (e) {}
             return result
         }
 
+        get_secure_file_name(data) {
+            let result = data;
+            if (result === null) {
+                result = ''
+            }
+            else {
+                let sep_pos = data.indexOf('?');
+                if (sep_pos !== -1) {
+                    result = result.substr(0, sep_pos);
+                }
+            }
+            return result;
+        }
+
+        get_file_name(data) {
+            let result = data;
+            if (result === null) {
+                result = ''
+            }
+            else {
+                let sep_pos = data.indexOf('?');
+                if (sep_pos !== -1) {
+                    result = result.substr(sep_pos + 1);
+                }
+            }
+            return result;
+        }
+
         get lookup_value() {
-            var value = null;
-            if (this.lookup_values) {
-                try {
-                    value = this._get_value_in_list();
-                } catch (e) {}
+            let result = null;
+            if (this.data_type === consts.KEYS) {
+                result = this.value
             }
-            else if (this.lookup_item) {
-                if (this.value) {
-                    value = this.lookup_data;
-                    switch (this.lookup_data_type) {
-                        case consts.DATE:
-                            if (typeof(value) === "string") {
-                                value = task.format_string_to_date(value, '%Y-%m-%d');
-                            }
-                            break;
-                        case consts.DATETIME:
-                            if (typeof(value) === "string") {
-                                value = task.format_string_to_date(value, '%Y-%m-%d %H:%M:%S');
-                            }
-                            break;
-                        case consts.BOOLEAN:
-                            if (value) {
-                                return true;
-                            } else {
-                                return false;
-                            }
-                            break;
-                    }
+            else if (this.lookup_item && this.owner.expanded) {
+                let lookup_field = this._lookup_field,
+                    data_type = this.lookup_data_type;
+                result = this.lookup_data;
+                switch (data_type) {
+                    case consts.DATE:
+                        if (typeof(result) === "string") {
+                            result = task.format_string_to_date(result, '%Y-%m-%d');
+                        }
+                        break;
+                    case consts.DATETIME:
+                        if (typeof(result) === "string") {
+                            result = task.format_string_to_date(result, '%Y-%m-%d %H:%M:%S');
+                        }
+                        break;
+                    case consts.BOOLEAN:
+                        result = Boolean(result);
+                        break;
+                    case consts.KEYS:
+                        result = result.split(';').map(function(i) { return parseInt(i, 10) });
+                        break;
+                    case consts.FILE:
+                        result = this.get_secure_file_name(result)
+                        break;
                 }
             }
-            else if (this.data_type === consts.FILE) {
-                if (this.data) {
-                    value = this.data.substr(0, this.data.indexOf('?'));
-                }
-            } else {
-                value = this.value;
+            else {
+                result = this.value;
             }
-            return value;
+            return result;
         }
 
         set lookup_value(value) {
@@ -8233,56 +8279,15 @@
         }
 
         get lookup_text() {
-            var self = this,
-                data_type,
-                lookup_field,
-                result = '';
-            try {
-                if (this.lookup_values) {
-                    result = this.lookup_value;
-                }
-                else if (this.lookup_item) {
-                    if (this.data_type === consts.KEYS) {
-                        result = this.text;
-                    }
-                    else if (this.value) {
-                        lookup_field = this.lookup_item.field_by_name(this.lookup_field);
-                        if (lookup_field.lookup_values) {
-                            result = lookup_field._get_value_in_list(this.lookup_value);
-                        }
-                        else {
-                            result = this.lookup_value;
-                        }
-                    }
-                    if (result === null) {
-                        result = '';
-                    } else {
-                        data_type = this.lookup_data_type
-                        if (data_type) {
-                            switch (data_type) {
-                                case consts.DATE:
-                                    result = this.date_to_str(result);
-                                    break;
-                                case consts.DATETIME:
-                                    result = this.datetime_to_str(result);
-                                    break;
-                                case consts.FLOAT:
-                                    result = this.float_to_str(result);
-                                    break;
-                                case consts.CURRENCY:
-                                    result = this.cur_to_str(result);
-                                    break;
-                                case consts.FILE:
-                                    if (result) {
-                                        result = result.substr(result.indexOf('?') + 1)
-                                    }
-                                    break;
-                            }
-                        }
-                    }
-                }
-            } catch (e) {}
-            return result;
+            if (this.data_type === consts.KEYS) {
+                return this.text;
+            }
+            else if (this.lookup_item && this.owner.expanded) {
+                return this._value_to_text(this.lookup_data, this.lookup_value, this.lookup_data_type);
+            }
+            else {
+                return this.text;
+            }
         }
 
         _get_image_size(edit_image) {
@@ -8384,23 +8389,34 @@
                     }
                 }
             }
-            else if (this.lookup_values) {
-                result = this.lookup_text;
-                if (result === '&nbsp') result = '';
-            } else if (this.lookup_item) {
-                if (this.field_kind === consts.ITEM_FIELD && !this.owner.expanded) {
-                    result = this.text;
+            else if (this.lookup_item && this.owner.expanded && this.lookup_value) {
+                let lookup_field = this._lookup_field,
+                    data_type = lookup_field.data_type;
+                if (lookup_field.lookup_values) {
+                    result = lookup_field._get_value_in_list(this.lookup_value);
+                }
+                else if (data_type === consts.CURRENCY) {
+                    result = this.cur_to_str(this.lookup_data);
+                }
+                else if (data_type === consts.FILE) {
+                    result = this.get_file_name(this.lookup_data);
                 }
                 else {
                     result = this.lookup_text;
                 }
-            } else {
+            }
+            else {
                 if (this.data_type === consts.CURRENCY) {
-                    if (this.data !== null) {
-                        result = this.cur_to_str(this.value);
-                    }
-                } else {
-                    result = this.text;
+                    result = this.cur_to_str(this.data)
+                }
+                else if (this.data_type === consts.FILE) {
+                    result = this.get_file_name(this.data);
+                }
+                else if (this.lookup_values && this.value) {
+                    result = this._get_value_in_list(this.value);
+                }
+                else {
+                    result = this.lookup_text;
                 }
             }
             if (this.owner && (this.owner.on_field_get_text || this.owner.on_get_field_text)) {
@@ -8420,9 +8436,6 @@
                         this.on_field_get_text_called = false;
                     }
                 }
-            }
-            if (result === undefined) {
-                result = '';
             }
             return result;
         }
@@ -8497,12 +8510,7 @@
                 link = document.createElement('a');
             if (this.data) {
                 url = [location.protocol, '//', location.host, location.pathname].join('');
-                if (this.lookup_item) {
-                    url += 'static/files/' + this.lookup_data;
-                }
-                else {
-                    url += 'static/files/' + this.data;
-                }
+                url += 'static/files/' + this.value;
                 window.open(encodeURI(url));
             }
         }
@@ -8515,14 +8523,8 @@
                 url += 'static/files/';
                 if (typeof link.download === 'string') {
                     link = document.createElement('a');
-                    if (this.lookup_item) {
-                        link.href = encodeURI(url + this.lookup_value.substr(0, this.lookup_value.indexOf('?')));
-                        link.download = this.lookup_value.substr(this.lookup_value.indexOf('?') + 1);
-                    }
-                    else {
-                        link.href = encodeURI(url + this.lookup_value);
-                        link.download = this.value;
-                    }
+                    link.href = encodeURI(url + this.value);
+                    link.download = this.display_text;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
@@ -11030,9 +11032,7 @@
         }
 
         update(state) {
-            var recNo,
-                self = this,
-                row;
+            var self = this;
             if (this.form_closing()) {
                 return;
             }
@@ -12234,10 +12234,12 @@
         check_datasource() {
             var clone = this.item.clone(),
                 first_rec = undefined;
-            for (var i = 0; i < this.datasource.length; i++) {
-                if (this.item._dataset[this.datasource[i][0]] !== undefined) {
-                    first_rec = this.datasource[i][0]
-                    break;
+            if (this.item._dataset) {
+                for (var i = 0; i < this.datasource.length; i++) {
+                    if (this.item._dataset[this.datasource[i][0]] !== undefined) {
+                        first_rec = this.datasource[i][0]
+                        break;
+                    }
                 }
             }
             this.datasource = [];

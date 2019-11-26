@@ -11,22 +11,20 @@ class AbortException(Exception):
     pass
 
 class AbstractItem(object):
-    def __init__(self, task, owner, name='', caption='', visible = True, item_type_id=0, js_filename=''):
+    def __init__(self, task, owner, name='', caption=''):
         self.task = task
         self.owner = owner
         self.item_name = name
         self.items = []
         self.ID = None
+        self.js_filename = None
         self._events = []
-        self.js_filename = js_filename
         if owner:
             if not owner.find(name):
                 owner.items.append(self)
                 if not hasattr(owner, self.item_name):
                     setattr(owner, self.item_name, self)
         self.item_caption = caption
-        self.visible = visible
-        self.item_type_id = item_type_id
         if self != task:
             self.log = task.log
         self._loader = TracebackLoader(self)
@@ -224,8 +222,8 @@ class AbstrGroup(AbstractItem):
 
 
 class AbstrTask(AbstractItem):
-    def __init__(self, owner, name, caption, visible = True, item_type_id=0, js_filename=''):
-        AbstractItem.__init__(self, self, owner, name, caption, visible, item_type_id, js_filename)
+    def __init__(self, owner, name, caption):
+        AbstractItem.__init__(self, self, owner, name, caption)
         self.task = self
         self.item_type_id = consts.TASK_TYPE
         self.history_item = None
@@ -270,8 +268,8 @@ class AbstrTask(AbstractItem):
         return consts.language(key)
 
 class AbstrItem(AbstractItem):
-    def __init__(self, task, owner, name, caption, visible = True, item_type_id=0, js_filename=''):
-        AbstractItem.__init__(self, task, owner, name, caption, visible, item_type_id, js_filename)
+    def __init__(self, task, owner, name, caption):
+        AbstractItem.__init__(self, task, owner, name, caption)
         self.master = None
         if not isinstance(self, AbstrDetail):
             if self.owner and not hasattr(self.task, self.item_name):
@@ -346,8 +344,8 @@ class AbstrDetail(AbstrItem):
             self.init_fields()
 
 class AbstrReport(AbstractItem):
-    def __init__(self, task, owner, name, caption, visible = True, item_type_id=0, js_filename=''):
-        AbstractItem.__init__(self, task, owner, name, caption, visible, item_type_id, js_filename)
+    def __init__(self, task, owner, name, caption):
+        AbstractItem.__init__(self, task, owner, name, caption)
         if not hasattr(self.task, self.item_name):
             setattr(self.task, self.item_name, self)
 

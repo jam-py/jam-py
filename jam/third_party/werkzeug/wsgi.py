@@ -10,7 +10,6 @@
 """
 import io
 import re
-import warnings
 from functools import partial
 from functools import update_wrapper
 from itertools import chain
@@ -965,7 +964,7 @@ class LimitedStream(io.IOBase):
     def readlines(self, size=None):
         """Reads a file into a list of strings.  It calls :meth:`readline`
         until the file is read to the end.  It does support the optional
-        `size` argument if the underlaying stream supports it for
+        `size` argument if the underlying stream supports it for
         `readline`.
         """
         last_pos = self._pos
@@ -999,69 +998,3 @@ class LimitedStream(io.IOBase):
 
     def readable(self):
         return True
-
-
-# DEPRECATED
-from .middleware.dispatcher import DispatcherMiddleware as _DispatcherMiddleware
-from .middleware.http_proxy import ProxyMiddleware as _ProxyMiddleware
-from .middleware.shared_data import SharedDataMiddleware as _SharedDataMiddleware
-
-
-class ProxyMiddleware(_ProxyMiddleware):
-    """
-    .. deprecated:: 0.15
-        ``werkzeug.wsgi.ProxyMiddleware`` has moved to
-        :mod:`werkzeug.middleware.http_proxy`. This import will be
-        removed in 1.0.
-    """
-
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "'werkzeug.wsgi.ProxyMiddleware' has moved to 'werkzeug"
-            ".middleware.http_proxy.ProxyMiddleware'. This import is"
-            " deprecated as of version 0.15 and will be removed in"
-            " version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super(ProxyMiddleware, self).__init__(*args, **kwargs)
-
-
-class SharedDataMiddleware(_SharedDataMiddleware):
-    """
-    .. deprecated:: 0.15
-        ``werkzeug.wsgi.SharedDataMiddleware`` has moved to
-        :mod:`werkzeug.middleware.shared_data`. This import will be
-        removed in 1.0.
-    """
-
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "'werkzeug.wsgi.SharedDataMiddleware' has moved to"
-            " 'werkzeug.middleware.shared_data.SharedDataMiddleware'."
-            " This import is deprecated as of version 0.15 and will be"
-            " removed in version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super(SharedDataMiddleware, self).__init__(*args, **kwargs)
-
-
-class DispatcherMiddleware(_DispatcherMiddleware):
-    """
-    .. deprecated:: 0.15
-        ``werkzeug.wsgi.DispatcherMiddleware`` has moved to
-        :mod:`werkzeug.middleware.dispatcher`. This import will be
-        removed in 1.0.
-    """
-
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "'werkzeug.wsgi.DispatcherMiddleware' has moved to"
-            " 'werkzeug.middleware.dispatcher.DispatcherMiddleware'."
-            " This import is deprecated as of version 0.15 and will be"
-            " removed in version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super(DispatcherMiddleware, self).__init__(*args, **kwargs)

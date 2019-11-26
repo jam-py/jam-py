@@ -78,10 +78,14 @@ class SQL(object):
         row = []
         fields = []
         index = 0
+        lock_active = self.edit_lock and self._record_version
         pk = self._primary_key_field
         command = 'UPDATE "%s" SET ' % self.table_name
         for field in self.fields:
-            if field.field_name != self._record_version and field != pk:
+            valid = field.field_name != self._record_version and field != pk
+            if lock_active and field.data == field.old_data:
+                valid = False
+            if valid:
                 index += 1
                 fields.append('"%s"=%s' % (field.db_field_name, db_module.value_literal(index)))
                 value = (field.data, field.data_type)
@@ -89,7 +93,7 @@ class SQL(object):
                     value = (0, field.data_type)
                 row.append(value)
         fields = ', '.join(fields)
-        if self.edit_lock and self._record_version:
+        if lock_active:
             fields = ' %s, "%s"=COALESCE("%s", 0)+1' % \
             (fields, self._record_version_db_field_name, self._record_version_db_field_name)
         if self._primary_key_field.data_type == consts.TEXT:
@@ -100,7 +104,7 @@ class SQL(object):
         sql = ''.join([command, fields, where])
         row = db_module.process_sql_params(row, cursor)
         self.__execute(cursor, sql, row)
-        if self.edit_lock and self._record_version:
+        if lock_active:
             self.__execute(cursor, 'SELECT "%s" FROM "%s" WHERE "%s"=%s' % \
                 (self._record_version_db_field_name, self.table_name, \
                 self._primary_key_db_field_name, pk.data))
@@ -308,6 +312,11 @@ class SQL(object):
             functions = {}
             for key, value in iteritems(funcs):
                 functions[key.upper()] = value
+        repls = query.get('__replace')
+        if repls:
+            replace = {}
+            for key, value in iteritems(repls):
+                replace[key.upper()] = value
         sql = []
         for i, field in enumerate(fields):
             if i == 0 and summary:
@@ -315,12 +324,15 @@ class SQL(object):
             elif field.master_field:
                 pass
             else:
-                field_sql = '%s."%s"' % (self.table_alias(), field.db_field_name)
-                func = None
-                if funcs:
-                    func = functions.get(field.field_name.upper())
-                if func:
-                    field_sql = '%s(%s) %s "%s"' % (func.upper(), field_sql, db_module.FIELD_AS, field.db_field_name)
+                if repls and replace.get(field.field_name.upper()):
+                    field_sql = ('%s %s "%s"') % (replace[field.field_name.upper()], db_module.FIELD_AS, field.db_field_name)
+                else:
+                    field_sql = '%s."%s"' % (self.table_alias(), field.db_field_name)
+                    func = None
+                    if funcs:
+                        func = functions.get(field.field_name.upper())
+                        if func:
+                            field_sql = '%s(%s) %s "%s"' % (func.upper(), field_sql, db_module.FIELD_AS, field.db_field_name)
                 sql.append(field_sql)
         if query['__expanded']:
             for i, field in enumerate(fields):

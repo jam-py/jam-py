@@ -269,8 +269,8 @@ class App(object):
             pass
         try:
             buff = json.dumps(result, default=json_defaul_handler)
-        except:
-            self.log.exception('wsgi.py create_post_response error')
+        except Exception as e:
+            self.log.exception('wsgi.py create_post_response error %s' % error_message(e))
             self.log.debug(result)
             raise
         response.headers['Content-Type'] = 'application/json'
@@ -601,7 +601,8 @@ class App(object):
                 r['result'] = {'data': [None, error]}
                 r['error'] = error
             except Exception as e:
-                traceback.print_exc()
+                self.log.exception(error_message(e))
+                # ~ traceback.print_exc()
                 error = error_message(e)
                 if consts.DEBUGGING and task_id != 0:
                     raise
@@ -697,7 +698,7 @@ class App(object):
                                 path = os.path.join('static', 'builder')
                             else:
                                 path = os.path.join('static', 'files')
-                            file_name = ('%s%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
+                            file_name = ('%s_%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
                             file_name = secure_filename(file_name)
                             file_name = file_name.replace('?', '')
                         if not r['error']:

@@ -430,7 +430,8 @@ class MetaDataImport(object):
                             os.rename(tmp_admin_name, admin_name)
                             connection.rollback()
             finally:
-                connection.close();
+                if connection:
+                    connection.close();
             consts.read_settings()
             consts.read_language()
 
@@ -466,7 +467,9 @@ class MetaDataImport(object):
                     connection.commit()
         except Exception as x:
             error = str(x)
+            self.task.log.exception('Error: %s' % error)
             info.append({'error': error})
+            self.success = False
         self.show_info(info)
         return connection
 

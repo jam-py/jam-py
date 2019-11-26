@@ -27,10 +27,9 @@ from .sql import SQL
 from .execute import execute_sql, execute_sql_connection
 
 class ServerDataset(Dataset, SQL):
-    def __init__(self, table_name='', soft_delete=True):
+    def __init__(self):
         Dataset.__init__(self)
         self.ID = None
-        self.table_name = table_name
         self.gen_name = None
         self._order_by = []
         self.values = None
@@ -38,7 +37,6 @@ class ServerDataset(Dataset, SQL):
         self.on_apply = None
         self.on_count = None
         self.on_field_get_text = None
-        self.soft_delete = soft_delete
 
     def copy(self, filters=True, details=True, handlers=True):
         if self.master:
@@ -186,6 +184,14 @@ class ServerDataset(Dataset, SQL):
                 con.close()
         return rows, error_mes
 
+    def open_records(self, params, connection=None):
+        dataset, error = self.execute_open(params, connection)
+        result = self.copy(filters=False, details=False, handlers=False)
+        result.log_changes = False
+        result.open(expanded = params['__expanded'], fields=params['__fields'], open_empty=True)
+        result._dataset = dataset
+        return result
+
     def select_records(self, params, connection=None, safe=False):
         if safe and not self.can_view():
             raise Exception(consts.language('cant_view') % self.item_caption)
@@ -196,10 +202,11 @@ class ServerDataset(Dataset, SQL):
             result = self.on_open(self, params)
         if result is None:
             result = self.execute_open(params, connection)
-        result = list(result)
+        if isinstance(result, Dataset):
+            result = result.dataset, ''
         return result
 
-    def apply_delta(self, delta, params=None, connection=None, db_module=None):
+    def apply_delta(self, delta, params, connection, db_module=None):
         if not db_module:
             db_module = self.task.db_module
         return delta.process_changes(connection, params, db_module)
@@ -211,6 +218,7 @@ class ServerDataset(Dataset, SQL):
         if not params:
             params = {}
         params['__safe'] = safe
+        params['__replace'] = None
         delta = self.delta(changes)
         if connection:
             con = connection
@@ -296,35 +304,34 @@ class ServerDataset(Dataset, SQL):
 
 
 class Group(AbstrGroup):
-    def __init__(self, task, owner, name='', caption='', template=None, js_filename=None, visible=True, item_type_id=0):
-        AbstrGroup.__init__(self, task, owner, name, caption, visible, item_type_id, js_filename)
+    def __init__(self, task, owner, name='', caption=''):
+        AbstrGroup.__init__(self, task, owner, name, caption)
         self.ID = None
-        self.template = template
-        self.js_filename = js_filename
-        if item_type_id == consts.REPORTS_TYPE:
-            self.on_convert_report = None
 
-    def add_item(self, name, caption, table_name, visible=True, template='', js_filename='', soft_delete=True):
-        result = Item(self.task, self, name, caption, visible, table_name, js_filename, soft_delete)
-        result.item_type_id = consts.ITEM_TYPE
-        return result
-
-    def add_report(self, name, caption, table_name, visible=True, template='', js_filename='', soft_delete=True):
-        result = Report(self.task, self, name, caption, visible, table_name, template, js_filename)
-        result.item_type_id = consts.REPORT_TYPE
+    def add_item(self, name, caption):
+        result = Item(self.task, self, name, caption)
         return result
 
     def get_child_class(self):
-        if self.item_type_id == consts.REPORTS_TYPE:
-            return Report
-        else:
-            return Item
+        return Item
+
+class ReportGroup(Group):
+    def __init__(self, task, owner, name='', caption=''):
+        Group.__init__(self, task, owner, name, caption)
+        self.on_convert_report = None
+
+    def add_report(self, name, caption):
+        result = Report(self.task, self, name, caption)
+        return result
+
+    def get_child_class(self):
+        return Report
 
 class Item(AbstrItem, ServerDataset):
-    def __init__(self, task, owner, name='', caption='', visible = True, table_name='', js_filename='', soft_delete=True):
-        AbstrItem.__init__(self, task, owner, name, caption, visible, js_filename)
-        ServerDataset.__init__(self, table_name, soft_delete)
-        self.item_type_id = None
+    def __init__(self, task, owner, name='', caption=''):
+        item_type_id = consts.ITEM_TYPE
+        AbstrItem.__init__(self, task, owner, name, caption)
+        ServerDataset.__init__(self)
         self.reports = []
 
     def get_child_class(self):
@@ -337,11 +344,10 @@ class Item(AbstrItem, ServerDataset):
         return result
 
 class Report(AbstrReport, ParamReport):
-    def __init__(self, task, owner, name='', caption='', visible = True,
-            table_name='', template='', js_filename=''):
-        AbstrReport.__init__(self, task, owner, name, caption, visible, js_filename)
+    def __init__(self, task, owner, name='', caption=''):
+        AbstrReport.__init__(self, task, owner, name, caption)
         ParamReport.__init__(self)
-        self.template = template
+        self.item_type_id = consts.REPORT_TYPE
         self.template_name = None
         self.template_content = {}
         self.ext = 'ods'
@@ -354,8 +360,8 @@ class Report(AbstrReport, ParamReport):
         self.on_field_get_text = None
 
     def copy(self):
-        result = self.__class__(self.task, None, self.item_name, self.item_caption, self.visible,
-            '', self.template, '');
+        result = self.__class__(self.task, None, self.item_name, self.item_caption);
+        result.template = self.template
         result.on_before_generate = self.on_before_generate
         result.on_generate = self.on_generate
         result.on_after_generate = self.on_after_generate
@@ -702,17 +708,17 @@ class Report(AbstrReport, ParamReport):
 
 
 class AbstractServerTask(AbstrTask):
-    def __init__(self, app, name, caption, js_filename, db_type, db_server = '',
+    def __init__(self, app, name, caption, db_type, db_server = '',
         db_database = '', db_user = '', db_password = '', host='', port='',
         encoding='', con_pool_size=1, persist_con=True):
-        AbstrTask.__init__(self, None, None, None, None)
+        AbstrTask.__init__(self, None, None, None)
         self.app = app
         self.items = []
         self.lookup_lists = {}
         self.ID = None
         self.item_name = name
         self.item_caption = caption
-        self.js_filename = js_filename
+        self.visible = True
         self.db_type = db_type
         self.db_server = db_server
         self.db_database = db_database
@@ -872,10 +878,10 @@ class AbstractServerTask(AbstrTask):
         return converted
 
 class Task(AbstractServerTask):
-    def __init__(self, app, name, caption, js_filename,
-        db_type, db_server = '', db_database = '', db_user = '', db_password = '',
+    def __init__(self, app, name, caption, db_type, db_server = '',
+        db_database = '', db_user = '', db_password = '',
         host='', port='', encoding='', con_pool_size=4, persist_con=True):
-        AbstractServerTask.__init__(self, app, name, caption, js_filename,
+        AbstractServerTask.__init__(self, app, name, caption,
             db_type, db_server, db_database, db_user, db_password,
             host, port, encoding, con_pool_size, persist_con)
         self.on_created = None
@@ -1072,18 +1078,21 @@ class Task(AbstractServerTask):
 
 
 class AdminTask(AbstractServerTask):
-    def __init__(self, app, name, caption, js_filename,
-        db_type, db_server = '', db_database = '', db_user = '', db_password = '',
-        host='', port='', encoding=''):
-        AbstractServerTask.__init__(self, app, name, caption, js_filename,
-            db_type, db_server, db_database, db_user, db_password, host, port, encoding)
+    def __init__(self, app, name, caption, db_type, db_server = '',
+        db_database = '', db_user = '', db_password = '', host='',
+        port='', encoding=''):
+        AbstractServerTask.__init__(self, app, name, caption, db_type,
+            db_server, db_database, db_user, db_password, host, port,
+            encoding)
         self.timeout = 43200
 
 class Detail(AbstrDetail, ServerDataset):
     def __init__(self, task, owner, name='', caption='', table_name=''):
-        AbstrDetail.__init__(self, task, owner, name, caption, True)
-        ServerDataset.__init__(self, table_name)
+        AbstrDetail.__init__(self, task, owner, name, caption)
+        ServerDataset.__init__(self)
+        self.item_type_id = consts.DETAIL_TYPE
         self.master = owner
+        self.soft_delete = None
 
     def init_fields(self):
         self.field_defs = []

@@ -123,35 +123,40 @@ class DBField(object):
             if self.row and (self.lookup_index >= 0):
                 self.row[self.lookup_index] = value
 
-    @property
-    def text(self):
-        if not self.data is None:
-            result = self.value
-            if self.data_type == consts.INTEGER:
+    def _value_to_text(self, data, value, data_type):
+        result = ''
+        if data is None:
+            if data_type == consts.BOOLEAN:
+                result = consts.language('false')
+        else:
+            result = value
+            if data_type == consts.INTEGER:
                 result = str(result)
-            elif self.data_type == consts.FLOAT:
+            elif data_type == consts.FLOAT:
                 result = self.float_to_str(result)
-            elif self.data_type == consts.CURRENCY:
+            elif data_type == consts.CURRENCY:
                 result = self.float_to_str(result)
-            elif self.data_type == consts.DATE:
+            elif data_type == consts.DATE:
                 result = self.date_to_str(result)
-            elif self.data_type == consts.DATETIME:
+            elif data_type == consts.DATETIME:
                 result = self.datetime_to_str(result)
-            elif self.data_type == consts.TEXT:
-                result = text_type(result)
-            elif self.data_type == consts.KEYS:
+            elif data_type == consts.BOOLEAN:
+                if value:
+                    result = consts.language('true')
+                else:
+                    result = consts.language('false')
+            elif data_type == consts.KEYS:
                 if len(result):
                     result = consts.language('items_selected') % len(result)
+            elif data_type == consts.FILE:
+                result = self.get_secure_file_name(result)
             else:
                 result = text_type(result)
-        else:
-            result = ''
-        if self.data_type == consts.BOOLEAN:
-            if self.value:
-                result = consts.language('true')
-            else:
-                result = consts.language('false')
         return result
+
+    @property
+    def text(self):
+        return self._value_to_text(self.data, self.value, self.data_type)
 
     @text.setter
     def text(self, value):
@@ -169,7 +174,7 @@ class DBField(object):
             elif self.data_type == consts.DATETIME:
                 self.value = consts.str_to_datetime(value)
             elif self.data_type == consts.BOOLEAN:
-                if value.upper() == consts.language('yes').upper():
+                if value.upper() in [consts.language('yes').upper(), consts.language('true').upper()]:
                     self.value = True
                 else:
                     self.value = False
@@ -194,7 +199,7 @@ class DBField(object):
                 elif self.data_type in [consts.TEXT, consts.LONGTEXT]:
                     result = ''
                 elif self.data_type == consts.KEYS:
-                    result = [];
+                    result = []
         else:
             if self.data_type == consts.TEXT:
                 if not isinstance(result, text_type):
@@ -206,19 +211,11 @@ class DBField(object):
             elif self.data_type == consts.DATETIME:
                 result = consts.convert_date_time(result)
             elif self.data_type == consts.BOOLEAN:
-                if result:
-                    result = True
-                else:
-                    result = False
+                result = bool(result)
             elif self.data_type == consts.KEYS:
-                if self.lookup_data:
-                    result = self.lookup_data
-                else:
-                    if isinstance(result, text_type):
-                        result = result.split(';')
-                    else:
-                        result = [int(val) for val in result.split(';')]
-                    self.lookup_data = result
+                result = self.data_to_keys(result)
+            elif self.data_type == consts.FILE:
+                result = self.get_secure_file_name(result)
         return result
 
     @value.setter
@@ -270,7 +267,6 @@ class DBField(object):
                         self.new_value = 0
                 elif self.data_type == consts.KEYS:
                     self.new_value = ';'.join([str(v) for v in value])
-                    lookup_value = value
             except TypeError as e:
                 raise FieldInvalidValue(self.type_error(value))
             except ValueError as e:
@@ -303,7 +299,7 @@ class DBField(object):
         return mess
 
     @property
-    def old_value(self):
+    def old_data(self):
         if self.owner._is_delta:
             if self.row and self.bind_index >= 0:
                 try:
@@ -319,54 +315,88 @@ class DBField(object):
         else:
             raise Exception('Only delta can have old value property.')
 
+    @property
+    def old_value(self):
+        return self.old_data
+
     def _set_modified(self, value):
         if self.owner:
             self.owner._set_modified(value)
 
     @property
-    def lookup_data_type(self):
-        if self.lookup_values:
-            return consts.TEXT;
-        elif self.lookup_item:
+    def _lookup_field(self):
+        if self.lookup_item:
             if self.lookup_field2:
-                return self.lookup_item2._field_by_name(self.lookup_field2).data_type
+                return self.lookup_item2._field_by_name(self.lookup_field2)
             elif self.lookup_field1:
-                return self.lookup_item1._field_by_name(self.lookup_field1).data_type
+                return self.lookup_item1._field_by_name(self.lookup_field1)
             else:
-                return self.lookup_item._field_by_name(self.lookup_field).data_type
+                return self.lookup_item._field_by_name(self.lookup_field)
+
+    @property
+    def lookup_data_type(self):
+        if self.lookup_item:
+            return self._lookup_field.data_type
         else:
             return self.data_type
 
-    def _get_value_in_list(self, value=None):
+    def _get_value_in_list(self, value):
         result = '';
-        if value is None:
-            value = self.value
-        for val, str_val in self.lookup_values:
-            if val == value:
-                result = str_val
+        try:
+            for val, str_val in self.lookup_values:
+                if val == value:
+                    result = str_val
+        except:
+            pass
         return result
+
+    def get_secure_file_name(self, data):
+        result = data
+        if result is None:
+            result = ''
+        else:
+            sep_pos = data.find('?')
+            if sep_pos != -1:
+                result = result[0:sep_pos]
+        return result
+
+    def get_file_name(self, data):
+        result = data
+        if result is None:
+            result = ''
+        else:
+            sep_pos = data.find('?')
+            if sep_pos != -1:
+                result = result[sep_pos+1:]
+        return result
+
+    def data_to_keys(self, data):
+        return [int(val) for val in data.split(';')]
 
     @property
     def lookup_value(self):
-        value = None
-        if self.lookup_values and self.value:
-            try:
-                value = self._get_value_in_list()
-            except:
-                pass
-        elif self.lookup_item:
-            if self.value:
-                value = self.lookup_data
-                data_type = self.lookup_data_type
-                if data_type == consts.DATE:
-                    if isinstance(value, text_type):
-                        value = consts.convert_date(value)
-                elif data_type == consts.DATETIME:
-                    if isinstance(value, text_type):
-                        value = consts.convert_date_time(value)
-                elif self.data_type == consts.BOOLEAN:
-                    value = bool(value)
-        return value
+        result = None
+        if self.data_type == consts.KEYS:
+            result = self.value
+        elif self.lookup_item and self.owner.expanded:
+            lookup_field = self._lookup_field
+            data_type = lookup_field.data_type
+            result = self.lookup_data
+            if data_type == consts.DATE:
+                if isinstance(result, text_type):
+                    result = consts.convert_date(result)
+            elif data_type == consts.DATETIME:
+                if isinstance(result, text_type):
+                    result = consts.convert_date_time(result)
+            elif data_type == consts.BOOLEAN:
+                result = bool(result)
+            elif data_type == consts.KEYS:
+                result = self.data_to_keys(result)
+            elif data_type == consts.FILE:
+                result = self.get_secure_file_name(result)
+        else:
+            result = self.value
+        return result
 
     @lookup_value.setter
     def lookup_value(self, value):
@@ -375,47 +405,35 @@ class DBField(object):
 
     @property
     def lookup_text(self):
-        result = ''
-        try:
-            if self.lookup_values and self.value:
-                result = self.lookup_value
-            elif self.lookup_item:
-                if self.value:
-                    result = self.lookup_value
-                if result is None:
-                    result = ''
-                else:
-                    data_type = self.lookup_data_type
-                    if data_type:
-                        if data_type == consts.DATE:
-                            result = self.date_to_str(result)
-                        elif data_type == consts.DATETIME:
-                            result = self.datetime_to_str(result)
-                        elif data_type == consts.FLOAT:
-                            result = self.float_to_str(result)
-                        elif data_type == consts.CURRENCY:
-                            result = self.cur_to_str(result)
-            result = text_type(result)
-        except Exception as e:
-            traceback.print_exc()
-        return result
+        if self.data_type == consts.KEYS:
+            return self.text
+        elif self.lookup_item and self.owner.expanded:
+            return self._value_to_text(self.lookup_data, self.lookup_value, self.lookup_data_type)
+        else:
+            return self.text
 
     @property
     def display_text(self):
-        result = ''
-        if self.filter and self.filter.filter_type == consts.FILTER_IN \
-            and self.filter.field.lookup_item and self.filter.value:
-            result = consts.language('items_selected') % len(self.filter.value)
-        elif self.lookup_item:
-            result = self.lookup_text
-        elif self.lookup_values:
-            result = self.lookup_text
+        if self.lookup_item and self.owner.expanded and self.lookup_value:
+            lookup_field = self._lookup_field
+            data_type = lookup_field.data_type
+            if lookup_field.lookup_values:
+                result = lookup_field._get_value_in_list(self.lookup_value)
+            elif data_type == consts.CURRENCY:
+                result = self.cur_to_str(self.lookup_data)
+            elif data_type == consts.FILE:
+                result = self.get_file_name(self.lookup_data)
+            else:
+                result = self.lookup_text
         else:
             if self.data_type == consts.CURRENCY:
-                if not self.data is None:
-                    result = self.cur_to_str(self.value)
+                result = self.cur_to_str(self.data)
+            elif self.data_type == consts.FILE:
+                result = self.get_file_name(self.data)
+            elif self.lookup_values and self.value:
+                result = self._get_value_in_list(self.value)
             else:
-                result = self.text
+                result = self.lookup_text
         if self.owner and not self.filter:
             if self.owner.on_field_get_text:
                 if not self.on_field_get_text_called:
@@ -1048,7 +1066,7 @@ class AbstractDataSet(object):
             return self._keep_history
 
     def _copy(self, filters=True, details=True, handlers=True):
-        result = self.__class__(self.task, None, self.item_name, self.item_caption, self.visible)
+        result = self.__class__(self.task, None, self.item_name, self.item_caption)
         result.ID = self.ID
         result.item_name = self.item_name
         result.expanded = self.expanded
@@ -1058,6 +1076,7 @@ class AbstractDataSet(object):
         result._keep_history = self._keep_history
         result.edit_lock = self.edit_lock
         result.select_all = self.select_all
+        result.visible = self.visible
 
         for field_def in result.field_defs:
             field = DBField(result, field_def)
@@ -1076,11 +1095,12 @@ class AbstractDataSet(object):
         return result
 
     def clone(self):
-        result = self.__class__(self.task, None, self.item_name, self.item_caption, self.visible)
+        result = self.__class__(self.task, None, self.item_name, self.item_caption)
         result.ID = self.ID
         result.item_name = self.item_name
         result.field_defs = self.field_defs
         result.filter_defs = self.filter_defs
+        result.visible = self.visible
 
         for field_def in result.field_defs:
             field = DBField(result, field_def)

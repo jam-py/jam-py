@@ -285,35 +285,34 @@ class Consts(object):
         val = val.replace(self.DECIMAL_POINT, '.')
         return float(val)
 
+    def transform_digits(self, val):
+        if not val[0].isdigit():
+            val = val[1:]
+        point = val.find('.')
+        dec = ''
+        digits = val
+        if point >= 0:
+            dec = val[point + 1:]
+            digits = val[:point]
+        result = ''
+        count = 0
+        lenth = len(digits)
+        for i in range(lenth):
+            d = digits[lenth - i - 1]
+            result = d + result
+            count += 1
+            if count % 3 == 0 and (i != lenth - 1):
+                result = self.MON_THOUSANDS_SEP + result
+        if dec:
+            result = result + self.MON_DECIMAL_POINT + dec
+        return result
+
     def cur_to_str(self, value):
-
-        def transform_digits(val):
-            if not val[0].isdigit():
-                val = val[1:]
-            point = val.find('.')
-            dec = ''
-            digits = val
-            if point >= 0:
-                dec = val[point + 1:]
-                digits = val[:point]
-            result = ''
-            count = 0
-            lenth = len(digits)
-            for i in range(lenth):
-                d = digits[lenth - i - 1]
-                result = d + result
-                count += 1
-                if count % 3 == 0 and (i != lenth - 1):
-                    result = self.MON_THOUSANDS_SEP + result
-            if dec:
-                result = result + self.MON_DECIMAL_POINT + dec
-            return result
-
         if value is None:
-            value = 0
+            return ''
         format_str = '%.' + str(self.FRAC_DIGITS) + 'f'
         result = format_str % value
-        result = transform_digits(result)
+        result = self.transform_digits(result)
         if value < 0:
             if self.N_SIGN_POSN == 3:
                 result = self.NEGATIVE_SIGN + result
@@ -407,8 +406,9 @@ class Consts(object):
 
     def convert_date_time(self, value):
         if type(value) in string_types:
-            if value.find('T'):
-                value = value.replace('T', ' ')
+            value = value.replace('T', ' ')
+            value = value.replace('Z', '')
+            value = value[:26]
             try:
                 return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
             except:

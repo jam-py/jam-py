@@ -29,23 +29,8 @@ from ..security import gen_salt
 from ..wrappers import BaseRequest as Request
 from ..wrappers import BaseResponse as Response
 from .console import Console
-from .repr import debug_repr as _debug_repr
 from .tbtools import get_current_traceback
 from .tbtools import render_console_html
-
-
-def debug_repr(*args, **kwargs):
-    import warnings
-
-    warnings.warn(
-        "'debug_repr' has moved to 'werkzeug.debug.repr.debug_repr'"
-        " as of version 0.7. This old import will be removed in version"
-        " 1.0.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _debug_repr(*args, **kwargs)
-
 
 # A week
 PIN_TIME = 60 * 60 * 24 * 7
@@ -238,9 +223,6 @@ class DebuggedApplication(object):
     The `evalex` keyword argument allows evaluating expressions in a
     traceback's frame context.
 
-    .. versionadded:: 0.9
-       The `lodgeit_url` parameter was deprecated.
-
     :param app: the WSGI application to run debugged.
     :param evalex: enable exception evaluation feature (interactive
                    debugging).  This requires a non-forking server.
@@ -266,20 +248,9 @@ class DebuggedApplication(object):
         console_path="/console",
         console_init_func=None,
         show_hidden_frames=False,
-        lodgeit_url=None,
         pin_security=True,
         pin_logging=True,
     ):
-        if lodgeit_url is not None:
-            from warnings import warn
-
-            warn(
-                "'lodgeit_url' is no longer used as of version 0.9 and"
-                " will be removed in version 1.0. Werkzeug uses"
-                " https://gist.github.com/ instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
         if not console_init_func:
             console_init_func = None
         self.app = app
@@ -305,16 +276,15 @@ class DebuggedApplication(object):
         else:
             self.pin = None
 
-    def _get_pin(self):
+    @property
+    def pin(self):
         if not hasattr(self, "_pin"):
             self._pin, self._pin_cookie = get_pin_and_cookie_name(self.app)
         return self._pin
 
-    def _set_pin(self, value):
+    @pin.setter
+    def pin(self, value):
         self._pin = value
-
-    pin = property(_get_pin, _set_pin)
-    del _get_pin, _set_pin
 
     @property
     def pin_cookie_name(self):

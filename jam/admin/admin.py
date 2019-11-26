@@ -47,7 +47,7 @@ def create_admin(app):
     if os.path.exists(os.path.join(app.work_dir, '_admin.sqlite')):
         os.rename(os.path.join(app.work_dir, '_admin.sqlite'), \
             os.path.join(app.work_dir, 'admin.sqlite'))
-    task = AdminTask(app, 'admin', 'Administrator', '', SQLITE,
+    task = AdminTask(app, 'admin', 'Administrator', SQLITE,
         db_database=os.path.join(app.work_dir, 'admin.sqlite'))
     app.admin = task
     task.secret_key = read_secret_key(task)

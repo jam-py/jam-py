@@ -173,7 +173,7 @@ def execute_sql(db_module, db_server, db_database, db_user, db_password,
             return  None, (None, str(x))
     return execute_sql_connection(connection, command, params, select, db_module, close_on_error=True)
 
-def apply_sql(item, params=None, db_module=None):
+def apply_sql(item, params=None, db_module=None): #depricated
 
     def get_user(item):
         user = None
