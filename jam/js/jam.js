@@ -2453,80 +2453,131 @@
             }
         },
 
+        create_menu_item: function(menu_item, parent) {
+            if (menu_item.items.length) {
+                let li,
+                    ul;
+                if (parent.hasClass('dropdown-menu')) {
+                    li = $('<li class="dropdown-submenu"><a tabindex="-1" href="#">' +
+                        menu_item.caption + '</a></li>');
+                }
+                else {
+                    li = $('<li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown" href="#">' +
+                        menu_item.caption + ' <b class="caret"></b></a></li>');
+                }
+                parent.append(li);
+                ul = $('<ul class="dropdown-menu">');
+                li.append(ul);
+                for (let i = 0; i < menu_item.items.length; i++) {
+                    this.create_menu_item(menu_item.items[i], ul)
+                }
+            }
+            else {
+                parent.append($('<li>')
+                    .append($('<a class="item-menu" href="#">' + menu_item.caption + '</a>')
+                    .data('action', menu_item.action)));
+            }
+        },
+
+        add_menu_item: function(custom_item, parent, options) {
+            let menu_item = {},
+                item = custom_item,
+                sub_items = [];
+            if (custom_item instanceof Array) {
+                item = custom_item[0];
+                if (custom_item.length > 1) {
+                    sub_items = custom_item[1]
+                }
+            }
+            menu_item.items = [];
+            if (item instanceof AbsrtactItem) {
+                menu_item.caption = item.item_caption;
+                if (item instanceof Group) {
+                    item.each_item(function(i) {
+                        if (i.visible) {
+                            sub_items.push(i);
+                        }
+                    });
+                    if (sub_items.length === 1 && !options.create_group_for_single_item) {
+                        item = sub_items[0];
+                        sub_items = [];
+                        menu_item.caption = item.item_caption;
+                    }
+                }
+                if (item instanceof Item) {
+                    menu_item.action = function() {
+                        item.view(this.forms_container);
+                    }
+                }
+                else if (item instanceof Report) {
+                    menu_item.action = function() {
+                        item.print(false);
+                    }
+                }
+            }
+            else {
+                menu_item.caption = item;
+            }
+            parent.items.push(menu_item)
+            for (let i = 0; i < sub_items.length; i++) {
+                this.add_menu_item(sub_items[i], menu_item, options);
+            }
+        },
+
         create_menu: function() {
-            var i,
-                j,
-                self = this,
+            var self = this,
                 $menu = arguments[0],
                 forms_container = arguments[1],
                 options = arguments[2],
-                li,
-                ul,
-                menu = [],
-                group,
-                item,
+                custom_menu,
+                menu_items = {},
                 default_options = {
+                    custom_menu: undefined,
                     forms_container: undefined,
                     splash_screen: undefined,
                     view_first: false,
                     create_single_group: false,
                     create_group_for_single_item: false
                 };
-
             if (arguments.length === 2) {
                 options = arguments[1];
                 forms_container = options.forms_container;
             }
-
             options = $.extend({}, default_options, options);
 
             this.set_forms_container(forms_container, {splash_screen: options.splash_screen});
-            task.each_item(function(group) {
-                var items = [];
-                if (group.visible) {
+
+            custom_menu = options.custom_menu;
+            if (!custom_menu) {
+                custom_menu = [];
+                task.each_item(function(group) {
+                    if (group.visible) {
+                        custom_menu.push(group);
+                    }
+                });
+                if (custom_menu.length === 1 && !options.create_single_group) {
+                    let group = custom_menu[0]
+                    custom_menu = []
                     group.each_item(function(item) {
-                        if (item.visible && item.can_view()) {
-                            items.push(item);
+                        if (item.visible) {
+                            custom_menu.push(item);
                         }
                     });
-                    if (items.length) {
-                        menu.push({group: group, items: items});
-                    }
-                }
-            });
-
-            for (i = 0; i < menu.length; i++) {
-                group = menu[i].group;
-                if ((menu[i].items.length === 1 && !options.create_group_for_single_item) ||
-                    (menu.length === 1 && !options.create_single_group)) {
-                    ul = $menu;
-                }
-                else {
-                    li = $('<li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown" href="#">' +
-                        group.item_caption + ' <b class="caret"></b></a></li>');
-                    $menu.append(li);
-                    ul = $('<ul class="dropdown-menu">');
-                    li.append(ul);
-                }
-                for (j = 0; j < menu[i].items.length; j++) {
-                    item = menu[i].items[j];
-                    ul.append($('<li>')
-                        .append($('<a class="item-menu" href="#">' + item.item_caption + '</a>')
-                        .data('item', item)));
-
                 }
             }
+            menu_items.items = [];
+            for (let i = 0; i < custom_menu.length; i++) {
+                this.add_menu_item(custom_menu[i], menu_items, options);
+            }
+            for (let i = 0; i < menu_items.items.length; i++) {
+                this.create_menu_item(menu_items.items[i], $menu);
+            }
             $menu.find('.item-menu').on('click', (function(e) {
-                var item = $(this).data('item');
-                e.preventDefault();
-                if (item.item_type === "report") {
-                    item.print(false);
-                }
-                else {
-                    item.view(self.forms_container);
+                var action = $(this).data('action');
+                if (action) {
+                    action.call(self);
                 }
             }));
-
             if (options.view_first) {
                 $menu.find('.item-menu:first').click();
             }
@@ -12767,9 +12818,20 @@
                 self.mouseIsDown = false;
             });
 
-            this.$input.keydown($.proxy(this.keydown, this));
-            this.$input.keyup($.proxy(this.keyup, this));
-            this.$input.keypress($.proxy(this.keypress, this));
+            this.$input.on('keydown', function(e) {
+                self.keydown(e);
+            });
+            this.$input.on('keyup', function(e) {
+                self.keyup(e);
+            });
+            this.$input.on('keypress', function(e) {
+                self.keypress(e)
+                self.changed = true;
+            });
+
+            //~ this.$input.keydown($.proxy(this.keydown, this));
+            //~ this.$input.keyup($.proxy(this.keyup, this));
+            //~ this.$input.keypress($.proxy(this.keypress, this));
             if (field.lookup_item && !field.master_field || field.lookup_values || field_type === consts.FILE) {
                 $btnCtrls = $('<div class="input-prepend input-append"></div>');
                 $btn = $('<button class="btn' + inpit_btn_class + '"type="button"><i class="icon-remove-sign"></button>');
