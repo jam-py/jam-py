@@ -2453,33 +2453,43 @@
             }
         },
 
-        create_menu_item: function(menu_item, parent) {
+        create_menu_item: function(menu_item, parent, options) {
             if (menu_item.items.length) {
-                let li,
-                    ul;
-                if (parent.hasClass('dropdown-menu')) {
-                    li = $('<li class="dropdown-submenu"><a tabindex="-1" href="#">' +
-                        menu_item.caption + '</a></li>');
+                if (menu_item.items.length === 1 && !options.create_group_for_single_item) {
+                    this.create_menu_item(menu_item.items[0], parent, options);
                 }
                 else {
-                    li = $('<li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown" href="#">' +
-                        menu_item.caption + ' <b class="caret"></b></a></li>');
-                }
-                parent.append(li);
-                ul = $('<ul class="dropdown-menu">');
-                li.append(ul);
-                for (let i = 0; i < menu_item.items.length; i++) {
-                    this.create_menu_item(menu_item.items[i], ul)
+                    let li,
+                        ul;
+                    if (parent.hasClass('dropdown-menu')) {
+                        li = $('<li class="dropdown-submenu"><a tabindex="-1" href="#">' +
+                            menu_item.caption + '</a></li>');
+                    }
+                    else {
+                        li = $('<li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown" href="#">' +
+                            menu_item.caption + ' <b class="caret"></b></a></li>');
+                    }
+                    parent.append(li);
+                    ul = $('<ul class="dropdown-menu">');
+                    li.append(ul);
+                    for (let i = 0; i < menu_item.items.length; i++) {
+                        this.create_menu_item(menu_item.items[i], ul, options)
+                    }
                 }
             }
             else {
-                parent.append($('<li>')
-                    .append($('<a class="item-menu" href="#">' + menu_item.caption + '</a>')
-                    .data('action', menu_item.action)));
+                if (menu_item.caption) {
+                    parent.append($('<li>')
+                        .append($('<a class="item-menu" href="#">' + menu_item.caption + '</a>')
+                        .data('action', menu_item.action)));
+                }
+                else {
+                    parent.append($('<li class="divider"></li>'));
+                }
             }
         },
 
-        add_menu_item: function(custom_item, parent, options) {
+        add_menu_item: function(custom_item, parent) {
             let menu_item = {},
                 item = custom_item,
                 sub_items = [];
@@ -2489,29 +2499,49 @@
                     sub_items = custom_item[1]
                 }
             }
+            else if (custom_item instanceof Object && !(item instanceof AbsrtactItem)) {
+                for (item in custom_item) {
+                    if (custom_item[item] instanceof Array) {
+                        sub_items = custom_item[item];
+                    }
+                    else if (custom_item[item] instanceof AbsrtactItem) {
+                        sub_items[0] = custom_item[item];
+                    }
+                    else if (typeof custom_item[item] === "function") {
+                        menu_item.action = custom_item[item];
+                    }
+                }
+            }
             menu_item.items = [];
             if (item instanceof AbsrtactItem) {
                 menu_item.caption = item.item_caption;
                 if (item instanceof Group) {
-                    item.each_item(function(i) {
-                        if (i.visible) {
-                            sub_items.push(i);
+                    if (item.visible) {
+                        item.each_item(function(i) {
+                            if (i.visible && i.can_view()) {
+                                sub_items.push(i);
+                            }
+                        });
+                    }
+                    else {
+                        return;
+                    }
+                }
+                else {
+                    if (item.visible && item.can_view()) {
+                        if (item instanceof Item) {
+                            menu_item.action = function() {
+                                item.view(this.forms_container);
+                            }
                         }
-                    });
-                    if (sub_items.length === 1 && !options.create_group_for_single_item) {
-                        item = sub_items[0];
-                        sub_items = [];
-                        menu_item.caption = item.item_caption;
+                        else if (item instanceof Report) {
+                            menu_item.action = function() {
+                                item.print(false);
+                            }
+                        }
                     }
-                }
-                if (item instanceof Item) {
-                    menu_item.action = function() {
-                        item.view(this.forms_container);
-                    }
-                }
-                else if (item instanceof Report) {
-                    menu_item.action = function() {
-                        item.print(false);
+                    else {
+                        return;
                     }
                 }
             }
@@ -2520,7 +2550,7 @@
             }
             parent.items.push(menu_item)
             for (let i = 0; i < sub_items.length; i++) {
-                this.add_menu_item(sub_items[i], menu_item, options);
+                    this.add_menu_item(sub_items[i], menu_item);
             }
         },
 
@@ -2567,10 +2597,10 @@
             }
             menu_items.items = [];
             for (let i = 0; i < custom_menu.length; i++) {
-                this.add_menu_item(custom_menu[i], menu_items, options);
+                this.add_menu_item(custom_menu[i], menu_items);
             }
             for (let i = 0; i < menu_items.items.length; i++) {
-                this.create_menu_item(menu_items.items[i], $menu);
+                this.create_menu_item(menu_items.items[i], $menu, options);
             }
             $menu.find('.item-menu').on('click', (function(e) {
                 var action = $(this).data('action');
