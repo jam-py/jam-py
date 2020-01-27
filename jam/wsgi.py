@@ -136,7 +136,7 @@ class App(object):
         self.fileserver = SharedDataMiddleware(None, self.application_files, cache_timeout=1)
         self.url_map = Map([
             Rule('/', endpoint='root_file'),
-            Rule('/<file_name>', endpoint='root_file'),
+            Rule('/<file_name>.html', endpoint='root_file'),
             Rule('/js/<file_name>', endpoint='file'),
             Rule('/css/<file_name>', endpoint='file'),
             Rule('/jam/js/<file_name>', endpoint='file'),
@@ -229,6 +229,8 @@ class App(object):
 
     def serve_file(self, environ, start_response, endpoint, file_name=None):
         if endpoint == 'root_file':
+            if file_name:
+                file_name += '.html'
             if not file_name:
                 file_name = 'index.html'
                 environ['PATH_INFO'] = '/index.html'
