@@ -240,8 +240,11 @@ class App(object):
                 self.check_modified(file_name, environ)
                 self.check_project_modified()
             elif file_name == 'builder.html':
-                self.check_modified(os.path.join(to_unicode(self.jam_dir, 'utf-8'), file_name), environ)
-                environ['PATH_INFO'] = '/jam/builder.html'
+                if os.path.exists(file_name):
+                    self.check_modified(file_name, environ)
+                else:
+                    self.check_modified(os.path.join(to_unicode(self.jam_dir, 'utf-8'), file_name), environ)
+                    environ['PATH_INFO'] = '/jam/builder.html'
         if file_name:
             base, ext = os.path.splitext(file_name)
         init_path_info = None
