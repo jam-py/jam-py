@@ -7,27 +7,30 @@ from esprima import parseScript, nodes
 
 from werkzeug._compat import iteritems, iterkeys, to_unicode, to_bytes, text_type, string_types
 
+from jam.admin.admin import connect_task_db
+from jam.admin.admin import delete_item_query, update_item_query, insert_item_query
+from jam.admin.admin import indices_insert_query, indices_delete_query
+
 from jam.common import consts
 from jam.dataset import FIELD_NAME, FIELD_CAPTION, FIELD_LOOKUP_VALUES
 
-from jam.common import consts, error_message, file_read, file_write
-from jam.db.db_modules import SQLITE, FIREBIRD, DB_TYPE, get_db_module
-from jam.server_classes import AdminTask, Group
+from jam.common import FieldInfo, consts, error_message, file_read, file_write
+from jam.db.databases import get_database
 from jam.dataset import LOOKUP_ITEM, LOOKUP_FIELD, FIELD_ALIGNMENT
 from jam.events import get_events
-from jam.execute import execute_sql
 from jam.admin.export_metadata import export_task
+from jam.items import DBInfo
 import jam.langs as langs
 
 LOOKUP_LISTS = {
         'f_theme': consts.THEMES,
-        'f_db_type': DB_TYPE,
+        'f_db_type': consts.DB_TYPE,
         'f_data_type': consts.FIELD_TYPES,
         'f_alignment': consts.ALIGNMENT,
         'f_type': consts.FILTER_STRING,
         'label_size': ['xSmall', 'Small', 'Medium', 'Large', 'xLarge'],
         'group_type': consts.GROUP_TYPES,
-
+        'f_calc_op': ['SUM', 'AVG', 'COUNT', 'MIN', 'MAX']
     }
 
 def get_value_list(str_list):
@@ -40,7 +43,7 @@ def get_lang(task, text):
     last = text[-1:]
     if last in ['1', '2', '3']:
         return task.language(text[0:-1]) + ' ' + last
-    else:        
+    else:
         return task.language(text)
 
 def init_items(item):
@@ -94,14 +97,10 @@ def init_task_attr(task):
     tasks = task.sys_tasks.copy()
     tasks.open()
     task.task_db_type = tasks.f_db_type.value
-    task.task_db_server = tasks.f_server.value
-    task.task_db_database = tasks.f_alias.value
-    task.task_db_user = tasks.f_login.value
-    task.task_db_password = tasks.f_password.value
-    task.task_db_host = tasks.f_host.value
-    task.task_db_port = tasks.f_port.value
-    task.task_db_encoding = tasks.f_encoding.value
-    task.task_db_module = get_db_module(task.task_db_type)
+    task.task_db_info = DBInfo(tasks.f_server.value, tasks.f_alias.value,
+        tasks.f_login.value, tasks.f_password.value, tasks.f_host.value,
+        tasks.f_port.value, tasks.f_encoding.value)
+    task.task_db_module = get_database(task.task_db_type)
 
 def on_created(task):
     save_caption_keys(task)
@@ -125,19 +124,18 @@ def on_created(task):
     init_task_attr(task)
 
 def execute_db(task, task_id, sql, params=None):
-    if task_id == 0:
-        result_set, error = task.execute(sql, params)
-        return error
-    else:
-        connection = None
-        connection, (result_set, error) = execute_sql(task.task_db_module,
-            task.task_db_server, task.task_db_database, task.task_db_user,
-            task.task_db_password, task.task_db_host, task.task_db_port,
-            task.task_db_encoding, connection, sql, params)
-        if connection:
-            connection.rollback()
-            connection.close()
-        return error
+    error = None
+    try:
+        con = connect_task_db(task)
+        cursor = con.cursor()
+        task.execute(sql, params, con)
+        con.commit()
+    except Exception as x:
+        error = 'Error: %s\n query: %s\n params: %s' % (error_message(x), sql, params)
+        task.log.exception(error)
+    finally:
+        con.close()
+    return error
 
 def get_privileges(task, role_id):
     result = {}
@@ -207,8 +205,9 @@ def server_check_connection(task, db_type, database, user, password, host, port,
     error = ''
     if db_type:
         try:
-            db_module = get_db_module(db_type)
-            connection = db_module.connect(database, user, password, host, port, encoding, server)
+            db = get_database(db_type)
+            db_info = DBInfo(server, database, user, password, host, port, encoding)
+            connection = db.connect(db_info)
             if connection:
                 connection.close()
         except Exception as e:
@@ -767,21 +766,22 @@ def server_get_db_options(task, db_type):
     error = ''
     try:
         result = {}
-        db_module = get_db_module(db_type)
-        result['DATABASE'] = db_module.DATABASE
-        result['NEED_DATABASE_NAME'] = db_module.NEED_DATABASE_NAME
-        result['NEED_LOGIN'] = db_module.NEED_LOGIN
-        result['NEED_PASSWORD'] = db_module.NEED_PASSWORD
-        result['NEED_ENCODING'] = db_module.NEED_ENCODING
-        result['NEED_HOST'] = db_module.NEED_HOST
-        result['NEED_PORT'] = db_module.NEED_PORT
-        result['CAN_CHANGE_TYPE'] = db_module.CAN_CHANGE_TYPE
-        result['CAN_CHANGE_SIZE'] = db_module.CAN_CHANGE_SIZE
-        result['NEED_GENERATOR'] = db_module.NEED_GENERATOR
-        if hasattr(db_module, 'get_table_info'):
+        db = get_database(db_type)
+        result['DATABASE'] = db.DATABASE
+        result['NEED_DATABASE_NAME'] = db.NEED_DATABASE_NAME
+        result['NEED_LOGIN'] = db.NEED_LOGIN
+        result['NEED_PASSWORD'] = db.NEED_PASSWORD
+        result['NEED_ENCODING'] = db.NEED_ENCODING
+        result['NEED_HOST'] = db.NEED_HOST
+        result['NEED_PORT'] = db.NEED_PORT
+        result['CAN_CHANGE_TYPE'] = db.CAN_CHANGE_TYPE
+        result['CAN_CHANGE_SIZE'] = db.CAN_CHANGE_SIZE
+        result['NEED_GENERATOR'] = db.NEED_GENERATOR
+        if hasattr(db, 'get_table_info'):
             result['IMPORT_SUPPORT'] = True
         return result, error
     except Exception as e:
+        task.log.exception(e)
         return None, str(e)
 
 def server_get_task_info(task):
@@ -892,7 +892,7 @@ def do_on_apply_param_changes(item, delta, params, connection):
     task = item.task
     language = consts.LANGUAGE
     debugging = consts.DEBUGGING
-    version = consts.VERSION    
+    version = consts.VERSION
     # single_file_js = consts.SINGLE_FILE_JS
     # compressed_js = consts.COMPRESSED_JS
     theme = consts.THEME
@@ -903,8 +903,8 @@ def do_on_apply_param_changes(item, delta, params, connection):
         delta.f_params_version.value = consts.PARAMS_VERSION + 1
         delta.post()
 
-    sql = delta.apply_sql()
-    result = item.task.execute(sql)
+    result = item.apply_delta(delta, params, connection)
+    connection.commit()
 
     consts.read_settings()
     task.app.save_build_id()
@@ -952,9 +952,7 @@ def get_fields_next_id(task, length=1):
         return cur_id + 1
 
 def server_get_table_names(task):
-    connection = task.task_db_module.connect(task.task_db_database, task.task_db_user,
-        task.task_db_password, task.task_db_host, task.task_db_port,
-        task.task_db_encoding, task.task_db_server)
+    connection = connect_task_db(task)
     try:
         tables = task.task_db_module.get_table_names(connection)
         tables = [t.strip() for t in tables]
@@ -970,11 +968,9 @@ def server_get_table_names(task):
     return result
 
 def server_import_table(task, table_name):
-    connection = task.task_db_module.connect(task.task_db_database, task.task_db_user,
-        task.task_db_password, task.task_db_host, task.task_db_port,
-        task.task_db_encoding, task.task_db_server)
+    connection = connect_task_db(task)
     try:
-        result = task.task_db_module.get_table_info(connection, table_name, task.task_db_database)
+        result = task.task_db_module.get_table_info(connection, table_name, task.task_db_info.database)
     finally:
         connection.close()
     return result
@@ -998,16 +994,16 @@ def server_set_literal_case(task, name):
     return task.task_db_module.identifier_case(name)
 
 def get_new_table_name(task, var_name):
-    db_module = task.task_db_module
+    db = task.task_db_module
     copy = task.sys_items.copy(handlers=False, details=False)
     copy.set_where(type_id=consts.TASK_TYPE)
     copy.open();
     if copy.record_count() == 1:
         name = copy.f_item_name.value + '_' + var_name;
         gen_name = ''
-        if db_module.NEED_GENERATOR:
+        if db.NEED_GENERATOR:
             gen_name = name + '_SEQ'
-    return [db_module.identifier_case(name), db_module.identifier_case(gen_name)]
+    return [db.identifier_case(name), db.identifier_case(gen_name)]
 
 def create_system_item(task, field_name):
 
@@ -1147,98 +1143,10 @@ def indexes_get_table_names(indexes):
         table_names[i.id.value] = i.f_table_name.value
     return table_names
 
-def drop_indexes_sql(task):
-    db_module = task.task_db_module
-    indexes = task.sys_indices.copy(handlers=False)
-    indexes.open()
-    table_names = indexes_get_table_names(indexes)
-    sqls = []
-    for i in indexes:
-        if not (i.f_foreign_index.value and db_module.DATABASE == 'SQLITE'):
-            table_name = table_names.get(i.owner_rec_id.value)
-            if table_name:
-                sqls.append(i.delete_index_sql(db_type, table_name))
-    return sqls
-
-def restore_indexes_sql(task):
-    db_module = task.task_db_module
-    indexes = task.sys_indices.copy(handlers=False)
-    indexes.open()
-    table_names = indexes_get_table_names(indexes)
-    sqls = []
-    for i in indexes:
-        if not (i.f_foreign_index.value and db_module.DATABASE == 'SQLITE'):
-            table_name = table_names.get(i.owner_rec_id.value)
-            if table_name:
-                sqls.append(i.create_index_sql(db_type, table_name))
-    return sqls
 
 ###############################################################################
 #                                  sys_items                                  #
 ###############################################################################
-
-def get_table_fields(item, fields, delta_fields=None):
-
-    def field_dict(field):
-        if not field.f_master_field.value:
-            dic = {}
-            dic['id'] = field.id.value
-            dic['field_name'] = field.f_db_field_name.value
-            dic['data_type'] = field.f_data_type.value
-            dic['size'] = field.f_size.value
-            dic['default_value'] = ''#field.f_default_value.value
-            dic['master_field'] = field.f_master_field.value
-            dic['primary_key'] = field.id.value == item.f_primary_key.value
-            return dic
-
-    def field_info(fields):
-        result = []
-        for field in fields:
-            if not field.f_master_field.value:
-                dic = field_dict(field)
-                if dic:
-                    result.append(dic)
-        return result
-
-    def find_field(fields_info, field_id):
-        for field in fields_info:
-            if field['id'] == field_id:
-                return field
-
-    task = item.task
-    result = []
-    parent_fields = task.sys_fields.copy()
-    parent_fields.set_where(owner_rec_id=fields.owner.parent.value)
-    parent_fields.open()
-    result = field_info(parent_fields) + field_info(fields)
-    if delta_fields:
-        for field in delta_fields:
-            if not field.f_master_field.value:
-                if field.record_status == consts.RECORD_INSERTED:
-                    dic = field_dict(field)
-                    if dic:
-                        result.append(dic)
-                if field.record_status == consts.RECORD_DELETED:
-                    field_info = find_field(result, field.id.value)
-                    if field_info:
-                        result.remove(field_info)
-                elif field.record_status == consts.RECORD_MODIFIED:
-                    field_info = find_field(result, field.id.value)
-                    if field_info:
-                        field_info['id'] = field.id.value
-                        field_info['field_name'] = field.f_db_field_name.value
-                        field_info['data_type'] = field.f_data_type.value
-                        field_info['size'] = field.f_size.value
-                        field_info['default_value'] = ''#field.f_default_value.value
-                    else:
-                        dic = field_dict(field)
-                        if dic:
-                            result.append(dic)
-            elif field.f_master_field.value and field.record_status == consts.RECORD_MODIFIED:
-                field_info = find_field(result, field.id.value)
-                if field_info and not field_info['master_field']:
-                    result.remove(field_info)
-    return result
 
 def item_children(task, item_id):
     items = task.sys_items.copy()
@@ -1269,7 +1177,7 @@ def update_interface(delta, type_id, item_id):
 
     task = delta.task
     if type_id in (consts.ITEM_TYPE, consts.TABLE_TYPE) and \
-        delta.details.sys_fields.record_count():
+        delta.sys_fields.record_count():
         item = task.sys_items.copy()
         item.set_where(id=item_id)
         item.open()
@@ -1288,7 +1196,7 @@ def update_interface(delta, type_id, item_id):
                         if type(item._edit_list) is list:
                             item._edit_list.append([field.id.value])
 
-        for d in delta.details.sys_fields:
+        for d in delta.sys_fields:
             if d.record_status in [consts.RECORD_INSERTED, consts.RECORD_DELETED]:
                 field_name = d.f_field_name.value
                 if fields.locate('f_field_name', field_name):
@@ -1334,64 +1242,28 @@ def init_priviliges(item, item_id):
         priv.post()
     priv.apply()
 
-def items_insert_sql(item, delta, manual_update=False, new_fields=None, foreign_fields=None):
-    if update_table(delta) and not manual_update:
-        if delta.type_id.value in (consts.ITEM_TYPE, consts.TABLE_TYPE):
-            db_type = item.task.task_db_type
-            fields = new_fields
-            if not fields:
-                fields = get_table_fields(delta, delta.details.sys_fields)
-            sql = delta.create_table_sql(db_type, delta.f_table_name.value, \
-                fields, delta.f_gen_name.value, foreign_fields=foreign_fields)
-            return sql
-
-def items_execute_insert(item, delta, connection, manual_update):
-    sql = items_insert_sql(item, delta, manual_update)
+def items_execute_insert(item, delta, connection, params, manual_update):
+    sql = insert_item_query(delta, manual_update)
     if sql:
         error = execute_db(item.task, delta.task_id.value, sql)
         if error:
             raise Exception(item.task.language('error_creating_table') % (error))
-    result = item.apply_delta(delta, connection=connection)
+    result = item.apply_delta(delta, params, connection)
     connection.commit()
-    # ~ sql = delta.apply_sql()
-    # ~ result = item.task.execute(sql)
-    # ~ exec_result = result[0]
-    # ~ result_id = exec_result['changes'][0]['rec_id']
     init_priviliges(item, delta.id.value)
     update_interface(delta, delta.type_id.value, delta.id.value)
     return result
 
-def items_update_sql(item, delta, manual_update=False):
-    if update_table(delta) and not manual_update:
-        if delta.type_id.value in (consts.ITEMS_TYPE, consts.TABLES_TYPE,
-            consts.ITEM_TYPE, consts.TABLE_TYPE) and \
-            delta.details.sys_fields.record_count():
-            it = item.copy()
-            it.set_where(id=delta.id.value)
-            it.open()
-            it_fields = it.details.sys_fields
-            it_fields.open()
-            old_fields = get_table_fields(delta, it_fields)
-            new_fields = get_table_fields(delta, it_fields, delta.details.sys_fields)
-            sql = change_item_sql(delta, old_fields, new_fields)
-            return sql
-
-def items_execute_update(item, delta, manual_update):
-    sql = items_update_sql(item, delta, manual_update)
+def items_execute_update(item, delta, connection, params, manual_update):
+    sql = update_item_query(delta, manual_update)
     if sql:
         error = execute_db(item.task, delta.task_id.value, sql)
         if error:
             raise Exception(item.task.language('error_modifying_table') % error)
-    sql = delta.apply_sql()
-    result = item.task.execute(sql)
+    result = item.apply_delta(delta, params, connection)
+    connection.commit()
     update_interface(delta, delta.type_id.value, delta.id.value)
     return result
-
-def items_delete_sql(item, delta, manual_update=False):
-    if update_table(delta) and not manual_update:
-        if delta.type_id.value in (consts.ITEM_TYPE, consts.TABLE_TYPE):
-            sql = delta.delete_table_sql(item.task.task_db_type)
-            return sql
 
 def sys_item_deleted_sql(delta):
     result = []
@@ -1403,19 +1275,19 @@ def sys_item_deleted_sql(delta):
         result.append('UPDATE SYS_PARAMS SET F_SYS_GROUP=NULL')
     return result
 
-def items_execute_delete(item, delta, manual_update):
-    sql = items_delete_sql(item, delta, manual_update)
+def items_execute_delete(item, delta, connection, params, manual_update):
+    sql = delete_item_query(delta, manual_update)
     if sql:
         error = execute_db(item.task, delta.task_id.value, sql)
         if error:
             raise Exception(item.task.language('error_deleting_table') % (delta.table_name.upper(), error))
+    result = item.apply_delta(delta, params, connection)
+    connection.commit()
     commands = []
-    sql = delta.apply_sql()
-    commands.append(sql)
     for it in (item.task.sys_filters, item.task.sys_indices, item.task.sys_report_params):
         commands.append('DELETE FROM %s WHERE OWNER_REC_ID = %s' % (it.table_name.upper(), delta.id.value))
     commands = commands + sys_item_deleted_sql(delta)
-    result = item.task.execute(commands)
+    item.task.execute(commands)
     return result
 
 def items_apply_changes(item, delta, params, connection):
@@ -1424,18 +1296,18 @@ def items_apply_changes(item, delta, params, connection):
         if not f.id.value:
             raise Exception(item.task.language('field_no_id') % (f.field_name))
     if delta.rec_inserted():
-        result = items_execute_insert(item, delta, connection, manual_update)
+        result = items_execute_insert(item, delta, connection, params, manual_update)
     elif delta.rec_modified():
-        result = items_execute_update(item, delta, manual_update)
+        result = items_execute_update(item, delta, connection, params, manual_update)
     elif delta.rec_deleted():
-        result = items_execute_delete(item, delta, manual_update)
+        result = items_execute_delete(item, delta, connection, params, manual_update)
     set_server_modified(item.task)
     roles_changed(item)
     return result
 
 def do_on_apply_changes(item, delta, params, connection):
-    sql = delta.apply_sql()
-    result = item.task.execute(sql)
+    result = item.apply_delta(delta, params, connection)
+    connection.commit()
     set_server_modified(item.task)
     return result
 
@@ -1725,52 +1597,19 @@ def update_index(delta):
     else:
         return True
 
-def change_foreign_index(delta):
-    items = delta.task.sys_items.copy()
-    items.set_where(id=delta.owner_rec_id.value)
-    items.open()
-    it_fields = items.details.sys_fields
-    it_fields.open()
-    fields = get_table_fields(items, it_fields)
-    new_fields = list(fields)
-    return items.recreate_table_sql(SQLITE, fields, new_fields, delta)
-
-def indices_insert_sql(item, delta, table_name=None, new_fields=None, manual_update=False, foreign_key_dict=None):
-    if not manual_update and update_index(delta):
-        if not table_name:
-            table_name = delta.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
-        db_type = item.task.task_db_type
-        if db_type == SQLITE and delta.f_foreign_index.value:
-            if not new_fields:
-                return change_foreign_index(delta)
-        else:
-            return delta.create_index_sql(db_type, table_name, new_fields=new_fields, foreign_key_dict=foreign_key_dict)
-
 def indices_execute_insert(item, delta, manual_update):
-    sql = indices_insert_sql(item, delta, manual_update=manual_update)
+    sql = indices_insert_query(delta, manual_update=manual_update)
     if sql:
         error = execute_db(item.task, delta.task_id.value, sql)
         if error:
             raise Exception(item.task.language('error_creating_index') % (delta.f_index_name.value.upper(), error))
-    sql = delta.apply_sql()
-    return item.task.execute(sql)
-
-def indices_delete_sql(item, delta, manual_update=False):
-    if not manual_update and update_index(delta):
-        db_type = item.task.task_db_type
-        if db_type == SQLITE and delta.f_foreign_index.value:
-            return change_foreign_index(delta)
-        else:
-            return delta.delete_index_sql(db_type)
 
 def indices_execute_delete(item, delta, manual_update):
-    sql = indices_delete_sql(item, delta, manual_update)
+    sql = indices_delete_query(delta, manual_update)
     if sql:
         error = execute_db(item.task, delta.task_id.value, sql)
         if error:
             raise Exception(item.task.language('error_deleting_index') % error)
-    sql = delta.apply_sql()
-    return item.task.execute(sql)
 
 def indices_apply_changes(item, delta, params, connection):
     manual_update = params['manual_update']
@@ -1819,6 +1658,7 @@ def privileges_table_get_select(item, query):
         rows = item.task.select(result_sql)
     except Exception as e:
         error_mes = error_message(e)
+        item.log.exception(error_mes)
     return rows, error_mes
 
 def roles_changed(item):

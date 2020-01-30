@@ -3,7 +3,7 @@ import json
 from werkzeug._compat import iterkeys
 
 from ..common import consts, ProjectNotCompleted
-from ..server_classes import Task, Group, ReportGroup
+from ..items import DBInfo, Task, Group, ReportGroup
 
 def create_task(app):
     result = None
@@ -13,11 +13,7 @@ def create_task(app):
     it.open()
     if adm.task_db_type:
         result = Task(app, it.f_item_name.value, it.f_name.value,
-            adm.task_db_type, adm.task_db_server,
-            adm.task_db_database, adm.task_db_user, adm.task_db_password,
-            adm.task_db_host, adm.task_db_port, adm.task_db_encoding,
-            adm.task_con_pool_size, adm.task_persist_con
-            )
+            adm.task_db_type, adm.task_db_info, adm.task_con_pool_size, adm.task_persist_con)
         result.ID = it.id.value
         load_task(result, app)
     else:
@@ -73,7 +69,10 @@ def create_fields(item, parent_id, item_dict):
                     image_camera=fields.f_image_camera.value,
                     file_download_btn=fields.f_file_download_btn.value,
                     file_open_btn=fields.f_file_open_btn.value,
-                    file_accept=fields.f_file_accept.value
+                    file_accept=fields.f_file_accept.value,
+                    calc_item =fields.f_calc_item.value,
+                    calc_field =fields.f_calc_field.value,
+                    calc_op =fields.f_calc_op.display_text
                 )
 
 def create_filters(item, parent_id, item_dict):
@@ -297,7 +296,7 @@ def history_sql(task):
     for f in h_fields:
         index += 1
         fields.append('"%s"' % f)
-        values.append('%s' % task.db_module.value_literal(index))
+        values.append('%s' % task.db.value_literal(index))
     fields = ', '.join(fields)
     values = ', '.join(values)
     sql = 'INSERT INTO "%s" (%s) VALUES (%s)' % \

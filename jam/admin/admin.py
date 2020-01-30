@@ -2,11 +2,25 @@ import os
 import json
 import sqlite3
 
+from werkzeug._compat import iteritems
+
 from ..common import consts, error_message, file_read, file_write
-from ..server_classes import AdminTask, Group
-from .builder import on_created, init_task_attr
-from jam.db.db_modules import SQLITE, get_db_module
+from ..items import AdminTask, Group
+from jam.db.databases import get_database
 import jam.langs as langs
+
+# task in this module is admin (Application builder) task
+
+class FieldInfo(object):
+    def __init__(self, field, item):
+        self.id = field.id.value
+        self.field_name = field.f_db_field_name.value
+        self.data_type = field.f_data_type.value
+        self.size = field.f_size.value
+        self.default_value = field.f_default_value.value
+        self.master_field = field.f_master_field.value
+        self.calc_item = field.f_calc_item.value
+        self.primary_key = field.id.value == item.f_primary_key.value
 
 def create_items(task):
     info = file_read(os.path.join(task.app.jam_dir, 'admin', 'builder_structure.info'))
@@ -41,18 +55,344 @@ def init_admin(task):
     consts.MAINTENANCE = False
     consts.write_settings(['MAINTENANCE'])
     consts.read_language()
+    from .builder import on_created
     on_created(task)
 
 def create_admin(app):
     if os.path.exists(os.path.join(app.work_dir, '_admin.sqlite')):
         os.rename(os.path.join(app.work_dir, '_admin.sqlite'), \
             os.path.join(app.work_dir, 'admin.sqlite'))
-    task = AdminTask(app, 'admin', 'Administrator', SQLITE,
+    task = AdminTask(app, 'admin', 'Administrator', consts.SQLITE,
         db_database=os.path.join(app.work_dir, 'admin.sqlite'))
     app.admin = task
     task.secret_key = read_secret_key(task)
     init_admin(task)
     return task
+
+def connect_task_db(task):
+    return task.task_db_module.connect(task.task_db_info)
+
+def valid_delta_type(delta):
+    return not delta.f_virtual_table.value and \
+        delta.type_id.value in (consts.ITEM_TYPE, consts.TABLE_TYPE)
+
+def get_item_fields(item, fields, delta_fields=None):
+
+    def field_info(field):
+        if not field.f_master_field.value and not field.f_calc_item.value:
+            return FieldInfo(field, item)
+
+    def fields_info(fields):
+        result = []
+        for field in fields:
+            info = field_info(field)
+            if info:
+                result.append(info)
+        return result
+
+    def find_field(fields_info, field_id):
+        for field in fields_info:
+            if field.id == field_id:
+                return field
+
+    task = item.task
+    result = []
+    parent_fields = task.sys_fields.copy()
+    parent_fields.set_where(owner_rec_id=fields.owner.parent.value)
+    parent_fields.open()
+    result = fields_info(parent_fields) + fields_info(fields)
+    if delta_fields:
+        for field in delta_fields:
+            if not field.f_master_field.value and not field.f_calc_item.value:
+                if field.record_status == consts.RECORD_INSERTED:
+                    info = field_info(field)
+                    if info:
+                        result.append(info)
+                if field.record_status == consts.RECORD_DELETED:
+                    info = find_field(result, field.id.value)
+                    if info:
+                        result.remove(info)
+                elif field.record_status == consts.RECORD_MODIFIED:
+                    info = find_field(result, field.id.value)
+                    if info:
+                        info.id = field.id.value
+                        info.field_name = field.f_db_field_name.value
+                        info.data_type = field.f_data_type.value
+                        info.size = field.f_size.value
+                        info.default_value = field.f_default_value.value
+                    else:
+                        info = field_info(field)
+                        if info:
+                            result.append(info)
+            elif field.record_status == consts.RECORD_MODIFIED:
+                info = find_field(result, field.id.value)
+                if info and not info.master_field and not info.calc_item:
+                    result.remove(info)
+    return result
+
+def recreate_table(delta, old_fields, new_fields, fk_delta=None):
+
+    def foreign_key_dict(ind):
+        fields = ind.task.sys_fields.copy()
+        fields.set_where(id=ind.f_foreign_field.value)
+        fields.open()
+        dic = {}
+        dic['key'] = fields.f_db_field_name.value
+        ref_id = fields.f_object.value
+        items = delta.task.sys_items.copy()
+        items.set_where(id=ref_id)
+        items.open()
+        dic['ref'] = items.f_table_name.value
+        primary_key = items.f_primary_key.value
+        fields.set_where(id=primary_key)
+        fields.open()
+        dic['primary_key'] = fields.f_db_field_name.value
+        return dic
+
+    def get_foreign_fields():
+        indices = delta.task.sys_indices.copy()
+        indices.set_where(owner_rec_id=delta.id.value)
+        indices.open()
+        del_id = None
+        if fk_delta and (fk_delta.rec_modified() or fk_delta.rec_deleted()):
+            del_id = fk_delta.id.value
+        result = []
+        for ind in indices:
+            if ind.f_foreign_index.value:
+                if not del_id or ind.id.value != del_id:
+                    result.append(foreign_key_dict(ind))
+        if fk_delta and (fk_delta.rec_inserted() or fk_delta.rec_modified()):
+            result.append(foreign_key_dict(fk_delta))
+        return result
+
+    def create_indices_sql():
+        indices = delta.task.sys_indices.copy()
+        indices.set_where(owner_rec_id=delta.id.value)
+        indices.open()
+        result = []
+        for ind in indices:
+            if not ind.f_foreign_index.value:
+                result.append(indices_insert_query(ind, delta.f_table_name.value, new_fields=new_fields))
+        return result
+
+    def find_field(fields, id_value):
+        found = False
+        for f in fields:
+            if f.id == id_value:
+                found = True
+                break
+        return found
+
+    def prepare_fields():
+        for f in list(new_fields):
+            if not find_field(old_fields, f.id):
+                new_fields.remove(f)
+        for f in list(old_fields):
+            if not find_field(new_fields, f.id):
+                old_fields.remove(f)
+
+    connection = connect_task_db(delta.task)
+    cursor = connection.cursor()
+    db = delta.task.task_db_module
+    table_name = delta.f_table_name.value
+    result = []
+    cursor.execute('PRAGMA foreign_keys=off')
+    cursor.execute('ALTER TABLE "%s" RENAME TO Temp' % table_name)
+    try:
+        foreign_fields = get_foreign_fields()
+        sql = db.create_table(table_name, new_fields, foreign_fields=foreign_fields)
+        cursor.execute(sql)
+        prepare_fields()
+        old_field_list = ['"%s"' % field.field_name for field in old_fields]
+        new_field_list = ['"%s"' % field.field_name for field in new_fields]
+        cursor.execute('INSERT INTO "%s" (%s) SELECT %s FROM Temp' % (table_name, ', '.join(new_field_list), ', '.join(old_field_list)))
+    except Exception as e:
+        cursor.execute('ALTER TABLE Temp RENAME TO "%s"' % table_name)
+        cursor.execute('PRAGMA foreign_keys=on')
+        delta.log.exception(error_message(e))
+        raise
+    cursor.execute('DROP TABLE Temp')
+    cursor.execute('PRAGMA foreign_keys=on')
+    ind_sql = create_indices_sql()
+    for sql in ind_sql:
+        cursor.execute(sql)
+    return result
+
+def change_item_query(delta, old_fields, new_fields):
+
+    def recreate(comp):
+        for key, (old_field, new_field) in iteritems(comp):
+            if old_field and new_field:
+                if old_field.field_name != new_field.field_name:
+                    return True
+                elif old_field.default_value != new_field.default_value:
+                    return True
+            elif old_field and not new_field:
+                return True
+
+    db = delta.task.task_db_module
+    table_name = delta.f_table_name.value
+    result = []
+    comp = {}
+    for field in old_fields:
+        comp[field.id] = [field, None]
+    for field in new_fields:
+        if comp.get(field.id):
+            comp[field.id][1] = field
+        else:
+            if field.id:
+                comp[field.id] = [None, field]
+            else:
+                comp[field.field_name] = [None, field]
+    if db.db_type == consts.SQLITE and recreate(comp):
+        recreate_table(delta, old_fields, new_fields)
+        return
+    else:
+        for key, (old_field, new_field) in iteritems(comp):
+            if old_field and not new_field:
+                result.append(db.del_field(table_name, old_field))
+        for key, (old_field, new_field) in iteritems(comp):
+            if old_field and new_field:
+                if (old_field.field_name != new_field.field_name) or \
+                    (db.FIELD_TYPES[old_field.data_type] != db.FIELD_TYPES[new_field.data_type]) or \
+                    (old_field.default_value != new_field.default_value) or \
+                    (old_field.size != new_field.size):
+                    sql = db.change_field(table_name, old_field, new_field)
+                    if type(sql) in (list, tuple):
+                        result += sql
+                    else:
+                        result.append()
+        for key, (old_field, new_field) in iteritems(comp):
+            if not old_field and new_field:
+                result.append(db.add_field(table_name, new_field))
+    return result
+
+def insert_item_query(delta, manual_update=False, new_fields=None, foreign_fields=None):
+    if not manual_update and valid_delta_type(delta):
+        fields = new_fields
+        if not fields:
+            fields = get_item_fields(delta, delta.sys_fields)
+        return delta.task.task_db_module.create_table(delta.f_table_name.value, \
+        fields, delta.f_gen_name.value, foreign_fields)
+
+def update_item_query(delta, manual_update=None):
+    if not manual_update and valid_delta_type(delta) and delta.sys_fields.rec_count:
+        item = delta.copy()
+        item.set_where(id=delta.id.value)
+        item.open()
+        item.sys_fields.open()
+        old_fields = get_item_fields(delta, item.sys_fields)
+        new_fields = get_item_fields(delta, item.sys_fields, delta.sys_fields)
+        return change_item_query(delta, old_fields, new_fields)
+
+def delete_item_query(delta, manual_update=None):
+    if not manual_update and valid_delta_type(delta):
+        gen_name = None
+        if delta.f_primary_key.value:
+            gen_name = delta.f_gen_name.value
+        return delta.task.task_db_module.drop_table(delta.f_table_name.value, gen_name)
+
+def valid_indices_record(delta):
+    items = delta.task.sys_items.copy()
+    items.set_where(id=delta.owner_rec_id.value)
+    items.open()
+    if items.rec_count:
+        return not items.f_virtual_table.value
+    else:
+        return True
+
+def change_foreign_index(delta):
+    items = delta.task.sys_items.copy()
+    items.set_where(id=delta.owner_rec_id.value)
+    items.open()
+    it_fields = items.sys_fields
+    it_fields.open()
+    fields = get_item_fields(items, it_fields)
+    new_fields = list(fields)
+    recreate_table(items, fields, new_fields, delta)
+
+def create_index(delta, table_name, fields=None, new_fields=None, foreign_key_dict=None):
+
+    def new_field_name_by_id(id_value):
+        for f in new_fields:
+            if f.id == id_value:
+                return f.field_name
+
+    db = delta.task.task_db_module
+    index_name = delta.f_index_name.value
+    if delta.f_foreign_index.value:
+        if foreign_key_dict:
+            key = foreign_key_dict['key']
+            ref = foreign_key_dict['ref']
+            primary_key = foreign_key_dict['primary_key']
+        else:
+            fields = delta.task.sys_fields.copy()
+            fields.set_where(id=delta.f_foreign_field.value)
+            fields.open()
+            key = fields.f_db_field_name.value
+            ref_id = fields.f_object.value
+            items = delta.task.sys_items.copy()
+            items.set_where(id=ref_id)
+            items.open()
+            ref = items.f_table_name.value
+            primary_key = items.f_primary_key.value
+            fields.set_where(id=primary_key)
+            fields.open()
+            primary_key = fields.f_db_field_name.value
+        sql = db.create_foreign_index(table_name, index_name, key, ref, primary_key)
+    else:
+        index_fields = delta.f_fields_list.value
+        desc = ''
+        if delta.descending.value:
+            desc = 'DESC'
+        unique = ''
+        if delta.f_unique_index.value:
+            unique = 'UNIQUE'
+        fields = delta.load_index_fields(index_fields)
+        if db.DATABASE == 'FIREBIRD':
+            if new_fields:
+                field_defs = [new_field_name_by_id(field[0]) for field in fields]
+            else:
+                field_defs = [delta.task.sys_fields.field_by_id(field[0], 'f_db_field_name') for field in fields]
+            field_str = '"' + '", "'.join(field_defs) + '"'
+        else:
+            field_defs = []
+            for field in fields:
+                if new_fields:
+                    field_name = new_field_name_by_id(field[0])
+                else:
+                    field_name = delta.task.sys_fields.field_by_id(field[0], 'f_db_field_name')
+                d = ''
+                if field[1]:
+                    d = 'DESC'
+                field_defs.append('"%s" %s' % (field_name, d))
+            field_str = ', '.join(field_defs)
+        sql = db.create_index(index_name, table_name, unique, field_str, desc)
+    return sql
+
+def indices_insert_query(delta, table_name=None, new_fields=None, manual_update=False, foreign_key_dict=None):
+    if not manual_update and valid_indices_record(delta):
+        if not table_name:
+            table_name = delta.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
+        if delta.task.task_db_module.db_type == consts.SQLITE and delta.f_foreign_index.value:
+            if not new_fields:
+                change_foreign_index(delta)
+        else:
+            return create_index(delta, table_name, new_fields=new_fields, foreign_key_dict=foreign_key_dict)
+
+def indices_delete_query(delta, table_name=None, manual_update=False):
+    if not manual_update and valid_indices_record(delta):
+        if delta.task.task_db_module.db_type == consts.SQLITE and delta.f_foreign_index.value:
+            change_foreign_index(delta)
+        else:
+            db = delta.task.task_db_module
+            if not table_name:
+                table_name = delta.task.sys_items.field_by_id(delta.owner_rec_id.value, 'f_table_name')
+            index_name = delta.f_index_name.value
+            if delta.f_foreign_index.value:
+                return db.drop_foreign_index(table_name, index_name)
+            else:
+                return db.drop_index(table_name, index_name)
 
 def update_admin_fields(task):
 
@@ -86,7 +426,7 @@ def update_admin_fields(task):
             if not field.field_name.upper() in fields:
                 sql = 'ALTER TABLE %s ADD COLUMN %s %s' % \
                     (table_name, field.field_name.upper(), \
-                    task.db_module.FIELD_TYPES[field.data_type])
+                    task.db.FIELD_TYPES[field.data_type])
                 cursor.execute(sql)
                 con.commit()
                 do_updates(con, field, item.item_name)
@@ -186,29 +526,27 @@ def indexes_get_table_names(indexes):
     return table_names
 
 def drop_indexes_sql(task):
-    db_module = task.task_db_module
-    db_type = task.task_db_type
+    db = task.task_db_module
     indexes = task.sys_indices.copy(handlers=False)
     indexes.open()
     table_names = indexes_get_table_names(indexes)
     sqls = []
     for i in indexes:
-        if not (i.f_foreign_index.value and db_module.DATABASE == 'SQLITE'):
+        if not (i.f_foreign_index.value and db.db_type == consts.SQLITE):
             table_name = table_names.get(i.owner_rec_id.value)
             if table_name:
-                sqls.append(i.delete_index_sql(db_type, table_name))
+                sqls.append(indices_delete_query(i, table_name))
     return sqls
 
 def restore_indexes_sql(task):
-    db_module = task.task_db_module
-    db_type = task.task_db_type
+    db = task.task_db_module
     indexes = task.sys_indices.copy(handlers=False)
     indexes.open()
     table_names = indexes_get_table_names(indexes)
     sqls = []
     for i in indexes:
-        if not (i.f_foreign_index.value and db_module.DATABASE == 'SQLITE'):
+        if not (i.f_foreign_index.value and db.db_type == consts.SQLITE):
             table_name = table_names.get(i.owner_rec_id.value)
             if table_name:
-                sqls.append(i.create_index_sql(db_type, table_name))
+                sqls.append(indices_insert_query(i, table_name))
     return sqls

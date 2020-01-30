@@ -11,9 +11,10 @@ import traceback
 
 from werkzeug._compat import to_unicode
 from ..common import consts, file_read, file_write, error_message
-from ..db.db_modules import SQLITE, FIREBIRD, get_db_module
-from .builder import items_insert_sql, items_update_sql, items_delete_sql
-from .builder import indices_insert_sql, indices_delete_sql
+from ..db.databases import get_database
+from .admin import connect_task_db, FieldInfo
+from .admin import insert_item_query, update_item_query, delete_item_query
+from .admin import indices_insert_query, indices_delete_query
 
 from .export_metadata import metadata_items
 
@@ -37,7 +38,7 @@ class MetaDataImport(object):
         self.new_db_type = None
         self.db_sql = None
         self.adm_sql = None
-        self.db_module = task.task_db_module
+        self.db = task.task_db_module
         self.items_hidden_fields = []
         self.params_hidden_fields = [
                 'f_safe_mode', 'f_debugging', 'f_modification',
@@ -59,17 +60,17 @@ class MetaDataImport(object):
         return self.success, self.error, self.client_log
 
     def check_can_import(self):
-        if self.db_type == SQLITE and not self.project_empty():
+        if self.db_type == consts.SQLITE and not self.project_empty():
             self.success = False
             self.error = 'Metadata can not be imported into an existing SQLITE project'
             self.show_error(self.error)
 
     def update_gen_names(self):
-        if not get_db_module(self.db_type).NEED_GENERATOR:
+        if not get_database(self.db_type).NEED_GENERATOR:
             self.items_hidden_fields.append('f_gen_name')
 
     def update_indexes(self):
-        if self.new_db_type == FIREBIRD or self.db_type == FIREBIRD:
+        if self.new_db_type == consts.FIREBIRD or self.db_type == consts.FIREBIRD:
             item = self.new_items['sys_indices']
             for it in item:
                 if it.f_fields_list.value:
@@ -77,12 +78,12 @@ class MetaDataImport(object):
                     desc = it.descending.value
                     if field_list:
                         it.edit()
-                        if self.new_db_type == FIREBIRD:
+                        if self.new_db_type == consts.FIREBIRD:
                             l = []
                             for f in field_list:
                                 l.append([f[0], desc])
                             field_list = l
-                        elif self.db_type == FIREBIRD:
+                        elif self.db_type == consts.FIREBIRD:
                             desc = field_list[0][1]
                         it.descending.value = desc
                         it.f_fields_list.value = it.store_index_fields(field_list)
@@ -101,7 +102,7 @@ class MetaDataImport(object):
             it.post()
 
     def update_idents(self):
-        case = get_db_module(self.db_type).identifier_case
+        case = get_database(self.db_type).identifier_case
         self.update_item_idents('sys_items', ['f_table_name', 'f_gen_name'], case)
         self.update_item_idents('sys_fields', ['f_db_field_name'], case)
         self.update_item_idents('sys_indices', ['f_index_name'], case)
@@ -193,6 +194,46 @@ class MetaDataImport(object):
                     result[it.id.value] = [False, True]
         return result
 
+    def record_sql(self, d):
+        pk = d._primary_key_field
+        fields = []
+        row = []
+        if d.rec_inserted():
+            values = []
+            for field in d.fields:
+                fields.append(field.db_field_name)
+                values.append('?')
+                row.append(field.data)
+            sql = 'INSERT INTO %s (%s) VALUES (%s)' % \
+                (d.table_name, ', '.join(fields), ', '.join(values))
+            return (sql, row)
+        elif d.rec_modified():
+            for field in d.fields:
+                fields.append('%s=?' % field.db_field_name)
+                row.append(field.data)
+            sql = 'UPDATE "%s" SET %s WHERE %s = %s' % \
+                (d.table_name, ', '.join(fields), pk.db_field_name, pk.value)
+            return (sql, row)
+        elif d.rec_deleted():
+            result = []
+            sql = 'DELETE FROM %s WHERE %s = %s' % \
+                (d.table_name, pk.db_field_name, pk.value)
+            result.append((sql, None))
+            for dt in d.details:
+                sql = 'DELETE FROM %s WHERE %s = %s' % \
+                    (dt.table_name, dt._master_rec_id_db_field_name, pk.value)
+                result.append((sql, None))
+            return result
+
+    def admin_sql(self, delta):
+        result = []
+        for dl in delta:
+            result.append(self.record_sql(dl))
+            for dt in dl.details:
+                for d in dt:
+                    result.append(self.record_sql(d))
+        return result
+
     def analize_data(self):
         if self.success:
             self.show_progress(self.task.language('import_analyzing'))
@@ -206,28 +247,27 @@ class MetaDataImport(object):
                 for d in delta:
                     table_name = self.get_table_name(d.owner_rec_id.value)
                     if table_name:
-                        db_sql.append(indices_delete_sql(task.sys_indices, d))
-                adm_sql.append(delta.apply_sql())
+                        db_sql.append(indices_delete_query(d))
+                adm_sql.append(self.admin_sql(delta))
 
                 delta = self.get_delta('sys_items', 'sys_fields')
                 self.check_generator(task.sys_items, delta)
                 for d in delta:
                     if d.rec_inserted():
-                        db_sql.append(items_insert_sql(task.sys_items, d,
-                            new_fields=self.get_new_fields(d.id.value)))
+                        db_sql.append(insert_item_query(d, new_fields=self.get_new_fields(d.id.value)))
                     elif d.rec_modified():
-                        db_sql.append(items_update_sql(task.sys_items, d))
+                        db_sql.append(update_item_query(d))
                     elif d.rec_deleted():
-                        db_sql.append(items_delete_sql(task.sys_items, d))
+                        db_sql.append(delete_item_query(d))
 
                 self.refresh_old_item('sys_items')
                 delta = self.get_delta('sys_items')
                 self.check_generator(task.sys_items, delta)
-                adm_sql.append(delta.apply_sql())
+                adm_sql.append(self.admin_sql(delta))
 
                 self.refresh_old_item('sys_fields')
                 delta = self.get_delta('sys_fields')
-                adm_sql.append(delta.apply_sql())
+                adm_sql.append(self.admin_sql(delta))
 
                 self.refresh_old_item('sys_indices')
                 delta = self.get_delta('sys_indices', options=['update', 'insert'])
@@ -235,21 +275,20 @@ class MetaDataImport(object):
                     table_name = self.get_table_name(d.owner_rec_id.value)
                     if table_name:
                         if d.rec_inserted():
-                            db_sql.append(indices_insert_sql(
-                                task.sys_indices,
+                            db_sql.append(indices_insert_query(
                                 d, table_name,
                                 self.get_new_fields(d.owner_rec_id.value),
                                 foreign_key_dict=self.get_foreign_key_dict(d)
                                 )
                             )
                         elif d.rec_deleted():
-                            db_sql.append(indices_delete_sql(task.sys_indices, d))
-                adm_sql.append(delta.apply_sql())
+                            db_sql.append(indices_delete_query(d))
+                adm_sql.append(self.admin_sql(delta))
 
                 for item_name in ['sys_filters', 'sys_report_params', 'sys_roles', 'sys_params',
                     'sys_privileges', 'sys_lookup_lists']:
                     delta = self.get_delta(item_name)
-                    adm_sql.append(delta.apply_sql())
+                    adm_sql.append(self.admin_sql(delta))
 
                 self.db_sql = self.sqls_to_list(db_sql)
                 self.adm_sql = self.sqls_to_list(adm_sql)
@@ -289,14 +328,7 @@ class MetaDataImport(object):
         for field in new_fields:
             if field.owner_rec_id.value in [item_id, parent_id]:
                 if not field.f_master_field.value:
-                    dic = {}
-                    dic['id'] = field.id.value
-                    dic['field_name'] = field.f_db_field_name.value
-                    dic['data_type'] = field.f_data_type.value
-                    dic['size'] = field.f_size.value
-                    dic['default_value'] = ''#field.f_default_value.value
-                    dic['primary_key'] = field.id.value == items.f_primary_key.value
-                    result.append(dic)
+                    result.append(FieldInfo(field, items))
         return result
 
     def can_copy_field(self, field):
@@ -415,14 +447,13 @@ class MetaDataImport(object):
                 if self.success:
                     admin_name = os.path.join(self.task.work_dir, 'admin.sqlite')
                     tmp_admin_name = os.path.join(self.task.work_dir, '_admin.sqlite')
-                    if self.db_module.DDL_ROLLBACK:
+                    if self.db.DDL_ROLLBACK:
                         shutil.copy2(admin_name, tmp_admin_name)
                     self.show_progress(self.task.language('import_changing_admin'))
-                    result, error = self.task.execute(self.adm_sql)
-                    self.error = error
+                    self.error = self.execute_adm()
                     if self.error:
                         self.success = False
-                    if self.db_module.DDL_ROLLBACK:
+                    if self.db.DDL_ROLLBACK:
                         if self.success:
                             connection.commit()
                             os.remove(tmp_admin_name)
@@ -441,14 +472,7 @@ class MetaDataImport(object):
         error = None
         connection = None
         try:
-            connection = self.db_module.connect(
-                task.task_db_database,
-                task.task_db_user,
-                task.task_db_password,
-                task.task_db_host,
-                task.task_db_port,
-                task.task_db_encoding,
-                task.task_db_server)
+            connection = connect_task_db(task)
             if self.db_sql:
                 cursor = connection.cursor()
                 for sql in self.db_sql:
@@ -458,9 +482,9 @@ class MetaDataImport(object):
                         self.task.log.exception('Error: %s query: %s' % (x, sql))
                         error = error_message(x)
                     info.append({'sql': sql, 'error': error})
-                    if error and self.db_module.DDL_ROLLBACK:
+                    if error and self.db.DDL_ROLLBACK:
                         break
-                if self.db_module.DDL_ROLLBACK:
+                if self.db.DDL_ROLLBACK:
                     if error:
                         self.success = False
                 else:
@@ -472,6 +496,28 @@ class MetaDataImport(object):
             self.success = False
         self.show_info(info)
         return connection
+
+    def execute_adm(self):
+        task = self.task
+        info = []
+        error = None
+        connection = None
+        try:
+            connection = task.connect()
+            if self.adm_sql:
+                cursor = connection.cursor()
+                for sql, params in self.adm_sql:
+                    if params:
+                        cursor.execute(sql, params)
+                    else:
+                        cursor.execute(sql)
+            connection.commit()
+        except Exception as x:
+            error = str(x)
+            self.task.log.exception('Error: %s' % error)
+            info.append({'error': error})
+            self.show_info(info)
+        return error
 
     def sqls_to_list(self, sqls, result=None):
         if result is None:

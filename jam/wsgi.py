@@ -31,7 +31,7 @@ from .admin.admin import create_admin, login_user, get_roles
 from .admin.admin import user_valid_ip, user_valid_uuid
 from .admin.builder import update_events_code
 from .admin.import_metadata import import_metadata
-from .items import AbortException
+from .tree import AbortException
 from .admin.task import create_task, reload_task
 
 class JamSecureCookie(SecureCookie):
@@ -136,13 +136,12 @@ class App(object):
         self.fileserver = SharedDataMiddleware(None, self.application_files, cache_timeout=1)
         self.url_map = Map([
             Rule('/', endpoint='root_file'),
-            Rule('/<file_name>', endpoint='root_file'),
+            Rule('/<file_name>.html', endpoint='root_file'),
             Rule('/js/<file_name>', endpoint='file'),
             Rule('/css/<file_name>', endpoint='file'),
             Rule('/jam/js/<file_name>', endpoint='file'),
             Rule('/jam/js/ace/<file_name>', endpoint='file'),
             Rule('/jam/css/<file_name>', endpoint='file'),
-            Rule('/jam/css/themes/<file_name>', endpoint='file'),
             Rule('/jam/img/<file_name>', endpoint='file'),
             Rule('/api', endpoint='api'),
             Rule('/upload', endpoint='upload')
@@ -229,6 +228,8 @@ class App(object):
 
     def serve_file(self, environ, start_response, endpoint, file_name=None):
         if endpoint == 'root_file':
+            if file_name:
+                file_name += '.html'
             if not file_name:
                 file_name = 'index.html'
                 environ['PATH_INFO'] = '/index.html'
@@ -238,8 +239,11 @@ class App(object):
                 self.check_modified(file_name, environ)
                 self.check_project_modified()
             elif file_name == 'builder.html':
-                self.check_modified(os.path.join(to_unicode(self.jam_dir, 'utf-8'), file_name), environ)
-                environ['PATH_INFO'] = '/jam/builder.html'
+                if os.path.exists(file_name):
+                    self.check_modified(file_name, environ)
+                else:
+                    self.check_modified(os.path.join(to_unicode(self.jam_dir, 'utf-8'), file_name), environ)
+                    environ['PATH_INFO'] = '/jam/builder.html'
         if file_name:
             base, ext = os.path.splitext(file_name)
         init_path_info = None

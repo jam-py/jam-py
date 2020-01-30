@@ -24,13 +24,7 @@ function Events1() { // demo
 		$('#container').show();
 		
 		task.create_menu($("#menu"), $("#content"), {
-			splash_screen: 
-				'<div class="splash-container">' +
-				'   <h1 class="text-center">Jam.py Demo Application</h1>' + 
-				'   <div class="text-center">' +
-				'	   <img src="static/img/monitor_face.png" alt="Image" style="width: 761px; height: auto">' +
-				'   </div>' +
-				'</div>',
+			splash_screen: '<h1 class="text-center">Jam.py Demo Application</h1>',
 			view_first: true
 		});
 	
@@ -78,7 +72,7 @@ function Events1() { // demo
 		}
 		else {
 			if (!item.table_options.height) {
-				item.table_options.height = $(window).height() - $('body').height() - 10;
+				item.table_options.height = $(window).height() - $('body').height() - 20;
 			}
 		}
 		
@@ -317,7 +311,6 @@ function Events10() { // demo.catalogs.customers
 
 	function on_view_form_created(item) {
 		item.table_options.multiselect = false;
-		item.table_options.height += 8;
 		if (!item.lookup_field) {	
 			var print_btn = item.add_view_button('Print', {image: 'icon-print'}),
 				email_btn = item.add_view_button('Send email', {image: 'icon-pencil'});
@@ -352,11 +345,11 @@ function Events15() { // demo.catalogs.tracks
 
 	function on_view_form_created(item) {
 		if (!item.lookup_field) {
-			item.table_options.height -= 206;
+			item.table_options.height -= 200;
 			item.invoice_table = task.invoice_table.copy();
 			item.invoice_table.paginate = false;
 			item.invoice_table.create_table(item.view_form.find('.view-detail'), {
-				height: 206,
+				height: 200,
 				summary_fields: ['date', 'total'],
 				on_dblclick: function() {
 					show_invoice(item.invoice_table);
@@ -499,15 +492,12 @@ function Events16() { // demo.journals.invoices
 		}
 	}
 	
-	var invoice_calculated = false;
-	
 	function on_field_changed(field, lookup_item) {
 		var item = field.owner,
 			rec;
 		if (field.field_name === 'taxrate') {
 			rec = item.invoice_table.rec_no;
 			item.invoice_table.disable_controls();
-			invoice_calculated = true;
 			try {
 				item.invoice_table.each(function(t) {
 					t.edit();
@@ -516,39 +506,32 @@ function Events16() { // demo.journals.invoices
 				});
 			}
 			finally {
-				invoice_calculated = false;
 				item.invoice_table.rec_no = rec;
 				item.invoice_table.enable_controls();
 			}
-			item.on_detail_changed(item, item.invoice_table);
 		}
 	}
 	
 	function on_detail_changed(item, detail) {
-		if (!invoice_calculated) {
-			let fields = [
-				{"total": "total"}, 
-				{"tax": "tax"}, 
-				{"subtotal": "amount"}
-			];  
-			item.calc_summary(detail, fields);
-		}
+		var fields = [
+			{"total": "total"}, 
+			{"tax": "tax"}, 
+			{"subtotal": "amount"}
+		];  
+		item.calc_summary(detail, fields);
 	}
 	
 	function on_before_post(item) {
 		var rec = item.invoice_table.rec_no;
 		item.invoice_table.disable_controls();
-		invoice_calculated = true;
 		try {
 			item.invoice_table.each(function(t) {
 				t.edit();
 				t.customer.value = item.customer.value;
-				t.invoice_date.value = item.invoice_date.value;
 				t.post();
 			});	
 		}
 		finally {
-			invoice_calculated = false;
 			item.invoice_table.rec_no = rec;
 			item.invoice_table.enable_controls();
 		}

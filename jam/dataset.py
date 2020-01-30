@@ -1,3 +1,4 @@
+import os
 import datetime
 import traceback
 
@@ -11,7 +12,7 @@ FIELD_DEF = FIELD_ID, FIELD_NAME, FIELD_CAPTION, FIELD_DATA_TYPE, FIELD_SIZE, RE
     FIELD_READ_ONLY, FIELD_DEFAULT, FIELD_DEFAULT_VALUE, MASTER_FIELD, FIELD_ALIGNMENT, \
     FIELD_LOOKUP_VALUES, FIELD_MULTI_SELECT, FIELD_MULTI_SELECT_ALL, \
     FIELD_ENABLE_TYPEAHEAD, FIELD_HELP, FIELD_PLACEHOLDER, FIELD_MASK, \
-    FIELD_IMAGE, FIELD_FILE, DB_FIELD_NAME = range(26)
+    FIELD_IMAGE, FIELD_FILE, DB_FIELD_NAME, FIELD_CALC = range(27)
 
 FILTER_DEF = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, FILTER_TYPE, \
     FILTER_MULTI_SELECT, FILTER_DATA_TYPE, FILTER_VISIBLE, FILTER_HELP, \
@@ -75,6 +76,7 @@ class DBField(object):
         self.db_field_name = field_def[DB_FIELD_NAME]
         self.field_type = consts.FIELD_TYPE_NAMES[self.data_type]
         self.filter = None
+        self.calculated = field_def[FIELD_CALC]
         self.on_field_get_text_called = None
 
     def __setattr__(self, name, value):
@@ -245,6 +247,8 @@ class DBField(object):
                 raise DatasetException(consts.language('no_primary_field_changing') % self.owner.item_name)
             if self.field_name == self.owner._deleted_flag and self.value != value:
                 raise DatasetException(consts.language('no_deleted_field_changing') % self.owner.item_name)
+            if self.calculated:
+                raise DatasetException('Calculated field can not be changed')
 
     def set_value(self, value, lookup_value=None):
         self._check_system_field_value(value)
@@ -378,7 +382,7 @@ class DBField(object):
         result = None
         if self.data_type == consts.KEYS:
             result = self.value
-        elif self.lookup_item and self.owner.expanded:
+        elif self.lookup_item and (self.field_kind != consts.ITEM_FIELD or self.owner.expanded):
             lookup_field = self._lookup_field
             data_type = lookup_field.data_type
             result = self.lookup_data
@@ -414,11 +418,11 @@ class DBField(object):
 
     @property
     def display_text(self):
-        if self.lookup_item and self.owner.expanded and self.lookup_value:
+        if self.lookup_item and self.owner.expanded and self.lookup_data:
             lookup_field = self._lookup_field
             data_type = lookup_field.data_type
             if lookup_field.lookup_values:
-                result = lookup_field._get_value_in_list(self.lookup_value)
+                result = lookup_field._get_value_in_list(self.lookup_data)
             elif data_type == consts.CURRENCY:
                 result = self.cur_to_str(self.lookup_data)
             elif data_type == consts.FILE:
@@ -430,8 +434,8 @@ class DBField(object):
                 result = self.cur_to_str(self.data)
             elif self.data_type == consts.FILE:
                 result = self.get_file_name(self.data)
-            elif self.lookup_values and self.value:
-                result = self._get_value_in_list(self.value)
+            elif self.lookup_values:
+                result = self._get_value_in_list(self.data)
             else:
                 result = self.lookup_text
         if self.owner and not self.filter:
@@ -445,6 +449,15 @@ class DBField(object):
                     finally:
                         self.on_field_get_text_called = False
         return result
+
+    @property
+    def file_path(self):
+        if self.data_type in (consts.FILE, consts.IMAGE):
+            if self.value:
+                dir_path = to_unicode(self.owner.task.work_dir, 'utf-8')
+                return os.path.join(dir_path, 'static', 'files', self.value)
+            else:
+                return ''
 
     def assign_default_value(self):
         if self.default_value:
@@ -611,7 +624,7 @@ class ChangeLog(object):
         db_fields = []
         for field in self.item.fields:
             fields.append(field.field_name)
-            if not field.master_field:
+            if not field.master_field and not field.calculated:
                 db_fields.append(field.field_name)
         return fields, db_fields
 
@@ -954,7 +967,6 @@ class AbstractDataSet(object):
         self.__bof = False
         self.__cur_row = None
         self.__old_row = 0
-        self._old_status = None
         self._buffer = None
         self._modified = None
         self._state = consts.STATE_INACTIVE
@@ -991,10 +1003,12 @@ class AbstractDataSet(object):
             master_field=None, alignment=None, lookup_values=None, enable_typeahead=False, field_help=None,
             field_placeholder=None, lookup_field1=None, lookup_field2=None, db_field_name=None, field_mask=None,
             image_edit_width=None, image_edit_height=None, image_view_width=None, image_view_height=None,
-            image_placeholder=None, image_camera=None, file_download_btn=None, file_open_btn=None, file_accept=None):
+            image_placeholder=None, image_camera=None, file_download_btn=None, file_open_btn=None, file_accept=None,
+            calc_item=None, calc_field=None, calc_op=None
+            ):
         if not db_field_name:
             db_field_name = field_name.upper()
-        field_def = [None for i in range(len(FIELD_DEF))]
+        field_def = [None for i in range(len(FIELD_DEF) + 10)]
         field_def[FIELD_ID] = field_id
         field_def[FIELD_NAME] = field_name
         field_def[FIELD_CAPTION] = field_caption
@@ -1022,9 +1036,20 @@ class AbstractDataSet(object):
                 'camera': image_camera}
         if data_type == consts.FILE:
             field_def[FIELD_FILE] = {'download_btn': file_download_btn, 'open_btn': file_open_btn, 'accept': file_accept}
+        if calc_item:
+            field_def[FIELD_CALC] = {'calc_item': calc_item, 'calc_field': calc_field, 'calc_op': calc_op}
         field_def[DB_FIELD_NAME] = db_field_name
         self.field_defs.append(field_def)
         return field_def
+
+    def get_field_defs(self):
+        result = []
+        for field_def in self.field_defs:
+            fd = field_def[:]
+            fd[DB_FIELD_NAME] = ''
+            fd[FIELD_CALC] = bool(fd[FIELD_CALC])
+            result.append(fd)
+        return result
 
     def add_filter_def(self, filter_name, filter_caption, field_name, filter_type,
             multi_select_all, data_type, visible, filter_help, filter_placeholder, filter_ID):
@@ -1064,6 +1089,10 @@ class AbstractDataSet(object):
             return self.prototype._keep_history
         else:
             return self._keep_history
+
+    @property
+    def lock_active(self):
+        return self.edit_lock and self._record_version
 
     def _copy(self, filters=True, details=True, handlers=True):
         result = self.__class__(self.task, None, self.item_name, self.item_caption)
@@ -1149,11 +1178,23 @@ class AbstractDataSet(object):
                             lookup_field2 = field.lookup_item2._field_by_ID(field.lookup_field2)
                             field.lookup_field2 = lookup_field2.field_name
                             field.lookup_db_field2 = lookup_field2.db_field_name
-            if field.lookup_values and type(field.lookup_values) == int:
+            elif field.lookup_values and type(field.lookup_values) == int:
                 try:
                     field.lookup_values = self.task.lookup_lists[field.lookup_values]
                 except:
                     pass
+            elif field.calculated:
+                if type(field.calculated['calc_item']) == int:
+                    field._calc_item = self.task.item_by_ID(field.calculated['calc_item'])
+                    for f in field._calc_item._fields:
+                        if f.lookup_item:
+                            if (type(f.lookup_item) == int and f.lookup_item == self.ID or \
+                                type(f.lookup_item) != int and f.lookup_item.ID == self.ID):
+                                 field._calc_on_field = f
+                                 break
+                    field._calc_field = field._calc_item._field_by_ID(field.calculated['calc_field'])
+                    field._calc_op = field.calculated['calc_op']
+
         self.fields = list(self._fields)
         for field in self.fields:
             if not hasattr(self, field.field_name):
@@ -1347,7 +1388,7 @@ class AbstractDataSet(object):
             field.lookup_index = None
         j = 0
         for field in self.fields:
-            if not field.master_field:
+            if not field.master_field and not field.calculated:
                 field.bind_index = j
                 j += 1
         for field in self.fields:
@@ -1355,6 +1396,10 @@ class AbstractDataSet(object):
                 field.bind_index = field.master_field.bind_index
         self._record_lookup_index = j
         if expanded:
+            for field in self.fields:
+                if field.calculated:
+                    field.bind_index = j;
+                    j += 1;
             for field in self.fields:
                 if field.lookup_item:
                     field.lookup_index = j
@@ -1573,9 +1618,9 @@ class AbstractDataSet(object):
         if self.record_count() == 0:
             raise DatasetEmpty(consts.language('edit_no_records') % self.item_name)
         self._buffer = self.change_log.store_record()
+        self._modified_buffer = self._store_modified()
         self.item_state = consts.STATE_EDIT
         self._old_status = self.record_status
-        self._modified = False
 
     def delete(self):
         if not self.active:
@@ -1604,10 +1649,10 @@ class AbstractDataSet(object):
         prev_state = self.item_state
         self.skip(self.__old_row, False)
         self.item_state = consts.STATE_BROWSE
-        self._set_modified(False)
         if prev_state == consts.STATE_EDIT:
-            self.record_status = self._old_status
+            self._restore_modified(self._modified_buffer);
         elif prev_state == consts.STATE_INSERT:
+            self._modified = False
             self._do_after_scroll()
 
     def post(self):
@@ -1626,11 +1671,23 @@ class AbstractDataSet(object):
         self._modified = False
         self.item_state = consts.STATE_BROWSE
 
+    @property
+    def r_inserted(self):
+        return self.record_status == consts.RECORD_INSERTED
+
     def rec_inserted(self):
         return self.record_status == consts.RECORD_INSERTED
 
+    @property
+    def r_deleted(self):
+        return self.record_status == consts.RECORD_DELETED
+
     def rec_deleted(self):
         return self.record_status == consts.RECORD_DELETED
+
+    @property
+    def r_modified(self):
+        return self.record_status in (consts.RECORD_MODIFIED, consts.RECORD_DETAILS_MODIFIED)
 
     def rec_modified(self):
         return self.record_status in (consts.RECORD_MODIFIED, consts.RECORD_DETAILS_MODIFIED)
@@ -1742,7 +1799,7 @@ class MasterDataSet(AbstractDataSet):
 
         return result
 
-    def do_apply(self, params, safe):
+    def do_apply(self, params, safe, connection):
         pass
 
     def apply(self, connection=None, params=None, safe=False):
@@ -1935,6 +1992,19 @@ class MasterDetailDataset(MasterDataSet):
             raise DatasetException(consts.language('delete_master_not_changing') % self.item_name)
         super(MasterDetailDataset, self).delete()
 
+    def _store_modified(self, result=None):
+        if result is None:
+            result = {}
+        result[self.ID] = self._modified
+        if self.master:
+            self.master._store_modified(result)
+        return result
+
+    def _restore_modified(self, value):
+        self._modified = value[self.ID]
+        if self.master:
+            self.master._restore_modified(value);
+
     def _set_modified(self, value):
         self._modified = value
         if self.master and value:
@@ -1994,6 +2064,9 @@ class Param(DBField):
         pass
 
     def _change_lookup_field(self, lookup_value=None, slave_field_values=None):
+        pass
+
+    def _set_modified(self, value):
         pass
 
     def copy(self, owner):

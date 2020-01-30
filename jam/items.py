@@ -1,377 +1,700 @@
-import sys
+import sys, os
+import zipfile
+from xml.dom.minidom import parseString
+from xml.sax.saxutils import escape
+import datetime, time
+import inspect
+import pickle
+import json
+import types
 
-from werkzeug.utils import cached_property
-from werkzeug._compat import iteritems
-from werkzeug._compat import to_unicode, to_bytes
+from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_bytes, to_unicode
+from werkzeug.security import generate_password_hash, check_password_hash
 
-import jam
-from .common import consts, json_defaul_handler
+from .third_party.filelock import FileLock
+from .third_party.sqlalchemy.pool import NullPool, QueuePool
+from .third_party.six import exec_, print_, get_function_code
 
-class AbortException(Exception):
-    pass
+from .common import consts, error_message, json_defaul_handler
+from .db.databases import get_database
+from .tree import AbstrTask, AbstrGroup, AbstrItem, AbstrDetail, AbstrReport
+from .dataset import Dataset, DBField, DBFilter, ParamReport, Param, DatasetException
+from .admin.copy_db import copy_database
+from .report import Report
 
-class AbstractItem(object):
-    def __init__(self, task, owner, name='', caption=''):
-        self.task = task
-        self.owner = owner
-        self.item_name = name
-        self.items = []
+class ServerDataset(Dataset):
+    def __init__(self):
+        Dataset.__init__(self)
         self.ID = None
-        self.js_filename = None
-        self._events = []
-        if owner:
-            if not owner.find(name):
-                owner.items.append(self)
-                if not hasattr(owner, self.item_name):
-                    setattr(owner, self.item_name, self)
-        self.item_caption = caption
-        if self != task:
-            self.log = task.log
-        self._loader = TracebackLoader(self)
+        self.gen_name = None
+        self._order_by = []
+        self.values = None
+        self.on_open = None
+        self.on_apply = None
+        self.on_count = None
+        self.on_field_get_text = None
 
-    def task_locked(self):
+    def copy(self, filters=True, details=True, handlers=True):
+        if self.master:
+            raise DatasetException(u'A detail item can not be copied: %s' % self.item_name)
+        result = self._copy(filters, details, handlers)
+        return result
+
+    def free(self):
         try:
-            if self.task.ID:
-                if self.master:
-                    owner = self.master.owner
-                else:
-                    owner = self.owner
-                if owner:
-                    return self.task.app.task_locked()
+            for d in self.details:
+                d.__dict__ = {}
+            for f in self.filters:
+                f.field = None
+                f.__dict__ = {}
+            self.filters.__dict__ = {}
+            self.__dict__ = {}
         except:
             pass
 
-    def __setattr__(self, name, value):
-        if self.task_locked():
-            raise Exception(self.task.language('server_tree_immutable') + \
-                ' Item: "%s", Attribute: "%s"' % (self.item_name, name))
-        super(AbstractItem, self).__setattr__(name, value)
+    def _copy(self, filters=True, details=True, handlers=True):
+        result = super(ServerDataset, self)._copy(filters, details, handlers)
+        result.table_name = self.table_name
+        result.gen_name = self.gen_name
+        result._order_by = self._order_by
+        result.soft_delete = self.soft_delete
+        result._primary_key = self._primary_key
+        result._deleted_flag = self._deleted_flag
+        result._record_version = self._record_version
+        result._master_id = self._master_id
+        result._master_rec_id = self._master_rec_id
+        result._primary_key_db_field_name = self._primary_key_db_field_name
+        result._deleted_flag_db_field_name = self._deleted_flag_db_field_name
+        result._master_id_db_field_name = self._master_id_db_field_name
+        result._master_rec_id_db_field_name = self._master_rec_id_db_field_name
+        result._record_version_db_field_name = self._record_version_db_field_name
+        return result
 
-    @property
-    def session(self):
+    def get_event(self, caption):
+        return getattr(caption)
+
+    def add_field(self, *args, **kwargs):
+        field_def = self.add_field_def(*args, **kwargs)
+        field = DBField(self, field_def)
+        self._fields.append(field)
+        return field
+
+    def create_fields(self, info):
+        for field_def in info:
+            self.field_defs.append(field_def)
+            field = DBField(self, field_def)
+            self._fields.append(field)
+
+    def add_filter(self, *args):
+        filter_def = self.add_filter_def(*args)
+        fltr = DBFilter(self, filter_def)
+        self.filters.append(fltr)
+        return fltr
+
+    def create_filters(self, info):
+        for filter_def in info:
+            self.add_filter(*filter_def)
+
+    def do_internal_open(self, params, connection):
+        return self.select_records(params, connection)
+
+    def do_apply(self, params=None, safe=False, connection=None):
+        if not self.master:
+            changes = {}
+            if not params:
+                params = {}
+            if self.change_log.get_changes(changes):
+                data, error = self.apply_changes((changes, params), safe, connection)
+                if error:
+                    raise Exception(error)
+                elif data:
+                    self.change_log.update(data)
+
+    def add_detail(self, table):
+        detail = Detail(self.task, self, table.item_name, table.item_caption, table.table_name)
+        detail.prototype = table
+        self.details.append(detail)
+        detail.owner = self
+        detail.init_fields()
+        return detail
+
+    def detail_by_name(self, caption):
+        for table in self.details:
+            if table.item_name == caption:
+                return table
+
+    def __execute_select(self, cursor, sql, db):
         try:
-            return jam.context.session
-        except:
-            pass
+            cursor.execute(sql)
+            return db.process_query_result(cursor.fetchall())
+        except Exception as x:
+            self.log.exception('%s:\n%s' % (error_message(x), sql))
 
-    @property
-    def environ(self):
-        return jam.context.environ
+    def execute_open(self, params, connection=None, db=None):
+        rows = None
+        error_mes = ''
+        if not db:
+            db = self.task.db
+        limit = params['__limit']
+        offset = params['__offset']
+        sqls = db.get_select_queries(self, params)
+        if connection:
+            con = connection
+        else:
+            con = self.task.connect()
+        cursor = con.cursor()
+        try:
+            if len(sqls) == 1:
+                rows = self.__execute_select(cursor, sqls[0], db)
+            else:
+                rows = []
+                cut = False
+                for sql in sqls:
+                    rows += self.__execute_select(cursor, sql, db)
+                    if limit or offset:
+                        if len(rows) >= offset + limit:
+                            rows = rows[offset:offset + limit]
+                            cut = True
+                            break
+                if (limit or offset) and not cut:
+                    rows = rows[offset:offset + limit]
+                if params.get('__summary'):
+                    new_rows = [0 for r in rows[0]]
+                    for row in rows:
+                        for i, r in enumerate(row):
+                            if not r is None:
+                                new_rows[i] += r
+                    rows = [new_rows]
+        finally:
+            if not connection:
+                con.close()
+        return rows, error_mes
 
-    @property
-    def user_info(self):
-        if self.session:
-            return self.session['user_info']
+    def open_records(self, params, connection=None):
+        dataset, error = self.execute_open(params, connection)
+        result = self.copy(filters=False, details=False, handlers=False)
+        result.log_changes = False
+        result.open(expanded = params['__expanded'], fields=params['__fields'], open_empty=True)
+        result._dataset = dataset
+        return result
 
-    def find(self, name):
-        for item in self.items:
-            if item.item_name == name:
-                return item
+    def select_records(self, params, connection=None, safe=False):
+        if safe and not self.can_view():
+            raise Exception(consts.language('cant_view') % self.item_caption)
+        result = None
+        if self.task.on_open:
+            result = self.task.on_open(self, params)
+        if result is None and self.on_open:
+            result = self.on_open(self, params)
+        if result is None:
+            result = self.execute_open(params, connection)
+        if isinstance(result, Dataset):
+            result = result.dataset, ''
+        return result
 
-    def item_by_ID(self, id_value):
-        if self.ID == id_value:
-            return self
-        for item in self.items:
-            result = item.item_by_ID(id_value)
-            if result:
+    def apply_delta(self, delta, params, connection, db=None):
+        if not db:
+            db = self.task.db
+        return db.process_changes(delta, connection, params)
+
+    def apply_changes(self, data, safe, connection=None):
+        result = None
+        error = None
+        changes, params = data
+        if not params:
+            params = {}
+        params['__safe'] = safe
+        params['__replace'] = None
+        delta = self.delta(changes)
+        if connection:
+            con = connection
+        else:
+            con = self.task.connect()
+        try:
+            if self.task.on_apply:
+                result = self.task.on_apply(self, delta, params, con)
+            if result is None and self.on_apply:
+                result = self.on_apply(self, delta, params, con)
+            if result is None:
+                result = self.apply_delta(delta, params, con)
+            if not connection and con:
+                con.commit()
+        finally:
+            if not connection and con:
+                con.close()
+        return result
+
+    def update_deleted(self, details=None, connection=None):
+        if self._is_delta:
+            if details is None:
+                details = self.details
+            rec_no = self.rec_no
+            try:
+                for it in self:
+                    if it.rec_deleted():
+                        for detail in details:
+                            fields = []
+                            for field in detail.fields:
+                                fields.append(field.field_name)
+                            prototype = self.task.item_by_ID(detail.prototype.ID).copy()
+                            where = {
+                                prototype._master_id: self.ID,
+                                prototype._master_rec_id: self._primary_key_field.value
+                            }
+                            prototype.open(fields=fields, expanded=detail.expanded, where=where, connection=connection)
+                            if prototype.record_count():
+                                it.edit()
+                                for p in prototype:
+                                    detail.append()
+                                    for field in detail.fields:
+                                        f = p.field_by_name(field.field_name)
+                                        field.set_value(f.value, f.lookup_value)
+                                    detail.post()
+                                it.post()
+                                for d in detail:
+                                    d.record_status = consts.RECORD_DELETED
+            finally:
+                self.rec_no = rec_no
+
+    def field_by_id(self, id_value, field_name):
+        return self.get_field_by_id((id_value, field_name))
+
+    def get_field_by_id(self, params):
+        id_value, fields = params
+        if not (isinstance(fields, tuple) or isinstance(fields, list)):
+            fields = [fields]
+        copy = self.copy()
+        copy.set_where(id=id_value)
+        copy.open(fields=fields)
+        if copy.record_count() == 1:
+            result = []
+            for field_name in fields:
+                result.append(copy.field_by_name(field_name).value)
+            if len(fields) == 1:
+                return result[0]
+            else:
                 return result
+        return
 
-    def all(self, func):
-        func(self);
-        for item in self.items:
-            item.all(func)
+    def empty(self):
+        if not self.master and self.table_name:
+            con = self.task.connect()
+            try:
+                cursor = con.cursor()
+                cursor.execute(self.task.db.empty_table_query(self))
+                con.commit()
+            except Exception as e:
+                self.log.exception(error_message(e))
+                con.rollback()
+            finally:
+                con.close()
 
-    def write_info(self, info, server):
-        info['id'] = self.ID
-        info['name'] = self.item_name
-        info['caption'] = self.item_caption
-        info['visible'] = self.visible
-        info['type'] = self.item_type_id
-        info['js_filename'] = self.js_filename
+    def get_next_id(self, db=None):
+        if db is None:
+            db = self.task.db
+        sql = db.next_sequence(self.gen_name)
+        if sql:
+            rec = self.task.select(sql)
+            if rec:
+                if rec[0][0]:
+                    return int(rec[0][0])
 
-    def read_info(self, info):
-        self.ID = info['id']
-        self.item_name = info['name']
-        self.item_caption = info['caption']
-        self.visible = info['visible']
-        self.item_type_id = info['type']
-        self.js_filename = info['js_filename']
+    def load_interface(self):
+        self._view_list = []
+        self._edit_list = []
+        self._order_list = []
+        self._reports_list = []
+        value = self.f_info.value
+        if value:
+            if len(value) >= 4 and value[0:4] == 'json':
+                lists = json.loads(value[4:])
+            else:
+                lists = pickle.loads(to_bytes(value, 'utf-8'))
+            self._view_list = lists['view']
+            self._edit_list = lists['edit']
+            self._order_list = lists['order']
+            if lists.get('reports'):
+                self._reports_list = lists['reports']
 
-    def get_info(self, server=False):
-        result = {}
-        result['items'] = []
-        self.write_info(result, server)
-        for item in self.items:
-            result['items'].append((item.item_type_id, item.get_info(server)))
+    def store_interface(self, connection=None):
+        handlers = self.store_handlers()
+        self.clear_handlers()
+        try:
+            self.edit()
+            dic = {'view': self._view_list,
+                    'edit': self._edit_list,
+                    'order': self._order_list,
+                    'reports': self._reports_list}
+            self.f_info.value = 'json' + json.dumps(dic, default=json_defaul_handler)
+            self.post()
+            self.apply(connection)
+        finally:
+            handlers = self.load_handlers(handlers)
+
+    def store_index_fields(self, f_list):
+        return json.dumps(f_list)
+
+    def load_index_fields(self, value):
+        return json.loads(str(value))
+
+
+class Group(AbstrGroup):
+    def __init__(self, task, owner, name='', caption=''):
+        AbstrGroup.__init__(self, task, owner, name, caption)
+        self.ID = None
+
+    def add_item(self, name, caption):
+        result = Item(self.task, self, name, caption)
         return result
 
     def get_child_class(self):
-        pass
+        return Item
 
-    def set_info(self, info):
-        self.read_info(info)
-        for item_type_id, item_info in info['items']:
-            child = self.get_child_class()(self.task, self, item_info['name'])
-            child.item_type_id = item_type_id
-            child.set_info(item_info)
+class ReportGroup(Group):
+    def __init__(self, task, owner, name='', caption=''):
+        Group.__init__(self, task, owner, name, caption)
+        self.on_convert_report = None
 
-    def compile(self):
-        self.task.compile_item(self)
-        for item in self.items:
-            item.compile()
+    def add_report(self, name, caption):
+        result = Report(self.task, self, name, caption)
+        return result
 
-    def bind_item(self):
-        pass
+    def get_child_class(self):
+        return Report
 
-    def bind_items(self):
-        self.bind_item()
-        for item in self.items:
-            item.bind_items()
-        self.item_type = consts.ITEM_TYPES[self.item_type_id - 1]
+class Item(AbstrItem, ServerDataset):
+    def __init__(self, task, owner, name='', caption=''):
+        item_type_id = consts.ITEM_TYPE
+        AbstrItem.__init__(self, task, owner, name, caption)
+        ServerDataset.__init__(self)
+        self.reports = []
+
+    def get_child_class(self):
+        return Detail
+
+    def get_reports_info(self):
+        result = []
+        for report in self.reports:
+            result.append(report.ID)
+        return result
+
+
+class Report(AbstrReport, ParamReport, Report):
+    def __init__(self, task, owner, name='', caption=''):
+        AbstrReport.__init__(self, task, owner, name, caption)
+        ParamReport.__init__(self)
+        self.item_type_id = consts.REPORT_TYPE
+
+        self.on_before_generate = None
+        self.on_generate = None
+        self.on_after_generate = None
+        self.on_parsed = None
+        self.on_before_save_report = None
+        self.on_field_get_text = None
+        self.on_convert_report = None
+
+    def copy(self):
+        result = self.__class__(self.task, None, self.item_name, self.item_caption);
+        result.template = self.template
+        result.on_before_generate = self.on_before_generate
+        result.on_generate = self.on_generate
+        result.on_after_generate = self.on_after_generate
+        result.on_before_save_report = self.on_before_save_report
+        result.on_parsed = self.on_parsed
+        result.on_convert_report = self.owner.on_convert_report
+        result.param_defs = self.param_defs
+        for param_def in result.param_defs:
+            param = Param(result, param_def)
+            result.params.append(param)
+        result.prepare_params()
+        return  result
+
+    def print_report(self, param_values, url, ext=None, safe=False):
+        self.delete_reports()
+        if safe and not self.can_view():
+            raise Exception(consts.language('cant_view') % self.item_caption)
+        copy = self.copy()
+        copy.name = self.item_name
+        copy.template = os.path.join(self.task.work_dir, 'reports', self.template)
+        copy.dest_folder = os.path.join(self.task.work_dir, 'static', 'reports')
+        if not os.path.exists(copy.dest_folder):
+            os.makedirs(copy.dest_folder)
+        copy.on_convert = self.on_convert_report
+        for i, param in enumerate(copy.params):
+            param.data = param_values[i];
+        result = copy.prepare_report(self.on_generate, ext='.' + ext)
+        if url:
+            return os.path.join(url, 'static', 'reports', result)
+
+    def delete_reports(self):
+        task = self.task
+        if consts.DELETE_REPORTS_AFTER:
+            path = os.path.join(task.work_dir, 'static', 'reports')
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    file_name = os.path.join(path, f)
+                    if os.path.isfile(file_name):
+                        delta = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(file_name))
+                        hours, sec = divmod(delta.total_seconds(), 3600)
+                        if hours > consts.DELETE_REPORTS_AFTER:
+                            os.remove(file_name)
+
+
+class DBInfo(object):
+    def __init__(self, server = '', database = '', user = '', password = '',
+        host='', port='', encoding=''):
+        self.server = server
+        self.database = database
+        self.user = user
+        self.password = password
+        self.host = host
+        self.port = port
+        self.encoding = encoding
+        if not self.port:
+            self.port = None
+        else:
+            self.port = int(port)
+        if not self.encoding:
+            self.encoding = None
+
+
+class AbstractServerTask(AbstrTask):
+    def __init__(self, app, name, caption, db_type, db_info, con_pool_size=1, persist_con=True):
+        AbstrTask.__init__(self, None, None, None)
+        self.app = app
+        self.items = []
+        self.lookup_lists = {}
+        self.ID = None
+        self.item_name = name
+        self.item_caption = caption
+        self.visible = True
+        self.db_type = db_type
+        self.db_info = db_info
+        self.db = get_database(self.db_type)
+        self.on_before_request = None
+        self.on_after_request = None
+        self.on_open = None
+        self.on_apply = None
+        self.on_count = None
+        self.work_dir = app.work_dir
+        self.con_pool_size = 0
+        self.modules = []
+        self.con_pool_size = con_pool_size
+        self.persist_con = persist_con
+        self.create_pool()
+        if self.db_type == consts.SQLITE:
+            self.db_info.database = os.path.join(self.work_dir, self.db_info.database)
+        self.log = app.log
+        self.consts = consts
+
+    @property
+    def version(self):
+        return consts.VERSION
+
+    def get_child_class(self):
+        return Group
+
+    def create_pool(self):
+        if self.persist_con:
+            if self.db_type == consts.SQLITE:
+                self.pool = NullPool(self.getconn)
+            else:
+                self.pool = QueuePool(self.getconn, pool_size=self.con_pool_size, \
+                    max_overflow=self.con_pool_size*2, recycle=60*60)
+        else:
+            self.pool = NullPool(self.getconn)
+
+    def create_connection(self):
+        return self.db.connect(self.db_info)
+
+    def create_connection_ex(self, db, database, user=None, password=None, \
+        host=None, port=None, encoding=None, server=None):
+        db_info = DBInfo(server, database, user, password,
+            host, port, encoding, server)
+        return db.connect(db_info)
+
+    def getconn(self):
+        return self.create_connection()
+
+    def connect(self):
+        try:
+            return self.pool.connect()
+        except Exception as e:
+            # ~ self.log.exception(error_message(e))
+            if self.pool is None:
+                self.app.create_connection_pool()
+                return self.pool.connect()
+
+    def __execute_query_list(self, cursor, query_list):
+        for query in query_list:
+            if query:
+                if type(query) == list:
+                    self.__execute_query_list(cursor, query_list)
+                else:
+                    if type(query) == tuple:
+                        self.execute_query(cursor, query[0], query[1])
+                    else:
+                        self.execute_query(cursor, query)
+
+    def execute(self, query, params=None, connection=None, db=None):
+        error = None
+        con = connection
+        if not connection:
+            con = self.connect()
+        cursor = con.cursor()
+        try:
+            if type(query) == list:
+                self.__execute_query_list(cursor, query)
+            else:
+                self.execute_query(cursor, query, params)
+        except Exception as x:
+            error = error_message(x)
+        finally:
+            if not connection:
+                con.commit()
+                con.close()
+        return error
+
+    def select(self, select_query, connection=None, db=None):
+        result = None
+        error = None
+        con = connection
+        if not connection:
+            con = self.connect()
+        cursor = con.cursor()
+        try:
+            self.execute_query(cursor, select_query)
+            result = cursor.fetchall()
+        except Exception as x:
+            error = error_message(x)
+        finally:
+            if not connection:
+                con.close()
+        return result
+
+    def execute_select(self, command): #depricated
+        return self.select(command)
+
+    def generate_password_hash(self, password, method='pbkdf2:sha256', salt_length=8):
+        return generate_password_hash(password, method, salt_length)
+
+    def check_password_hash(self, pwhash, password):
+        return check_password_hash(pwhash, password)
 
     def get_module_name(self):
-        result = self.owner.get_module_name() + '.' + self.item_name
-        return str(result)
+        return str(self.item_name)
 
-    def store_handlers(self):
-        result = {}
-        for key, value in iteritems(self.__dict__):
-            if key[0:3] == 'on_':
-                result[key] = self.__dict__[key]
-        return result
+    def lock(self, lock_name, timeout=-1):
+        lock_file = os.path.join(self.work_dir, 'locks', lock_name + '.lock')
+        locks_dir = os.path.dirname(lock_file)
+        if not os.path.exists(locks_dir):
+            os.makedirs(locks_dir)
+        return FileLock(lock_file, timeout)
 
-    def clear_handlers(self):
-        for key, value in iteritems(self.__dict__):
-            if key[0:3] == 'on_':
-                self.__dict__[key] = None
+    def compile_item(self, item):
+        item.module_name = None
+        code = item.server_code
+        item.module_name = item.get_module_name()
+        item_module = type(sys)(item.module_name)
+        item_module.__dict__['this'] = item
+        sys.modules[item.module_name] = item_module
 
-    def load_handlers(self, handlers):
-        for key, value in iteritems(handlers):
-            self.__dict__[key] = handlers[key]
+        item.task.modules.append(item.module_name)
+        if item.owner:
+            sys.modules[item.owner.get_module_name()].__dict__[item.module_name] = item_module
+        if code:
+            try:
+                code = to_bytes(code, 'utf-8')
+            except Exception as e:
+                self.log.exception(error_message(e))
+            comp_code = compile(code, item.module_name, "exec")
+            exec_(comp_code, item_module.__dict__)
 
-    def get_master_field(self, fields, master_field):
-        for field in fields:
-            if field.ID == master_field:
-                return field
+            item_module.__dict__['__loader__'] = item._loader
+            funcs = inspect.getmembers(item_module, inspect.isfunction)
+            item._events = []
+            for func_name, func in funcs:
+                item._events.append((func_name, func))
+                # ~ if hasattr(item, func_name) and func_name[:3] != 'on_':
+                    # ~ item.log.warning('Module %s: method "%s" will override "%s" existing attribute. Please, rename the function.' % \
+                        # ~ (item.module_name, func_name, item.item_name))
+                setattr(item, func_name, func)
+        del code
 
-    def abort(self, message=''):
-        raise AbortException(message)
-
-    def register(self, func):
-        setattr(self, func.__name__, func)
-
-    def load_code(self):
-        return self.item_name
-
-    def check_operation(self, operation):
-        try:
-            app = self.task.app
-            if not consts.SAFE_MODE:
-                return True
-            elif self.task == app.admin:
-                if consts.SAFE_MODE:
-                    session = self.session
-                    if session and session['user_info']['admin']:
-                        return True
+    def convert_report(self, report, ext):
+        converted = False
+        with self.task.lock('$report_conversion'):
+            try:
+                from subprocess import Popen, STDOUT, PIPE
+                if os.name == "nt":
+                    regpath = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\soffice.exe"
+                    root = OpenKey(HKEY_LOCAL_MACHINE, regpath)
+                    s_office = QueryValue(root, "")
                 else:
-                    return True
-            else:
-                session = self.session
-                if session:
-                    role_id = session['user_info']['role_id']
-                    privileges = self.task.app.get_privileges(role_id)
-                    priv_dic = privileges.get(self.ID)
-                    if priv_dic:
-                        return priv_dic[operation]
-        except:
-            return False
+                    s_office = "soffice"
+                convertion = Popen([s_office, '--headless', '--convert-to', ext,
+                    report.report_filename, '--outdir', os.path.join(self.work_dir, 'static', 'reports')],
+                    stderr=STDOUT,stdout=PIPE)
+                out, err = convertion.communicate()
+                converted = True
+            except Exception as e:
+                self.log.exception(error_message(e))
+        return converted
 
-    def can_view(self):
-        return self.check_operation('can_view')
+class Task(AbstractServerTask):
+    def __init__(self, app, name, caption, db_type, db_info,
+        con_pool_size=4, persist_con=True):
+        AbstractServerTask.__init__(self, app, name, caption,
+            db_type, db_info, con_pool_size, persist_con)
+        self.on_created = None
+        self.on_login = None
+        self.on_ext_request = None
+        self.compress_history = True
+        self.init_dict = {}
+        for key, value in iteritems(self.__dict__):
+            self.init_dict[key] = value
 
-    def round(self, value, dec):
-        return consts.round(value, dec)
+    @property
+    def timeout(self):
+        return consts.TIMEOUT
 
-    def float_to_str(self, value):
-        return consts.float_to_str(value)
-
-    def cur_to_str(self, value):
-        return consts.cur_to_str(value)
-
-    def date_to_str(self, value):
-        return consts.date_to_str(value)
-
-    def datetime_to_str(self, value):
-        return consts.datetime_to_str(value)
-
-    def str_to_date(self, value):
-        return consts.str_to_date(value)
-
-    def str_to_datetime(self, value):
-        return consts.str_to_datetime(value)
-
-    def str_to_float(self, value):
-        return consts.str_to_float(value)
-
-    def str_to_cur(self, value):
-        return consts.str_to_cur(value)
+    def copy_database(self, dbtype, connection, limit = 1000):
+        copy_database(self, dbtype, connection, limit)
 
 
-class AbstrGroup(AbstractItem):
-    pass
+class AdminTask(AbstractServerTask):
+    def __init__(self, app, name, caption, db_type, db_database = ''):
+        db_info = DBInfo(database=db_database)
+        AbstractServerTask.__init__(self, app, name, caption, db_type, db_info)
+        self.timeout = 43200
 
+class Detail(AbstrDetail, ServerDataset):
+    def __init__(self, task, owner, name='', caption='', table_name=''):
+        AbstrDetail.__init__(self, task, owner, name, caption)
+        ServerDataset.__init__(self)
+        self.item_type_id = consts.DETAIL_TYPE
+        self.master = owner
+        self.soft_delete = None
 
-class AbstrTask(AbstractItem):
-    def __init__(self, owner, name, caption):
-        AbstractItem.__init__(self, self, owner, name, caption)
-        self.task = self
-        self.item_type_id = consts.TASK_TYPE
-        self.history_item = None
-        self.log = None
+    def init_fields(self):
+        self.field_defs = []
+        for field_def in self.prototype.field_defs:
+            self.field_defs.append(list(field_def))
+        for field_def in self.field_defs:
+            field = DBField(self, field_def)
+            self._fields.append(field)
+        self.edit_lock = self.prototype.edit_lock
+        self._primary_key = self.prototype._primary_key
+        self._deleted_flag = self.prototype._deleted_flag
+        self._record_version = self.prototype._record_version
+        self._master_id = self.prototype._master_id
+        self._master_rec_id = self.prototype._master_rec_id
 
-    def task_locked(self):
-        try:
-            if self.ID:
-                return self.app.task_locked()
-        except:
-            pass
+    def do_internal_post(self):
+        return {'success': True, 'id': None, 'message': '', 'detail_ids': None}
 
-    def write_info(self, info, server):
-        super(AbstrTask, self).write_info(info, server)
-        info['lookup_lists'] = self.lookup_lists
-        if self.history_item:
-            info['history_item'] = self.history_item.ID
+    def get_filters(self):
+        return self.prototype.filters
 
-    def set_info(self, info):
-        super(AbstrTask, self).set_info(info)
-        self.bind_items()
-
-    def get_child_class(self):
-        pass
-
-    def item_by_name(self, item_name):
-        for group in self.items:
-            if group.item_name == item_name:
-                return group
-            else:
-                for item in group.items:
-                    if item.item_name == item_name:
-                        return item
-
-    def compile_all(self):
-        for module in self.modules:
-            del sys.modules[module]
-        self.modules = []
-        self.compile()
-
-    def language(self, key):
-        return consts.language(key)
-
-class AbstrItem(AbstractItem):
-    def __init__(self, task, owner, name, caption):
-        AbstractItem.__init__(self, task, owner, name, caption)
-        self.master = None
-        if not isinstance(self, AbstrDetail):
-            if self.owner and not hasattr(self.task, self.item_name):
-                setattr(self.task, self.item_name, self)
-
-    def write_info(self, info, server):
-        super(AbstrItem, self).write_info(info, server)
-        info['fields'] = self.field_defs
-        info['filters'] = self.filter_defs
-        info['reports'] = self.get_reports_info()
-        info['default_order'] = self._order_by
-        info['primary_key'] = self._primary_key
-        info['deleted_flag'] = self._deleted_flag
-        info['virtual_table'] = self.virtual_table
-        info['master_id'] = self._master_id
-        info['master_rec_id'] = self._master_rec_id
-        info['keep_history'] = self._keep_history
-        info['edit_lock'] = self.edit_lock
-        info['view_params'] = self._view_list
-        info['edit_params'] = self._edit_list
-        info['virtual_table'] = self.virtual_table
-        if server:
-            info['table_name'] = self.table_name
-
-    def read_info(self, info):
-        super(AbstrItem, self).read_info(info)
-        self.create_fields(info['fields'])
-        self.create_filters(info['filters'])
-        self.reports = info['reports']
-        self._order_by = info['default_order']
-        self._primary_key = info['primary_key']
-        self._deleted_flag = info['deleted_flag']
-        self._virtual_table = info['virtual_table']
-        self._master_id = info['master_id']
-        self._master_rec_id = info['master_rec_id']
-        self._keep_history = info['keep_history']
-        self.edit_lock = info['edit_lock']
-        self._view_list = info['view_params']
-        self._edit_list = info['edit_params']
-        self.table_name = info['table_name']
-
-    def bind_item(self):
-        self.prepare_fields()
-        self.prepare_filters()
-
-    def can_create(self):
-        return self.check_operation('can_create')
-
-    def can_edit(self):
-        return self.check_operation('can_edit')
-
-    def can_delete(self):
-        return self.check_operation('can_delete')
-
-class AbstrDetail(AbstrItem):
-
-    def write_info(self, info, server):
-        super(AbstrDetail, self).write_info(info, server)
-        info['prototype_ID'] = self.prototype.ID
-
-    def read_info(self, info):
-        super(AbstrDetail, self).read_info(info)
-        self.owner.details.append(self)
-        if not hasattr(self.owner.details, self.item_name):
-            setattr(self.owner.details, self.item_name, self)
-        self._prototype_id = info['prototype_ID']
-
-    def bind_item(self):
-        super(AbstrDetail, self).bind_item();
-        if hasattr(self, '_prototype_id'):
-            self.prototype = self.task.item_by_ID(self._prototype_id)
-            self.init_fields()
-
-class AbstrReport(AbstractItem):
-    def __init__(self, task, owner, name, caption):
-        AbstractItem.__init__(self, task, owner, name, caption)
-        if not hasattr(self.task, self.item_name):
-            setattr(self.task, self.item_name, self)
-
-    def write_info(self, info, server):
-        super(AbstrReport, self).write_info(info, server)
-        info['fields'] = self.param_defs
-
-    def read_info(self, info):
-        super(AbstrReport, self).read_info(info)
-        self.create_params(info['fields'])
-
-    def param_by_name(self, name):
-        for param in self.params:
-            if param.param_name == name:
-                return param
-
-    def bind_item(self):
-        self.prepare_params()
-
-class TracebackLoader(object):
-    def __init__(self, item):
-        self.item = item
-
-    def get_source(self, source):
-        admin = self.item.task.app.admin
-        sys_items = admin.sys_items.copy()
-        sys_items.set_where(id=self.item.ID)
-        sys_items.open(fields=['f_server_module'])
-        return sys_items.f_server_module.value
+    def get_reports_info(self):
+        return []

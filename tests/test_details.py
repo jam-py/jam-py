@@ -74,6 +74,11 @@ class TestDetails:
                 master.val.value += 1
                 counter1 += master.val.value
                 master.post()
+
+                master.edit()
+                master.val.value += 1
+                master.cancel()
+
                 master.next()
         master.apply()
         counter2 = 0
@@ -128,8 +133,17 @@ class TestDetails:
                 else:
                     m.detail1.edit()
                     m.detail1.val.value += 1
+                    m.detail1.cancel()
+
+                    m.detail1.edit()
+                    m.detail1.val.value += 1
                     counter1 += m.detail1.val.value
                     m.detail1.post()
+
+                    m.detail1.edit()
+                    m.detail1.val.value += 1
+                    m.detail1.cancel()
+
                     m.detail1.next()
             m.post()
         master.apply()
