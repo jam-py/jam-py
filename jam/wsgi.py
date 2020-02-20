@@ -606,7 +606,6 @@ class App(object):
                 r['error'] = error
             except Exception as e:
                 self.log.exception(error_message(e))
-                # ~ traceback.print_exc()
                 error = error_message(e)
                 if consts.DEBUGGING and task_id != 0:
                     raise

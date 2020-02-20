@@ -12,8 +12,7 @@ def create_task(app):
     it.set_where(type_id=consts.TASK_TYPE)
     it.open()
     if adm.task_db_type:
-        result = Task(app, it.f_item_name.value, it.f_name.value,
-            adm.task_db_type, adm.task_db_info, adm.task_con_pool_size, adm.task_persist_con)
+        result = Task(app, it.f_item_name.value, it.f_name.value)
         result.ID = it.id.value
         load_task(result, app)
     else:
@@ -305,9 +304,6 @@ def history_sql(task):
 
 
 def load_task(task, app, first_build=True, after_import=False):
-    task.pool.dispose()
-    task.pool.recreate()
-
     admin = app.admin
 
     remove_attr(task)
@@ -316,6 +312,9 @@ def load_task(task, app, first_build=True, after_import=False):
 
     task.bind_items()
     task.compile_all()
+
+    task.create_pool(admin.task_db_type, admin.task_db_info, \
+        admin.task_con_pool_size, admin.task_persist_con)
 
     params = admin.sys_params.copy()
     params.open(fields=['f_history_item'])
@@ -337,6 +336,3 @@ def load_task(task, app, first_build=True, after_import=False):
             shutil.rmtree(internal_path)
         except:
             pass
-
-    task.pool.dispose()
-    task.pool = None

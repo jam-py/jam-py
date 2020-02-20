@@ -41,6 +41,8 @@
             this.$element = $(element)
                 .delegate('[data-dismiss="modal"]', 'click.dismiss.modal', $.proxy(this.hide, this));
 
+            this.$element.data('modal', this);
+
             this.options.remote && this.$element.find('.modal-body').load(this.options.remote);
 
             manager = $('body').data('modalmanager');

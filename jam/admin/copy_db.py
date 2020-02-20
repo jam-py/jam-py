@@ -96,10 +96,10 @@ def copy_database(task, dbtype, connection, limit = 1000):
                         elif field.data_type == consts.DATETIME and type(r[j]) == text_type:
                             r[j] = consts.convert_date_time(r[j])
                         elif field.data_type in [consts.LONGTEXT, consts.KEYS]:
-                            if task.db.DATABASE == 'FIREBIRD':
+                            if task.db.db_type == consts.FIREBIRD:
                                 if type(r[j]) == text_type:
                                     r[j] = to_bytes(r[j], 'utf-8')
-                            elif db.DATABASE == 'FIREBIRD':
+                            elif db.db_type == consts.FIREBIRD:
                                 if type(r[j]) == bytes:
                                     r[j] = to_unicode(r[j], 'utf-8')
                     j += 1

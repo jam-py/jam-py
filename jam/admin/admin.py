@@ -261,7 +261,7 @@ def change_item_query(delta, old_fields, new_fields):
                     if type(sql) in (list, tuple):
                         result += sql
                     else:
-                        result.append()
+                        result.append(sql)
         for key, (old_field, new_field) in iteritems(comp):
             if not old_field and new_field:
                 result.append(db.add_field(table_name, new_field))
@@ -349,7 +349,7 @@ def create_index(delta, table_name, fields=None, new_fields=None, foreign_key_di
         if delta.f_unique_index.value:
             unique = 'UNIQUE'
         fields = delta.load_index_fields(index_fields)
-        if db.DATABASE == 'FIREBIRD':
+        if db.db_type == consts.FIREBIRD:
             if new_fields:
                 field_defs = [new_field_name_by_id(field[0]) for field in fields]
             else:

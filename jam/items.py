@@ -441,9 +441,11 @@ class Report(AbstrReport, ParamReport, Report):
 
 
 class DBInfo(object):
-    def __init__(self, server = '', database = '', user = '', password = '',
-        host='', port='', encoding=''):
+    def __init__(self, dns='', server = '', lib=None, database = '',
+        user = '', password = '', host='', port='', encoding=''):
+        self.dns = dns
         self.server = server
+        self.lib = lib
         self.database = database
         self.user = user
         self.password = password
@@ -459,7 +461,7 @@ class DBInfo(object):
 
 
 class AbstractServerTask(AbstrTask):
-    def __init__(self, app, name, caption, db_type, db_info, con_pool_size=1, persist_con=True):
+    def __init__(self, app, name, caption):
         AbstrTask.__init__(self, None, None, None)
         self.app = app
         self.items = []
@@ -468,24 +470,16 @@ class AbstractServerTask(AbstrTask):
         self.item_name = name
         self.item_caption = caption
         self.visible = True
-        self.db_type = db_type
-        self.db_info = db_info
-        self.db = get_database(self.db_type)
         self.on_before_request = None
         self.on_after_request = None
         self.on_open = None
         self.on_apply = None
         self.on_count = None
         self.work_dir = app.work_dir
-        self.con_pool_size = 0
         self.modules = []
-        self.con_pool_size = con_pool_size
-        self.persist_con = persist_con
-        self.create_pool()
-        if self.db_type == consts.SQLITE:
-            self.db_info.database = os.path.join(self.work_dir, self.db_info.database)
         self.log = app.log
         self.consts = consts
+        self.pool = None
 
     @property
     def version(self):
@@ -494,36 +488,29 @@ class AbstractServerTask(AbstrTask):
     def get_child_class(self):
         return Group
 
-    def create_pool(self):
-        if self.persist_con:
+    def create_pool(self, db_type, db_info, con_pool_size=1, persist_con=True):
+        self.db_type = db_type
+        self.db_info = db_info
+        if db_type == consts.SQLITE:
+            self.db_info.database = os.path.join(self.work_dir, self.db_info.database)
+        self.db = get_database(db_type, db_info.lib)
+        if self.pool:
+            self.pool.dispose()
+        if persist_con:
             if self.db_type == consts.SQLITE:
-                self.pool = NullPool(self.getconn)
+                self.pool = NullPool(self.create_connection)
             else:
-                self.pool = QueuePool(self.getconn, pool_size=self.con_pool_size, \
-                    max_overflow=self.con_pool_size*2, recycle=60*60)
+                self.pool = QueuePool(self.create_connection, \
+                    pool_size=con_pool_size, max_overflow=con_pool_size*2, \
+                    recycle=60*60)
         else:
-            self.pool = NullPool(self.getconn)
+            self.pool = NullPool(self.create_connection)
 
     def create_connection(self):
         return self.db.connect(self.db_info)
 
-    def create_connection_ex(self, db, database, user=None, password=None, \
-        host=None, port=None, encoding=None, server=None):
-        db_info = DBInfo(server, database, user, password,
-            host, port, encoding, server)
-        return db.connect(db_info)
-
-    def getconn(self):
-        return self.create_connection()
-
     def connect(self):
-        try:
-            return self.pool.connect()
-        except Exception as e:
-            # ~ self.log.exception(error_message(e))
-            if self.pool is None:
-                self.app.create_connection_pool()
-                return self.pool.connect()
+        return self.pool.connect()
 
     def __execute_query_list(self, cursor, query_list):
         for query in query_list:
@@ -642,14 +629,11 @@ class AbstractServerTask(AbstrTask):
         return converted
 
 class Task(AbstractServerTask):
-    def __init__(self, app, name, caption, db_type, db_info,
-        con_pool_size=4, persist_con=True):
-        AbstractServerTask.__init__(self, app, name, caption,
-            db_type, db_info, con_pool_size, persist_con)
+    def __init__(self, app, name, caption):
+        AbstractServerTask.__init__(self, app, name, caption)
         self.on_created = None
         self.on_login = None
         self.on_ext_request = None
-        self.compress_history = True
         self.init_dict = {}
         for key, value in iteritems(self.__dict__):
             self.init_dict[key] = value
@@ -665,8 +649,9 @@ class Task(AbstractServerTask):
 class AdminTask(AbstractServerTask):
     def __init__(self, app, name, caption, db_type, db_database = ''):
         db_info = DBInfo(database=db_database)
-        AbstractServerTask.__init__(self, app, name, caption, db_type, db_info)
+        AbstractServerTask.__init__(self, app, name, caption)
         self.timeout = 43200
+        self.create_pool(db_type, db_info)
 
 class Detail(AbstrDetail, ServerDataset):
     def __init__(self, task, owner, name='', caption='', table_name=''):

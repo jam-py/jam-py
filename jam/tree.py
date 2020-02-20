@@ -186,10 +186,13 @@ class AbstractItem(object):
         except:
             return False
 
-    def execute_query(self, cursor, query, params=None):
+    def execute_query(self, cursor, query, params=None, arg_params=False):
         try:
             if params:
-                cursor.execute(query, params)
+                if arg_params:
+                    cursor.execute(query, *params)
+                else:
+                    cursor.execute(query, params)
             else:
                 cursor.execute(query)
         except Exception as x:

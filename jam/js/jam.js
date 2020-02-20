@@ -1251,6 +1251,10 @@
             }
         }
 
+        update_form(form) {
+            form.modal('layout');
+        }
+
         disable_edit_form() {
             this._disable_form(this.edit_form);
         }
@@ -1777,7 +1781,7 @@
 
         abort(message) {
             message = message ? ' - ' + message : '';
-            throw 'execution aborted: ' + this.item_name + message;
+            throw 'aborted: ' + this.item_name + message;
         }
 
         log_message(message) {
@@ -6487,7 +6491,7 @@
                 try {
                     this.post();
                     this.apply(options.apply_params, function(error) {
-                        if (error) {
+                        if (error && error.indexOf('aborted:') !== 0) {
                             self.alert_error(error, {duration: 10});
                             this.enable_edit_form();
                             self.edit();
@@ -6508,7 +6512,9 @@
                 }
                 catch (e) {
                     console.error(e);
-                    this.alert_error(e);
+                    if (e && e.indexOf('aborted:') !== 0) {
+                        this.alert_error(e);
+                    }
                     if (this.edit_form_disabled()) {
                         this.enable_edit_form();
                         this.edit();
@@ -8858,6 +8864,22 @@
                 }
             }
             return true;
+        }
+
+        hide(update_form) {
+            this.controls.forEach(function(control) {
+                if (control.hide) {
+                    control.hide(update_form);
+                }
+            })
+        }
+
+        show(update_form) {
+            this.controls.forEach(function(control) {
+                if (control.show) {
+                    control.show(update_form);
+                }
+            })
         }
 
         round(num, dec) {
@@ -12412,7 +12434,7 @@
             } else if (field_type === consts.IMAGE) {
                 $input = $('<div>');
             } else if (field.lookup_data_type === consts.LONGTEXT) {
-                $input = $('<textarea>').attr('rows', 3)
+                $input = $('<textarea>').height('4.5em');
             } else {
                 $input = $('<input>').attr("type", "text")
             }
@@ -12910,7 +12932,6 @@
                     this.$input.attr('placeholder', placeholder);
                     this.updateState(true);
                 }
-                //~ this.changed = false;
             }
             if (state === consts.UPDATE_CLOSE) {
                 this.$input.val('');
@@ -12950,6 +12971,18 @@
             }
         }
 
+        changed() {
+            if (this.field.lookup_item || this.field.lookup_values) {
+                if (this.$input.val() !== this.field.display_text) {
+                    return true
+                }
+            } else {
+                if (this.$input.val() !== this.field.text) {
+                    return true
+                }
+            }
+        }
+
         keyup(e) {
             var typeahead,
                 code = (e.keyCode ? e.keyCode : e.which);
@@ -12981,7 +13014,7 @@
                         e.stopPropagation();
                     }
                 }
-                else {//if (this.changed) {
+                else if (this.changed()) {
                     this.update();
                     this.$input.select();
                     e.preventDefault();
@@ -13081,7 +13114,6 @@
                                 }
                             }
                         }
-                        //~ this.changed = false;
                     }
                 } catch (e) {
                     this.errorValue = text;
@@ -13124,13 +13156,12 @@
 
         focus_out(e) {
             var result = false;
-
-            //~ if (!this.changed) {
-                //~ if (this.field.field_kind !== consts.ITEM_FIELD || this.field.owner.rec_count) {
-                    //~ this.$input.val(this.field.display_text);
-                //~ }
-                //~ return;
-            //~ }
+            if (!this.changed()) {
+                if (this.field.field_kind !== consts.ITEM_FIELD || this.field.owner.rec_count) {
+                    this.$input.val(this.field.display_text);
+                }
+                return;
+            }
             if (this.table && this.table.edit_mode) {
                 this.table.close_editor();
                 result = true;
@@ -13145,6 +13176,25 @@
             }
             this.updateState(result);
             return result;
+        }
+
+        update_form(update) {
+            if (update) {
+                let form = this.$input.closest('.jam-form');
+                if (form.hasClass('modal')) {
+                    this.field.owner.update_form(form);
+                }
+            }
+        }
+
+        hide(update_form) {
+            this.$input.closest('.control-group').hide();
+            this.update_form(update_form);
+        }
+
+        show(update_form) {
+            this.$input.closest('.control-group').show();
+            this.update_form(update_form);
         }
 
         updateState(value) {

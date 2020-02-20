@@ -97,10 +97,10 @@ def init_task_attr(task):
     tasks = task.sys_tasks.copy()
     tasks.open()
     task.task_db_type = tasks.f_db_type.value
-    task.task_db_info = DBInfo(tasks.f_server.value, tasks.f_alias.value,
-        tasks.f_login.value, tasks.f_password.value, tasks.f_host.value,
-        tasks.f_port.value, tasks.f_encoding.value)
-    task.task_db_module = get_database(task.task_db_type)
+    task.task_db_info = DBInfo(tasks.f_dns.value, tasks.f_server.value, tasks.f_python_library.value,
+        tasks.f_alias.value, tasks.f_login.value, tasks.f_password.value,
+        tasks.f_host.value, tasks.f_port.value, tasks.f_encoding.value)
+    task.task_db_module = get_database(task.task_db_type, task.task_db_info.lib)
 
 def on_created(task):
     save_caption_keys(task)
@@ -201,12 +201,12 @@ def user_valid_uuid(task, user_id, session_uuid):
 #                                 task                                        #
 ###############################################################################
 
-def server_check_connection(task, db_type, database, user, password, host, port, encoding, server):
+def server_check_connection(task, db_type, database, user, password, host, port, encoding, server, lib, dns):
     error = ''
     if db_type:
         try:
-            db = get_database(db_type)
-            db_info = DBInfo(server, database, user, password, host, port, encoding)
+            db_info = DBInfo(dns, server, lib, database, user, password, host, port, encoding)
+            db = get_database(db_type, db_info.lib)
             connection = db.connect(db_info)
             if connection:
                 connection.close()
@@ -762,27 +762,10 @@ def server_save_file(task, file_name, code):
         change_theme(task)
     return result
 
-def server_get_db_options(task, db_type):
-    error = ''
-    try:
-        result = {}
-        db = get_database(db_type)
-        result['DATABASE'] = db.DATABASE
-        result['NEED_DATABASE_NAME'] = db.NEED_DATABASE_NAME
-        result['NEED_LOGIN'] = db.NEED_LOGIN
-        result['NEED_PASSWORD'] = db.NEED_PASSWORD
-        result['NEED_ENCODING'] = db.NEED_ENCODING
-        result['NEED_HOST'] = db.NEED_HOST
-        result['NEED_PORT'] = db.NEED_PORT
-        result['CAN_CHANGE_TYPE'] = db.CAN_CHANGE_TYPE
-        result['CAN_CHANGE_SIZE'] = db.CAN_CHANGE_SIZE
-        result['NEED_GENERATOR'] = db.NEED_GENERATOR
-        if hasattr(db, 'get_table_info'):
-            result['IMPORT_SUPPORT'] = True
-        return result, error
-    except Exception as e:
-        task.log.exception(e)
-        return None, str(e)
+def server_get_db_params(task, db_type, lib):
+    db = get_database(db_type, lib)
+    result = db.get_params(lib)
+    return result
 
 def server_get_task_info(task):
     items = task.sys_items.copy()
@@ -893,8 +876,6 @@ def do_on_apply_param_changes(item, delta, params, connection):
     language = consts.LANGUAGE
     debugging = consts.DEBUGGING
     version = consts.VERSION
-    # single_file_js = consts.SINGLE_FILE_JS
-    # compressed_js = consts.COMPRESSED_JS
     theme = consts.THEME
     small_font = consts.SMALL_FONT
 
@@ -907,13 +888,9 @@ def do_on_apply_param_changes(item, delta, params, connection):
     connection.commit()
 
     consts.read_settings()
+    init_task_attr(task)
     task.app.save_build_id()
 
-    # if compressed_js != consts.COMPRESSED_JS:
-    #     set_client_modified(task)
-    # if single_file_js != consts.SINGLE_FILE_JS:
-    #     set_client_modified(task)
-    #     set_server_modified(task)
     if version != consts.VERSION:
         update_version(task, consts.VERSION)
     if language != consts.LANGUAGE:
@@ -1898,7 +1875,7 @@ def register_events(task):
     task.register(server_save_file)
     task.register(get_fields_next_id)
     task.register(get_lookup_list)
-    task.register(server_get_db_options)
+    task.register(server_get_db_params)
     task.register(server_create_task)
     task.register(server_get_table_names)
     task.register(server_import_table)

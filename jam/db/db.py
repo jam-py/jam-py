@@ -8,15 +8,7 @@ from ..common import consts, error_message, json_defaul_handler
 class AbstractDB(object):
     def __init__(self):
         self.db_type = None
-        self.DATABASE = None
-        self.NEED_DATABASE_NAME = True
-        self.NEED_LOGIN = False
-        self.NEED_PASSWORD = False
-        self.NEED_ENCODING = False
-        self.NEED_HOST = False
-        self.NEED_PORT = False
-        self.CAN_CHANGE_TYPE = False
-        self.CAN_CHANGE_SIZE = False
+        self.db_info = None
         self.DDL_ROLLBACK = False
         self.NEED_GENERATOR = False
         self.FROM = '"%s" AS %s'
@@ -25,6 +17,27 @@ class AbstractDB(object):
         self.LIKE = 'LIKE'
         self.DESC_NULLS = None
         self.ASC_NULLS = None
+
+    @property
+    def params(self):
+        return {
+            'name': None,
+            'dns': False,
+            'lib': [],
+            'server': False,
+            'database': True,
+            'login': False,
+            'password': False,
+            'encoding': False,
+            'host': False,
+            'port': False,
+            'ddl_rollback': self.DDL_ROLLBACK,
+            'generator': self.NEED_GENERATOR,
+            'import_support': True
+        }
+    @property
+    def arg_params(self):
+        return False
 
     def connect(self, db_info):
         pass
@@ -133,7 +146,7 @@ class AbstractDB(object):
         values = ', '.join(values)
         sql = self.insert_query(pk) % (delta.table_name, fields, values)
         row = self.process_query_params(row, cursor)
-        delta.execute_query(cursor, sql, row)
+        delta.execute_query(cursor, sql, row, arg_params=self.arg_params)
         self.after_insert(cursor, pk)
         changes.append([delta.get_rec_info()[consts.REC_LOG_REC], delta._dataset[delta.rec_no], details_changes])
 
@@ -165,7 +178,7 @@ class AbstractDB(object):
         where = ' WHERE "%s" = %s' % (delta._primary_key_db_field_name, id_literal)
         sql = ''.join([command, fields, where])
         row = self.process_query_params(row, cursor)
-        delta.execute_query(cursor, sql, row)
+        delta.execute_query(cursor, sql, row, arg_params=self.arg_params)
         if delta.lock_active:
             delta.execute_query(cursor, 'SELECT "%s" FROM "%s" WHERE "%s"=%s' % \
                 (delta._record_version_db_field_name, delta.table_name, \
@@ -228,7 +241,7 @@ class AbstractDB(object):
                 changes = ('%s%s' % ('0', changes_str), consts.LONGTEXT)
             params = [item_id, delta._primary_key_field.value, delta.record_status, changes, user, datetime.datetime.now()]
             params = self.process_query_params(params, cursor)
-            delta.execute_query(cursor, delta.task.history_sql, params)
+            delta.execute_query(cursor, delta.task.history_sql, params, arg_params=self.arg_params)
 
     def update_deleted_detail(self, delta, detail, cursor):
         fields = [detail._primary_key]
@@ -274,7 +287,8 @@ class AbstractDB(object):
                 for d in detail:
                     params = [detail.prototype.ID, d._primary_key_field.data,
                         consts.RECORD_DELETED, None, self.get_user(delta), datetime.datetime.now()]
-                    delta.execute_query(cursor, delta.task.history_sql, self.process_query_params(params, cursor))
+                    delta.execute_query(cursor, delta.task.history_sql, \
+                        self.process_query_params(params, cursor), arg_params=self.arg_params)
             if len(detail.details):
                 for it in detail:
                     for d in detail.details:
@@ -681,7 +695,7 @@ class AbstractDB(object):
                     ord_str = self.identifier_case(field.field_name)
                 else:
                     if func:
-                        if self.DATABASE == 'MSSQL' and limit:
+                        if self.db_type == consts.MSSQL and limit:
                             ord_str = '%s(%s."%s")' %  (func, self.table_alias(item), field.db_field_name)
                         else:
                             ord_str = '"%s"' % field.db_field_name
