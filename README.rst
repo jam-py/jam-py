@@ -61,6 +61,9 @@ Demo on PythonAnywhere:
 
 * `Jam.py Assets/Parts Application (wip) <https://jampy.pythonanywhere.com>`_
 
+* `Jam.py alternative site <https://jampyapplicationbuilder.com/`
+
+
 Main features
 =============
 
