@@ -142,28 +142,31 @@ class ETagResponseMixin(object):
         """
         from ..exceptions import RequestedRangeNotSatisfiable
 
-        if accept_ranges is None:
+        if (
+            accept_ranges is None
+            or complete_length is None
+            or not self._is_range_request_processable(environ)
+        ):
             return False
-        self.headers["Accept-Ranges"] = accept_ranges
-        if not self._is_range_request_processable(environ) or complete_length is None:
-            return False
+
         parsed_range = parse_range_header(environ.get("HTTP_RANGE"))
+
         if parsed_range is None:
             raise RequestedRangeNotSatisfiable(complete_length)
+
         range_tuple = parsed_range.range_for_length(complete_length)
         content_range_header = parsed_range.to_content_range_header(complete_length)
+
         if range_tuple is None or content_range_header is None:
             raise RequestedRangeNotSatisfiable(complete_length)
+
         content_length = range_tuple[1] - range_tuple[0]
-        # Be sure not to send 206 response
-        # if requested range is the full content.
-        if content_length != complete_length:
-            self.headers["Content-Length"] = content_length
-            self.content_range = content_range_header
-            self.status_code = 206
-            self._wrap_response(range_tuple[0], content_length)
-            return True
-        return False
+        self.headers["Content-Length"] = content_length
+        self.headers["Accept-Ranges"] = accept_ranges
+        self.content_range = content_range_header
+        self.status_code = 206
+        self._wrap_response(range_tuple[0], content_length)
+        return True
 
     def make_conditional(
         self, request_or_environ, accept_ranges=False, complete_length=None
@@ -268,7 +271,15 @@ class ETagResponseMixin(object):
         .. versionadded:: 0.7""",
     )
 
-    def _get_content_range(self):
+    @property
+    def content_range(self):
+        """The ``Content-Range`` header as a
+        :class:`~werkzeug.datastructures.ContentRange` object. Available
+        even if the header is not set.
+
+        .. versionadded:: 0.7
+        """
+
         def on_update(rng):
             if not rng:
                 del self.headers["content-range"]
@@ -283,22 +294,11 @@ class ETagResponseMixin(object):
             rv = ContentRange(None, None, None, on_update=on_update)
         return rv
 
-    def _set_content_range(self, value):
+    @content_range.setter
+    def content_range(self, value):
         if not value:
             del self.headers["content-range"]
         elif isinstance(value, string_types):
             self.headers["Content-Range"] = value
         else:
             self.headers["Content-Range"] = value.to_header()
-
-    content_range = property(
-        _get_content_range,
-        _set_content_range,
-        doc="""The ``Content-Range`` header as
-        :class:`~werkzeug.datastructures.ContentRange` object. Even if
-        the header is not set it wil provide such an object for easier
-        manipulation.
-
-        .. versionadded:: 0.7""",
-    )
-    del _get_content_range, _set_content_range

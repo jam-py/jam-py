@@ -1,5 +1,5 @@
 # util/deprecations.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,11 +9,12 @@
 functionality."""
 
 import re
-import textwrap
 import warnings
 
 from . import compat
 from .langhelpers import decorator
+from .langhelpers import inject_docstring_text
+from .langhelpers import inject_param_text
 from .. import exc
 
 
@@ -21,8 +22,10 @@ def warn_deprecated(msg, stacklevel=3):
     warnings.warn(msg, exc.SADeprecationWarning, stacklevel=stacklevel)
 
 
-def warn_pending_deprecation(msg, stacklevel=3):
-    warnings.warn(msg, exc.SAPendingDeprecationWarning, stacklevel=stacklevel)
+def warn_deprecated_20(msg, stacklevel=3):
+    msg += " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
+
+    warnings.warn(msg, exc.RemovedIn20Warning, stacklevel=stacklevel)
 
 
 def deprecated_cls(version, message, constructor="__init__"):
@@ -40,7 +43,26 @@ def deprecated_cls(version, message, constructor="__init__"):
     return decorate
 
 
-def deprecated(version, message=None, add_deprecation_to_docstring=True):
+def deprecated_20_cls(clsname, alternative=None, constructor="__init__"):
+    message = (
+        ".. deprecated:: 2.0 The %s class is considered legacy as of the "
+        "1.x series of SQLAlchemy and will be removed in 2.0." % clsname
+    )
+
+    if alternative:
+        message += " " + alternative
+
+    def decorate(cls):
+        return _decorate_cls_with_warning(
+            cls, constructor, exc.RemovedIn20Warning, message, message
+        )
+
+    return decorate
+
+
+def deprecated(
+    version, message=None, add_deprecation_to_docstring=True, warning=None
+):
     """Decorates a function and issues a deprecation warning on use.
 
     :param version:
@@ -65,15 +87,29 @@ def deprecated(version, message=None, add_deprecation_to_docstring=True):
     if message is None:
         message = "Call to deprecated function %(func)s"
 
+    if warning is None:
+        warning = exc.SADeprecationWarning
+
     def decorate(fn):
         return _decorate_with_warning(
-            fn,
-            exc.SADeprecationWarning,
-            message % dict(func=fn.__name__),
-            header,
+            fn, warning, message % dict(func=fn.__name__), header
         )
 
     return decorate
+
+
+def deprecated_20(api_name, alternative=None, **kw):
+    message = (
+        "The %s function/method is considered legacy as of the "
+        "1.x series of SQLAlchemy and will be removed in 2.0." % api_name
+    )
+
+    if alternative:
+        message += " " + alternative
+
+    return deprecated(
+        "2.0", message=message, warning=exc.RemovedIn20Warning, **kw
+    )
 
 
 def deprecated_params(**specs):
@@ -93,8 +129,14 @@ def deprecated_params(**specs):
     """
 
     messages = {}
+    version_warnings = {}
     for param, (version, message) in specs.items():
         messages[param] = _sanitize_restructured_text(message)
+        version_warnings[param] = (
+            exc.RemovedIn20Warning
+            if version == "2.0"
+            else exc.SADeprecationWarning
+        )
 
     def decorate(fn):
         spec = compat.inspect_getfullargspec(fn)
@@ -111,19 +153,19 @@ def deprecated_params(**specs):
             check_defaults = ()
             check_kw = set(messages)
 
-        has_kw = spec.varkw is not None
-
         @decorator
         def warned(fn, *args, **kwargs):
             for m in check_defaults:
-                if kwargs[m] != defaults[m]:
+                if (defaults[m] is None and kwargs[m] is not None) or (
+                    defaults[m] is not None and kwargs[m] != defaults[m]
+                ):
                     warnings.warn(
-                        messages[m], exc.SADeprecationWarning, stacklevel=3
+                        messages[m], version_warnings[m], stacklevel=3
                     )
             for m in check_kw:
                 if m in kwargs:
                     warnings.warn(
-                        messages[m], exc.SADeprecationWarning, stacklevel=3
+                        messages[m], version_warnings[m], stacklevel=3
                     )
 
             return fn(*args, **kwargs)
@@ -140,44 +182,6 @@ def deprecated_params(**specs):
         decorated = warned(fn)
         decorated.__doc__ = doc
         return decorated
-
-    return decorate
-
-
-def pending_deprecation(
-    version, message=None, add_deprecation_to_docstring=True
-):
-    """Decorates a function and issues a pending deprecation warning on use.
-
-    :param version:
-      An approximate future version at which point the pending deprecation
-      will become deprecated.  Not used in messaging.
-
-    :param message:
-      If provided, issue message in the warning.  A sensible default
-      is used if not provided.
-
-    :param add_deprecation_to_docstring:
-      Default True.  If False, the wrapped function's __doc__ is left
-      as-is.  If True, the 'message' is prepended to the docs if
-      provided, or sensible default if message is omitted.
-    """
-
-    if add_deprecation_to_docstring:
-        header = ".. deprecated:: %s (pending) %s" % (version, (message or ""))
-    else:
-        header = None
-
-    if message is None:
-        message = "Call to deprecated function %(func)s"
-
-    def decorate(fn):
-        return _decorate_with_warning(
-            fn,
-            exc.SAPendingDeprecationWarning,
-            message % dict(func=fn.__name__),
-            header,
-        )
 
     return decorate
 
@@ -205,25 +209,36 @@ def _decorate_cls_with_warning(
 ):
     doc = cls.__doc__ is not None and cls.__doc__ or ""
     if docstring_header is not None:
-        docstring_header %= dict(func=constructor)
 
+        if constructor is not None:
+            docstring_header %= dict(func=constructor)
+
+        if issubclass(wtype, exc.RemovedIn20Warning):
+            docstring_header += (
+                " (Background on SQLAlchemy 2.0 at: "
+                ":ref:`migration_20_toplevel`)"
+            )
         doc = inject_docstring_text(doc, docstring_header, 1)
 
         if type(cls) is type:
             clsdict = dict(cls.__dict__)
             clsdict["__doc__"] = doc
+            clsdict.pop("__dict__", None)
             cls = type(cls.__name__, cls.__bases__, clsdict)
-            constructor_fn = clsdict[constructor]
+            if constructor is not None:
+                constructor_fn = clsdict[constructor]
+
         else:
             cls.__doc__ = doc
-            constructor_fn = getattr(cls, constructor)
+            if constructor is not None:
+                constructor_fn = getattr(cls, constructor)
 
-    setattr(
-        cls,
-        constructor,
-        _decorate_with_warning(constructor_fn, wtype, message, None),
-    )
-
+        if constructor is not None:
+            setattr(
+                cls,
+                constructor,
+                _decorate_with_warning(constructor_fn, wtype, message, None),
+            )
     return cls
 
 
@@ -232,14 +247,29 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
 
     message = _sanitize_restructured_text(message)
 
+    if issubclass(wtype, exc.RemovedIn20Warning):
+        doc_only = (
+            " (Background on SQLAlchemy 2.0 at: "
+            ":ref:`migration_20_toplevel`)"
+        )
+        warning_only = (
+            " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
+        )
+    else:
+        doc_only = warning_only = ""
+
     @decorator
     def warned(fn, *args, **kwargs):
-        warnings.warn(message, wtype, stacklevel=3)
+        skip_warning = kwargs.pop("_sa_skip_warning", False)
+        if not skip_warning:
+            warnings.warn(message + warning_only, wtype, stacklevel=3)
         return fn(*args, **kwargs)
 
     doc = func.__doc__ is not None and func.__doc__ or ""
     if docstring_header is not None:
         docstring_header %= dict(func=func.__name__)
+
+        docstring_header += doc_only
 
         doc = inject_docstring_text(doc, docstring_header, 1)
 
@@ -247,64 +277,3 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
     decorated.__doc__ = doc
     decorated._sa_warn = lambda: warnings.warn(message, wtype, stacklevel=3)
     return decorated
-
-
-def _dedent_docstring(text):
-    split_text = text.split("\n", 1)
-    if len(split_text) == 1:
-        return text
-    else:
-        firstline, remaining = split_text
-    if not firstline.startswith(" "):
-        return firstline + "\n" + textwrap.dedent(remaining)
-    else:
-        return textwrap.dedent(text)
-
-
-def inject_docstring_text(doctext, injecttext, pos):
-    doctext = _dedent_docstring(doctext or "")
-    lines = doctext.split("\n")
-    injectlines = textwrap.dedent(injecttext).split("\n")
-    if injectlines[0]:
-        injectlines.insert(0, "")
-
-    blanks = [num for num, line in enumerate(lines) if not line.strip()]
-    blanks.insert(0, 0)
-
-    inject_pos = blanks[min(pos, len(blanks) - 1)]
-
-    lines = lines[0:inject_pos] + injectlines + lines[inject_pos:]
-    return "\n".join(lines)
-
-
-def inject_param_text(doctext, inject_params):
-    doclines = doctext.splitlines()
-    lines = []
-
-    to_inject = None
-    while doclines:
-        line = doclines.pop(0)
-        if to_inject is None:
-            m = re.match(r"(\s+):param (.+?):", line)
-            if m:
-                param = m.group(2)
-                if param in inject_params:
-                    # default indent to that of :param: plus one
-                    indent = " " * len(m.group(1)) + " "
-
-                    # but if the next line has text, use that line's
-                    # indentntation
-                    if doclines:
-                        m2 = re.match(r"(\s+)\S", doclines[0])
-                        if m2:
-                            indent = " " * len(m2.group(1))
-
-                    to_inject = indent + inject_params[param]
-        elif not line.rstrip():
-            lines.append(line)
-            lines.append(to_inject)
-            lines.append("\n")
-            to_inject = None
-        lines.append(line)
-
-    return "\n".join(lines)

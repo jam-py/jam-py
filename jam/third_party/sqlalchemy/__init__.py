@@ -1,16 +1,20 @@
 # sqlalchemy/__init__.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from . import util as _util  # noqa
+from .engine import create_engine  # noqa
+from .engine import create_mock_engine  # noqa
+from .engine import engine_from_config  # noqa
 from .inspection import inspect  # noqa
 from .schema import BLANK_SCHEMA  # noqa
 from .schema import CheckConstraint  # noqa
 from .schema import Column  # noqa
 from .schema import ColumnDefault  # noqa
+from .schema import Computed  # noqa
 from .schema import Constraint  # noqa
 from .schema import DDL  # noqa
 from .schema import DefaultClause  # noqa
@@ -19,7 +23,6 @@ from .schema import ForeignKey  # noqa
 from .schema import ForeignKeyConstraint  # noqa
 from .schema import Index  # noqa
 from .schema import MetaData  # noqa
-from .schema import PassiveDefault  # noqa
 from .schema import PrimaryKeyConstraint  # noqa
 from .schema import Sequence  # noqa
 from .schema import Table  # noqa
@@ -118,11 +121,8 @@ from .types import UnicodeText  # noqa
 from .types import VARBINARY  # noqa
 from .types import VARCHAR  # noqa
 
-from .engine import create_engine  # noqa nosort
-from .engine import engine_from_config  # noqa nosort
 
-
-__version__ = '1.3.0b3'
+__version__ = "1.4.0b1"
 
 
 def __go(lcls):

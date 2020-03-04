@@ -1,5 +1,5 @@
 # sql/sqltypes.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -14,13 +14,15 @@ import datetime as dt
 import decimal
 import json
 
+from . import coercions
 from . import elements
 from . import operators
+from . import roles
 from . import type_api
 from .base import _bind_or_error
+from .base import NO_ARG
 from .base import SchemaEventTarget
 from .elements import _defer_name
-from .elements import _literal_as_binds
 from .elements import quoted_name
 from .elements import Slice
 from .elements import TypeCoerce as type_coerce  # noqa
@@ -39,15 +41,11 @@ from ..util import compat
 from ..util import pickle
 
 
-if util.jython:
-    import array
-
-
 class _LookupExpressionAdapter(object):
 
     """Mixin expression adaptations based on lookup tables.
 
-    These rules are currenly used by the numeric, integer and date types
+    These rules are currently used by the numeric, integer and date types
     which have detailed cross-expression coercion rules.
 
     """
@@ -179,7 +177,7 @@ class String(Concatenable, TypeEngine):
           E.g.::
 
             >>> from sqlalchemy import cast, select, String
-            >>> print select([cast('some string', String(collation='utf8'))])
+            >>> print(select([cast('some string', String(collation='utf8'))]))
             SELECT CAST(:param_1 AS VARCHAR COLLATE utf8) AS anon_1
 
         :param convert_unicode: When set to ``True``, the
@@ -469,7 +467,7 @@ class Integer(_LookupExpressionAdapter, TypeEngine):
 
     def literal_processor(self, dialect):
         def process(value):
-            return str(value)
+            return str(int(value))
 
         return process
 
@@ -921,19 +919,7 @@ class _Binary(TypeEngine):
     if util.py2k:
 
         def result_processor(self, dialect, coltype):
-            if util.jython:
-
-                def process(value):
-                    if value is not None:
-                        if isinstance(value, array.array):
-                            return value.tostring()
-                        return str(value)
-                    else:
-                        return None
-
-            else:
-                process = processors.to_str
-            return process
+            return processors.to_str
 
     else:
 
@@ -1355,6 +1341,19 @@ class Enum(Emulated, String, SchemaType):
 
            .. versionadded:: 1.2.3
 
+        :param sort_key_function: a Python callable which may be used as the
+           "key" argument in the Python ``sorted()`` built-in.   The SQLAlchemy
+           ORM requires that primary key columns which are mapped must
+           be sortable in some way.  When using an unsortable enumeration
+           object such as a Python 3 ``Enum`` object, this parameter may be
+           used to set a default sort key function for the objects.  By
+           default, the database value of the enumeration is used as the
+           sorting function.
+
+            .. versionadded:: 1.3.8
+
+
+
         """
         self._enum_init(enums, kw)
 
@@ -1376,6 +1375,7 @@ class Enum(Emulated, String, SchemaType):
         self.native_enum = kw.pop("native_enum", True)
         self.create_constraint = kw.pop("create_constraint", True)
         self.values_callable = kw.pop("values_callable", None)
+        self._sort_key_function = kw.pop("sort_key_function", NO_ARG)
 
         values, objects = self._parse_into_values(enums, kw)
         self._setup_for_values(values, objects, kw)
@@ -1423,14 +1423,12 @@ class Enum(Emulated, String, SchemaType):
 
         if len(enums) == 1 and hasattr(enums[0], "__members__"):
             self.enum_class = enums[0]
+            members = self.enum_class.__members__
             if self.values_callable:
                 values = self.values_callable(self.enum_class)
             else:
-                values = list(self.enum_class.__members__)
-            objects = [
-                self.enum_class.__members__[k]
-                for k in self.enum_class.__members__
-            ]
+                values = list(members)
+            objects = [members[k] for k in members]
             return values, objects
         else:
             self.enum_class = None
@@ -1451,13 +1449,20 @@ class Enum(Emulated, String, SchemaType):
         )
 
     @property
+    def sort_key_function(self):
+        if self._sort_key_function is NO_ARG:
+            return self._db_value_for_elem
+        else:
+            return self._sort_key_function
+
+    @property
     def native(self):
         return self.native_enum
 
     def _db_value_for_elem(self, elem):
         try:
             return self._valid_lookup[elem]
-        except KeyError:
+        except KeyError as err:
             # for unknown string values, we return as is.  While we can
             # validate these if we wanted, that does not allow for lesser-used
             # end-user use cases, such as using a LIKE comparison with an enum,
@@ -1471,8 +1476,11 @@ class Enum(Emulated, String, SchemaType):
             ):
                 return elem
             else:
-                raise LookupError(
-                    '"%s" is not among the defined enum values' % elem
+                util.raise_(
+                    LookupError(
+                        '"%s" is not among the defined enum values' % elem
+                    ),
+                    replace_context=err,
                 )
 
     class Comparator(String.Comparator):
@@ -1491,9 +1499,12 @@ class Enum(Emulated, String, SchemaType):
     def _object_value_for_elem(self, elem):
         try:
             return self._object_lookup[elem]
-        except KeyError:
-            raise LookupError(
-                '"%s" is not among the defined enum values' % elem
+        except KeyError as err:
+            util.raise_(
+                LookupError(
+                    '"%s" is not among the defined enum values' % elem
+                ),
+                replace_context=err,
             )
 
     def __repr__(self):
@@ -1940,7 +1951,9 @@ class JSON(Indexable, TypeEngine):
                 data = {"key1": "value1", "key2": "value2"}
             )
 
-    The base :class:`.types.JSON` provides these two operations:
+    **JSON-Specific Expression Operators**
+
+    The :class:`.types.JSON` datatype provides these additional SQL operations:
 
     * Keyed index operations::
 
@@ -1954,63 +1967,70 @@ class JSON(Indexable, TypeEngine):
 
         data_table.c.data[('key_1', 'key_2', 5, ..., 'key_n')]
 
-    Additional operations are available from the dialect-specific versions
+    * Data casters for specific JSON element types, subsequent to an index
+      or path operation being invoked::
+
+        data_table.c.data["some key"].as_integer()
+
+      .. versionadded:: 1.3.11
+
+    Additional operations may be available from the dialect-specific versions
     of :class:`.types.JSON`, such as :class:`.postgresql.JSON` and
-    :class:`.postgresql.JSONB`, each of which offer more operators than
-    just the basic type.
+    :class:`.postgresql.JSONB` which both offer additional PostgreSQL-specific
+    operations.
 
-    Index operations return an expression object whose type defaults to
-    :class:`.JSON` by default, so that further JSON-oriented instructions may
-    be called upon the result type.   Note that there are backend-specific
-    idiosyncrasies here, including that the PostgreSQL database does not
-    generally compare a "json" to a "json" structure without type casts.  These
-    idiosyncrasies can be accommodated in a backend-neutral way by making
-    explicit use of the :func:`.cast` and :func:`.type_coerce` constructs.
-    Comparison of specific index elements of a :class:`.JSON` object to other
-    objects works best if the **left hand side is CAST to a string** and the
-    **right hand side is rendered as a JSON string**; a future SQLAlchemy
-    feature such as a generic "astext" modifier may simplify this at some
-    point:
+    **Casting JSON Elements to Other Types**
 
-    * **Compare an element of a JSON structure to a string**::
+    Index operations, i.e. those invoked by calling upon the expression using
+    the Python bracket operator as in ``some_column['some key']``, return an
+    expression object whose type defaults to :class:`.JSON` by default, so that
+    further JSON-oriented instructions may be called upon the result type.
+    However, it is likely more common that an index operation is expected
+    to return a specific scalar element, such as a string or integer.  In
+    order to provide access to these elements in a backend-agnostic way,
+    a series of data casters are provided:
 
-        from sqlalchemy import cast, type_coerce
-        from sqlalchemy import String, JSON
+    * :meth:`.JSON.Comparator.as_string` - return the element as a string
 
-        cast(
-            data_table.c.data['some_key'], String
-        ) == '"some_value"'
+    * :meth:`.JSON.Comparator.as_boolean` - return the element as a boolean
 
-        cast(
-            data_table.c.data['some_key'], String
-        ) == type_coerce("some_value", JSON)
+    * :meth:`.JSON.Comparator.as_float` - return the element as a float
 
-    * **Compare an element of a JSON structure to an integer**::
+    * :meth:`.JSON.Comparator.as_integer` - return the element as an integer
 
-        from sqlalchemy import cast, type_coerce
-        from sqlalchemy import String, JSON
+    These data casters are implemented by supporting dialects in order to
+    assure that comparisons to the above types will work as expected, such as::
 
-        cast(data_table.c.data['some_key'], String) == '55'
+        # integer comparison
+        data_table.c.data["some_integer_key"].as_integer() == 5
 
-        cast(
-            data_table.c.data['some_key'], String
-        ) == type_coerce(55, JSON)
+        # boolean comparison
+        data_table.c.data["some_boolean"].as_boolean() == True
 
-    * **Compare an element of a JSON structure to some other JSON structure**
-      - note that Python dictionaries are typically not ordered so care should
-      be taken here to assert that the JSON structures are identical::
+    .. versionadded:: 1.3.11 Added type-specific casters for the basic JSON
+       data element types.
 
-        from sqlalchemy import cast, type_coerce
-        from sqlalchemy import String, JSON
-        import json
+    .. note::
 
-        cast(
-            data_table.c.data['some_key'], String
-        ) == json.dumps({"foo": "bar"})
+        The data caster functions are new in version 1.3.11, and supersede
+        the previous documented approaches of using CAST; for reference,
+        this looked like::
 
-        cast(
-            data_table.c.data['some_key'], String
-        ) == type_coerce({"foo": "bar"}, JSON)
+           from sqlalchemy import cast, type_coerce
+           from sqlalchemy import String, JSON
+           cast(
+               data_table.c.data['some_key'], String
+           ) == type_coerce(55, JSON)
+
+        The above case now works directly as::
+
+            data_table.c.data['some_key'].as_integer() == 5
+
+        For details on the previous comparison approach within the 1.3.x
+        series, see the documentation for SQLAlchemy 1.2 or the included HTML
+        files in the doc/ directory of the version's distribution.
+
+    **Detecting Changes in JSON columns when using the ORM**
 
     The :class:`.JSON` type, when used with the SQLAlchemy ORM, does not
     detect in-place mutations to the structure.  In order to detect these, the
@@ -2018,6 +2038,8 @@ class JSON(Indexable, TypeEngine):
     allow "in-place" changes to the datastructure to produce events which
     will be detected by the unit of work.  See the example at :class:`.HSTORE`
     for a simple example involving a dictionary.
+
+    **Support for JSON null vs. SQL NULL**
 
     When working with NULL values, the :class:`.JSON` type recommends the
     use of two specific constants in order to differentiate between a column
@@ -2043,6 +2065,28 @@ class JSON(Indexable, TypeEngine):
     values, but care must be taken as to the value of the
     :paramref:`.JSON.none_as_null` in these cases.
 
+    **Customizing the JSON Serializer**
+
+    The JSON serializer and deserializer used by :class:`.JSON` defaults to
+    Python's ``json.dumps`` and ``json.loads`` functions; in the case of the
+    psycopg2 dialect, psycopg2 may be using its own custom loader function.
+
+    In order to affect the serializer / deserializer, they are currently
+    configurable at the :func:`.create_engine` level via the
+    :paramref:`.create_engine.json_serializer` and
+    :paramref:`.create_engine.json_deserializer` parameters.  For example,
+    to turn off ``ensure_ascii``::
+
+        engine = create_engine(
+            "sqlite://",
+            json_serializer=lambda obj: json.dumps(obj, ensure_ascii=False))
+
+    .. versionchanged:: 1.3.7
+
+        SQLite dialect's ``json_serializer`` and ``json_deserializer``
+        parameters renamed from ``_json_serializer`` and
+        ``_json_deserializer``.
+
     .. seealso::
 
         :class:`.postgresql.JSON`
@@ -2050,6 +2094,8 @@ class JSON(Indexable, TypeEngine):
         :class:`.postgresql.JSONB`
 
         :class:`.mysql.JSON`
+
+        :class:`.sqlite.JSON`
 
     .. versionadded:: 1.1
 
@@ -2187,24 +2233,121 @@ class JSON(Indexable, TypeEngine):
             if not isinstance(index, util.string_types) and isinstance(
                 index, compat.collections_abc.Sequence
             ):
-                index = default_comparator._check_literal(
-                    self.expr,
-                    operators.json_path_getitem_op,
+                index = coercions.expect(
+                    roles.BinaryElementRole,
                     index,
+                    expr=self.expr,
+                    operator=operators.json_path_getitem_op,
                     bindparam_type=JSON.JSONPathType,
                 )
 
                 operator = operators.json_path_getitem_op
             else:
-                index = default_comparator._check_literal(
-                    self.expr,
-                    operators.json_getitem_op,
+                index = coercions.expect(
+                    roles.BinaryElementRole,
                     index,
+                    expr=self.expr,
+                    operator=operators.json_getitem_op,
                     bindparam_type=JSON.JSONIndexType,
                 )
                 operator = operators.json_getitem_op
 
             return operator, index, self.type
+
+        def as_boolean(self):
+            """Cast an indexed value as boolean.
+
+            e.g.::
+
+                stmt = select([
+                    mytable.c.json_column['some_data'].as_boolean()
+                ]).where(
+                    mytable.c.json_column['some_data'].as_boolean() == True
+                )
+
+            .. versionadded:: 1.3.11
+
+            """
+            return self._binary_w_type(Boolean(), "as_boolean")
+
+        def as_string(self):
+            """Cast an indexed value as string.
+
+            e.g.::
+
+                stmt = select([
+                    mytable.c.json_column['some_data'].as_string()
+                ]).where(
+                    mytable.c.json_column['some_data'].as_string() ==
+                    'some string'
+                )
+
+            .. versionadded:: 1.3.11
+
+            """
+            return self._binary_w_type(String(), "as_string")
+
+        def as_integer(self):
+            """Cast an indexed value as integer.
+
+            e.g.::
+
+                stmt = select([
+                    mytable.c.json_column['some_data'].as_integer()
+                ]).where(
+                    mytable.c.json_column['some_data'].as_integer() == 5
+                )
+
+            .. versionadded:: 1.3.11
+
+            """
+            return self._binary_w_type(Integer(), "as_integer")
+
+        def as_float(self):
+            """Cast an indexed value as float.
+
+            e.g.::
+
+                stmt = select([
+                    mytable.c.json_column['some_data'].as_float()
+                ]).where(
+                    mytable.c.json_column['some_data'].as_float() == 29.75
+                )
+
+            .. versionadded:: 1.3.11
+
+            """
+            # note there's no Numeric or Decimal support here yet
+            return self._binary_w_type(Float(), "as_float")
+
+        def as_json(self):
+            """Cast an indexed value as JSON.
+
+            This is the default behavior of indexed elements in any case.
+
+            Note that comparison of full JSON structures may not be
+            supported by all backends.
+
+            .. versionadded:: 1.3.11
+
+            """
+            return self.expr
+
+        def _binary_w_type(self, typ, method_name):
+            if not isinstance(
+                self.expr, elements.BinaryExpression
+            ) or self.expr.operator not in (
+                operators.json_getitem_op,
+                operators.json_path_getitem_op,
+            ):
+                raise exc.InvalidRequestError(
+                    "The JSON cast operator JSON.%s() only works with a JSON "
+                    "index expression e.g. col['q'].%s()"
+                    % (method_name, method_name)
+                )
+            expr = self.expr._clone()
+            expr.type = typ
+            return expr
 
     comparator_factory = Comparator
 
@@ -2214,7 +2357,12 @@ class JSON(Indexable, TypeEngine):
 
     @property
     def should_evaluate_none(self):
+        """Alias of :attr:`.JSON.none_as_null`"""
         return not self.none_as_null
+
+    @should_evaluate_none.setter
+    def should_evaluate_none(self, value):
+        self.none_as_null = not value
 
     @util.memoized_property
     def _str_impl(self):
@@ -2367,17 +2515,20 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                 if self.type.zero_indexes:
                     index = slice(index.start + 1, index.stop + 1, index.step)
                 index = Slice(
-                    _literal_as_binds(
+                    coercions.expect(
+                        roles.ExpressionElementRole,
                         index.start,
                         name=self.expr.key,
                         type_=type_api.INTEGERTYPE,
                     ),
-                    _literal_as_binds(
+                    coercions.expect(
+                        roles.ExpressionElementRole,
                         index.stop,
                         name=self.expr.key,
                         type_=type_api.INTEGERTYPE,
                     ),
-                    _literal_as_binds(
+                    coercions.expect(
+                        roles.ExpressionElementRole,
                         index.step,
                         name=self.expr.key,
                         type_=type_api.INTEGERTYPE,
@@ -2433,7 +2584,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             """
             operator = operator if operator else operators.eq
             return operator(
-                elements._literal_as_binds(other),
+                coercions.expect(roles.ExpressionElementRole, other),
                 elements.CollectionAggregate._create_any(self.expr),
             )
 
@@ -2468,7 +2619,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             """
             operator = operator if operator else operators.eq
             return operator(
-                elements._literal_as_binds(other),
+                coercions.expect(roles.ExpressionElementRole, other),
                 elements.CollectionAggregate._create_all(self.expr),
             )
 

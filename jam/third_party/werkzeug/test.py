@@ -10,6 +10,7 @@
 """
 import mimetypes
 import sys
+from collections import defaultdict
 from io import BytesIO
 from itertools import chain
 from random import random
@@ -30,7 +31,6 @@ from .datastructures import CallbackDict
 from .datastructures import CombinedMultiDict
 from .datastructures import EnvironHeaders
 from .datastructures import FileMultiDict
-from .datastructures import FileStorage
 from .datastructures import Headers
 from .datastructures import MultiDict
 from .http import dump_cookie
@@ -142,23 +142,6 @@ def encode_multipart(values, boundary=None, charset="utf-8"):
         values, use_tempfile=False, boundary=boundary, charset=charset
     )
     return boundary, stream.read()
-
-
-def File(fd, filename=None, mimetype=None):
-    """Backwards compat.
-
-    .. deprecated:: 0.5
-    """
-    from warnings import warn
-
-    warn(
-        "'werkzeug.test.File' is deprecated as of version 0.5 and will"
-        " be removed in version 1.0. Use 'EnvironBuilder' or"
-        " 'FileStorage' instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return FileStorage(fd, filename=filename, content_type=mimetype)
 
 
 class _TestCookieHeaders(object):
@@ -457,21 +440,6 @@ class EnvironBuilder(object):
         """Called in the EnvironBuilder to add files from the data dict."""
         if isinstance(value, tuple):
             self.files.add_file(key, *value)
-        elif isinstance(value, dict):
-            from warnings import warn
-
-            warn(
-                "Passing a dict as file data is deprecated as of"
-                " version 0.5 and will be removed in version 1.0. Use"
-                " a tuple or 'FileStorage' object instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            value = dict(value)
-            mimetype = value.pop("mimetype", None)
-            if mimetype is not None:
-                value["content_type"] = mimetype
-            self.files.add_file(key, **value)
         else:
             self.files.add_file(key, value)
 
@@ -500,161 +468,161 @@ class EnvironBuilder(object):
         self.host = netloc
         self.url_scheme = scheme
 
-    def _get_content_type(self):
+    @property
+    def content_type(self):
+        """The content type for the request.  Reflected from and to
+        the :attr:`headers`.  Do not set if you set :attr:`files` or
+        :attr:`form` for auto detection.
+        """
         ct = self.headers.get("Content-Type")
         if ct is None and not self._input_stream:
             if self._files:
                 return "multipart/form-data"
-            elif self._form:
+            if self._form:
                 return "application/x-www-form-urlencoded"
             return None
         return ct
 
-    def _set_content_type(self, value):
+    @content_type.setter
+    def content_type(self, value):
         if value is None:
             self.headers.pop("Content-Type", None)
         else:
             self.headers["Content-Type"] = value
 
-    content_type = property(
-        _get_content_type,
-        _set_content_type,
-        doc="""The content type for the request.  Reflected from and to
-        the :attr:`headers`.  Do not set if you set :attr:`files` or
-        :attr:`form` for auto detection.""",
-    )
-    del _get_content_type, _set_content_type
+    @property
+    def mimetype(self):
+        """The mimetype (content type without charset etc.)
 
-    def _get_content_length(self):
-        return self.headers.get("Content-Length", type=int)
-
-    def _get_mimetype(self):
+        .. versionadded:: 0.14
+        """
         ct = self.content_type
-        if ct:
-            return ct.split(";")[0].strip()
+        return ct.split(";")[0].strip() if ct else None
 
-    def _set_mimetype(self, value):
+    @mimetype.setter
+    def mimetype(self, value):
         self.content_type = get_content_type(value, self.charset)
 
-    def _get_mimetype_params(self):
+    @property
+    def mimetype_params(self):
+        """ The mimetype parameters as dict.  For example if the
+        content type is ``text/html; charset=utf-8`` the params would be
+        ``{'charset': 'utf-8'}``.
+
+        .. versionadded:: 0.14
+        """
+
         def on_update(d):
             self.headers["Content-Type"] = dump_options_header(self.mimetype, d)
 
         d = parse_options_header(self.headers.get("content-type", ""))[1]
         return CallbackDict(d, on_update)
 
-    mimetype = property(
-        _get_mimetype,
-        _set_mimetype,
-        doc="""The mimetype (content type without charset etc.)
+    @property
+    def content_length(self):
+        """The content length as integer.  Reflected from and to the
+        :attr:`headers`.  Do not set if you set :attr:`files` or
+        :attr:`form` for auto detection.
+        """
+        return self.headers.get("Content-Length", type=int)
 
-        .. versionadded:: 0.14
-    """,
-    )
-    mimetype_params = property(
-        _get_mimetype_params,
-        doc=""" The mimetype parameters as dict.  For example if the
-        content type is ``text/html; charset=utf-8`` the params would be
-        ``{'charset': 'utf-8'}``.
-
-        .. versionadded:: 0.14
-        """,
-    )
-    del _get_mimetype, _set_mimetype, _get_mimetype_params
-
-    def _set_content_length(self, value):
+    @content_length.setter
+    def content_length(self, value):
         if value is None:
             self.headers.pop("Content-Length", None)
         else:
             self.headers["Content-Length"] = str(value)
 
-    content_length = property(
-        _get_content_length,
-        _set_content_length,
-        doc="""The content length as integer.  Reflected from and to the
-        :attr:`headers`.  Do not set if you set :attr:`files` or
-        :attr:`form` for auto detection.""",
-    )
-    del _get_content_length, _set_content_length
+    def _get_form(self, name, storage):
+        """Common behavior for getting the :attr:`form` and
+        :attr:`files` properties.
 
-    def form_property(name, storage, doc):  # noqa: B902
-        key = "_" + name
+        :param name: Name of the internal cached attribute.
+        :param storage: Storage class used for the data.
+        """
+        if self.input_stream is not None:
+            raise AttributeError("an input stream is defined")
 
-        def getter(self):
-            if self._input_stream is not None:
-                raise AttributeError("an input stream is defined")
-            rv = getattr(self, key)
-            if rv is None:
-                rv = storage()
-                setattr(self, key, rv)
+        rv = getattr(self, name)
 
-            return rv
+        if rv is None:
+            rv = storage()
+            setattr(self, name, rv)
 
-        def setter(self, value):
-            self._input_stream = None
-            setattr(self, key, value)
+        return rv
 
-        return property(getter, setter, doc=doc)
+    def _set_form(self, name, value):
+        """Common behavior for setting the :attr:`form` and
+        :attr:`files` properties.
 
-    form = form_property("form", MultiDict, doc="A :class:`MultiDict` of form values.")
-    files = form_property(
-        "files",
-        FileMultiDict,
-        doc="""A :class:`FileMultiDict` of uploaded files.  You can use
-        the :meth:`~FileMultiDict.add_file` method to add new files to
-        the dict.""",
-    )
-    del form_property
+        :param name: Name of the internal cached attribute.
+        :param value: Value to assign to the attribute.
+        """
+        self._input_stream = None
+        setattr(self, name, value)
 
-    def _get_input_stream(self):
+    @property
+    def form(self):
+        """A :class:`MultiDict` of form values."""
+        return self._get_form("_form", MultiDict)
+
+    @form.setter
+    def form(self, value):
+        self._set_form("_form", value)
+
+    @property
+    def files(self):
+        """A :class:`FileMultiDict` of uploaded files. Use
+        :meth:`~FileMultiDict.add_file` to add new files.
+        """
+        return self._get_form("_files", FileMultiDict)
+
+    @files.setter
+    def files(self, value):
+        self._set_form("_files", value)
+
+    @property
+    def input_stream(self):
+        """An optional input stream.  If you set this it will clear
+        :attr:`form` and :attr:`files`.
+        """
         return self._input_stream
 
-    def _set_input_stream(self, value):
+    @input_stream.setter
+    def input_stream(self, value):
         self._input_stream = value
-        self._form = self._files = None
+        self._form = None
+        self._files = None
 
-    input_stream = property(
-        _get_input_stream,
-        _set_input_stream,
-        doc="""An optional input stream.  If you set this it will clear
-        :attr:`form` and :attr:`files`.""",
-    )
-    del _get_input_stream, _set_input_stream
-
-    def _get_query_string(self):
+    @property
+    def query_string(self):
+        """The query string.  If you set this to a string
+        :attr:`args` will no longer be available.
+        """
         if self._query_string is None:
             if self._args is not None:
                 return url_encode(self._args, charset=self.charset)
             return ""
         return self._query_string
 
-    def _set_query_string(self, value):
+    @query_string.setter
+    def query_string(self, value):
         self._query_string = value
         self._args = None
 
-    query_string = property(
-        _get_query_string,
-        _set_query_string,
-        doc="""The query string.  If you set this to a string
-        :attr:`args` will no longer be available.""",
-    )
-    del _get_query_string, _set_query_string
-
-    def _get_args(self):
+    @property
+    def args(self):
+        """The URL arguments as :class:`MultiDict`."""
         if self._query_string is not None:
             raise AttributeError("a query string is defined")
         if self._args is None:
             self._args = MultiDict()
         return self._args
 
-    def _set_args(self, value):
+    @args.setter
+    def args(self, value):
         self._query_string = None
         self._args = value
-
-    args = property(
-        _get_args, _set_args, doc="The URL arguments as :class:`MultiDict`."
-    )
-    del _get_args, _set_args
 
     @property
     def server_name(self):
@@ -667,7 +635,7 @@ class EnvironBuilder(object):
         pieces = self.host.split(":", 1)
         if len(pieces) == 2 and pieces[1].isdigit():
             return int(pieces[1])
-        elif self.url_scheme == "https":
+        if self.url_scheme == "https":
             return 443
         return 80
 
@@ -773,8 +741,13 @@ class EnvironBuilder(object):
             result["CONTENT_LENGTH"] = str(content_length)
             headers.set("Content-Length", content_length)
 
+        combined_headers = defaultdict(list)
+
         for key, value in headers.to_wsgi_list():
-            result["HTTP_%s" % key.upper().replace("-", "_")] = value
+            combined_headers["HTTP_%s" % key.upper().replace("-", "_")].append(value)
+
+        for key, values in combined_headers.items():
+            result[key] = ", ".join(values)
 
         if self.environ_overrides:
             result.update(self.environ_overrides)
@@ -857,6 +830,7 @@ class Client(object):
         domain=None,
         secure=None,
         httponly=False,
+        samesite=None,
         charset="utf-8",
     ):
         """Sets a cookie in the client's cookie jar.  The server name
@@ -865,7 +839,16 @@ class Client(object):
         """
         assert self.cookie_jar is not None, "cookies disabled"
         header = dump_cookie(
-            key, value, max_age, expires, path, domain, secure, httponly, charset
+            key,
+            value,
+            max_age,
+            expires,
+            path,
+            domain,
+            secure,
+            httponly,
+            charset,
+            samesite=samesite,
         )
         environ = create_environ(path, base_url="http://" + server_name)
         headers = [("Set-Cookie", header)]

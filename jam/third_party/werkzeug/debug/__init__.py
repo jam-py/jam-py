@@ -29,23 +29,8 @@ from ..security import gen_salt
 from ..wrappers import BaseRequest as Request
 from ..wrappers import BaseResponse as Response
 from .console import Console
-from .repr import debug_repr as _debug_repr
 from .tbtools import get_current_traceback
 from .tbtools import render_console_html
-
-
-def debug_repr(*args, **kwargs):
-    import warnings
-
-    warnings.warn(
-        "'debug_repr' has moved to 'werkzeug.debug.repr.debug_repr'"
-        " as of version 0.7. This old import will be removed in version"
-        " 1.0.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _debug_repr(*args, **kwargs)
-
 
 # A week
 PIN_TIME = 60 * 60 * 24 * 7
@@ -62,59 +47,62 @@ _machine_id = None
 
 def get_machine_id():
     global _machine_id
-    rv = _machine_id
-    if rv is not None:
-        return rv
+
+    if _machine_id is not None:
+        return _machine_id
 
     def _generate():
-        # docker containers share the same machine id, get the
-        # container id instead
-        try:
-            with open("/proc/self/cgroup") as f:
-                value = f.readline()
-        except IOError:
-            pass
-        else:
-            value = value.strip().partition("/docker/")[2]
+        linux = b""
 
-            if value:
-                return value
-
-        # Potential sources of secret information on linux.  The machine-id
-        # is stable across boots, the boot id is not
+        # machine-id is stable across boots, boot_id is not.
         for filename in "/etc/machine-id", "/proc/sys/kernel/random/boot_id":
             try:
                 with open(filename, "rb") as f:
-                    return f.readline().strip()
+                    value = f.readline().strip()
             except IOError:
                 continue
 
-        # On OS X we can use the computer's serial number assuming that
-        # ioreg exists and can spit out that information.
+            if value:
+                linux += value
+                break
+
+        # Containers share the same machine id, add some cgroup
+        # information. This is used outside containers too but should be
+        # relatively stable across boots.
         try:
-            # Also catch import errors: subprocess may not be available, e.g.
-            # Google App Engine
-            # See https://github.com/pallets/werkzeug/issues/925
+            with open("/proc/self/cgroup", "rb") as f:
+                linux += f.readline().strip().rpartition(b"/")[2]
+        except IOError:
+            pass
+
+        if linux:
+            return linux
+
+        # On OS X, use ioreg to get the computer's serial number.
+        try:
+            # subprocess may not be available, e.g. Google App Engine
+            # https://github.com/pallets/werkzeug/issues/925
             from subprocess import Popen, PIPE
 
             dump = Popen(
                 ["ioreg", "-c", "IOPlatformExpertDevice", "-d", "2"], stdout=PIPE
             ).communicate()[0]
             match = re.search(b'"serial-number" = <([^>]+)', dump)
+
             if match is not None:
                 return match.group(1)
         except (OSError, ImportError):
             pass
 
-        # On Windows we can use winreg to get the machine guid
-        wr = None
+        # On Windows, use winreg to get the machine guid.
         try:
             import winreg as wr
         except ImportError:
             try:
                 import _winreg as wr
             except ImportError:
-                pass
+                wr = None
+
         if wr is not None:
             try:
                 with wr.OpenKey(
@@ -123,16 +111,17 @@ def get_machine_id():
                     0,
                     wr.KEY_READ | wr.KEY_WOW64_64KEY,
                 ) as rk:
-                    machineGuid, wrType = wr.QueryValueEx(rk, "MachineGuid")
-                    if wrType == wr.REG_SZ:
-                        return machineGuid.encode("utf-8")
-                    else:
-                        return machineGuid
+                    guid, guid_type = wr.QueryValueEx(rk, "MachineGuid")
+
+                    if guid_type == wr.REG_SZ:
+                        return guid.encode("utf-8")
+
+                    return guid
             except WindowsError:
                 pass
 
-    _machine_id = rv = _generate()
-    return rv
+    _machine_id = _generate()
+    return _machine_id
 
 
 class _ConsoleFrame(object):
@@ -238,9 +227,6 @@ class DebuggedApplication(object):
     The `evalex` keyword argument allows evaluating expressions in a
     traceback's frame context.
 
-    .. versionadded:: 0.9
-       The `lodgeit_url` parameter was deprecated.
-
     :param app: the WSGI application to run debugged.
     :param evalex: enable exception evaluation feature (interactive
                    debugging).  This requires a non-forking server.
@@ -266,20 +252,9 @@ class DebuggedApplication(object):
         console_path="/console",
         console_init_func=None,
         show_hidden_frames=False,
-        lodgeit_url=None,
         pin_security=True,
         pin_logging=True,
     ):
-        if lodgeit_url is not None:
-            from warnings import warn
-
-            warn(
-                "'lodgeit_url' is no longer used as of version 0.9 and"
-                " will be removed in version 1.0. Werkzeug uses"
-                " https://gist.github.com/ instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
         if not console_init_func:
             console_init_func = None
         self.app = app
@@ -305,16 +280,15 @@ class DebuggedApplication(object):
         else:
             self.pin = None
 
-    def _get_pin(self):
+    @property
+    def pin(self):
         if not hasattr(self, "_pin"):
             self._pin, self._pin_cookie = get_pin_and_cookie_name(self.app)
         return self._pin
 
-    def _set_pin(self, value):
+    @pin.setter
+    def pin(self, value):
         self._pin = value
-
-    pin = property(_get_pin, _set_pin)
-    del _get_pin, _set_pin
 
     @property
     def pin_cookie_name(self):

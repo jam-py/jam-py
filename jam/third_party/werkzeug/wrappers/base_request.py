@@ -1,4 +1,3 @@
-import warnings
 from functools import update_wrapper
 from io import BytesIO
 
@@ -10,12 +9,12 @@ from ..datastructures import CombinedMultiDict
 from ..datastructures import EnvironHeaders
 from ..datastructures import ImmutableList
 from ..datastructures import ImmutableMultiDict
-from ..datastructures import ImmutableTypeConversionDict
 from ..datastructures import iter_multi_items
 from ..datastructures import MultiDict
 from ..formparser import default_stream_factory
 from ..formparser import FormDataParser
 from ..http import parse_cookie
+from ..http import parse_list_header
 from ..http import parse_options_header
 from ..urls import url_decode
 from ..utils import cached_property
@@ -117,13 +116,15 @@ class BaseRequest(object):
     #: .. versionadded:: 0.6
     list_storage_class = ImmutableList
 
-    #: the type to be used for dict values from the incoming WSGI environment.
-    #: By default an
-    #: :class:`~werkzeug.datastructures.ImmutableTypeConversionDict` is used
-    #: (for example for :attr:`cookies`).
+    #: The type to be used for dict values from the incoming WSGI
+    #: environment. (For example for :attr:`cookies`.) By default an
+    #: :class:`~werkzeug.datastructures.ImmutableMultiDict` is used.
+    #:
+    #: .. versionchanged:: 1.0.0
+    #:     Changed to ``ImmutableMultiDict`` to support multiple values.
     #:
     #: .. versionadded:: 0.6
-    dict_storage_class = ImmutableTypeConversionDict
+    dict_storage_class = ImmutableMultiDict
 
     #: The form data parser that shoud be used.  Can be replaced to customize
     #: the form date parsing.
@@ -616,8 +617,9 @@ class BaseRequest(object):
         from the client ip to the last proxy server.
         """
         if "HTTP_X_FORWARDED_FOR" in self.environ:
-            addr = self.environ["HTTP_X_FORWARDED_FOR"].split(",")
-            return self.list_storage_class([x.strip() for x in addr])
+            return self.list_storage_class(
+                parse_list_header(self.environ["HTTP_X_FORWARDED_FOR"])
+            )
         elif "REMOTE_ADDR" in self.environ:
             return self.list_storage_class([self.environ["REMOTE_ADDR"]])
         return self.list_storage_class()
@@ -633,7 +635,6 @@ class BaseRequest(object):
         script is protected, this attribute contains the username the
         user has authenticated as.""",
     )
-
     scheme = environ_property(
         "wsgi.url_scheme",
         doc="""
@@ -641,29 +642,6 @@ class BaseRequest(object):
 
         .. versionadded:: 0.7""",
     )
-
-    @property
-    def is_xhr(self):
-        """True if the request was triggered via a JavaScript XMLHttpRequest.
-        This only works with libraries that support the ``X-Requested-With``
-        header and set it to "XMLHttpRequest".  Libraries that do that are
-        prototype, jQuery and Mochikit and probably some more.
-
-        .. deprecated:: 0.13
-            ``X-Requested-With`` is not standard and is unreliable. You
-            may be able to use :attr:`AcceptMixin.accept_mimetypes`
-            instead.
-        """
-        warnings.warn(
-            "'Request.is_xhr' is deprecated as of version 0.13 and will"
-            " be removed in version 1.0. The 'X-Requested-With' header"
-            " is not standard and is unreliable. You may be able to use"
-            " 'accept_mimetypes' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.environ.get("HTTP_X_REQUESTED_WITH", "").lower() == "xmlhttprequest"
-
     is_secure = property(
         lambda self: self.environ["wsgi.url_scheme"] == "https",
         doc="`True` if the request is secure.",

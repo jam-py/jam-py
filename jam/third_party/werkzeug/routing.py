@@ -100,6 +100,7 @@ import difflib
 import posixpath
 import re
 import uuid
+import warnings
 from pprint import pformat
 from threading import Lock
 
@@ -117,6 +118,7 @@ from ._internal import _get_environ
 from .datastructures import ImmutableDict
 from .datastructures import MultiDict
 from .exceptions import BadHost
+from .exceptions import BadRequest
 from .exceptions import HTTPException
 from .exceptions import MethodNotAllowed
 from .exceptions import NotFound
@@ -248,12 +250,17 @@ class RequestRedirect(HTTPException, RoutingException):
         RoutingException.__init__(self, new_url)
         self.new_url = new_url
 
-    def get_response(self, environ):
+    def get_response(self, environ=None):
         return redirect(self.new_url, self.code)
 
 
-class RequestSlash(RoutingException):
+class RequestPath(RoutingException):
     """Internal exception."""
+
+    __slots__ = ("path_info",)
+
+    def __init__(self, path_info):
+        self.path_info = path_info
 
 
 class RequestAliasRedirect(RoutingException):  # noqa: B903
@@ -321,6 +328,12 @@ class BuildError(RoutingException, LookupError):
             else:
                 message.append(" Did you mean %r instead?" % self.suggested.endpoint)
         return u"".join(message)
+
+
+class WebsocketMismatch(BadRequest):
+    """The only matched rule is either a WebSocket and the request is
+    HTTP, or the rule is HTTP and the request is a WebSocket.
+    """
 
 
 class ValidationError(ValueError):
@@ -570,16 +583,12 @@ class Rule(RuleFactory):
         `MethodNotAllowed` rather than `NotFound`.  If `GET` is present in the
         list of methods and `HEAD` is not, `HEAD` is added automatically.
 
-        .. versionchanged:: 0.6.1
-           `HEAD` is now automatically added to the methods if `GET` is
-           present.  The reason for this is that existing code often did not
-           work properly in servers not rewriting `HEAD` to `GET`
-           automatically and it was not documented how `HEAD` should be
-           treated.  This was considered a bug in Werkzeug because of that.
-
     `strict_slashes`
         Override the `Map` setting for `strict_slashes` only for this rule. If
         not specified the `Map` setting is used.
+
+    `merge_slashes`
+        Override :attr:`Map.merge_slashes` for this rule.
 
     `build_only`
         Set this to True and the rule will never match but will create a URL
@@ -620,8 +629,22 @@ class Rule(RuleFactory):
         used to provide a match rule for the whole host.  This also means
         that the subdomain feature is disabled.
 
+    `websocket`
+        If ``True``, this rule is only matches for WebSocket (``ws://``,
+        ``wss://``) requests. By default, rules will only match for HTTP
+        requests.
+
+    .. versionadded:: 1.0
+        Added ``websocket``.
+
+    .. versionadded:: 1.0
+        Added ``merge_slashes``.
+
     .. versionadded:: 0.7
-       The `alias` and `host` parameters were added.
+        Added ``alias`` and ``host``.
+
+    .. versionchanged:: 0.6.1
+       ``HEAD`` is added to ``methods`` if ``GET`` is present.
     """
 
     def __init__(
@@ -633,9 +656,11 @@ class Rule(RuleFactory):
         build_only=False,
         endpoint=None,
         strict_slashes=None,
+        merge_slashes=None,
         redirect_to=None,
         alias=False,
         host=None,
+        websocket=False,
     ):
         if not string.startswith("/"):
             raise ValueError("urls must start with a leading slash")
@@ -644,19 +669,29 @@ class Rule(RuleFactory):
 
         self.map = None
         self.strict_slashes = strict_slashes
+        self.merge_slashes = merge_slashes
         self.subdomain = subdomain
         self.host = host
         self.defaults = defaults
         self.build_only = build_only
         self.alias = alias
-        if methods is None:
-            self.methods = None
-        else:
+        self.websocket = websocket
+
+        if methods is not None:
             if isinstance(methods, str):
-                raise TypeError("param `methods` should be `Iterable[str]`, not `str`")
-            self.methods = set([x.upper() for x in methods])
-            if "HEAD" not in self.methods and "GET" in self.methods:
-                self.methods.add("HEAD")
+                raise TypeError("'methods' should be a list of strings.")
+
+            methods = {x.upper() for x in methods}
+
+            if "HEAD" not in methods and "GET" in methods:
+                methods.add("HEAD")
+
+            if websocket and methods - {"GET", "HEAD", "OPTIONS"}:
+                raise ValueError(
+                    "WebSocket rules can only use 'GET', 'HEAD', and 'OPTIONS' methods."
+                )
+
+        self.methods = methods
         self.endpoint = endpoint
         self.redirect_to = redirect_to
 
@@ -725,6 +760,8 @@ class Rule(RuleFactory):
         self.map = map
         if self.strict_slashes is None:
             self.strict_slashes = map.strict_slashes
+        if self.merge_slashes is None:
+            self.merge_slashes = map.merge_slashes
         if self.subdomain is None:
             self.subdomain = map.default_subdomain
         self.compile()
@@ -765,9 +802,18 @@ class Rule(RuleFactory):
             index = 0
             for converter, arguments, variable in parse_rule(rule):
                 if converter is None:
-                    regex_parts.append(re.escape(variable))
-                    self._trace.append((False, variable))
-                    for part in variable.split("/"):
+                    for match in re.finditer(r"/+|[^/]+", variable):
+                        part = match.group(0)
+                        if part.startswith("/"):
+                            if self.merge_slashes:
+                                regex_parts.append(r"/+?")
+                                self._trace.append((False, "/"))
+                            else:
+                                regex_parts.append(part)
+                                self._trace.append((False, part))
+                            continue
+                        self._trace.append((False, part))
+                        regex_parts.append(re.escape(part))
                         if part:
                             self._static_weights.append((index, -len(part)))
                 else:
@@ -796,12 +842,14 @@ class Rule(RuleFactory):
 
         if self.build_only:
             return
-        regex = r"^%s%s$" % (
-            u"".join(regex_parts),
-            (not self.is_leaf or not self.strict_slashes)
-            and "(?<!/)(?P<__suffix__>/?)"
-            or "",
-        )
+
+        if not (self.is_leaf and self.strict_slashes):
+            reps = u"*" if self.merge_slashes else u"?"
+            tail = u"(?<!/)(?P<__suffix__>/%s)" % reps
+        else:
+            tail = u""
+
+        regex = u"^%s%s$" % (u"".join(regex_parts), tail)
         self._regex = re.compile(regex, re.UNICODE)
 
     def match(self, path, method=None):
@@ -816,6 +864,8 @@ class Rule(RuleFactory):
         :internal:
         """
         if not self.build_only:
+            require_redirect = False
+
             m = self._regex.search(path)
             if m is not None:
                 groups = m.groupdict()
@@ -831,7 +881,8 @@ class Rule(RuleFactory):
                         method is None or self.methods is None or method in self.methods
                     )
                 ):
-                    raise RequestSlash()
+                    path += "/"
+                    require_redirect = True
                 # if we are not in strict slashes mode we have to remove
                 # a __suffix__
                 elif not self.strict_slashes:
@@ -846,6 +897,18 @@ class Rule(RuleFactory):
                     result[str(name)] = value
                 if self.defaults:
                     result.update(self.defaults)
+
+                if self.merge_slashes:
+                    new_path = "|".join(self.build(result, False))
+                    if path.endswith("/") and not new_path.endswith("/"):
+                        new_path += "/"
+                    if new_path.count("/") < path.count("/"):
+                        path = new_path
+                        require_redirect = True
+
+                if require_redirect:
+                    path = path.split("|", 1)[1]
+                    raise RequestPath(path)
 
                 if self.alias and self.map.redirect_defaults:
                     raise RequestAliasRedirect(result)
@@ -1298,7 +1361,11 @@ class Map(object):
     :param default_subdomain: The default subdomain for rules without a
                               subdomain defined.
     :param charset: charset of the url. defaults to ``"utf-8"``
-    :param strict_slashes: Take care of trailing slashes.
+    :param strict_slashes: If a rule ends with a slash but the matched
+        URL does not, redirect to the URL with a trailing slash.
+    :param merge_slashes: Merge consecutive slashes when matching or
+        building URLs. Matches will redirect to the normalized URL.
+        Slashes in variable parts are not merged.
     :param redirect_defaults: This will redirect to the default rule if it
                               wasn't visited that way. This helps creating
                               unique URLs.
@@ -1314,15 +1381,27 @@ class Map(object):
                           enabled the `host` parameter to rules is used
                           instead of the `subdomain` one.
 
-    .. versionadded:: 0.5
-        `sort_parameters` and `sort_key` was added.
+    .. versionchanged:: 1.0
+        If ``url_scheme`` is ``ws`` or ``wss``, only WebSocket rules
+        will match.
 
-    .. versionadded:: 0.7
-        `encoding_errors` and `host_matching` was added.
+    .. versionchanged:: 1.0
+        Added ``merge_slashes``.
+
+    .. versionchanged:: 0.7
+        Added ``encoding_errors`` and ``host_matching``.
+
+    .. versionchanged:: 0.5
+        Added ``sort_parameters`` and ``sort_key``.
     """
 
     #: A dict of default converters to be used.
     default_converters = ImmutableDict(DEFAULT_CONVERTERS)
+
+    #: The type of lock to use when updating.
+    #:
+    #: .. versionadded:: 1.0
+    lock_class = Lock
 
     def __init__(
         self,
@@ -1330,6 +1409,7 @@ class Map(object):
         default_subdomain="",
         charset="utf-8",
         strict_slashes=True,
+        merge_slashes=True,
         redirect_defaults=True,
         converters=None,
         sort_parameters=False,
@@ -1340,12 +1420,13 @@ class Map(object):
         self._rules = []
         self._rules_by_endpoint = {}
         self._remap = True
-        self._remap_lock = Lock()
+        self._remap_lock = self.lock_class()
 
         self.default_subdomain = default_subdomain
         self.charset = charset
         self.encoding_errors = encoding_errors
         self.strict_slashes = strict_slashes
+        self.merge_slashes = merge_slashes
         self.redirect_defaults = redirect_defaults
         self.host_matching = host_matching
 
@@ -1429,14 +1510,18 @@ class Map(object):
         no defined. If there is no `default_subdomain` you cannot use the
         subdomain feature.
 
-        .. versionadded:: 0.7
-           `query_args` added
-
-        .. versionadded:: 0.8
-           `query_args` can now also be a string.
+        .. versionchanged:: 1.0
+            If ``url_scheme`` is ``ws`` or ``wss``, only WebSocket rules
+            will match.
 
         .. versionchanged:: 0.15
             ``path_info`` defaults to ``'/'`` if ``None``.
+
+        .. versionchanged:: 0.8
+            ``query_args`` can be a string.
+
+        .. versionchanged:: 0.7
+            Added ``query_args``.
         """
         server_name = server_name.lower()
         if self.host_matching:
@@ -1484,38 +1569,58 @@ class Map(object):
         :class:`MapAdapter` so that you don't have to pass the path info to
         the match method.
 
-        .. versionchanged:: 0.5
-            previously this method accepted a bogus `calculate_subdomain`
-            parameter that did not have any effect.  It was removed because
-            of that.
+        .. versionchanged:: 1.0.0
+            If the passed server name specifies port 443, it will match
+            if the incoming scheme is ``https`` without a port.
+
+        .. versionchanged:: 1.0.0
+            A warning is shown when the passed server name does not
+            match the incoming WSGI server name.
 
         .. versionchanged:: 0.8
            This will no longer raise a ValueError when an unexpected server
            name was passed.
+
+        .. versionchanged:: 0.5
+            previously this method accepted a bogus `calculate_subdomain`
+            parameter that did not have any effect.  It was removed because
+            of that.
 
         :param environ: a WSGI environment.
         :param server_name: an optional server name hint (see above).
         :param subdomain: optionally the current subdomain (see above).
         """
         environ = _get_environ(environ)
-
         wsgi_server_name = get_host(environ).lower()
+        scheme = environ["wsgi.url_scheme"]
 
         if server_name is None:
             server_name = wsgi_server_name
         else:
             server_name = server_name.lower()
 
+            # strip standard port to match get_host()
+            if scheme == "http" and server_name.endswith(":80"):
+                server_name = server_name[:-3]
+            elif scheme == "https" and server_name.endswith(":443"):
+                server_name = server_name[:-4]
+
         if subdomain is None and not self.host_matching:
             cur_server_name = wsgi_server_name.split(".")
             real_server_name = server_name.split(".")
             offset = -len(real_server_name)
+
             if cur_server_name[offset:] != real_server_name:
                 # This can happen even with valid configs if the server was
-                # accesssed directly by IP address under some situations.
+                # accessed directly by IP address under some situations.
                 # Instead of raising an exception like in Werkzeug 0.7 or
                 # earlier we go by an invalid subdomain which will result
                 # in a 404 error on matching.
+                warnings.warn(
+                    "Current server name '{}' doesn't match configured"
+                    " server name '{}'".format(wsgi_server_name, server_name),
+                    stacklevel=2,
+                )
                 subdomain = "<invalid>"
             else:
                 subdomain = ".".join(filter(None, cur_server_name[:offset]))
@@ -1533,7 +1638,7 @@ class Map(object):
             server_name,
             script_name,
             subdomain,
-            environ["wsgi.url_scheme"],
+            scheme,
             environ["REQUEST_METHOD"],
             path_info,
             query_args=query_args,
@@ -1588,6 +1693,7 @@ class MapAdapter(object):
         self.path_info = to_unicode(path_info)
         self.default_method = to_unicode(default_method)
         self.query_args = query_args
+        self.websocket = self.url_scheme in {"ws", "wss"}
 
     def dispatch(
         self, view_func, path_info=None, method=None, catch_http_exceptions=False
@@ -1645,7 +1751,14 @@ class MapAdapter(object):
                 return e
             raise
 
-    def match(self, path_info=None, method=None, return_rule=False, query_args=None):
+    def match(
+        self,
+        path_info=None,
+        method=None,
+        return_rule=False,
+        query_args=None,
+        websocket=None,
+    ):
         """The usage is simple: you just pass the match method the current
         path info as well as the method (which defaults to `GET`).  The
         following things can then happen:
@@ -1665,6 +1778,11 @@ class MapAdapter(object):
           case if you request ``/foo`` although the correct URL is ``/foo/``
           You can use the `RequestRedirect` instance as response-like object
           similar to all other subclasses of `HTTPException`.
+
+        - you receive a ``WebsocketMismatch`` exception if the only
+          match is a WebSocket rule but the bind is an HTTP request, or
+          if the match is an HTTP rule but the bind is a WebSocket
+          request.
 
         - you get a tuple in the form ``(endpoint, arguments)`` if there is
           a match (unless `return_rule` is True, in which case you get a tuple
@@ -1712,15 +1830,21 @@ class MapAdapter(object):
                            automatic redirects as string or dictionary.  It's
                            currently not possible to use the query arguments
                            for URL matching.
+        :param websocket: Match WebSocket instead of HTTP requests. A
+            websocket request has a ``ws`` or ``wss``
+            :attr:`url_scheme`. This overrides that detection.
 
-        .. versionadded:: 0.6
-           `return_rule` was added.
-
-        .. versionadded:: 0.7
-           `query_args` was added.
+        .. versionadded:: 1.0
+            Added ``websocket``.
 
         .. versionchanged:: 0.8
-           `query_args` can now also be a string.
+            ``query_args`` can be a string.
+
+        .. versionadded:: 0.7
+            Added ``query_args``.
+
+        .. versionadded:: 0.6
+            Added ``return_rule``.
         """
         self.map.update()
         if path_info is None:
@@ -1731,19 +1855,26 @@ class MapAdapter(object):
             query_args = self.query_args
         method = (method or self.default_method).upper()
 
+        if websocket is None:
+            websocket = self.websocket
+
+        require_redirect = False
+
         path = u"%s|%s" % (
             self.map.host_matching and self.server_name or self.subdomain,
             path_info and "/%s" % path_info.lstrip("/"),
         )
 
         have_match_for = set()
+        websocket_mismatch = False
+
         for rule in self.map._rules:
             try:
                 rv = rule.match(path, method)
-            except RequestSlash:
+            except RequestPath as e:
                 raise RequestRedirect(
                     self.make_redirect_url(
-                        url_quote(path_info, self.map.charset, safe="/:|+") + "/",
+                        url_quote(e.path_info, self.map.charset, safe="/:|+"),
                         query_args,
                     )
                 )
@@ -1757,6 +1888,10 @@ class MapAdapter(object):
                 continue
             if rule.methods is not None and method not in rule.methods:
                 have_match_for.update(rule.methods)
+                continue
+
+            if rule.websocket != websocket:
+                websocket_mismatch = True
                 continue
 
             if self.map.redirect_defaults:
@@ -1789,6 +1924,13 @@ class MapAdapter(object):
                     )
                 )
 
+            if require_redirect:
+                raise RequestRedirect(
+                    self.make_redirect_url(
+                        url_quote(path_info, self.map.charset, safe="/:|+"), query_args
+                    )
+                )
+
             if return_rule:
                 return rule, rv
             else:
@@ -1796,6 +1938,10 @@ class MapAdapter(object):
 
         if have_match_for:
             raise MethodNotAllowed(valid_methods=list(have_match_for))
+
+        if websocket_mismatch:
+            raise WebsocketMismatch()
+
         raise NotFound()
 
     def test(self, path_info=None, method=None):
@@ -1911,13 +2057,26 @@ class MapAdapter(object):
             if rv is not None:
                 return rv
 
-        # default method did not match or a specific method is passed,
-        # check all and go with first result.
+        # Default method did not match or a specific method is passed.
+        # Check all for first match with matching host. If no matching
+        # host is found, go with first result.
+        first_match = None
+
         for rule in self.map._rules_by_endpoint.get(endpoint, ()):
             if rule.suitable_for(values, method):
                 rv = rule.build(values, append_unknown)
+
                 if rv is not None:
-                    return rv
+                    rv = (rv[0], rv[1], rule.websocket)
+                    if self.map.host_matching:
+                        if rv[0] == self.server_name:
+                            return rv
+                        elif first_match is None:
+                            first_match = rv
+                    else:
+                        return rv
+
+        return first_match
 
     def build(
         self,
@@ -1926,6 +2085,7 @@ class MapAdapter(object):
         method=None,
         force_external=False,
         append_unknown=True,
+        url_scheme=None,
     ):
         """Building URLs works pretty much the other way round.  Instead of
         `match` you call `build` and pass it the endpoint and a dict of
@@ -1978,9 +2138,6 @@ class MapAdapter(object):
         to specify the method you want to have an URL built for if you have
         different methods for the same endpoint specified.
 
-        .. versionadded:: 0.6
-           the `append_unknown` parameter was added.
-
         :param endpoint: the endpoint of the URL to build.
         :param values: the values for the URL to build.  Unhandled values are
                        appended to the URL as query parameters.
@@ -1992,6 +2149,14 @@ class MapAdapter(object):
         :param append_unknown: unknown parameters are appended to the generated
                                URL as query string argument.  Disable this
                                if you want the builder to ignore those.
+        :param url_scheme: Scheme to use in place of the bound
+            :attr:`url_scheme`.
+
+        .. versionadded:: 2.0
+            Added the ``url_scheme`` parameter.
+
+        .. versionadded:: 0.6
+           Added the ``append_unknown`` parameter.
         """
         self.map.update()
 
@@ -2018,9 +2183,23 @@ class MapAdapter(object):
         rv = self._partial_build(endpoint, values, method, append_unknown)
         if rv is None:
             raise BuildError(endpoint, values, method, self)
-        domain_part, path = rv
 
+        domain_part, path, websocket = rv
         host = self.get_host(domain_part)
+
+        if url_scheme is None:
+            url_scheme = self.url_scheme
+
+        # Always build WebSocket routes with the scheme (browsers
+        # require full URLs). If bound to a WebSocket, ensure that HTTP
+        # routes are built with an HTTP scheme.
+        secure = url_scheme in {"https", "wss"}
+
+        if websocket:
+            force_external = True
+            url_scheme = "wss" if secure else "ws"
+        elif url_scheme:
+            url_scheme = "https" if secure else "http"
 
         # shortcut this.
         if not force_external and (
@@ -2031,7 +2210,7 @@ class MapAdapter(object):
         return str(
             "%s//%s%s/%s"
             % (
-                self.url_scheme + ":" if self.url_scheme else "",
+                url_scheme + ":" if url_scheme else "",
                 host,
                 self.script_name[:-1],
                 path.lstrip("/"),

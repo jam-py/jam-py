@@ -1,5 +1,5 @@
 # sql/base.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -11,12 +11,20 @@
 
 
 import itertools
+import operator
 import re
 
+from .traversals import HasCacheKey  # noqa
 from .visitors import ClauseVisitor
 from .. import exc
 from .. import util
 
+if util.TYPE_CHECKING:
+    from types import ModuleType
+
+coercions = None  # type: ModuleType
+elements = None  # type: ModuleType
+type_api = None  # type: ModuleType
 
 PARSE_AUTOCOMMIT = util.symbol("PARSE_AUTOCOMMIT")
 NO_ARG = util.symbol("NO_ARG")
@@ -34,18 +42,78 @@ class Immutable(object):
     def _clone(self):
         return self
 
+    def _copy_internals(self, **kw):
+        pass
+
+
+class HasMemoized(object):
+    def _reset_memoizations(self):
+        self._memoized_property.expire_instance(self)
+
+    def _reset_exported(self):
+        self._memoized_property.expire_instance(self)
+
+    def _copy_internals(self, **kw):
+        super(HasMemoized, self)._copy_internals(**kw)
+        self._reset_memoizations()
+
 
 def _from_objects(*elements):
     return itertools.chain(*[element._from_objects for element in elements])
 
 
-@util.decorator
-def _generative(fn, *args, **kw):
-    """Mark a method as generative."""
+def _generative(fn):
+    """non-caching _generative() decorator.
 
-    self = args[0]._generate()
-    fn(self, *args[1:], **kw)
-    return self
+    This is basically the legacy decorator that copies the object and
+    runs a method on the new copy.
+
+    """
+
+    @util.decorator
+    def _generative(fn, self, *args, **kw):
+        """Mark a method as generative."""
+
+        self = self._generate()
+        x = fn(self, *args, **kw)
+        assert x is None, "generative methods must have no return value"
+        return self
+
+    decorated = _generative(fn)
+    decorated.non_generative = fn
+    return decorated
+
+
+def _clone(element, **kw):
+    return element._clone()
+
+
+def _expand_cloned(elements):
+    """expand the given set of ClauseElements to be the set of all 'cloned'
+    predecessors.
+
+    """
+    return itertools.chain(*[x._cloned_set for x in elements])
+
+
+def _cloned_intersection(a, b):
+    """return the intersection of sets a and b, counting
+    any overlap between 'cloned' predecessors.
+
+    The returned set is in terms of the entities present within 'a'.
+
+    """
+    all_overlap = set(_expand_cloned(a)).intersection(_expand_cloned(b))
+    return set(
+        elem for elem in a if all_overlap.intersection(elem._cloned_set)
+    )
+
+
+def _cloned_difference(a, b):
+    all_overlap = set(_expand_cloned(a)).intersection(_expand_cloned(b))
+    return set(
+        elem for elem in a if not all_overlap.intersection(elem._cloned_set)
+    )
 
 
 class _DialectArgView(util.collections_abc.MutableMapping):
@@ -60,8 +128,8 @@ class _DialectArgView(util.collections_abc.MutableMapping):
     def _key(self, key):
         try:
             dialect, value_key = key.split("_", 1)
-        except ValueError:
-            raise KeyError(key)
+        except ValueError as err:
+            util.raise_(KeyError(key), replace_context=err)
         else:
             return dialect, value_key
 
@@ -70,17 +138,20 @@ class _DialectArgView(util.collections_abc.MutableMapping):
 
         try:
             opt = self.obj.dialect_options[dialect]
-        except exc.NoSuchModuleError:
-            raise KeyError(key)
+        except exc.NoSuchModuleError as err:
+            util.raise_(KeyError(key), replace_context=err)
         else:
             return opt[value_key]
 
     def __setitem__(self, key, value):
         try:
             dialect, value_key = self._key(key)
-        except KeyError:
-            raise exc.ArgumentError(
-                "Keys must be of the form <dialectname>_<argname>"
+        except KeyError as err:
+            util.raise_(
+                exc.ArgumentError(
+                    "Keys must be of the form <dialectname>_<argname>"
+                ),
+                replace_context=err,
             )
         else:
             self.obj.dialect_options[dialect][value_key] = value
@@ -316,10 +387,8 @@ class DialectKWArgs(object):
 
 
 class Generative(object):
-    """Allow a ClauseElement to generate itself via the
-    @_generative decorator.
-
-    """
+    """Provide a method-chaining pattern in conjunction with the
+    @_generative decorator."""
 
     def _generate(self):
         s = self.__class__.__new__(self.__class__)
@@ -463,25 +532,390 @@ class SchemaVisitor(ClauseVisitor):
     __traverse_options__ = {"schema_visitor": True}
 
 
-class ColumnCollection(util.OrderedProperties):
-    """An ordered dictionary that stores a list of ColumnElement
-    instances.
+class ColumnCollection(object):
+    """Collection of :class:`.ColumnElement` instances, typically for
+    selectables.
 
-    Overrides the ``__eq__()`` method to produce SQL clauses between
-    sets of correlated columns.
+    The :class:`.ColumnCollection` has both mapping- and sequence- like
+    behaviors.   A :class:`.ColumnCollection` usually stores :class:`.Column`
+    objects, which are then accessible both via mapping style access as well
+    as attribute access style.  The name for which a :class:`.Column` would
+    be present is normally that of the :paramref:`.Column.key` parameter,
+    however depending on the context, it may be stored under a special label
+    name::
+
+        >>> from sqlalchemy import Column, Integer
+        >>> from sqlalchemy.sql import ColumnCollection
+        >>> x, y = Column('x', Integer), Column('y', Integer)
+        >>> cc = ColumnCollection(columns=[x, y])
+        >>> cc.x
+        Column('x', Integer(), table=None)
+        >>> cc.y
+        Column('y', Integer(), table=None)
+        >>> cc['x']
+        Column('x', Integer(), table=None)
+        >>> cc['y']
+
+    :class`.ColumnCollection` also indexes the columns in order and allows
+    them to be accessible by their integer position::
+
+        >>> cc[0]
+        Column('x', Integer(), table=None)
+        >>> cc[1]
+        Column('y', Integer(), table=None)
+
+    .. versionadded:: 1.4 :class:`.ColumnCollection` allows integer-based
+       index access to the collection.
+
+    Iterating the collection yields the column expressions in order::
+
+        >>> list(cc)
+        [Column('x', Integer(), table=None),
+         Column('y', Integer(), table=None)]
+
+    The base :class:`.ColumnCollection` object can store duplicates, which can
+    mean either two columns with the same key, in which case the column
+    returned by key  access is **arbitrary**::
+
+        >>> x1, x2 = Column('x', Integer), Column('x', Integer)
+        >>> cc = ColumnCollection(columns=[x1, x2])
+        >>> list(cc)
+        [Column('x', Integer(), table=None),
+         Column('x', Integer(), table=None)]
+        >>> cc['x'] is x1
+        False
+        >>> cc['x'] is x2
+        True
+
+    Or it can also mean the same column multiple times.   These cases are
+    supported as :class:`.ColumnCollection` is used to represent the columns in
+    a SELECT statement which may include duplicates.
+
+    A special subclass :class:`.DedupeColumnCollection` exists which instead
+    maintains SQLAlchemy's older behavior of not allowing duplicates; this
+    collection is used for schema level objects like :class:`.Table` and
+    :class:`.PrimaryKeyConstraint` where this deduping is helpful.  The
+    :class:`.DedupeColumnCollection` class also has additional mutation methods
+    as the schema constructs have more use cases that require removal and
+    replacement of columns.
+
+    .. versionchanged:: 1.4 :class:`.ColumnCollection` now stores duplicate
+       column keys as well as the same column in multiple positions.  The
+       :class:`.DedupeColumnCollection` class is added to maintain the
+       former behavior in those cases where deduplication as well as
+       additional replace/remove operations are needed.
+
 
     """
 
-    __slots__ = "_all_columns"
+    __slots__ = "_collection", "_index", "_colset"
 
-    def __init__(self, *columns):
-        super(ColumnCollection, self).__init__()
-        object.__setattr__(self, "_all_columns", [])
-        for c in columns:
-            self.add(c)
+    def __init__(self, columns=None):
+        object.__setattr__(self, "_colset", set())
+        object.__setattr__(self, "_index", {})
+        object.__setattr__(self, "_collection", [])
+        if columns:
+            self._initial_populate(columns)
+
+    def _initial_populate(self, iter_):
+        self._populate_separate_keys(iter_)
+
+    @property
+    def _all_columns(self):
+        return [col for (k, col) in self._collection]
+
+    def keys(self):
+        return [k for (k, col) in self._collection]
+
+    def __len__(self):
+        return len(self._collection)
+
+    def __iter__(self):
+        # turn to a list first to maintain over a course of changes
+        return iter([col for k, col in self._collection])
+
+    def __getitem__(self, key):
+        try:
+            return self._index[key]
+        except KeyError as err:
+            if isinstance(key, util.int_types):
+                util.raise_(IndexError(key), replace_context=err)
+            else:
+                raise
+
+    def __getattr__(self, key):
+        try:
+            return self._index[key]
+        except KeyError as err:
+            util.raise_(AttributeError(key), replace_context=err)
+
+    def __contains__(self, key):
+        if key not in self._index:
+            if not isinstance(key, util.string_types):
+                raise exc.ArgumentError(
+                    "__contains__ requires a string argument"
+                )
+            return False
+        else:
+            return True
+
+    def compare(self, other):
+        for l, r in util.zip_longest(self, other):
+            if l is not r:
+                return False
+        else:
+            return True
+
+    def __eq__(self, other):
+        return self.compare(other)
+
+    def get(self, key, default=None):
+        if key in self._index:
+            return self._index[key]
+        else:
+            return default
 
     def __str__(self):
         return repr([str(c) for c in self])
+
+    def __setitem__(self, key, value):
+        raise NotImplementedError()
+
+    def __delitem__(self, key):
+        raise NotImplementedError()
+
+    def __setattr__(self, key, obj):
+        raise NotImplementedError()
+
+    def clear(self):
+        raise NotImplementedError()
+
+    def remove(self, column):
+        raise NotImplementedError()
+
+    def update(self, iter_):
+        raise NotImplementedError()
+
+    __hash__ = None
+
+    def _populate_separate_keys(self, iter_):
+        """populate from an iterator of (key, column)"""
+        cols = list(iter_)
+        self._collection[:] = cols
+        self._colset.update(c for k, c in self._collection)
+        self._index.update(
+            (idx, c) for idx, (k, c) in enumerate(self._collection)
+        )
+        self._index.update({k: col for k, col in reversed(self._collection)})
+
+    def add(self, column, key=None):
+        if key is None:
+            key = column.key
+
+        l = len(self._collection)
+        self._collection.append((key, column))
+        self._colset.add(column)
+        self._index[l] = column
+        if key not in self._index:
+            self._index[key] = column
+
+    def __getstate__(self):
+        return {"_collection": self._collection, "_index": self._index}
+
+    def __setstate__(self, state):
+        object.__setattr__(self, "_index", state["_index"])
+        object.__setattr__(self, "_collection", state["_collection"])
+        object.__setattr__(
+            self, "_colset", {col for k, col in self._collection}
+        )
+
+    def contains_column(self, col):
+        return col in self._colset
+
+    def as_immutable(self):
+        return ImmutableColumnCollection(self)
+
+    def corresponding_column(self, column, require_embedded=False):
+        """Given a :class:`.ColumnElement`, return the exported
+        :class:`.ColumnElement` object from this :class:`.ColumnCollection`
+        which corresponds to that original :class:`.ColumnElement` via a common
+        ancestor column.
+
+        :param column: the target :class:`.ColumnElement` to be matched
+
+        :param require_embedded: only return corresponding columns for
+         the given :class:`.ColumnElement`, if the given
+         :class:`.ColumnElement` is actually present within a sub-element
+         of this :class:`.Selectable`.  Normally the column will match if
+         it merely shares a common ancestor with one of the exported
+         columns of this :class:`.Selectable`.
+
+        .. seealso::
+
+            :meth:`.Selectable.corresponding_column` - invokes this method
+            against the collection returned by
+            :attr:`.Selectable.exported_columns`.
+
+        .. versionchanged:: 1.4 the implementation for ``corresponding_column``
+           was moved onto the :class:`.ColumnCollection` itself.
+
+        """
+
+        def embedded(expanded_proxy_set, target_set):
+            for t in target_set.difference(expanded_proxy_set):
+                if not set(_expand_cloned([t])).intersection(
+                    expanded_proxy_set
+                ):
+                    return False
+            return True
+
+        # don't dig around if the column is locally present
+        if column in self._colset:
+            return column
+        col, intersect = None, None
+        target_set = column.proxy_set
+        cols = [c for (k, c) in self._collection]
+        for c in cols:
+            expanded_proxy_set = set(_expand_cloned(c.proxy_set))
+            i = target_set.intersection(expanded_proxy_set)
+            if i and (
+                not require_embedded
+                or embedded(expanded_proxy_set, target_set)
+            ):
+                if col is None:
+
+                    # no corresponding column yet, pick this one.
+
+                    col, intersect = c, i
+                elif len(i) > len(intersect):
+
+                    # 'c' has a larger field of correspondence than
+                    # 'col'. i.e. selectable.c.a1_x->a1.c.x->table.c.x
+                    # matches a1.c.x->table.c.x better than
+                    # selectable.c.x->table.c.x does.
+
+                    col, intersect = c, i
+                elif i == intersect:
+                    # they have the same field of correspondence. see
+                    # which proxy_set has fewer columns in it, which
+                    # indicates a closer relationship with the root
+                    # column. Also take into account the "weight"
+                    # attribute which CompoundSelect() uses to give
+                    # higher precedence to columns based on vertical
+                    # position in the compound statement, and discard
+                    # columns that have no reference to the target
+                    # column (also occurs with CompoundSelect)
+
+                    col_distance = util.reduce(
+                        operator.add,
+                        [
+                            sc._annotations.get("weight", 1)
+                            for sc in col._uncached_proxy_set()
+                            if sc.shares_lineage(column)
+                        ],
+                    )
+                    c_distance = util.reduce(
+                        operator.add,
+                        [
+                            sc._annotations.get("weight", 1)
+                            for sc in c._uncached_proxy_set()
+                            if sc.shares_lineage(column)
+                        ],
+                    )
+                    if c_distance < col_distance:
+                        col, intersect = c, i
+        return col
+
+
+class DedupeColumnCollection(ColumnCollection):
+    """A :class:`.ColumnCollection` that maintains deduplicating behavior.
+
+    This is useful by schema level objects such as :class:`.Table` and
+    :class:`.PrimaryKeyConstraint`.    The collection includes more
+    sophisticated mutator methods as well to suit schema objects which
+    require mutable column collections.
+
+    .. versionadded:: 1.4
+
+    """
+
+    def add(self, column, key=None):
+        if key is not None and column.key != key:
+            raise exc.ArgumentError(
+                "DedupeColumnCollection requires columns be under "
+                "the same key as their .key"
+            )
+        key = column.key
+
+        if key is None:
+            raise exc.ArgumentError(
+                "Can't add unnamed column to column collection"
+            )
+
+        if key in self._index:
+
+            existing = self._index[key]
+
+            if existing is column:
+                return
+
+            self.replace(column)
+
+            # pop out memoized proxy_set as this
+            # operation may very well be occurring
+            # in a _make_proxy operation
+            util.memoized_property.reset(column, "proxy_set")
+        else:
+            l = len(self._collection)
+            self._collection.append((key, column))
+            self._colset.add(column)
+            self._index[l] = column
+            self._index[key] = column
+
+    def _populate_separate_keys(self, iter_):
+        """populate from an iterator of (key, column)"""
+        cols = list(iter_)
+
+        replace_col = []
+        for k, col in cols:
+            if col.key != k:
+                raise exc.ArgumentError(
+                    "DedupeColumnCollection requires columns be under "
+                    "the same key as their .key"
+                )
+            if col.name in self._index and col.key != col.name:
+                replace_col.append(col)
+            elif col.key in self._index:
+                replace_col.append(col)
+            else:
+                self._index[k] = col
+                self._collection.append((k, col))
+        self._colset.update(c for (k, c) in self._collection)
+        self._index.update(
+            (idx, c) for idx, (k, c) in enumerate(self._collection)
+        )
+        for col in replace_col:
+            self.replace(col)
+
+    def extend(self, iter_):
+        self._populate_separate_keys((col.key, col) for col in iter_)
+
+    def remove(self, column):
+        if column not in self._colset:
+            raise ValueError(
+                "Can't remove column %r; column is not in this collection"
+                % column
+            )
+        del self._index[column.key]
+        self._colset.remove(column)
+        self._collection[:] = [
+            (k, c) for (k, c) in self._collection if c is not column
+        ]
+        self._index.update(
+            {idx: col for idx, (k, col) in enumerate(self._collection)}
+        )
+        # delete higher index
+        del self._index[len(self._collection)]
 
     def replace(self, column):
         """add the given column to this collection, removing unaliased
@@ -499,130 +933,60 @@ class ColumnCollection(util.OrderedProperties):
            Used by schema.Column to override columns during table reflection.
 
         """
-        remove_col = None
-        if column.name in self and column.key != column.name:
-            other = self[column.name]
+
+        remove_col = set()
+        # remove up to two columns based on matches of name as well as key
+        if column.name in self._index and column.key != column.name:
+            other = self._index[column.name]
             if other.name == other.key:
-                remove_col = other
-                del self._data[other.key]
+                remove_col.add(other)
 
-        if column.key in self._data:
-            remove_col = self._data[column.key]
+        if column.key in self._index:
+            remove_col.add(self._index[column.key])
 
-        self._data[column.key] = column
-        if remove_col is not None:
-            self._all_columns[:] = [
-                column if c is remove_col else c for c in self._all_columns
-            ]
-        else:
-            self._all_columns.append(column)
+        new_cols = []
+        replaced = False
+        for k, col in self._collection:
+            if col in remove_col:
+                if not replaced:
+                    replaced = True
+                    new_cols.append((column.key, column))
+            else:
+                new_cols.append((k, col))
 
-    def add(self, column):
-        """Add a column to this collection.
+        if remove_col:
+            self._colset.difference_update(remove_col)
 
-        The key attribute of the column will be used as the hash key
-        for this dictionary.
+        if not replaced:
+            new_cols.append((column.key, column))
 
-        """
-        if not column.key:
-            raise exc.ArgumentError(
-                "Can't add unnamed column to column collection"
-            )
-        self[column.key] = column
+        self._colset.add(column)
+        self._collection[:] = new_cols
 
-    def __delitem__(self, key):
-        raise NotImplementedError()
-
-    def __setattr__(self, key, obj):
-        raise NotImplementedError()
-
-    def __setitem__(self, key, value):
-        if key in self:
-
-            # this warning is primarily to catch select() statements
-            # which have conflicting column names in their exported
-            # columns collection
-
-            existing = self[key]
-
-            if existing is value:
-                return
-
-            if not existing.shares_lineage(value):
-                util.warn(
-                    "Column %r on table %r being replaced by "
-                    "%r, which has the same key.  Consider "
-                    "use_labels for select() statements."
-                    % (key, getattr(existing, "table", None), value)
-                )
-
-            # pop out memoized proxy_set as this
-            # operation may very well be occurring
-            # in a _make_proxy operation
-            util.memoized_property.reset(value, "proxy_set")
-
-        self._all_columns.append(value)
-        self._data[key] = value
-
-    def clear(self):
-        raise NotImplementedError()
-
-    def remove(self, column):
-        del self._data[column.key]
-        self._all_columns[:] = [
-            c for c in self._all_columns if c is not column
-        ]
-
-    def update(self, iter_):
-        cols = list(iter_)
-        all_col_set = set(self._all_columns)
-        self._all_columns.extend(
-            c for label, c in cols if c not in all_col_set
+        self._index.clear()
+        self._index.update(
+            {idx: col for idx, (k, col) in enumerate(self._collection)}
         )
-        self._data.update((label, c) for label, c in cols)
+        self._index.update(self._collection)
 
-    def extend(self, iter_):
-        cols = list(iter_)
-        all_col_set = set(self._all_columns)
-        self._all_columns.extend(c for c in cols if c not in all_col_set)
-        self._data.update((c.key, c) for c in cols)
 
-    __hash__ = None
+class ImmutableColumnCollection(util.ImmutableContainer, ColumnCollection):
+    __slots__ = ("_parent",)
 
-    @util.dependencies("sqlalchemy.sql.elements")
-    def __eq__(self, elements, other):
-        l = []
-        for c in getattr(other, "_all_columns", other):
-            for local in self._all_columns:
-                if c.shares_lineage(local):
-                    l.append(c == local)
-        return elements.and_(*l)
-
-    def __contains__(self, other):
-        if not isinstance(other, util.string_types):
-            raise exc.ArgumentError("__contains__ requires a string argument")
-        return util.OrderedProperties.__contains__(self, other)
+    def __init__(self, collection):
+        object.__setattr__(self, "_parent", collection)
+        object.__setattr__(self, "_colset", collection._colset)
+        object.__setattr__(self, "_index", collection._index)
+        object.__setattr__(self, "_collection", collection._collection)
 
     def __getstate__(self):
-        return {"_data": self._data, "_all_columns": self._all_columns}
+        return {"_parent": self._parent}
 
     def __setstate__(self, state):
-        object.__setattr__(self, "_data", state["_data"])
-        object.__setattr__(self, "_all_columns", state["_all_columns"])
+        parent = state["_parent"]
+        self.__init__(parent)
 
-    def contains_column(self, col):
-        return col in set(self._all_columns)
-
-    def as_immutable(self):
-        return ImmutableColumnCollection(self._data, self._all_columns)
-
-
-class ImmutableColumnCollection(util.ImmutableProperties, ColumnCollection):
-    def __init__(self, data, all_columns):
-        util.ImmutableProperties.__init__(self, data)
-        object.__setattr__(self, "_all_columns", all_columns)
-
-    extend = remove = util.ImmutableProperties._immutable
+    add = extend = remove = util.ImmutableContainer._immutable
 
 
 class ColumnSet(util.ordered_column_set):
@@ -636,8 +1000,7 @@ class ColumnSet(util.ordered_column_set):
     def __add__(self, other):
         return list(self) + list(other)
 
-    @util.dependencies("sqlalchemy.sql.elements")
-    def __eq__(self, elements, other):
+    def __eq__(self, other):
         l = []
         for c in other:
             for local in self:

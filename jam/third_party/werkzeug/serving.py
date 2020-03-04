@@ -40,8 +40,9 @@ import os
 import signal
 import socket
 import sys
+from datetime import datetime as dt
+from datetime import timedelta
 
-import werkzeug
 from ._compat import PY2
 from ._compat import reraise
 from ._compat import WIN
@@ -72,18 +73,9 @@ except ImportError:
     ssl = _SslDummy()
 
 try:
-    import termcolor
+    import click
 except ImportError:
-    termcolor = None
-
-
-def _get_openssl_crypto_module():
-    try:
-        from OpenSSL import crypto
-    except ImportError:
-        raise TypeError("Using ad-hoc certificates requires the pyOpenSSL library.")
-    else:
-        return crypto
+    click = None
 
 
 ThreadingMixIn = socketserver.ThreadingMixIn
@@ -174,7 +166,9 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
 
     @property
     def server_version(self):
-        return "Werkzeug/" + werkzeug.__version__
+        from . import __version__
+
+        return "Werkzeug/" + __version__
 
     def make_environ(self):
         request_url = url_parse(self.path)
@@ -189,7 +183,16 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
             self.client_address = (self.client_address, 0)
         else:
             pass
-        path_info = url_unquote(request_url.path)
+
+        # If there was no scheme but the path started with two slashes,
+        # the first segment may have been incorrectly parsed as the
+        # netloc, prepend it to the path again.
+        if not request_url.scheme and request_url.netloc:
+            path_info = "/%s%s" % (request_url.netloc, request_url.path)
+        else:
+            path_info = request_url.path
+
+        path_info = url_unquote(path_info)
 
         environ = {
             "wsgi.version": (1, 0),
@@ -229,8 +232,24 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
             environ["wsgi.input_terminated"] = True
             environ["wsgi.input"] = DechunkedInput(environ["wsgi.input"])
 
+        # Per RFC 2616, if the URL is absolute, use that as the host.
+        # We're using "has a scheme" to indicate an absolute URL.
         if request_url.scheme and request_url.netloc:
             environ["HTTP_HOST"] = request_url.netloc
+
+        try:
+            # binary_form=False gives nicer information, but wouldn't be compatible with
+            # what Nginx or Apache could return.
+            peer_cert = self.connection.getpeercert(binary_form=True)
+            if peer_cert is not None:
+                # Nginx and Apache use PEM format.
+                environ["SSL_CLIENT_CERT"] = ssl.DER_cert_to_PEM_cert(peer_cert)
+        except ValueError:
+            # SSL handshake hasn't finished.
+            self.server.log("error", "Cannot fetch SSL peer certificate info")
+        except AttributeError:
+            # Not using TLS, the socket will not have getpeercert().
+            pass
 
         return environ
 
@@ -272,7 +291,9 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
                 self.end_headers()
 
             assert isinstance(data, bytes), "applications must write bytes"
-            self.wfile.write(data)
+            if data:
+                # Only write data if there is any to avoid Python 3.5 SSL bug
+                self.wfile.write(data)
             self.wfile.flush()
 
         def start_response(status, response_headers, exc_info=None):
@@ -297,7 +318,6 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
             finally:
                 if hasattr(application_iter, "close"):
                     application_iter.close()
-                application_iter = None
 
         try:
             execute(self.server.app)
@@ -321,9 +341,8 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
 
     def handle(self):
         """Handles a request ignoring dropped connections."""
-        rv = None
         try:
-            rv = BaseHTTPRequestHandler.handle(self)
+            BaseHTTPRequestHandler.handle(self)
         except (_ConnectionError, socket.timeout) as e:
             self.connection_dropped(e)
         except Exception as e:
@@ -331,7 +350,6 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
                 raise
         if self.server.shutdown_signal:
             self.initiate_shutdown()
-        return rv
 
     def initiate_shutdown(self):
         """A horrible, horrible way to kill the server for Python 2.6 and
@@ -395,23 +413,23 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
 
         code = str(code)
 
-        if termcolor:
-            color = termcolor.colored
+        if click:
+            color = click.style
 
             if code[0] == "1":  # 1xx - Informational
-                msg = color(msg, attrs=["bold"])
+                msg = color(msg, bold=True)
             elif code[0] == "2":  # 2xx - Success
-                msg = color(msg, color="white")
+                msg = color(msg, fg="white")
             elif code == "304":  # 304 - Resource Not Modified
-                msg = color(msg, color="cyan")
+                msg = color(msg, fg="cyan")
             elif code[0] == "3":  # 3xx - Redirection
-                msg = color(msg, color="green")
+                msg = color(msg, fg="green")
             elif code == "404":  # 404 - Resource Not Found
-                msg = color(msg, color="yellow")
+                msg = color(msg, fg="yellow")
             elif code[0] == "4":  # 4xx - Client Error
-                msg = color(msg, color="red", attrs=["bold"])
+                msg = color(msg, fg="red", bold=True)
             else:  # 5xx, or any other response
-                msg = color(msg, color="magenta", attrs=["bold"])
+                msg = color(msg, fg="magenta", bold=True)
 
         self.log("info", '"%s" %s %s', msg, code, size)
 
@@ -484,32 +502,43 @@ BaseRequestHandler = WSGIRequestHandler
 
 
 def generate_adhoc_ssl_pair(cn=None):
-    from random import random
-
-    crypto = _get_openssl_crypto_module()
+    try:
+        from cryptography import x509
+        from cryptography.x509.oid import NameOID
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import rsa
+    except ImportError:
+        raise TypeError("Using ad-hoc certificates requires the cryptography library.")
+    pkey = rsa.generate_private_key(
+        public_exponent=65537, key_size=2048, backend=default_backend()
+    )
 
     # pretty damn sure that this is not actually accepted by anyone
     if cn is None:
-        cn = "*"
+        cn = u"*"
 
-    cert = crypto.X509()
-    cert.set_serial_number(int(random() * sys.maxsize))
-    cert.gmtime_adj_notBefore(0)
-    cert.gmtime_adj_notAfter(60 * 60 * 24 * 365)
+    subject = x509.Name(
+        [
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Dummy Certificate"),
+            x509.NameAttribute(NameOID.COMMON_NAME, cn),
+        ]
+    )
 
-    subject = cert.get_subject()
-    subject.CN = cn
-    subject.O = "Dummy Certificate"  # noqa: E741
-
-    issuer = cert.get_issuer()
-    issuer.CN = subject.CN
-    issuer.O = subject.O  # noqa: E741
-
-    pkey = crypto.PKey()
-    pkey.generate_key(crypto.TYPE_RSA, 2048)
-    cert.set_pubkey(pkey)
-    cert.sign(pkey, "sha256")
-
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(subject)
+        .public_key(pkey.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(dt.utcnow())
+        .not_valid_after(dt.utcnow() + timedelta(days=365))
+        .add_extension(x509.ExtendedKeyUsage([x509.OID_SERVER_AUTH]), critical=False)
+        .add_extension(
+            x509.SubjectAlternativeName([x509.DNSName(u"*")]), critical=False
+        )
+        .sign(pkey, hashes.SHA256(), default_backend())
+    )
     return cert, pkey
 
 
@@ -531,37 +560,54 @@ def make_ssl_devcert(base_path, host=None, cn=None):
                  for the `cn`.
     :param cn: the `CN` to use.
     """
-    from OpenSSL import crypto
 
     if host is not None:
-        cn = "*.%s/CN=%s" % (host, host)
+        cn = u"*.%s/CN=%s" % (host, host)
     cert, pkey = generate_adhoc_ssl_pair(cn=cn)
+
+    from cryptography.hazmat.primitives import serialization
 
     cert_file = base_path + ".crt"
     pkey_file = base_path + ".key"
 
     with open(cert_file, "wb") as f:
-        f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
+        f.write(cert.public_bytes(serialization.Encoding.PEM))
     with open(pkey_file, "wb") as f:
-        f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, pkey))
+        f.write(
+            pkey.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
 
     return cert_file, pkey_file
 
 
 def generate_adhoc_ssl_context():
     """Generates an adhoc SSL context for the development server."""
-    crypto = _get_openssl_crypto_module()
     import tempfile
     import atexit
 
     cert, pkey = generate_adhoc_ssl_pair()
+
+    from cryptography.hazmat.primitives import serialization
+
     cert_handle, cert_file = tempfile.mkstemp()
     pkey_handle, pkey_file = tempfile.mkstemp()
     atexit.register(os.remove, pkey_file)
     atexit.register(os.remove, cert_file)
 
-    os.write(cert_handle, crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
-    os.write(pkey_handle, crypto.dump_privatekey(crypto.FILETYPE_PEM, pkey))
+    os.write(cert_handle, cert.public_bytes(serialization.Encoding.PEM))
+    os.write(
+        pkey_handle,
+        pkey.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        ),
+    )
+
     os.close(cert_handle)
     os.close(pkey_handle)
     ctx = load_ssl_context(cert_file, pkey_file)
@@ -580,7 +626,11 @@ def load_ssl_context(cert_file, pkey_file=None, protocol=None):
                      module. Defaults to ``PROTOCOL_SSLv23``.
     """
     if protocol is None:
-        protocol = ssl.PROTOCOL_SSLv23
+        try:
+            protocol = ssl.PROTOCOL_TLS_SERVER
+        except AttributeError:
+            # Python <= 3.5 compat
+            protocol = ssl.PROTOCOL_SSLv23
     ctx = _SSLContext(protocol)
     ctx.load_cert_chain(cert_file, pkey_file)
     return ctx
@@ -614,17 +664,9 @@ class _SSLContext(object):
 
 def is_ssl_error(error=None):
     """Checks if the given error (or the current one) is an SSL error."""
-    exc_types = (ssl.SSLError,)
-    try:
-        from OpenSSL.SSL import Error
-
-        exc_types += (Error,)
-    except ImportError:
-        pass
-
     if error is None:
         error = sys.exc_info()[1]
-    return isinstance(error, exc_types)
+    return isinstance(error, ssl.SSLError)
 
 
 def select_address_family(host, port):
@@ -714,6 +756,7 @@ class BaseWSGIServer(HTTPServer, object):
                 ssl_context = load_ssl_context(*ssl_context)
             if ssl_context == "adhoc":
                 ssl_context = generate_adhoc_ssl_context()
+
             # If we are on Python 2 the return value from socket.fromfd
             # is an internal socket object but what we need for ssl wrap
             # is the wrapper around it :(

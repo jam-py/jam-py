@@ -15,7 +15,6 @@ import os
 import pkgutil
 import re
 import sys
-import warnings
 
 from ._compat import iteritems
 from ._compat import PY2
@@ -91,6 +90,36 @@ class cached_property(property):
             value = self.func(obj)
             obj.__dict__[self.__name__] = value
         return value
+
+
+def invalidate_cached_property(obj, name):
+    """Invalidates the cache for a :class:`cached_property`:
+
+    >>> class Test(object):
+    ...     @cached_property
+    ...     def magic_number(self):
+    ...         print("recalculating...")
+    ...         return 42
+    ...
+    >>> var = Test()
+    >>> var.magic_number
+    recalculating...
+    42
+    >>> var.magic_number
+    42
+    >>> invalidate_cached_property(var, "magic_number")
+    >>> var.magic_number
+    recalculating...
+    42
+
+    You must pass the name of the cached property as the second argument.
+    """
+    if not isinstance(getattr(obj.__class__, name, None), cached_property):
+        raise TypeError(
+            "Attribute {} of object {} is not a cached_property, "
+            "cannot be invalidated".format(name, obj)
+        )
+    obj.__dict__[name] = _missing
 
 
 class environ_property(_DictAccessorProperty):
@@ -274,7 +303,7 @@ def get_content_type(mimetype, charset):
     :param charset: The charset to be appended for text mimetypes.
     :return: The content type.
 
-    .. verionchanged:: 0.15
+    .. versionchanged:: 0.15
         Any type that ends with ``+xml`` gets a charset, not just those
         that start with ``application/``. Known text types such as
         ``application/javascript`` are also given charsets.
@@ -408,7 +437,7 @@ def secure_filename(filename):
     return filename
 
 
-def escape(s, quote=None):
+def escape(s):
     """Replace special characters "&", "<", ">" and (") to HTML-safe sequences.
 
     There is a special handling for `None` which escapes to an empty string.
@@ -423,24 +452,16 @@ def escape(s, quote=None):
         return ""
     elif hasattr(s, "__html__"):
         return text_type(s.__html__())
-    elif not isinstance(s, string_types):
-        s = text_type(s)
-    if quote is not None:
-        from warnings import warn
 
-        warn(
-            "The 'quote' parameter is no longer used as of version 0.9"
-            " and will be removed in version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-    s = (
+    if not isinstance(s, string_types):
+        s = text_type(s)
+
+    return (
         s.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")
     )
-    return s
 
 
 def unescape(s):
@@ -755,82 +776,3 @@ class ImportStringError(ImportError):
             self.import_name,
             self.exception,
         )
-
-
-# DEPRECATED
-from .datastructures import CombinedMultiDict as _CombinedMultiDict
-from .datastructures import EnvironHeaders as _EnvironHeaders
-from .datastructures import Headers as _Headers
-from .datastructures import MultiDict as _MultiDict
-from .http import dump_cookie as _dump_cookie
-from .http import parse_cookie as _parse_cookie
-
-
-class MultiDict(_MultiDict):
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "'werkzeug.utils.MultiDict' has moved to 'werkzeug"
-            ".datastructures.MultiDict' as of version 0.5. This old"
-            " import will be removed in version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super(MultiDict, self).__init__(*args, **kwargs)
-
-
-class CombinedMultiDict(_CombinedMultiDict):
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "'werkzeug.utils.CombinedMultiDict' has moved to 'werkzeug"
-            ".datastructures.CombinedMultiDict' as of version 0.5. This"
-            " old import will be removed in version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super(CombinedMultiDict, self).__init__(*args, **kwargs)
-
-
-class Headers(_Headers):
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "'werkzeug.utils.Headers' has moved to 'werkzeug"
-            ".datastructures.Headers' as of version 0.5. This old"
-            " import will be removed in version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super(Headers, self).__init__(*args, **kwargs)
-
-
-class EnvironHeaders(_EnvironHeaders):
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "'werkzeug.utils.EnvironHeaders' has moved to 'werkzeug"
-            ".datastructures.EnvironHeaders' as of version 0.5. This"
-            " old import will be removed in version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super(EnvironHeaders, self).__init__(*args, **kwargs)
-
-
-def parse_cookie(*args, **kwargs):
-    warnings.warn(
-        "'werkzeug.utils.parse_cookie' as moved to 'werkzeug.http"
-        ".parse_cookie' as of version 0.5. This old import will be"
-        " removed in version 1.0.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _parse_cookie(*args, **kwargs)
-
-
-def dump_cookie(*args, **kwargs):
-    warnings.warn(
-        "'werkzeug.utils.dump_cookie' as moved to 'werkzeug.http"
-        ".dump_cookie' as of version 0.5. This old import will be"
-        " removed in version 1.0.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _dump_cookie(*args, **kwargs)

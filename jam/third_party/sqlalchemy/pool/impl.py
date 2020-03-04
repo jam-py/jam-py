@@ -1,5 +1,5 @@
 # sqlalchemy/pool.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -13,6 +13,7 @@
 import traceback
 import weakref
 
+from .base import _ConnectionFairy
 from .base import _ConnectionRecord
 from .base import Pool
 from .. import exc
@@ -168,7 +169,6 @@ class QueuePool(Pool):
             recycle=self._recycle,
             echo=self.echo,
             logging_name=self._orig_logging_name,
-            use_threadlocal=self._use_threadlocal,
             reset_on_return=self._reset_on_return,
             _dispatch=self.dispatch,
             dialect=self._dialect,
@@ -244,7 +244,6 @@ class NullPool(Pool):
             recycle=self._recycle,
             echo=self.echo,
             logging_name=self._orig_logging_name,
-            use_threadlocal=self._use_threadlocal,
             reset_on_return=self._reset_on_return,
             _dispatch=self.dispatch,
             dialect=self._dialect,
@@ -288,6 +287,7 @@ class SingletonThreadPool(Pool):
     def __init__(self, creator, pool_size=5, **kw):
         Pool.__init__(self, creator, **kw)
         self._conn = threading.local()
+        self._fairy = threading.local()
         self._all_conns = set()
         self.size = pool_size
 
@@ -299,7 +299,6 @@ class SingletonThreadPool(Pool):
             recycle=self._recycle,
             echo=self.echo,
             logging_name=self._orig_logging_name,
-            use_threadlocal=self._use_threadlocal,
             reset_on_return=self._reset_on_return,
             _dispatch=self.dispatch,
             dialect=self._dialect,
@@ -346,6 +345,26 @@ class SingletonThreadPool(Pool):
         self._all_conns.add(c)
         return c
 
+    def connect(self):
+        # vendored from Pool to include the now removed use_threadlocal
+        # behavior
+        try:
+            rec = self._fairy.current()
+        except AttributeError:
+            pass
+        else:
+            if rec is not None:
+                return rec._checkout_existing()
+
+        return _ConnectionFairy._checkout(self, self._fairy)
+
+    def _return_conn(self, record):
+        try:
+            del self._fairy.current
+        except AttributeError:
+            pass
+        self._do_return_conn(record)
+
 
 class StaticPool(Pool):
 
@@ -379,7 +398,6 @@ class StaticPool(Pool):
         return self.__class__(
             creator=self._creator,
             recycle=self._recycle,
-            use_threadlocal=self._use_threadlocal,
             reset_on_return=self._reset_on_return,
             echo=self.echo,
             logging_name=self._orig_logging_name,

@@ -1,5 +1,5 @@
 # schema.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -41,6 +41,7 @@ from .sql.schema import Column  # noqa
 from .sql.schema import ColumnCollectionConstraint  # noqa
 from .sql.schema import ColumnCollectionMixin  # noqa
 from .sql.schema import ColumnDefault  # noqa
+from .sql.schema import Computed  # noqa
 from .sql.schema import Constraint  # noqa
 from .sql.schema import DefaultClause  # noqa
 from .sql.schema import DefaultGenerator  # noqa
@@ -49,7 +50,6 @@ from .sql.schema import ForeignKey  # noqa
 from .sql.schema import ForeignKeyConstraint  # noqa
 from .sql.schema import Index  # noqa
 from .sql.schema import MetaData  # noqa
-from .sql.schema import PassiveDefault  # noqa
 from .sql.schema import PrimaryKeyConstraint  # noqa
 from .sql.schema import SchemaItem  # noqa
 from .sql.schema import Sequence  # noqa

@@ -10,6 +10,7 @@ Serve Shared Static Files
 """
 import mimetypes
 import os
+import pkgutil
 import posixpath
 from datetime import datetime
 from io import BytesIO
@@ -23,6 +24,7 @@ from ..filesystem import get_filesystem_encoding
 from ..http import http_date
 from ..http import is_resource_modified
 from ..security import safe_join
+from ..utils import get_content_type
 from ..wsgi import get_path_info
 from ..wsgi import wrap_file
 
@@ -69,19 +71,24 @@ class SharedDataMiddleware(object):
     module.  If it's unable to figure out the charset it will fall back
     to `fallback_mimetype`.
 
-    .. versionchanged:: 0.5
-       The cache timeout is configurable now.
-
-    .. versionadded:: 0.6
-       The `fallback_mimetype` parameter was added.
-
     :param app: the application to wrap.  If you don't want to wrap an
                 application you can pass it :exc:`NotFound`.
     :param exports: a list or dict of exported files and folders.
     :param disallow: a list of :func:`~fnmatch.fnmatch` rules.
-    :param fallback_mimetype: the fallback mimetype for unknown files.
     :param cache: enable or disable caching headers.
     :param cache_timeout: the cache timeout in seconds for the headers.
+    :param fallback_mimetype: The fallback mimetype for unknown files.
+
+    .. versionchanged:: 1.0
+        The default ``fallback_mimetype`` is
+        ``application/octet-stream``. If a filename looks like a text
+        mimetype, the ``utf-8`` charset is added to it.
+
+    .. versionadded:: 0.6
+        Added ``fallback_mimetype``.
+
+    .. versionchanged:: 0.5
+        Added ``cache_timeout``.
     """
 
     def __init__(
@@ -91,7 +98,7 @@ class SharedDataMiddleware(object):
         disallow=None,
         cache=True,
         cache_timeout=60 * 60 * 12,
-        fallback_mimetype="text/plain",
+        fallback_mimetype="application/octet-stream",
     ):
         self.app = app
         self.exports = []
@@ -139,32 +146,65 @@ class SharedDataMiddleware(object):
         return lambda x: (os.path.basename(filename), self._opener(filename))
 
     def get_package_loader(self, package, package_path):
-        from pkg_resources import DefaultProvider, ResourceManager, get_provider
-
         loadtime = datetime.utcnow()
-        provider = get_provider(package)
-        manager = ResourceManager()
-        filesystem_bound = isinstance(provider, DefaultProvider)
+        provider = pkgutil.get_loader(package)
 
-        def loader(path):
-            if path is None:
-                return None, None
+        if hasattr(provider, "get_resource_reader"):
+            # Python 3
+            reader = provider.get_resource_reader(package)
 
-            path = safe_join(package_path, path)
+            def loader(path):
+                if path is None:
+                    return None, None
 
-            if not provider.has_resource(path):
-                return None, None
+                path = safe_join(package_path, path)
+                basename = posixpath.basename(path)
 
-            basename = posixpath.basename(path)
+                try:
+                    resource = reader.open_resource(path)
+                except IOError:
+                    return None, None
 
-            if filesystem_bound:
+                if isinstance(resource, BytesIO):
+                    return (
+                        basename,
+                        lambda: (resource, loadtime, len(resource.getvalue())),
+                    )
+
                 return (
                     basename,
-                    self._opener(provider.get_resource_filename(manager, path)),
+                    lambda: (
+                        resource,
+                        datetime.utcfromtimestamp(os.path.getmtime(resource.name)),
+                        os.path.getsize(resource.name),
+                    ),
                 )
 
-            s = provider.get_resource_string(manager, path)
-            return basename, lambda: (BytesIO(s), loadtime, len(s))
+        else:
+            # Python 2
+            package_filename = provider.get_filename(package)
+            is_filesystem = os.path.exists(package_filename)
+            root = os.path.join(os.path.dirname(package_filename), package_path)
+
+            def loader(path):
+                if path is None:
+                    return None, None
+
+                path = safe_join(root, path)
+                basename = posixpath.basename(path)
+
+                if is_filesystem:
+                    if not os.path.isfile(path):
+                        return None, None
+
+                    return basename, self._opener(path)
+
+                try:
+                    data = provider.get_data(path)
+                except IOError:
+                    return None, None
+
+                return basename, lambda: (BytesIO(data), loadtime, len(data))
 
         return loader
 
@@ -220,7 +260,7 @@ class SharedDataMiddleware(object):
             return self.app(environ, start_response)
 
         guessed_type = mimetypes.guess_type(real_filename)
-        mime_type = guessed_type[0] or self.fallback_mimetype
+        mime_type = get_content_type(guessed_type[0] or self.fallback_mimetype, "utf-8")
         f, mtime, file_size = file_loader()
 
         headers = [("Date", http_date())]

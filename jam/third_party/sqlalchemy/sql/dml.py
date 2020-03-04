@@ -1,5 +1,5 @@
 # sql/dml.py
-# Copyright (C) 2009-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2009-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,18 +9,15 @@ Provide :class:`.Insert`, :class:`.Update` and :class:`.Delete`.
 
 """
 
+from . import coercions
+from . import roles
 from .base import _from_objects
 from .base import _generative
 from .base import DialectKWArgs
 from .base import Executable
-from .elements import _clone
-from .elements import _column_as_key
-from .elements import _literal_as_text
 from .elements import and_
 from .elements import ClauseElement
 from .elements import Null
-from .selectable import _interpret_as_from
-from .selectable import _interpret_as_select
 from .selectable import HasCTE
 from .selectable import HasPrefixes
 from .. import exc
@@ -28,7 +25,12 @@ from .. import util
 
 
 class UpdateBase(
-    HasCTE, DialectKWArgs, HasPrefixes, Executable, ClauseElement
+    roles.DMLRole,
+    HasCTE,
+    DialectKWArgs,
+    HasPrefixes,
+    Executable,
+    ClauseElement,
 ):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements.
 
@@ -44,14 +46,82 @@ class UpdateBase(
     _prefixes = ()
     named_with_column = False
 
-    def _process_colparams(self, parameters):
+    @classmethod
+    def _constructor_20_deprecations(cls, fn_name, clsname, names):
+
+        param_to_method_lookup = dict(
+            whereclause=(
+                "The :paramref:`.%(func)s.whereclause` parameter "
+                "will be removed "
+                "in SQLAlchemy 2.0.  Please refer to the "
+                ":meth:`.%(classname)s.where` method."
+            ),
+            values=(
+                "The :paramref:`.%(func)s.values` parameter will be removed "
+                "in SQLAlchemy 2.0.  Please refer to the "
+                ":meth:`.%(classname)s.values` method."
+            ),
+            bind=(
+                "The :paramref:`.%(func)s.bind` parameter will be removed in "
+                "SQLAlchemy 2.0.  Please use explicit connection execution."
+            ),
+            inline=(
+                "The :paramref:`.%(func)s.inline` parameter will be "
+                "removed in "
+                "SQLAlchemy 2.0.  Please use the "
+                ":meth:`.%(classname)s.inline` method."
+            ),
+            prefixes=(
+                "The :paramref:`.%(func)s.prefixes parameter will be "
+                "removed in "
+                "SQLAlchemy 2.0.  Please use the "
+                ":meth:`.%(classname)s.prefix_with` "
+                "method."
+            ),
+            return_defaults=(
+                "The :paramref:`.%(func)s.return_defaults` parameter will be "
+                "removed in SQLAlchemy 2.0.  Please use the "
+                ":meth:`.%(classname)s.return_defaults` method."
+            ),
+            returning=(
+                "The :paramref:`.%(func)s.returning` parameter will be "
+                "removed in SQLAlchemy 2.0.  Please use the "
+                ":meth:`.%(classname)s.returning`` method."
+            ),
+            preserve_parameter_order=(
+                "The :paramref:`%(func)s.preserve_parameter_order` parameter "
+                "will be removed in SQLAlchemy 2.0.   Use the "
+                ":meth:`.%(classname)s.ordered_values` method with a list "
+                "of tuples. "
+            ),
+        )
+
+        return util.deprecated_params(
+            **{
+                name: (
+                    "2.0",
+                    param_to_method_lookup[name]
+                    % {"func": fn_name, "classname": clsname},
+                )
+                for name in names
+            }
+        )
+
+    def _generate_fromclause_column_proxies(self, fromclause):
+        fromclause._columns._populate_separate_keys(
+            col._make_proxy(fromclause) for col in self._returning
+        )
+
+    def _process_colparams(self, parameters, preserve_parameter_order=False):
         def process_single(p):
             if isinstance(p, (list, tuple)):
                 return dict((c.key, pval) for c, pval in zip(self.table.c, p))
             else:
                 return p
 
-        if self._preserve_parameter_order and parameters is not None:
+        if (
+            preserve_parameter_order or self._preserve_parameter_order
+        ) and parameters is not None:
             if not isinstance(parameters, list) or (
                 parameters and not isinstance(parameters[0], tuple)
             ):
@@ -196,6 +266,9 @@ class UpdateBase(
 
         self._hints = self._hints.union({(selectable, dialect_name): text})
 
+    def _copy_internals(self, **kw):
+        raise NotImplementedError()
+
 
 class ValuesBase(UpdateBase):
     """Supplies support for :meth:`.ValuesBase.values` to
@@ -210,7 +283,7 @@ class ValuesBase(UpdateBase):
     _post_values_clause = None
 
     def __init__(self, table, values, prefixes):
-        self.table = _interpret_as_from(table)
+        self.table = coercions.expect(roles.FromClauseRole, table)
         self.parameters, self._has_multi_parameters = self._process_colparams(
             values
         )
@@ -482,6 +555,18 @@ class Insert(ValuesBase):
 
     _supports_multi_parameters = True
 
+    @ValuesBase._constructor_20_deprecations(
+        "insert",
+        "Insert",
+        [
+            "values",
+            "inline",
+            "bind",
+            "prefixes",
+            "returning",
+            "return_defaults",
+        ],
+    )
     def __init__(
         self,
         table,
@@ -539,11 +624,11 @@ class Insert(ValuesBase):
             :ref:`inserts_and_updates` - SQL Expression Tutorial
 
         """
-        ValuesBase.__init__(self, table, values, prefixes)
+        super(Insert, self).__init__(table, values, prefixes)
         self._bind = bind
         self.select = self.select_names = None
         self.include_insert_from_select_defaults = False
-        self.inline = inline
+        self._inline = inline
         self._returning = returning
         self._validate_dialect_kwargs(dialect_kw)
         self._return_defaults = return_defaults
@@ -553,6 +638,25 @@ class Insert(ValuesBase):
             return (self.select,)
         else:
             return ()
+
+    @_generative
+    def inline(self):
+        """Make this :class:`.Insert` construct "inline" .
+
+        When set, no attempt will be made to retrieve the
+        SQL-generated default values to be provided within the statement;
+        in particular,
+        this allows SQL expressions to be rendered 'inline' within the
+        statement without the need to pre-execute them beforehand; for
+        backends that support "returning", this turns off the "implicit
+        returning" feature for the statement.
+
+
+        .. versionchanged:: 1.4 the :paramref:`.Insert.inline` parameter
+           is now superseded by the :meth:`.Insert.inline` method.
+
+        """
+        self._inline = True
 
     @_generative
     def from_select(self, names, select, include_defaults=True):
@@ -604,19 +708,16 @@ class Insert(ValuesBase):
             )
 
         self.parameters, self._has_multi_parameters = self._process_colparams(
-            {_column_as_key(n): Null() for n in names}
+            {
+                coercions.expect(roles.DMLColumnRole, n, as_key=True): Null()
+                for n in names
+            }
         )
 
         self.select_names = names
-        self.inline = True
+        self._inline = True
         self.include_insert_from_select_defaults = include_defaults
-        self.select = _interpret_as_select(select)
-
-    def _copy_internals(self, clone=_clone, **kw):
-        # TODO: coverage
-        self.parameters = self.parameters.copy()
-        if self.select is not None:
-            self.select = _clone(self.select)
+        self.select = coercions.expect(roles.DMLSelectRole, select)
 
 
 class Update(ValuesBase):
@@ -629,6 +730,20 @@ class Update(ValuesBase):
 
     __visit_name__ = "update"
 
+    @ValuesBase._constructor_20_deprecations(
+        "update",
+        "Update",
+        [
+            "whereclause",
+            "values",
+            "inline",
+            "bind",
+            "prefixes",
+            "returning",
+            "return_defaults",
+            "preserve_parameter_order",
+        ],
+    )
     def __init__(
         self,
         table,
@@ -678,7 +793,7 @@ class Update(ValuesBase):
             users.update().values(name='ed').where(
                     users.c.name==select([addresses.c.email_address]).\
                                 where(addresses.c.user_id==users.c.id).\
-                                as_scalar()
+                                scalar_subquery()
                     )
 
         :param values:
@@ -744,7 +859,7 @@ class Update(ValuesBase):
             users.update().values(
                     name=select([addresses.c.email_address]).\
                             where(addresses.c.user_id==users.c.id).\
-                            as_scalar()
+                            scalar_subquery()
                 )
 
         .. seealso::
@@ -755,14 +870,16 @@ class Update(ValuesBase):
 
         """
         self._preserve_parameter_order = preserve_parameter_order
-        ValuesBase.__init__(self, table, values, prefixes)
+        super(Update, self).__init__(table, values, prefixes)
         self._bind = bind
         self._returning = returning
         if whereclause is not None:
-            self._whereclause = _literal_as_text(whereclause)
+            self._whereclause = coercions.expect(
+                roles.WhereHavingRole, whereclause
+            )
         else:
             self._whereclause = None
-        self.inline = inline
+        self._inline = inline
         self._validate_dialect_kwargs(dialect_kw)
         self._return_defaults = return_defaults
 
@@ -772,10 +889,61 @@ class Update(ValuesBase):
         else:
             return ()
 
-    def _copy_internals(self, clone=_clone, **kw):
-        # TODO: coverage
-        self._whereclause = clone(self._whereclause, **kw)
-        self.parameters = self.parameters.copy()
+    @_generative
+    def ordered_values(self, *args):
+        """Specify the VALUES clause of this UPDATE statement with an explicit
+        parameter ordering that will be maintained in the SET clause of the
+        resulting UPDATE statement.
+
+        E.g.::
+
+            stmt = table.update().ordered_values(
+                ("name", "ed"), ("ident": "foo")
+            )
+
+        .. seealso::
+
+           :ref:`updates_order_parameters` - full example of the
+           :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
+           flag
+
+        .. versionchanged:: 1.4 The :meth:`.Update.ordered_values` method
+           supersedes the :paramref:`.update.preserve_parameter_order`
+           parameter, which will be removed in SQLAlchemy 2.0.
+
+        """
+        if self.select is not None:
+            raise exc.InvalidRequestError(
+                "This construct already inserts from a SELECT"
+            )
+
+        if self.parameters is None:
+            (
+                self.parameters,
+                self._has_multi_parameters,
+            ) = self._process_colparams(
+                list(args), preserve_parameter_order=True
+            )
+        else:
+            raise exc.ArgumentError(
+                "This statement already has values present"
+            )
+
+    @_generative
+    def inline(self):
+        """Make this :class:`.Update` construct "inline" .
+
+        When set, SQL defaults present on :class:`.Column` objects via the
+        ``default`` keyword will be compiled 'inline' into the statement and
+        not pre-executed.  This means that their values will not be available
+        in the dictionary returned from
+        :meth:`.ResultProxy.last_updated_params`.
+
+        .. versionchanged:: 1.4 the :paramref:`.update.inline` parameter
+           is now superseded by the :meth:`.Update.inline` method.
+
+        """
+        self._inline = True
 
     @_generative
     def where(self, whereclause):
@@ -785,10 +953,13 @@ class Update(ValuesBase):
         """
         if self._whereclause is not None:
             self._whereclause = and_(
-                self._whereclause, _literal_as_text(whereclause)
+                self._whereclause,
+                coercions.expect(roles.WhereHavingRole, whereclause),
             )
         else:
-            self._whereclause = _literal_as_text(whereclause)
+            self._whereclause = coercions.expect(
+                roles.WhereHavingRole, whereclause
+            )
 
     @property
     def _extra_froms(self):
@@ -814,6 +985,11 @@ class Delete(UpdateBase):
 
     __visit_name__ = "delete"
 
+    @ValuesBase._constructor_20_deprecations(
+        "delete",
+        "Delete",
+        ["whereclause", "values", "bind", "prefixes", "returning"],
+    )
     def __init__(
         self,
         table,
@@ -846,7 +1022,7 @@ class Delete(UpdateBase):
             users.delete().where(
                     users.c.name==select([addresses.c.email_address]).\
                                 where(addresses.c.user_id==users.c.id).\
-                                as_scalar()
+                                scalar_subquery()
                     )
 
          .. versionchanged:: 1.2.0
@@ -858,14 +1034,16 @@ class Delete(UpdateBase):
 
         """
         self._bind = bind
-        self.table = _interpret_as_from(table)
+        self.table = coercions.expect(roles.FromClauseRole, table)
         self._returning = returning
 
         if prefixes:
             self._setup_prefixes(prefixes)
 
         if whereclause is not None:
-            self._whereclause = _literal_as_text(whereclause)
+            self._whereclause = coercions.expect(
+                roles.WhereHavingRole, whereclause
+            )
         else:
             self._whereclause = None
 
@@ -883,10 +1061,13 @@ class Delete(UpdateBase):
 
         if self._whereclause is not None:
             self._whereclause = and_(
-                self._whereclause, _literal_as_text(whereclause)
+                self._whereclause,
+                coercions.expect(roles.WhereHavingRole, whereclause),
             )
         else:
-            self._whereclause = _literal_as_text(whereclause)
+            self._whereclause = coercions.expect(
+                roles.WhereHavingRole, whereclause
+            )
 
     @property
     def _extra_froms(self):
@@ -900,7 +1081,3 @@ class Delete(UpdateBase):
                 seen.update(item._cloned_set)
 
         return froms
-
-    def _copy_internals(self, clone=_clone, **kw):
-        # TODO: coverage
-        self._whereclause = clone(self._whereclause, **kw)

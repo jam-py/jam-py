@@ -14,8 +14,10 @@ import re
 from copy import deepcopy
 from itertools import repeat
 
+from . import exceptions
 from ._compat import BytesIO
 from ._compat import collections_abc
+from ._compat import fspath
 from ._compat import integer_types
 from ._compat import iteritems
 from ._compat import iterkeys
@@ -28,8 +30,6 @@ from ._compat import text_type
 from ._compat import to_native
 from ._internal import _missing
 from .filesystem import get_filesystem_encoding
-
-_locale_delim_re = re.compile(r"[_-]")
 
 
 def is_immutable(self):
@@ -46,8 +46,8 @@ def iter_multi_items(mapping):
     elif isinstance(mapping, dict):
         for key, value in iteritems(mapping):
             if isinstance(value, (tuple, list)):
-                for value in value:
-                    yield key, value
+                for v in value:
+                    yield key, v
             else:
                 yield key, value
     else:
@@ -977,7 +977,12 @@ class Headers(object):
         raise exceptions.BadRequestKeyError(key)
 
     def __eq__(self, other):
-        return other.__class__ is self.__class__ and set(other._list) == set(self._list)
+        def lowered(item):
+            return (item[0].lower(),) + item[1:]
+
+        return other.__class__ is self.__class__ and set(
+            map(lowered, other._list)
+        ) == set(map(lowered, self._list))
 
     __hash__ = None
 
@@ -1075,20 +1080,29 @@ class Headers(object):
         for _, value in iteritems(self):
             yield value
 
-    def extend(self, iterable):
-        """Extend the headers with a dict or an iterable yielding keys and
-        values.
+    def extend(self, *args, **kwargs):
+        """Extend headers in this object with items from another object
+        containing header items as well as keyword arguments.
+
+        To replace existing keys instead of extending, use
+        :meth:`update` instead.
+
+        If provided, the first argument can be another :class:`Headers`
+        object, a :class:`MultiDict`, :class:`dict`, or iterable of
+        pairs.
+
+        .. versionchanged:: 1.0
+            Support :class:`MultiDict`. Allow passing ``kwargs``.
         """
-        if isinstance(iterable, dict):
-            for key, value in iteritems(iterable):
-                if isinstance(value, (tuple, list)):
-                    for v in value:
-                        self.add(key, v)
-                else:
-                    self.add(key, value)
-        else:
-            for key, value in iterable:
+        if len(args) > 1:
+            raise TypeError("update expected at most 1 arguments, got %d" % len(args))
+
+        if args:
+            for key, value in iter_multi_items(args[0]):
                 self.add(key, value)
+
+        for key, value in iter_multi_items(kwargs):
+            self.add(key, value)
 
     def __delitem__(self, key, _index_operation=True):
         if _index_operation and isinstance(key, (integer_types, slice)):
@@ -1222,7 +1236,7 @@ class Headers(object):
         ikey = _key.lower()
         for idx, (old_key, _old_value) in enumerate(listiter):
             if old_key.lower() == ikey:
-                # replace first ocurrence
+                # replace first occurrence
                 self._list[idx] = (_key, _value)
                 break
         else:
@@ -1230,18 +1244,56 @@ class Headers(object):
             return
         self._list[idx + 1 :] = [t for t in listiter if t[0].lower() != ikey]
 
-    def setdefault(self, key, default):
-        """Returns the value for the key if it is in the dict, otherwise it
-        returns `default` and sets that value for `key`.
+    def setlist(self, key, values):
+        """Remove any existing values for a header and add new ones.
 
-        :param key: The key to be looked up.
-        :param default: The default value to be returned if the key is not
-                        in the dict.  If not further specified it's `None`.
+        :param key: The header key to set.
+        :param values: An iterable of values to set for the key.
+
+        .. versionadded:: 1.0
+        """
+        if values:
+            values_iter = iter(values)
+            self.set(key, next(values_iter))
+
+            for value in values_iter:
+                self.add(key, value)
+        else:
+            self.remove(key)
+
+    def setdefault(self, key, default):
+        """Return the first value for the key if it is in the headers,
+        otherwise set the header to the value given by ``default`` and
+        return that.
+
+        :param key: The header key to get.
+        :param default: The value to set for the key if it is not in the
+            headers.
         """
         if key in self:
             return self[key]
+
         self.set(key, default)
         return default
+
+    def setlistdefault(self, key, default):
+        """Return the list of values for the key if it is in the
+        headers, otherwise set the header to the list of values given
+        by ``default`` and return that.
+
+        Unlike :meth:`MultiDict.setlistdefault`, modifying the returned
+        list will not affect the headers.
+
+        :param key: The header key to get.
+        :param default: An iterable of values to set for the key if it
+            is not in the headers.
+
+        .. versionadded:: 1.0
+        """
+        if key not in self:
+            self.setlist(key, default)
+
+        return self.getlist(key)
 
     def __setitem__(self, key, value):
         """Like :meth:`set` but also supports index/slice based setting."""
@@ -1260,20 +1312,43 @@ class Headers(object):
         else:
             self.set(key, value)
 
-    def to_list(self, charset="iso-8859-1"):
-        """Convert the headers into a list suitable for WSGI.
+    def update(self, *args, **kwargs):
+        """Replace headers in this object with items from another
+        headers object and keyword arguments.
 
-        .. deprecated:: 0.9
+        To extend existing keys instead of replacing, use :meth:`extend`
+        instead.
+
+        If provided, the first argument can be another :class:`Headers`
+        object, a :class:`MultiDict`, :class:`dict`, or iterable of
+        pairs.
+
+        .. versionadded:: 1.0
         """
-        from warnings import warn
+        if len(args) > 1:
+            raise TypeError("update expected at most 1 arguments, got %d" % len(args))
 
-        warn(
-            "'to_list' deprecated as of version 0.9 and will be removed"
-            " in version 1.0. Use 'to_wsgi_list' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.to_wsgi_list()
+        if args:
+            mapping = args[0]
+
+            if isinstance(mapping, (Headers, MultiDict)):
+                for key in mapping.keys():
+                    self.setlist(key, mapping.getlist(key))
+            elif isinstance(mapping, dict):
+                for key, value in iteritems(mapping):
+                    if isinstance(value, (list, tuple)):
+                        self.setlist(key, value)
+                    else:
+                        self.set(key, value)
+            else:
+                for key, value in mapping:
+                    self.set(key, value)
+
+        for key, value in iteritems(kwargs):
+            if isinstance(value, (list, tuple)):
+                self.setlist(key, value)
+            else:
+                self.set(key, value)
 
     def to_wsgi_list(self):
         """Convert the headers into a list suitable for WSGI.
@@ -1321,14 +1396,25 @@ class ImmutableHeadersMixin(object):
     def __setitem__(self, key, value):
         is_immutable(self)
 
-    set = __setitem__
+    def set(self, key, value):
+        is_immutable(self)
+
+    def setlist(self, key, value):
+        is_immutable(self)
 
     def add(self, item):
         is_immutable(self)
 
-    remove = add_header = add
+    def add_header(self, item):
+        is_immutable(self)
 
-    def extend(self, iterable):
+    def remove(self, item):
+        is_immutable(self)
+
+    def extend(self, *args, **kwargs):
+        is_immutable(self)
+
+    def update(self, *args, **kwargs):
         is_immutable(self)
 
     def insert(self, pos, value):
@@ -1341,6 +1427,9 @@ class ImmutableHeadersMixin(object):
         is_immutable(self)
 
     def setdefault(self, key, default):
+        is_immutable(self)
+
+    def setlistdefault(self, key, default):
         is_immutable(self)
 
 
@@ -1654,6 +1743,12 @@ class Accept(ImmutableList):
 
     .. versionchanged:: 0.5
        :class:`Accept` objects are forced immutable now.
+
+    .. versionchanged:: 1.0.0
+       :class:`Accept` internal values are no longer ordered
+       alphabetically for equal quality tags. Instead the initial
+       order is preserved.
+
     """
 
     def __init__(self, values=()):
@@ -1666,9 +1761,7 @@ class Accept(ImmutableList):
         else:
             self.provided = True
             values = sorted(
-                values,
-                key=lambda x: (self._specificity(x[0]), x[1], x[0]),
-                reverse=True,
+                values, key=lambda x: (self._specificity(x[0]), x[1]), reverse=True,
             )
             list.__init__(self, values)
 
@@ -1795,40 +1888,58 @@ class Accept(ImmutableList):
             return self[0][0]
 
 
+_mime_split_re = re.compile(r"/|(?:\s*;\s*)")
+
+
+def _normalize_mime(value):
+    return _mime_split_re.split(value.lower())
+
+
 class MIMEAccept(Accept):
     """Like :class:`Accept` but with special methods and behavior for
     mimetypes.
     """
 
     def _specificity(self, value):
-        return tuple(x != "*" for x in value.split("/", 1))
+        return tuple(x != "*" for x in _mime_split_re.split(value))
 
     def _value_matches(self, value, item):
-        def _normalize(x):
-            x = x.lower()
-            return ("*", "*") if x == "*" else x.split("/", 1)
+        # item comes from the client, can't match if it's invalid.
+        if "/" not in item:
+            return False
 
-        # this is from the application which is trusted.  to avoid developer
-        # frustration we actually check these for valid values
+        # value comes from the application, tell the developer when it
+        # doesn't look valid.
         if "/" not in value:
             raise ValueError("invalid mimetype %r" % value)
-        value_type, value_subtype = _normalize(value)
+
+        # Split the match value into type, subtype, and a sorted list of parameters.
+        normalized_value = _normalize_mime(value)
+        value_type, value_subtype = normalized_value[:2]
+        value_params = sorted(normalized_value[2:])
+
+        # "*/*" is the only valid value that can start with "*".
         if value_type == "*" and value_subtype != "*":
             raise ValueError("invalid mimetype %r" % value)
 
-        if "/" not in item:
-            return False
-        item_type, item_subtype = _normalize(item)
+        # Split the accept item into type, subtype, and parameters.
+        normalized_item = _normalize_mime(item)
+        item_type, item_subtype = normalized_item[:2]
+        item_params = sorted(normalized_item[2:])
+
+        # "*/not-*" from the client is invalid, can't match.
         if item_type == "*" and item_subtype != "*":
             return False
+
         return (
-            item_type == item_subtype == "*" or value_type == value_subtype == "*"
+            (item_type == "*" and item_subtype == "*")
+            or (value_type == "*" and value_subtype == "*")
         ) or (
             item_type == value_type
             and (
                 item_subtype == "*"
                 or value_subtype == "*"
-                or item_subtype == value_subtype
+                or (item_subtype == value_subtype and item_params == value_params)
             )
         )
 
@@ -1850,14 +1961,66 @@ class MIMEAccept(Accept):
         return "application/json" in self
 
 
+_locale_delim_re = re.compile(r"[_-]")
+
+
+def _normalize_lang(value):
+    """Process a language tag for matching."""
+    return _locale_delim_re.split(value.lower())
+
+
 class LanguageAccept(Accept):
-    """Like :class:`Accept` but with normalization for languages."""
+    """Like :class:`Accept` but with normalization for language tags."""
 
     def _value_matches(self, value, item):
-        def _normalize(language):
-            return _locale_delim_re.split(language.lower())
+        return item == "*" or _normalize_lang(value) == _normalize_lang(item)
 
-        return item == "*" or _normalize(value) == _normalize(item)
+    def best_match(self, matches, default=None):
+        """Given a list of supported values, finds the best match from
+        the list of accepted values.
+
+        Language tags are normalized for the purpose of matching, but
+        are returned unchanged.
+
+        If no exact match is found, this will fall back to matching
+        the first subtag (primary language only), first with the
+        accepted values then with the match values. This partial is not
+        applied to any other language subtags.
+
+        The default is returned if no exact or fallback match is found.
+
+        :param matches: A list of supported languages to find a match.
+        :param default: The value that is returned if none match.
+        """
+        # Look for an exact match first. If a client accepts "en-US",
+        # "en-US" is a valid match at this point.
+        result = super(LanguageAccept, self).best_match(matches)
+
+        if result is not None:
+            return result
+
+        # Fall back to accepting primary tags. If a client accepts
+        # "en-US", "en" is a valid match at this point. Need to use
+        # re.split to account for 2 or 3 letter codes.
+        fallback = Accept(
+            [(_locale_delim_re.split(item[0], 1)[0], item[1]) for item in self]
+        )
+        result = fallback.best_match(matches)
+
+        if result is not None:
+            return result
+
+        # Fall back to matching primary tags. If the client accepts
+        # "en", "en-US" is a valid match at this point.
+        fallback_matches = [_locale_delim_re.split(item, 1)[0] for item in matches]
+        result = super(LanguageAccept, self).best_match(fallback_matches)
+
+        # Return a value from the original match list. Find the first
+        # original value that starts with the matched primary tag.
+        if result is not None:
+            return next(item for item in matches if item.startswith(result))
+
+        return default
 
 
 class CharsetAccept(Accept):
@@ -1950,7 +2113,7 @@ class _CacheControl(UpdateDictMixin, dict):
                 self.pop(key, None)
         else:
             if value is None:
-                self.pop(key)
+                self.pop(key, None)
             elif value is True:
                 self[key] = None
             else:
@@ -1991,7 +2154,6 @@ class RequestCacheControl(ImmutableDictMixin, _CacheControl):
 
     max_stale = cache_property("max-stale", "*", int)
     min_fresh = cache_property("min-fresh", "*", int)
-    no_transform = cache_property("no-transform", None, None)
     only_if_cached = cache_property("only-if-cached", None, bool)
 
 
@@ -2015,11 +2177,103 @@ class ResponseCacheControl(_CacheControl):
     must_revalidate = cache_property("must-revalidate", None, bool)
     proxy_revalidate = cache_property("proxy-revalidate", None, bool)
     s_maxage = cache_property("s-maxage", None, None)
+    immutable = cache_property("immutable", None, bool)
 
 
 # attach cache_property to the _CacheControl as staticmethod
 # so that others can reuse it.
 _CacheControl.cache_property = staticmethod(cache_property)
+
+
+def csp_property(key):
+    """Return a new property object for a content security policy header.
+    Useful if you want to add support for a csp extension in a
+    subclass.
+    """
+    return property(
+        lambda x: x._get_value(key),
+        lambda x, v: x._set_value(key, v),
+        lambda x: x._del_value(key),
+        "accessor for %r" % key,
+    )
+
+
+class ContentSecurityPolicy(UpdateDictMixin, dict):
+    """Subclass of a dict that stores values for a Content Security Policy
+    header. It has accessors for all the level 3 policies.
+
+    Because the csp directives in the HTTP header use dashes the
+    python descriptors use underscores for that.
+
+    To get a header of the :class:`ContentSecuirtyPolicy` object again
+    you can convert the object into a string or call the
+    :meth:`to_header` method.  If you plan to subclass it and add your
+    own items have a look at the sourcecode for that class.
+
+    .. versionadded:: 1.0.0
+       Support for Content Security Policy headers was added.
+
+    """
+
+    base_uri = csp_property("base-uri")
+    child_src = csp_property("child-src")
+    connect_src = csp_property("connect-src")
+    default_src = csp_property("default-src")
+    font_src = csp_property("font-src")
+    form_action = csp_property("form-action")
+    frame_ancestors = csp_property("frame-ancestors")
+    frame_src = csp_property("frame-src")
+    img_src = csp_property("img-src")
+    manifest_src = csp_property("manifest-src")
+    media_src = csp_property("media-src")
+    navigate_to = csp_property("navigate-to")
+    object_src = csp_property("object-src")
+    prefetch_src = csp_property("prefetch-src")
+    plugin_types = csp_property("plugin-types")
+    report_to = csp_property("report-to")
+    report_uri = csp_property("report-uri")
+    sandbox = csp_property("sandbox")
+    script_src = csp_property("script-src")
+    script_src_attr = csp_property("script-src-attr")
+    script_src_elem = csp_property("script-src-elem")
+    style_src = csp_property("style-src")
+    style_src_attr = csp_property("style-src-attr")
+    style_src_elem = csp_property("style-src-elem")
+    worker_src = csp_property("worker-src")
+
+    def __init__(self, values=(), on_update=None):
+        dict.__init__(self, values or ())
+        self.on_update = on_update
+        self.provided = values is not None
+
+    def _get_value(self, key):
+        """Used internally by the accessor properties."""
+        return self.get(key)
+
+    def _set_value(self, key, value):
+        """Used internally by the accessor properties."""
+        if value is None:
+            self.pop(key, None)
+        else:
+            self[key] = value
+
+    def _del_value(self, key):
+        """Used internally by the accessor properties."""
+        if key in self:
+            del self[key]
+
+    def to_header(self):
+        """Convert the stored values into a cache control header."""
+        return dump_csp_header(self)
+
+    def __str__(self):
+        return self.to_header()
+
+    def __repr__(self):
+        return "<%s %s>" % (
+            self.__class__.__name__,
+            " ".join("%s=%r" % (k, v) for k, v in sorted(self.items())),
+        )
 
 
 class CallbackDict(UpdateDictMixin, dict):
@@ -2465,70 +2719,77 @@ class Authorization(ImmutableDictMixin, dict):
         dict.__init__(self, data or {})
         self.type = auth_type
 
-    username = property(
-        lambda self: self.get("username"),
-        doc="""
-        The username transmitted.  This is set for both basic and digest
-        auth all the time.""",
-    )
-    password = property(
-        lambda self: self.get("password"),
-        doc="""
-        When the authentication type is basic this is the password
-        transmitted by the client, else `None`.""",
-    )
-    realm = property(
-        lambda self: self.get("realm"),
-        doc="""
-        This is the server realm sent back for HTTP digest auth.""",
-    )
-    nonce = property(
-        lambda self: self.get("nonce"),
-        doc="""
-        The nonce the server sent for digest auth, sent back by the client.
-        A nonce should be unique for every 401 response for HTTP digest
-        auth.""",
-    )
-    uri = property(
-        lambda self: self.get("uri"),
-        doc="""
-        The URI from Request-URI of the Request-Line; duplicated because
+    @property
+    def username(self):
+        """The username transmitted.  This is set for both basic and digest
+        auth all the time.
+        """
+        return self.get("username")
+
+    @property
+    def password(self):
+        """When the authentication type is basic this is the password
+        transmitted by the client, else `None`.
+        """
+        return self.get("password")
+
+    @property
+    def realm(self):
+        """This is the server realm sent back for HTTP digest auth."""
+        return self.get("realm")
+
+    @property
+    def nonce(self):
+        """The nonce the server sent for digest auth, sent back by the client.
+        A nonce should be unique for every 401 response for HTTP digest auth.
+        """
+        return self.get("nonce")
+
+    @property
+    def uri(self):
+        """The URI from Request-URI of the Request-Line; duplicated because
         proxies are allowed to change the Request-Line in transit.  HTTP
-        digest auth only.""",
-    )
-    nc = property(
-        lambda self: self.get("nc"),
-        doc="""
-        The nonce count value transmitted by clients if a qop-header is
-        also transmitted.  HTTP digest auth only.""",
-    )
-    cnonce = property(
-        lambda self: self.get("cnonce"),
-        doc="""
-        If the server sent a qop-header in the ``WWW-Authenticate``
+        digest auth only.
+        """
+        return self.get("uri")
+
+    @property
+    def nc(self):
+        """The nonce count value transmitted by clients if a qop-header is
+        also transmitted.  HTTP digest auth only.
+        """
+        return self.get("nc")
+
+    @property
+    def cnonce(self):
+        """If the server sent a qop-header in the ``WWW-Authenticate``
         header, the client has to provide this value for HTTP digest auth.
-        See the RFC for more details.""",
-    )
-    response = property(
-        lambda self: self.get("response"),
-        doc="""
-        A string of 32 hex digits computed as defined in RFC 2617, which
-        proves that the user knows a password.  Digest auth only.""",
-    )
-    opaque = property(
-        lambda self: self.get("opaque"),
-        doc="""
-        The opaque header from the server returned unchanged by the client.
+        See the RFC for more details.
+        """
+        return self.get("cnonce")
+
+    @property
+    def response(self):
+        """A string of 32 hex digits computed as defined in RFC 2617, which
+        proves that the user knows a password.  Digest auth only.
+        """
+        return self.get("response")
+
+    @property
+    def opaque(self):
+        """The opaque header from the server returned unchanged by the client.
         It is recommended that this string be base64 or hexadecimal data.
-        Digest auth only.""",
-    )
-    qop = property(
-        lambda self: self.get("qop"),
-        doc="""
-        Indicates what "quality of protection" the client has applied to
+        Digest auth only.
+        """
+        return self.get("opaque")
+
+    @property
+    def qop(self):
+        """Indicates what "quality of protection" the client has applied to
         the message for HTTP digest auth. Note that this is a single token,
-        not a quoted list of alternatives as in WWW-Authenticate.""",
-    )
+        not a quoted list of alternatives as in WWW-Authenticate.
+        """
+        return self.get("qop")
 
 
 class WWWAuthenticate(UpdateDictMixin, dict):
@@ -2786,18 +3047,23 @@ class FileStorage(object):
 
         For secure file saving also have a look at :func:`secure_filename`.
 
-        :param dst: a filename or open file object the uploaded file
-                    is saved to.
-        :param buffer_size: the size of the buffer.  This works the same as
-                            the `length` parameter of
-                            :func:`shutil.copyfileobj`.
+        :param dst: a filename, :class:`os.PathLike`, or open file
+            object to write to.
+        :param buffer_size: Passed as the ``length`` parameter of
+            :func:`shutil.copyfileobj`.
+
+        .. versionchanged:: 1.0
+            Supports :mod:`pathlib`.
         """
         from shutil import copyfileobj
 
         close_dst = False
+        dst = fspath(dst)
+
         if isinstance(dst, string_types):
             dst = open(dst, "wb")
             close_dst = True
+
         try:
             copyfileobj(self.stream, dst, buffer_size)
         finally:
@@ -2839,7 +3105,7 @@ class FileStorage(object):
 
 
 # circular dependencies
-from . import exceptions
+from .http import dump_csp_header
 from .http import dump_header
 from .http import dump_options_header
 from .http import generate_etag

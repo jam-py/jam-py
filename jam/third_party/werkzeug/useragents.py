@@ -12,14 +12,13 @@
     :license: BSD-3-Clause
 """
 import re
-import warnings
 
 
 class UserAgentParser(object):
     """A simple user agent parser.  Used by the `UserAgent`."""
 
     platforms = (
-        ("cros", "chromeos"),
+        (" cros ", "chromeos"),
         ("iphone|ios", "iphone"),
         ("ipad", "ipad"),
         (r"darwin|mac|os\s*x", "macos"),
@@ -47,7 +46,7 @@ class UserAgentParser(object):
         ("yahoo", "yahoo"),
         ("ask jeeves", "ask"),
         (r"aol|america\s+online\s+browser", "aol"),
-        ("opera", "opera"),
+        (r"opera|opr", "opera"),
         ("edge", "edge"),
         ("chrome|crios", "chrome"),
         ("seamonkey", "seamonkey"),
@@ -201,20 +200,3 @@ class UserAgent(object):
 
     def __repr__(self):
         return "<%s %r/%s>" % (self.__class__.__name__, self.browser, self.version)
-
-
-# DEPRECATED
-from .wrappers import UserAgentMixin as _UserAgentMixin
-
-
-class UserAgentMixin(_UserAgentMixin):
-    @property
-    def user_agent(self, *args, **kwargs):
-        warnings.warn(
-            "'werkzeug.useragents.UserAgentMixin' should be imported"
-            " from 'werkzeug.wrappers.UserAgentMixin'. This old import"
-            " will be removed in version 1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return super(_UserAgentMixin, self).user_agent

@@ -1,5 +1,5 @@
 # util/langhelpers.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -16,6 +16,7 @@ import itertools
 import operator
 import re
 import sys
+import textwrap
 import types
 import warnings
 
@@ -64,7 +65,9 @@ class safe_reraise(object):
             exc_type, exc_value, exc_tb = self._exc_info
             self._exc_info = None  # remove potential circular references
             if not self.warn_only:
-                compat.reraise(exc_type, exc_value, exc_tb)
+                compat.raise_(
+                    exc_value, with_traceback=exc_tb,
+                )
         else:
             if not compat.py3k and self._exc_info and self._exc_info[1]:
                 # emulate Py3K's behavior of telling us when an exception
@@ -75,7 +78,17 @@ class safe_reraise(object):
                     "is:\n %s %s\n" % (self._exc_info[0], self._exc_info[1])
                 )
             self._exc_info = None  # remove potential circular references
-            compat.reraise(type_, value, traceback)
+            compat.raise_(value, with_traceback=traceback)
+
+
+def string_or_unprintable(element):
+    if isinstance(element, compat.string_types):
+        return element
+    else:
+        try:
+            return str(element)
+        except Exception:
+            return "unprintable element %r" % element
 
 
 def clsname_as_plain_name(cls):
@@ -159,7 +172,7 @@ def _exec_code_in_env(code, env, fn_name):
     return env[fn_name]
 
 
-def public_factory(target, location):
+def public_factory(target, location, class_location=None):
     """Produce a wrapping function for the given cls or classmethod.
 
     Rationale here is so that the __init__ method of the
@@ -172,14 +185,14 @@ def public_factory(target, location):
         doc = (
             "Construct a new :class:`.%s` object. \n\n"
             "This constructor is mirrored as a public API function; "
-            "see :func:`~%s` "
+            "see :func:`sqlalchemy%s` "
             "for a full usage and argument description."
             % (target.__name__, location)
         )
     else:
         fn = callable_ = target
         doc = (
-            "This function is mirrored; see :func:`~%s` "
+            "This function is mirrored; see :func:`sqlalchemy%s` "
             "for a description of arguments." % location
         )
 
@@ -198,12 +211,38 @@ def %(name)s(%(args)s):
     env = {"cls": callable_, "symbol": symbol}
     exec(code, env)
     decorated = env[location_name]
-    decorated.__doc__ = fn.__doc__
+    if hasattr(fn, "_linked_to"):
+        linked_to, linked_to_location = fn._linked_to
+        linked_to_doc = linked_to.__doc__
+        if class_location is None:
+            class_location = "%s.%s" % (target.__module__, target.__name__)
+
+        linked_to_doc = inject_docstring_text(
+            linked_to_doc,
+            ".. container:: inherited_member\n\n    "
+            "Inherited from :func:`sqlalchemy%s`; this constructor "
+            "creates a :class:`%s` object"
+            % (linked_to_location, class_location),
+            0,
+        )
+        decorated.__doc__ = linked_to_doc
+    else:
+        decorated.__doc__ = fn.__doc__
+
     decorated.__module__ = "sqlalchemy" + location.rsplit(".", 1)[0]
+    if decorated.__module__ not in sys.modules:
+        raise ImportError(
+            "public_factory location %s is not in sys.modules"
+            % (decorated.__module__,)
+        )
     if compat.py2k or hasattr(fn, "__func__"):
         fn.__func__.__doc__ = doc
+        if not hasattr(fn.__func__, "_linked_to"):
+            fn.__func__._linked_to = (decorated, location)
     else:
         fn.__doc__ = doc
+        if not hasattr(fn, "_linked_to"):
+            fn._linked_to = (decorated, location)
     return decorated
 
 
@@ -265,7 +304,7 @@ def _inspect_func_args(fn):
         nargs = co.co_argcount
         return (
             list(co.co_varnames[:nargs]),
-            bool(co.co_flags & inspect.CO_VARKEYWORDS),
+            bool(co.co_flags & co_varkeywords),
         )
 
 
@@ -1115,11 +1154,14 @@ def asint(value):
     return int(value)
 
 
-def coerce_kw_type(kw, key, type_, flexi_bool=True):
+def coerce_kw_type(kw, key, type_, flexi_bool=True, dest=None):
     r"""If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
     when coercing to boolean.
     """
+
+    if dest is None:
+        dest = kw
 
     if (
         key in kw
@@ -1127,9 +1169,20 @@ def coerce_kw_type(kw, key, type_, flexi_bool=True):
         and kw[key] is not None
     ):
         if type_ is bool and flexi_bool:
-            kw[key] = asbool(kw[key])
+            dest[key] = asbool(kw[key])
         else:
-            kw[key] = type_(kw[key])
+            dest[key] = type_(kw[key])
+
+
+def constructor_key(obj, cls):
+    """Produce a tuple structure that is cacheable using the __dict__ of
+    obj to retrieve values
+
+    """
+    names = get_cls_kwargs(cls)
+    return (cls,) + tuple(
+        (k, obj.__dict__[k]) for k in names if k in obj.__dict__
+    )
 
 
 def constructor_copy(obj, cls, *args, **kw):
@@ -1154,11 +1207,8 @@ def counter():
 
     # avoid the 2to3 "next" transformation...
     def _next():
-        lock.acquire()
-        try:
+        with lock:
             return next(counter)
-        finally:
-            lock.release()
 
     return _next
 
@@ -1337,14 +1387,46 @@ class symbol(object):
     _lock = compat.threading.Lock()
 
     def __new__(cls, name, doc=None, canonical=None):
-        cls._lock.acquire()
-        try:
+        with cls._lock:
             sym = cls.symbols.get(name)
             if sym is None:
                 cls.symbols[name] = sym = _symbol(name, doc, canonical)
             return sym
-        finally:
-            symbol._lock.release()
+
+    @classmethod
+    def parse_user_argument(
+        cls, arg, choices, name, resolve_symbol_names=False
+    ):
+        """Given a user parameter, parse the parameter into a chosen symbol.
+
+        The user argument can be a string name that matches the name of a
+        symbol, or the symbol object itself, or any number of alternate choices
+        such as True/False/ None etc.
+
+        :param arg: the user argument.
+        :param choices: dictionary of symbol object to list of possible
+         entries.
+        :param name: name of the argument.   Used in an :class:`.ArgumentError`
+         that is raised if the parameter doesn't match any available argument.
+        :param resolve_symbol_names: include the name of each symbol as a valid
+         entry.
+
+        """
+        # note using hash lookup is tricky here because symbol's `__hash__`
+        # is its int value which we don't want included in the lookup
+        # explicitly, so we iterate and compare each.
+        for sym, choice in choices.items():
+            if arg is sym:
+                return sym
+            elif resolve_symbol_names and arg == sym.name:
+                return sym
+            elif arg in choice:
+                return sym
+
+        if arg is None:
+            return None
+
+        raise exc.ArgumentError("Invalid value for '%s': %r" % (name, arg))
 
 
 _creation_order = 1
@@ -1430,16 +1512,24 @@ def warn_limited(msg, args):
     warnings.warn(msg, exc.SAWarning, stacklevel=2)
 
 
-def only_once(fn):
+def only_once(fn, retry_on_exception):
     """Decorate the given function to be a no-op after it is called exactly
     once."""
 
     once = [fn]
 
     def go(*arg, **kw):
+        # strong reference fn so that it isn't garbage collected,
+        # which interferes with the event system's expectations
+        strong_fn = fn  # noqa
         if once:
             once_fn = once.pop()
-            return once_fn(*arg, **kw)
+            try:
+                return once_fn(*arg, **kw)
+            except:
+                if retry_on_exception:
+                    once.insert(0, once_fn)
+                raise
 
     return go
 
@@ -1572,3 +1662,90 @@ def quoted_token_parser(value):
         idx += 1
 
     return ["".join(token) for token in result]
+
+
+def add_parameter_text(params, text):
+    params = _collections.to_list(params)
+
+    def decorate(fn):
+        doc = fn.__doc__ is not None and fn.__doc__ or ""
+        if doc:
+            doc = inject_param_text(doc, {param: text for param in params})
+        fn.__doc__ = doc
+        return fn
+
+    return decorate
+
+
+def _dedent_docstring(text):
+    split_text = text.split("\n", 1)
+    if len(split_text) == 1:
+        return text
+    else:
+        firstline, remaining = split_text
+    if not firstline.startswith(" "):
+        return firstline + "\n" + textwrap.dedent(remaining)
+    else:
+        return textwrap.dedent(text)
+
+
+def inject_docstring_text(doctext, injecttext, pos):
+    doctext = _dedent_docstring(doctext or "")
+    lines = doctext.split("\n")
+    injectlines = textwrap.dedent(injecttext).split("\n")
+    if injectlines[0]:
+        injectlines.insert(0, "")
+
+    blanks = [num for num, line in enumerate(lines) if not line.strip()]
+    blanks.insert(0, 0)
+
+    inject_pos = blanks[min(pos, len(blanks) - 1)]
+
+    lines = lines[0:inject_pos] + injectlines + lines[inject_pos:]
+    return "\n".join(lines)
+
+
+def inject_param_text(doctext, inject_params):
+    doclines = doctext.splitlines()
+    lines = []
+
+    to_inject = None
+    while doclines:
+        line = doclines.pop(0)
+        if to_inject is None:
+            m = re.match(r"(\s+):param (?:\\\*\*?)?(.+?):", line)
+            if m:
+                param = m.group(2)
+                if param in inject_params:
+                    # default indent to that of :param: plus one
+                    indent = " " * len(m.group(1)) + " "
+
+                    # but if the next line has text, use that line's
+                    # indentntation
+                    if doclines:
+                        m2 = re.match(r"(\s+)\S", doclines[0])
+                        if m2:
+                            indent = " " * len(m2.group(1))
+
+                    to_inject = indent + inject_params[param]
+        elif line.lstrip().startswith(":param "):
+            lines.append("\n")
+            lines.append(to_inject)
+            lines.append("\n")
+            to_inject = None
+        elif not line.rstrip():
+            lines.append(line)
+            lines.append(to_inject)
+            lines.append("\n")
+            to_inject = None
+        elif line.endswith("::"):
+            # TODO: this still wont cover if the code example itself has blank
+            # lines in it, need to detect those via indentation.
+            lines.append(line)
+            lines.append(
+                doclines.pop(0)
+            )  # the blank line following a code example
+            continue
+        lines.append(line)
+
+    return "\n".join(lines)

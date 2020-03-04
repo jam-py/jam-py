@@ -1,5 +1,5 @@
 # sql/operators.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -528,21 +528,25 @@ class ColumnOperators(Operators):
 
             WHERE COL IN (?, ?, ?)
 
+        * A list of tuples may be provided if the comparison is against a
+          :func:`.tuple_` containing multiple expressions::
+
+            from sqlalchemy import tuple_
+            stmt.where(tuple_(col1, col2).in_([(1, 10), (2, 20), (3, 30)]))
+
         * An empty list, e.g.::
 
             stmt.where(column.in_([]))
 
-          In this calling form, the expression renders a "false" expression,
-          e.g.::
+          In this calling form, the expression renders an "empty set"
+          expression.  These expressions are tailored to individual backends
+          and are generaly trying to get an empty SELECT statement as a
+          subuqery.  Such as on SQLite, the expression is::
 
-            WHERE 1 != 1
+            WHERE col IN (SELECT 1 FROM (SELECT 1) WHERE 1!=1)
 
-          This "false" expression has historically had different behaviors
-          in older SQLAlchemy versions, see
-          :paramref:`.create_engine.empty_in_strategy` for behavioral options.
-
-          .. versionchanged:: 1.2 simplified the behavior of "empty in"
-             expressions
+          .. versionchanged:: 1.4  empty IN expressions now use an
+             execution-time generated SELECT subquery in all cases.
 
         * A bound parameter, e.g. :func:`.bindparam`, may be used if it
           includes the :paramref:`.bindparam.expanding` flag::
@@ -1053,7 +1057,7 @@ class ColumnOperators(Operators):
             expr = 5 == mytable.c.somearray.any_()
 
             # mysql '5 = ANY (SELECT value FROM table)'
-            expr = 5 == select([table.c.value]).as_scalar().any_()
+            expr = 5 == select([table.c.value]).scalar_subquery().any_()
 
         .. seealso::
 
@@ -1078,7 +1082,7 @@ class ColumnOperators(Operators):
             expr = 5 == mytable.c.somearray.all_()
 
             # mysql '5 = ALL (SELECT value FROM table)'
-            expr = 5 == select([table.c.value]).as_scalar().all_()
+            expr = 5 == select([table.c.value]).scalar_subquery().all_()
 
         .. seealso::
 
@@ -1335,13 +1339,7 @@ def comma_op(a, b):
     raise NotImplementedError()
 
 
-@comparison_op
-def empty_in_op(a, b):
-    raise NotImplementedError()
-
-
-@comparison_op
-def empty_notin_op(a, b):
+def filter_op(a, b):
     raise NotImplementedError()
 
 
@@ -1414,6 +1412,11 @@ def mirror(op):
 
 _associative = _commutative.union([concat_op, and_, or_]).difference([eq, ne])
 
+
+def is_associative(op):
+    return op in _associative
+
+
 _natural_self_precedent = _associative.union(
     [getitem, json_getitem_op, json_path_getitem_op]
 )
@@ -1443,6 +1446,7 @@ _PRECEDENCE = {
     add: 7,
     sub: 7,
     concat_op: 6,
+    filter_op: 6,
     match_op: 5,
     notmatch_op: 5,
     ilike_op: 5,
@@ -1457,8 +1461,6 @@ _PRECEDENCE = {
     ne: 5,
     is_distinct_from: 5,
     isnot_distinct_from: 5,
-    empty_in_op: 5,
-    empty_notin_op: 5,
     gt: 5,
     lt: 5,
     ge: 5,
