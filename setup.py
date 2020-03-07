@@ -17,7 +17,7 @@ setup(
         'jam.third_party.sqlalchemy', 'jam.third_party.sqlalchemy.dialects',
         'jam.third_party.sqlalchemy.engine', 'jam.third_party.sqlalchemy.event',
         'jam.third_party.sqlalchemy.pool', 'jam.third_party.sqlalchemy.sql',
-        'jam.third_party.sqlalchemy.util'],
+        'jam.third_party.sqlalchemy.util', 'jam.third_party.sqlalchemy.future'],
     package_data={'jam': ['builder.html', 'langs.sqlite', 'js/*.js',
         'js/ace/*.js', 'img/*.*', 'css/*.*', 'project/*.*', 'project/css/*.*',
         'admin/builder_structure.info', 'third_party/werkzeug/debug/shared/*.*']},
