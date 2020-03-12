@@ -2582,7 +2582,15 @@
                 custom_menu = [];
                 task.each_item(function(group) {
                     if (group.visible) {
-                        custom_menu.push(group);
+                        let item_count = 0;
+                        group.each_item(function(item) {
+                            if (item.visible) {
+                                item_count += 1;
+                            }
+                        });
+                        if (item_count > 0) {
+                            custom_menu.push(group);
+                        }
                     }
                 });
                 if (custom_menu.length === 1 && !options.create_single_group) {
