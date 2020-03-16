@@ -1,0 +1,34 @@
+=======
+Builder
+=======
+
+Once the server is started the application and builder are accessible from the 
+browser bringing us to the promised land of minimal command line interaction. 
+We will now explore all elements of builder in detail but if you want to jump 
+directly into the action you can skip ahead to the chapter 
+:doc:`Plan </New User Manual/02 Administrator Guide to build with JAM.Py/plan>` 
+while dipping in and out of following explanation of Builder elements as and when 
+you are stuck with something or want to know more about.
+
+When you open the builder using ``127.0.0.1:8080/builder.html`` after completing 
+steps from previous section, you will be presented with following screen and as 
+can be seen it has a three main components and a number of elements:
+
+
+
+.. image:: ../img/02_Builder_Components.png
+	:align: center
+	:alt: Builder Components
+
+
+1. First pane in image above is referred to as ``Tree`` and lists down all the 
+building blocks.
+
+2. Second pane in image above shows the details for the "Tree Elements" and allows editing as well
+as creation of new elemets for each tree item.
+
+3. Third pane in image above shows various buttons that allow actions for the 
+selected child of the "Tree Element".
+
+In next chapter, we will explore each tree item in its dedicated section 
+and each section will cover the three panes.
