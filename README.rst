@@ -27,7 +27,7 @@ From an idea of a web database application to a live website in no time, for fre
 
 Click on the image to see the online demo
 
-.. figure:: http://jam-py.com/img/monitor_face.png
+.. figure:: docs/New_User_Manual/images/JAMPY_Readme.gif
     :width: 100%
     :align: center
     :alt: Online demo
@@ -117,6 +117,3 @@ Andrew Yushev
 
 See also the list of `contributors <http://jam-py.com/contributors.html>`_
 who participated in this project.
-
-
-

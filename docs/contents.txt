@@ -2,15 +2,15 @@
 Jam.py documentation contents
 =============================
 
-.. toctree:: 
+.. toctree::
     :hidden:
 
     index
 
-.. toctree:: 
+.. toctree::
     :maxdepth: 3
 
-    New User Manual/index
+    New_User_Manual/index
     intro/index
     programming/index
     faq/index
