@@ -2,7 +2,7 @@
 Tree Element - Project
 ======================
 
-This tree element is the top node in the ``Tree`` and does not have anythng in 
+This tree element is the top node in the ``Tree`` and does not have anything in
 the second pane. It does however have following actions in the third pane:
 
 1. Parameters
@@ -17,15 +17,15 @@ While last two actions are fairly obvious, lets cover the rest of these in detai
 Parameters
 ----------
 
-After clicking on the **Parameters** button the Parameters Dialog will appear. 
-It has two tabs **General** and **Interface**. 
+After clicking on the **Parameters** button the Parameters Dialog will appear.
+It has two tabs **General** and **Interface**.
 
 
 .. note::
 	Normally, if you are just starting with this platform,
-	you would only want to make changes here to check or uncheck 
+	you would only want to make changes here to check or uncheck
 	"Safe Mode" or "Production".
-	
+
 	Rest of the fields here will make more sense for advanced usage.
 
 
@@ -41,71 +41,71 @@ On the General tab, you can specify general parameters of the project:
 * **Production** - If this checkbox is checked, it will act like a lock to your database structure
 and you will not be able to change the project database in Application Builder.
 
-* **Safe mode** - If safe mode is enabled, authentication is needed for user to 
-  work on the system (See 
+* **Safe mode** - If safe mode is enabled, authentication is needed for user to
+  work on the system (See
   :doc:`Users </admin/users>`
-  and 
+  and
   :doc:`Roles </admin/roles>`
-  ). 
-  
+  ).
+
 * **Debugging** - if this checkbox is checked, the Werkzeug libarary debugger will
   be invoked when an error on the server occurs.
 
-* **Language** - use it to open Language Dialog. See 
+* **Language** - use it to open Language Dialog. See
   :doc:`Language support </admin/language_support>`
 
-* **Persistent connection** - if this checkbox is checked the application creates 
+* **Persistent connection** - if this checkbox is checked the application creates
   a connection pool otherwise a connection is created before executing the sql query.
-  
-* **Connection pool size** - the size of the server database connection pool. 
 
-* **Compressed JS, CSS files** - If this button is checked the server returns 
+* **Connection pool size** - the size of the server database connection pool.
+
+* **Compressed JS, CSS files** - If this button is checked the server returns
   compressed *js* and *css* files when *index.html* page is loaded.
 
-* **All JS modules in a single file** - If this checkbox is unchecked, the 
-  application will generate a javascript file in the project *js* folder for 
+* **All JS modules in a single file** - If this checkbox is unchecked, the
+  application will generate a javascript file in the project *js* folder for
   every item in the :doc:`task tree </programming/task_tree>`, that has code in
-  its Client module, with the name *item_name.js*, where *item_name* is the name 
-  of an item. 
-  Otherwise, the application will generate a javascript file with the name 
-  *task_name.js*, where *task_name* is the name of the project 
+  its Client module, with the name *item_name.js*, where *item_name* is the name
+  of an item.
+  Otherwise, the application will generate a javascript file with the name
+  *task_name.js*, where *task_name* is the name of the project
   :doc:`task </admin/task>` (for example *demo.js*), that will contain javascript
-  code of all items, except items, whose **External js module** checkbox in the 
+  code of all items, except items, whose **External js module** checkbox in the
   :doc:`Item Editor Dialog </admin/items/item_editor_dialog>`
-  is checked (separate files will be created for them). 
-  
-* **Dynamic JS modules loading** - If this checkbox is unchecked and the 
-  application generates more than one javascript file, only file named 
-  *task_name.js* will be loaded when application is run. All other files must be 
+  is checked (separate files will be created for them).
+
+* **Dynamic JS modules loading** - If this checkbox is unchecked and the
+  application generates more than one javascript file, only file named
+  *task_name.js* will be loaded when application is run. All other files must be
   loaded dynamically. See :doc:`Working with modules </programming/modules>`.
-  
-* **History item** - to specify item, that will store change history, see 
+
+* **History item** - to specify item, that will store change history, see
   :doc:`Saving audit trail/change history made by users </admin/saving_history>`
 
-* **Session timeout (seconds)** - number of second of inactivity that is allowed 
+* **Session timeout (seconds)** - number of second of inactivity that is allowed
   before the session expires.
 
-* **Session ignore change ip** - if false, the session is only valid when 
+* **Session ignore change ip** - if false, the session is only valid when
   it is accessed from the same ip address that created the session.
-  
+
 * **Max content length (MB)** - use it to limit the total content length of the
   request to the server, in megabytes.
-  
-* **Import delay (seconds)** - if set the application will wait the number of 
-  seconds set in the parameter before changing the project dataset while 
+
+* **Import delay (seconds)** - if set the application will wait the number of
+  seconds set in the parameter before changing the project dataset while
   :doc:`importing project metadata <metadata_file>`
-  , 
-  otherwise it waits for 5 minutes or until all previous request 
+  ,
+  otherwise it waits for 5 minutes or until all previous request
   to the serverin the current process will be processed.
-  
-* **Delete reports after (hours)** - if a value is specified the generated 
+
+* **Delete reports after (hours)** - if a value is specified the generated
   reports that are located in the static/reports folder will be deleted after
   specified number of hours have passed.
 
 * **Version** â€” specify the version of the project here.
 
 .. note::
-   When **Connection pool size** or **Persistent connection** parameters are 
+   When **Connection pool size** or **Persistent connection** parameters are
    changed, the server applicaton must be restarted for changes to take effect.
 
 
@@ -115,8 +115,8 @@ Interface tab
 .. image:: /admin/_images/parameters_interface.png
 	:align: center
 	:alt: parameters_interface.png
-	
-On the Interface tab, you can specify interface parameters of the project:	
+
+On the Interface tab, you can specify interface parameters of the project:
 
 * **Theme** - use this parameter to select the theme of the project from one of
   predefined themes
@@ -127,7 +127,7 @@ On the Interface tab, you can specify interface parameters of the project:
 * **Full width** - if this button is checked the project will fill the page width,
   without left and right margins
 
-* **Display forms in tabs** - if this button is checked, the forms will be opened 
+* **Display forms in tabs** - if this button is checked, the forms will be opened
   tabs
 
 
@@ -140,20 +140,20 @@ Database
 	:align: center
 	:alt: Database dialog
 
-In this dialog project database pararameters are displayed. When they have been 
-changed and OK button is clicked, the Application builder will check connection 
+In this dialog project database parameters are displayed. When they have been
+changed and OK button is clicked, the Application builder will check connection
 to the database and if it failed to connect an error will be displayed.
 
 .. note::
-   When any **Database** parameter is changed, except **DB manual update**, 
+   When any **Database** parameter is changed, except **DB manual update**,
    the server application must be restarted for changes to take effect.
 
-If **DB manual update** checkbox is unchecked (default), then when changes to an 
-item, that have an associated database table, are saved, this database table is 
+If **DB manual update** checkbox is unchecked (default), then when changes to an
+item, that have an associated database table, are saved, this database table is
 automatically modified. For example, if we add a new field to some item in the
 :doc:`Item Editor Dialog </admin/items/item_editor_dialog>`
-, the new field will be added to the associated database table. If this checkbox 
-is checked, no modifications to the database tables are made. 
+, the new field will be added to the associated database table. If this checkbox
+is checked, no modifications to the database tables are made.
 
 .. note::
     Please be very careful when using this option.
@@ -172,13 +172,13 @@ SQLite
 
 .. note::
 
-    For **SQLite** database, when an item field is deleted or renamed, or foreign 
-    key is created, 
+    For **SQLite** database, when an item field is deleted or renamed, or foreign
+    key is created,
     :doc:`Application builder </admin/index>`,
     creates a new table and copies records from the old one into it.
-    
-    For **SQLite** database, Jam.py doesnÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢t support importing of metadata into an 
-    existing project (project with tables in the database). 
+
+    For **SQLite** database, Jam.py doesn't support importing of metadata into an
+    existing project (project with tables in the database).
     You can only import metadata into a new project.
 
 PostgreSQL
@@ -220,15 +220,15 @@ Oracle
 Export
 ------
 
-Press this button to export project 
+Press this button to export project
 :doc:`metadata <metadata_file>`
-to zip file. 
+to zip file.
 
 
 Import
 ------
 
-Use this button to import project 
+Use this button to import project
 :doc:`metadata <metadata_file>`
 from zip file.
 
@@ -236,7 +236,7 @@ from zip file.
 Find
 ----
 
-Press this button to to search for the character string in all modules of 
+Press this button to search for the character string in all modules of
 the project.
 
 .. image:: /admin/_images/find.png
