@@ -16,3 +16,4 @@ The new user manual with a redefined structure:
    01 Inroduction/Builder/tree_element_project_users
    01 Inroduction/Builder/tree_element_-_project_-_roles
    01 Inroduction/Builder/tree_element_tasks
+   01 Inroduction/Builder/tree_element_groups

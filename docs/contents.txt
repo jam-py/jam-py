@@ -10,6 +10,7 @@ Jam.py documentation contents
 .. toctree:: 
     :maxdepth: 3
 
+    New User Manual/index
     intro/index
     programming/index
     faq/index
