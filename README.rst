@@ -33,10 +33,6 @@ Click on the image to see the online demo
     :alt: Online demo
     :target: https://demo.jam-py.com/
 
-..
- 
-   http://jam-py.com/img/monitor_face.png - leaving it here incase gif file is not well recieved.
-
 
 If you are not a professional programmer or an expert in databases, you can use
 Jam.py to store, share and analyze your data.
