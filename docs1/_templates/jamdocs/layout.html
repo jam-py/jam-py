@@ -1,0 +1,224 @@
+{% extends "basic/layout.html" %}
+
+{%- macro secondnav() %}
+{%- endmacro %}
+
+{% block extrahead %}
+{# When building htmlhelp (CHM format) disable jQuery inclusion, #}
+{# as it causes problems in compiled CHM files.                  #}
+{% if builder != "htmlhelp" %}
+{{ super() }}
+
+<script type="text/javascript">
+    $( document ).ready(function() {
+        $("#doc-layout").css("min-height", $(window).height() - 121);
+        $(window).resize(function() {
+            $("#doc-layout").css("min-height", $(window).height() - 121);
+        });
+        $('a.reference, a.internal').on('click', function(e){
+            var target = this.hash,
+                element;
+            if (target[0] === "#") {
+                e.preventDefault();
+                element = $('a[href=' + target + ']');
+                $('html, body').animate({
+                    scrollTop: element.offset().top - 60
+                }, 500);
+            }
+        });
+    });
+</script>
+
+{% endif %}
+{% endblock %}
+
+{% block document %}
+    <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    {% if prev %}
+                    <span class="icon-bar"></span>
+                    {% endif %}
+                    {% if next %}
+                    <span class="icon-bar"></span>
+                    {% endif %}
+                </button>
+                <a class="navbar-brand" href="http://jam-py.com/">Jam.py framework</a>
+            </div>
+
+            <div class="collapse navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li class="hidden">
+                        <a href="http://jam-py.com/"></a>
+                    </li>
+                    <li>
+                        <a href="{{ pathto('contents') }}">Table of contents</a>
+                    </li>
+                    {% if prev %}
+                    <li>
+                        <a href="{{ prev.link }}">Prev</a>
+                    </li>
+                    {% endif %}
+                    {% if next %}
+                    <li>
+                        <a href="{{ next.link }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div id="doc-layout" class="container">
+        <h4 class="doc-title text-center"><a href="http://jam-py.com/docs/">Jam.py documentation</a></h4>
+        <div id="doc-content" class="row">
+            <div id="doc-body" class="col-md-9">
+<!--
+            {% if pagename != 'index' %}
+            <div id="doc-body" class="col-md-9">
+            {% else %}
+            <div id="doc-body" class="col-md-12">
+            {% endif %}
+-->
+                {% block body %}{% endblock %}
+            </div>
+            {% block sidebarwrapper %}
+            <div id="doc-sidebar" class="col-md-3" >
+            {% if pagename != 'index' %}
+                {{ sidebar() }}
+                {%- if last_updated %}
+                  <h3>Last update:</h3>
+                  <p class="topless">{{ last_updated }}</p>
+                {%- endif %}
+            {% else %}
+                <!--<div id="searchbox" style="" role="search">-->
+                <!--  <h3>Quick search</h3>-->
+                <!--    <form class="search" action="../search.html" method="get">-->
+                <!--      <div><input type="text" name="q"></div>-->
+                <!--      <div><input type="submit" value="Go"></div>-->
+                <!--      <input type="hidden" name="check_keywords" value="yes">-->
+                <!--      <input type="hidden" name="area" value="default">-->
+                <!--    </form>-->
+                <!--</div>   -->
+                <!--<script type="text/javascript">$('#searchbox').show(0);</script>-->
+                <!--<div id="searchbox" style="" role="search">-->
+                <!--    <h3>Quick search</h3>-->
+                <!--    <div class="searchformwrapper">-->
+                <!--        <form class="search" action="search.html" method="get">-->
+                <!--            <input type="text" name="q">-->
+                <!--            <input type="submit" value="Go">-->
+                <!--            <input type="hidden" name="check_keywords" value="yes">-->
+                <!--            <input type="hidden" name="area" value="default">-->
+                <!--        </form>-->
+                <!--    </div>-->
+                <!--</div>-->
+<!--
+                <h3>Search documentation</h3>
+                <div id="google-search">
+                    <script>
+                      (function() {
+                        var cx = '007960695956208259036:ec4fwpmtig0';
+                        var gcse = document.createElement('script');
+                        gcse.type = 'text/javascript';
+                        gcse.async = true;
+                        gcse.src = 'https://cse.google.com/cse.js?cx=' + cx;
+                        var s = document.getElementsByTagName('script')[0];
+                        s.parentNode.insertBefore(gcse, s);
+                      })();
+                    </script>
+                    <gcse:search></gcse:search>
+                </div>
+-->
+            {% endif %}
+            </div>
+            {% endblock %}
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="ftext col-md-4 col-sm-6 col-xs-12">
+                    Copyright &copy; <a href="http://yushev.ru/en/index.html">Andrew Yushev</a> 2015-2018
+                </div>
+                <div class="ftext col-md-2 col-sm-6 col-xs-12">
+                    <a href="https://github.com/jam-py/jam-py">GitHub</a>
+                </div>
+                <div class="ftext col-md-3 col-sm-6 col-xs-12">
+                    <a href="https://groups.google.com/forum/#!forum/jam-py">Jam.py Users Mailing List</a>
+                </div>
+                <div class="ftext col-md-2 col-sm-6 col-xs-12">
+                    <a href="https://www.facebook.com/groups/jam.py/">Facebook</a>
+                </div>
+                <div class="ftext col-md-1 col-sm-6 col-xs-12">
+                    <a href="https://twitter.com/jampy_framework">Twitter</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+{% endblock %}
+
+{% block sidebarrel %}
+    <!--<div id="searchbox" style="" role="search">-->
+    <!--    <h3>Quick search</h3>-->
+    <!--    <div class="searchformwrapper">-->
+    <!--        <form class="search" action="search.html" method="get">-->
+    <!--            <input type="text" name="q">-->
+    <!--            <input type="submit" value="Go">-->
+    <!--            <input type="hidden" name="check_keywords" value="yes">-->
+    <!--            <input type="hidden" name="area" value="default">-->
+    <!--        </form>-->
+    <!--    </div>-->
+    <!--</div>-->
+    <script type="text/javascript">$('#searchbox').show(0);</script>
+    <h3>Browse</h3>
+    <ul>
+        {% if prev %}
+            <li>Prev: <a href="{{ prev.link }}">{{ prev.title }}</a></li>
+        {% endif %}
+        {% if next %}
+            <li>Next: <a href="{{ next.link }}">{{ next.title }}</a></li>
+        {% endif %}
+        <li>
+            <a href="{{ pathto('contents') }}">Table of contents</a>
+        </li>
+    </ul>
+    <h3>You are here:</h3>
+    <ul>
+        <li>
+            <a href="{{ pathto('index') }}">{{ docstitle }}</a>
+            {% for p in parents %}
+                <ul><li><a href="{{ p.link }}">{{ p.title }}</a>
+            {% endfor %}
+            <ul><li>{{ title }}</li></ul>
+            {% for p in parents %}</li></ul>{% endfor %}
+        </li>
+    </ul>
+
+<!--
+    <h3>Search documentation</h3>
+    <script>
+      (function() {
+        var cx = '007960695956208259036:ec4fwpmtig0';
+        var gcse = document.createElement('script');
+        gcse.type = 'text/javascript';
+        gcse.async = true;
+        gcse.src = 'https://cse.google.com/cse.js?cx=' + cx;
+        var s = document.getElementsByTagName('script')[0];
+        s.parentNode.insertBefore(gcse, s);
+      })();
+    </script>
+    <gcse:search></gcse:search>
+-->
+{% endblock %}
+
+{# Empty some default blocks out #}
+{% block relbar1 %}{% endblock %}
+{% block relbar2 %}{% endblock %}
+{% block sidebar1 %}{% endblock %}
+{% block sidebar2 %}{% endblock %}
+{% block footer %}{% endblock %}

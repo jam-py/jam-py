@@ -1,0 +1,168 @@
+body {
+    padding-top: 60px;
+    overflow-x: hidden;
+}
+
+.inline {
+    display: inline-block;
+}
+
+.doc-title {
+    margin: 0;
+}
+
+#doc-body {
+    padding-left: 0px;
+    padding-right: 40px;
+}
+
+#doc-body img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#dev-warning {
+    margin-top: 4px;
+}
+
+/*
+a {
+    color: #107562;
+}
+*/
+
+a:hover, a:focus {
+/*
+    color: #18bc9c;
+*/
+    text-decoration: underline;
+}
+
+#doc-sidebar {
+    padding-right: 0;
+}
+
+footer {
+    background-color: #f8f8f8;
+}
+
+.ftext {
+    padding-left: 60px;
+    position: relative;
+    margin: 16px 0;
+}
+
+a.headerlink {
+    color: #ffffff;
+}
+a.headerlink:hover {
+    color: #18bc9c;;
+}
+
+.highlight {
+    background-color: #cbf5ed;
+}
+
+.note, .admonition {
+    border: 1px solid #b94a48;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 22px;
+}
+
+.admonition-title {
+    color: #b94a48;
+}
+
+.sphinxsidebarwrapper h3 {
+    padding-bottom: 16px;
+    border-bottom: 1px solid #dddddd;
+}
+
+.table-bordered  {
+    border-left: 1px solid #dddddd;
+}
+
+.table-bordered th:first-child,
+.table-bordered td:first-child {
+    border-left: 0;
+}
+
+table caption {
+    text-align: center;
+    color: #2c3e50;
+}
+
+th {
+    text-align: center;
+}
+
+table {
+    margin-bottom: 20px;
+}
+
+.docutils.literal {
+    color: #178acc;
+    font-weight: bold;
+    font-size: 13px;
+    background-color: #ffffff;
+}
+
+input.gsc-input, .gsc-input-box, .gsc-input-box-hover, .gsc-input-box-focus, .gsc-search-button
+{
+  box-sizing: content-box;
+  line-height: normal;
+}
+
+.gsc-tabsArea div
+{
+  /*By default, Google custom search CSS sets it as AUTO, which shows scroll bars*/
+  overflow: visible;
+}
+
+#google-search {
+    min-height: 310px;
+}
+
+code {
+  padding: 2px 4px;
+  font-size: 14px;
+  border-radius: 4px;
+  background-color: #ffffff;
+  color: #317eac;
+}
+
+dt {
+  font-size: 14px;
+}
+
+ul.simple li, 
+ol.arabic.simple li {
+    padding: 2px 0;    
+}
+
+.gsc-control-cse {
+    padding: 0;
+    margin: 0;
+}
+
+table.colwidths-given tr,
+table.colwidths-given td {
+    padding: 4px;
+}
+
+table.docutils tr,
+table.docutils td {
+    padding: 4px;    
+}
+
+#searchbox div {
+    display: inline-block;    
+}
+
+

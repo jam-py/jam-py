@@ -1,0 +1,19 @@
+===============
+New User Manual
+===============
+
+The new user manual with a redefined structure:
+
+.. toctree::
+   :maxdepth: 2
+
+   00 Quickstart/quickstart
+   01 Inroduction/introduction
+   01 Inroduction/installation
+   01 Inroduction/start_project
+   01 Inroduction/Builder/builder
+   01 Inroduction/Builder/tree_element_project
+   01 Inroduction/Builder/tree_element_project_users
+   01 Inroduction/Builder/tree_element_-_project_-_roles
+   01 Inroduction/Builder/tree_element_tasks
+   01 Inroduction/Builder/tree_element_groups

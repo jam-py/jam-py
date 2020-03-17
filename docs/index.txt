@@ -5,23 +5,21 @@ Jam.py documentation
 How the documentation is organized
 ==================================
 
-Here is an overview of how the documentation is organized, that
+Here is an overview of how the documentation is organized, that 
 will help you know where to look for certain things:
 
-:doc:`New User Manual <New_User_Manual/index>` the new user manual including more images and still a work in progress.
-
-:doc:`Getting started <intro/index>` topics describe how to install the framework, create
-a new project, take you through a series of steps to develop a Web application and explains how to deploy it.
+:doc:`Getting started <intro/index>` topics describe how to install the framework, create 
+a new project, take you through a series of steps to develop a Web application and explains how to deploy it. 
 
 :doc:`Programming guides<programming/index>`
-discuss key topics and concepts at a fairly high level and provide useful
+discuss key topics and concepts at a fairly high level and provide useful 
 background information and explanation.
 
-:doc:`Business application builder <admin/index>` is a detailed description of
-the Application Builder used for application development and database
+:doc:`Business application builder <admin/index>` is a detailed description of 
+the Application Builder used for application development and database 
 administration.
 
-:doc:`Class reference guides <refs/index>` contain technical reference for
+:doc:`Class reference guides <refs/index>` contain technical reference for 
 Jam.py classes APIs
 
 :doc:`FAQ <faq/index>` topics covers most frequently asked questions.
@@ -40,19 +38,19 @@ If you are new to Jam.py, we highly recommend that you watch these video tutoria
 It is recommended to watch these videos with a resolution of 1080p
 
 
-Tutorial 1 - `Working with files and images`_
+Tutorial 1 - `Working with files and images`_ 
 
 .. _`Working with files and images`: https://youtu.be/9rFXPyfN0Hg
 
-Tutorial 2 - `Working with details`_
+Tutorial 2 - `Working with details`_ 
 
 .. _`Working with details`: https://youtu.be/sbvxE-vEfsM
 
-Tutorial 3 - `Users, roles, audit trail/change history`_
+Tutorial 3 - `Users, roles, audit trail/change history`_ 
 
 .. _`Users, roles, audit trail/change history`: https://youtu.be/60LiWZa0CpY
 
-Tutorial 4 - `Task tree`_
+Tutorial 4 - `Task tree`_ 
 
 .. _`Task tree`: https://youtu.be/hsSKqEh6vL4
 
@@ -61,29 +59,29 @@ Tutorial 5 - Forms_
 .. _Forms: https://youtu.be/3sh-TSt52P0
 
 Tutorial 6 - `Form events`_
-
+ 
 .. _`Form events`: https://youtu.be/DY463lcv0R4
 
 Tutorial 7 - `Data aware controls`_
-
+ 
 .. _`Data aware controls`: https://youtu.be/fMTq8P4XdGw
 
 Tutorial 8 - `Datasets`_
-
+ 
 .. _`Datasets`: https://youtu.be/gHTYj7h9ljI
 
 Tutorial 9 - `Datasets Part 2`_
-
+ 
 .. _`Datasets Part 2`: https://youtu.be/1bUGmgBfrNw
 
 Tutorial 10 - `Fields and filters`_
-
+ 
 .. _`Fields and filters`: https://youtu.be/ahXqlZrA0fQ
 
 Tutorial 11 - `Client-server interactions`_
-
+ 
 .. _`Client-server interactions`: https://youtu.be/nLOhdA2FX0I
 
 Tutorial 12 - `Working with data on the server`_
-
+ 
 .. _`Working with data on the server`: https://youtu.be/dDK78lIjHHY

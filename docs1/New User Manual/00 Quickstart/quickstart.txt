@@ -1,0 +1,17 @@
+==========
+Quickstart
+==========
+
+Assuming you have python environment already setup and your python version is 3.5 or above and you have the virtual environment enabled, issue the following commands on terminal:
+
+
+.. code-block:: console
+
+    #Inside activated virtual environment
+    $ pip install jam.py
+    $ mkdir <yourprojectname>
+    $ cd <yourprojectname>
+    $ jam-project.py
+    $ ./server.py
+
+This should open a python shell and you should now be able to access the app already on http://127.0.0.1:8080 and app builder on http://127.0.0.1:8080/builder.html

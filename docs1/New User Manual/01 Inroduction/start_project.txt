@@ -1,0 +1,115 @@
+=============
+Start Project
+=============
+
+Now that the project folder is created, we just need to start the server.
+To start Jam.py web server run **server.py** script by issuing the command below:
+
+.. code-block:: console
+
+    $ ./server.py
+
+
+Open a Web browser and go to “/builder.html” on your local domain – e.g.,
+http://127.0.0.1:8080/builder.html.
+
+
+.. code-block:: console
+
+    127.0.0.1:8080/builder.html
+
+
+.. note::
+    By default, the server starts on port 8080 but you can specify another port as shown below and then
+    use it in a browser. So if the command shown is used then server will run on port 8081 and therefore the
+    web application will be accessible from http://127.0.0.1:8081 and it's builder will be accessible from
+    http://127.0.0.1:8081/builder.html.
+
+    .. code-block:: console
+
+        $ ./server.py 8081.
+
+
+In the dialog that will appear, select the language and press OK button or follow
+the images to apply changes as applicable.
+
+
+.. image:: img/01_Language_New_button.png
+	:align: center
+	:alt: Language Selection Box
+
+
+.. image:: img/03_Language_New_button.png
+	:align: center
+	:alt: Language Config Box
+
+
+.. image:: img/04_Language_New_button.png
+	:align: center
+	:alt: Custom Language Selection Box
+
+
+.. image:: img/05_Language_New_button.png
+	:align: center
+	:alt: Final Section OK
+
+After language selection is complete, database configuration dialog will be presented.
+
+
+.. image:: img/01_database_config.png
+	:align: center
+	:alt: Database Config
+
+
+In the New project dialog box fill in:
+
+* **Caption** - The project / web app name that should be appearing for the end users.
+* **Name** - Name of project (task) that will be used in programming code to
+  get access to the task object. Should be a short valid python identifier - so it
+  should be all lowercase and should not include any spaces or special characters.
+* **DB type** — Select database type.
+
+  Now for most basic use cases default sqlite server is good enough and if you are
+  new user we would recommend that you stick with sqlite database but
+  if you have experience of working on some other database such as MySQL etc.
+  you will need to create the database on that platform before completing this
+  and rest of the related fields.
+
+  To see examples of Database setup, follow the :doc:`link </admin/project/database>`.
+
+
+When you press OK, the connection to the database will be checked, and in case
+of failure 	an error message will be displayed.
+
+.. note::
+
+    Please note the following requirements:
+
+    * to use **FireBird** database, the python ``fdb`` library must be installed
+    * **PostgreSQL** requires ``psycopg2`` library
+    * **MySQL** requires ``MySQLdb`` library
+    * **Oracle** requires ``cx_Oracle`` library
+    * **MSSQL** requires ``pymssql`` library
+    * to generate reports **LibreOffice** must be installed
+
+
+If all the details were entered correctly, a new project will be created and the project tree will appear
+in the Application builder.
+
+
+.. image:: img/01_Builder_Screen.png
+	:align: center
+	:alt: Jam.py Builder Screen
+
+
+Now, to see the project itself, open the browser and type in the address bar:
+
+.. code-block:: console
+
+    127.0.0.1:8080
+
+
+
+.. image:: img/01_Webapp_Screen_1.png
+	:align: center
+	:alt: Jam.py project

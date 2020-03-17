@@ -6,6 +6,7 @@ MANIFEST
 dist/
 build/
 docs/_build/
+docs1/_build/
 *.xml
 /admin/
 /jam_docs/

@@ -6,8 +6,5 @@ include MANIFEST.in
 recursive-include builder *
 recursive-include demo *
 recursive-include docs *
+recursive-include docs1 *
 recursive-include tests *
-prune docs/_build
-prune docs/prepare.py
-prune docs/set_scale.py
-prune tests/__pycache__
