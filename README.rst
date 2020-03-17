@@ -27,15 +27,20 @@ From an idea of a web database application to a live website in no time, for fre
 
 Click on the image to see the online demo
 
-.. figure:: http://jam-py.com/img/monitor_face.png
+.. figure:: demo/static/img/JAMPY_Readme.gif
     :width: 100%
     :align: center
     :alt: Online demo
     :target: https://demo.jam-py.com/
 
+..
+ 
+   http://jam-py.com/img/monitor_face.png - leaving it here incase gif file is not well recieved.
+
+
 If you are not a professional programmer or an expert in databases, you can use
 Jam.py to store, share and analyze your data.
-
+    
 Please watch these videos to see how easy it is to create and setup Jam.py
 applications.
 
