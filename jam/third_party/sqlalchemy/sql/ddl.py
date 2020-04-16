@@ -1,5 +1,5 @@
 # sql/ddl.py
-# Copyright (C) 2009-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2009-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,12 +10,12 @@ to invoke them for a create/drop call.
 
 """
 
+from . import roles
 from .base import _bind_or_error
 from .base import _generative
 from .base import Executable
 from .base import SchemaVisitor
 from .elements import ClauseElement
-from .. import event
 from .. import exc
 from .. import util
 from ..util import topological
@@ -29,7 +29,7 @@ class _DDLCompiles(ClauseElement):
         return dialect.ddl_compiler(dialect, self, **kw)
 
 
-class DDLElement(Executable, _DDLCompiles):
+class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
     """Base class for DDL expression constructs.
 
     This class is the base for the general purpose :class:`.DDL` class,
@@ -100,49 +100,6 @@ class DDLElement(Executable, _DDLCompiles):
             return bind.execute(self.against(target))
         else:
             bind.engine.logger.info("DDL execution skipped, criteria not met.")
-
-    @util.deprecated(
-        "0.7",
-        "The :meth:`.DDLElement.execute_at` method is deprecated and will "
-        "be removed in a future release.  Please use the :class:`.DDLEvents` "
-        "listener interface in conjunction with the "
-        ":meth:`.DDLElement.execute_if` method.",
-    )
-    def execute_at(self, event_name, target):
-        """Link execution of this DDL to the DDL lifecycle of a SchemaItem.
-
-        Links this ``DDLElement`` to a ``Table`` or ``MetaData`` instance,
-        executing it when that schema item is created or dropped. The DDL
-        statement will be executed using the same Connection and transactional
-        context as the Table create/drop itself. The ``.bind`` property of
-        this statement is ignored.
-
-        :param event:
-          One of the events defined in the schema item's ``.ddl_events``;
-          e.g. 'before-create', 'after-create', 'before-drop' or 'after-drop'
-
-        :param target:
-          The Table or MetaData instance for which this DDLElement will
-          be associated with.
-
-        A DDLElement instance can be linked to any number of schema items.
-
-        ``execute_at`` builds on the ``append_ddl_listener`` interface of
-        :class:`.MetaData` and :class:`.Table` objects.
-
-        Caveat: Creating or dropping a Table in isolation will also trigger
-        any DDL set to ``execute_at`` that Table's MetaData.  This may change
-        in a future release.
-
-        """
-
-        def call_event(target, connection, **kw):
-            if self._should_execute_deprecated(
-                event_name, target, connection, **kw
-            ):
-                return connection.execute(self.against(target))
-
-        event.listen(target, "" + event_name.replace("-", "_"), call_event)
 
     @_generative
     def against(self, target):
@@ -220,11 +177,6 @@ class DDLElement(Executable, _DDLCompiles):
         self.state = state
 
     def _should_execute(self, target, bind, **kw):
-        if self.on is not None and not self._should_execute_deprecated(
-            None, target, bind, **kw
-        ):
-            return False
-
         if isinstance(self.dialect, util.string_types):
             if self.dialect != bind.engine.name:
                 return False
@@ -238,32 +190,11 @@ class DDLElement(Executable, _DDLCompiles):
 
         return True
 
-    def _should_execute_deprecated(self, event, target, bind, **kw):
-        if self.on is None:
-            return True
-        elif isinstance(self.on, util.string_types):
-            return self.on == bind.engine.name
-        elif isinstance(self.on, (tuple, list, set)):
-            return bind.engine.name in self.on
-        else:
-            return self.on(self, event, target, bind, **kw)
-
     def __call__(self, target, bind, **kw):
         """Execute the DDL as a ddl_listener."""
 
         if self._should_execute(target, bind, **kw):
             return bind.execute(self.against(target))
-
-    def _check_ddl_on(self, on):
-        if on is not None and (
-            not isinstance(on, util.string_types + (tuple, list, set))
-            and not util.callable(on)
-        ):
-            raise exc.ArgumentError(
-                "Expected the name of a database dialect, a tuple "
-                "of names, or a callable for "
-                "'on' criteria, got type '%s'." % type(on).__name__
-            )
 
     def bind(self):
         if self._bind:
@@ -317,15 +248,7 @@ class DDL(DDLElement):
 
     __visit_name__ = "ddl"
 
-    @util.deprecated_params(
-        on=(
-            "0.7",
-            "The :paramref:`.DDL.on` parameter is deprecated and will be "
-            "removed in a future release.  Please refer to "
-            ":meth:`.DDLElement.execute_if`.",
-        )
-    )
-    def __init__(self, statement, on=None, context=None, bind=None):
+    def __init__(self, statement, context=None, bind=None):
         """Create a DDL statement.
 
         :param statement:
@@ -336,44 +259,6 @@ class DDL(DDLElement):
           A literal '%' in a statement must be escaped as '%%'.
 
           SQL bind parameters are not available in DDL statements.
-
-        :param on:
-
-          Optional filtering criteria.  May be a string, tuple or a callable
-          predicate.  If a string, it will be compared to the name of the
-          executing database dialect::
-
-            DDL('something', on='postgresql')
-
-          If a tuple, specifies multiple dialect names::
-
-            DDL('something', on=('postgresql', 'mysql'))
-
-          If a callable, it will be invoked with four positional arguments
-          as well as optional keyword arguments:
-
-            :ddl:
-              This DDL element.
-
-            :event:
-              The name of the event that has triggered this DDL, such as
-              'after-create' Will be None if the DDL is executed explicitly.
-
-            :target:
-              The ``Table`` or ``MetaData`` object which is the target of
-              this event. May be None if the DDL is executed explicitly.
-
-            :connection:
-              The ``Connection`` being used for DDL execution
-
-            :tables:
-              Optional keyword argument - a list of Table objects which are to
-              be created/ dropped within a MetaData.create_all() or drop_all()
-              method call.
-
-
-          If the callable returns a true value, the DDL statement will be
-          executed.
 
         :param context:
           Optional dictionary, defaults to None.  These values will be
@@ -401,8 +286,6 @@ class DDL(DDLElement):
         self.statement = statement
         self.context = context or {}
 
-        self._check_ddl_on(on)
-        self.on = on
         self._bind = bind
 
     def __repr__(self):
@@ -430,10 +313,8 @@ class _CreateDropBase(DDLElement):
 
     """
 
-    def __init__(self, element, on=None, bind=None):
+    def __init__(self, element, bind=None):
         self.element = element
-        self._check_ddl_on(on)
-        self.on = on
         self.bind = bind
 
     def _create_rule_disable(self, compiler):
@@ -486,7 +367,7 @@ class CreateTable(_CreateDropBase):
     __visit_name__ = "create_table"
 
     def __init__(
-        self, element, on=None, bind=None, include_foreign_key_constraints=None
+        self, element, bind=None, include_foreign_key_constraints=None
     ):
         """Create a :class:`.CreateTable` construct.
 
@@ -502,7 +383,7 @@ class CreateTable(_CreateDropBase):
          .. versionadded:: 1.0.0
 
         """
-        super(CreateTable, self).__init__(element, on=on, bind=bind)
+        super(CreateTable, self).__init__(element, bind=bind)
         self.columns = [CreateColumn(column) for column in element.columns]
         self.include_foreign_key_constraints = include_foreign_key_constraints
 
@@ -731,6 +612,17 @@ class SchemaGenerator(DDLBase):
             self.connection, table.name, schema=effective_schema
         )
 
+    def _can_create_index(self, index):
+        effective_schema = self.connection.schema_for_object(index.table)
+        if effective_schema:
+            self.dialect.validate_identifier(effective_schema)
+        return not self.checkfirst or not self.dialect.has_index(
+            self.connection,
+            index.table.name,
+            index.name,
+            schema=effective_schema,
+        )
+
     def _can_create_sequence(self, sequence):
         effective_schema = self.connection.schema_for_object(sequence)
 
@@ -823,14 +715,14 @@ class SchemaGenerator(DDLBase):
             CreateTable(
                 table,
                 include_foreign_key_constraints=  # noqa
-                    include_foreign_key_constraints,
+                    include_foreign_key_constraints,  # noqa
             )
             # fmt: on
         )
 
         if hasattr(table, "indexes"):
             for index in table.indexes:
-                self.traverse_single(index)
+                self.traverse_single(index, create_ok=True)
 
         if self.dialect.supports_comments and not self.dialect.inline_comments:
             if table.comment is not None:
@@ -858,7 +750,9 @@ class SchemaGenerator(DDLBase):
             return
         self.connection.execute(CreateSequence(sequence))
 
-    def visit_index(self, index):
+    def visit_index(self, index, create_ok=False):
+        if not create_ok and not self._can_create_index(index):
+            return
         self.connection.execute(CreateIndex(index))
 
 
@@ -907,7 +801,7 @@ class SchemaDropper(DDLBase):
                 )
                 collection = [(t, ()) for t in unsorted_tables]
             else:
-                util.raise_from_cause(
+                util.raise_(
                     exc.CircularDependencyError(
                         err2.args[0],
                         err2.cycles,
@@ -924,7 +818,8 @@ class SchemaDropper(DDLBase):
                                 sorted([t.fullname for t in err2.cycles])
                             )
                         ),
-                    )
+                    ),
+                    from_=err2,
                 )
 
         seq_coll = [
@@ -972,6 +867,17 @@ class SchemaDropper(DDLBase):
             self.connection, table.name, schema=effective_schema
         )
 
+    def _can_drop_index(self, index):
+        effective_schema = self.connection.schema_for_object(index.table)
+        if effective_schema:
+            self.dialect.validate_identifier(effective_schema)
+        return not self.checkfirst or self.dialect.has_index(
+            self.connection,
+            index.table.name,
+            index.name,
+            schema=effective_schema,
+        )
+
     def _can_drop_sequence(self, sequence):
         effective_schema = self.connection.schema_for_object(sequence)
         return self.dialect.supports_sequences and (
@@ -984,7 +890,10 @@ class SchemaDropper(DDLBase):
             )
         )
 
-    def visit_index(self, index):
+    def visit_index(self, index, drop_ok=False):
+        if not drop_ok and not self._can_drop_index(index):
+            return
+
         self.connection.execute(DropIndex(index))
 
     def visit_table(self, table, drop_ok=False, _is_metadata_operation=False):

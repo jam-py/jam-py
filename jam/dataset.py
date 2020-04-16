@@ -12,7 +12,7 @@ FIELD_DEF = FIELD_ID, FIELD_NAME, FIELD_CAPTION, FIELD_DATA_TYPE, FIELD_SIZE, RE
     FIELD_READ_ONLY, FIELD_DEFAULT, FIELD_DEFAULT_VALUE, MASTER_FIELD, FIELD_ALIGNMENT, \
     FIELD_LOOKUP_VALUES, FIELD_MULTI_SELECT, FIELD_MULTI_SELECT_ALL, \
     FIELD_ENABLE_TYPEAHEAD, FIELD_HELP, FIELD_PLACEHOLDER, FIELD_MASK, \
-    FIELD_IMAGE, FIELD_FILE, DB_FIELD_NAME, FIELD_CALC = range(27)
+    FIELD_IMAGE, FIELD_FILE, DB_FIELD_NAME, FIELD_CALC, FIELD_NOT_NULL = range(28)
 
 FILTER_DEF = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, FILTER_TYPE, \
     FILTER_MULTI_SELECT, FILTER_DATA_TYPE, FILTER_VISIBLE, FILTER_HELP, \
@@ -77,6 +77,7 @@ class DBField(object):
         self.field_type = consts.FIELD_TYPE_NAMES[self.data_type]
         self.filter = None
         self.calculated = field_def[FIELD_CALC]
+        self.not_null = field_def[FIELD_NOT_NULL]
         self.on_field_get_text_called = None
 
     def __setattr__(self, name, value):
@@ -275,7 +276,6 @@ class DBField(object):
                 raise FieldInvalidValue(self.type_error(value))
             except ValueError as e:
                 raise FieldInvalidValue(self.type_error(value))
-
         if self.data != self.new_value:
             self._do_before_changed()
             self.data = self.new_value
@@ -459,28 +459,37 @@ class DBField(object):
             else:
                 return ''
 
-    def assign_default_value(self):
-        if self.default_value:
+    def get_default_value(self):
+        result = None
+        if not self.default_value is None:
             try:
                 if self.data_type == consts.INTEGER:
-                    self.value = int(self.default_value)
-                elif self.data_type in [consts.FLOAT, consts.CURRENCY]:
-                    self.value = float(self.default_value)
+                    result = int(self.default_value)
+                elif self.data_type == consts.FLOAT:
+                    result = float(self.default_value)
+                elif self.data_type == consts.CURRENCY:
+                    result = consts.round(value, consts.FRAC_DIGITS)
                 elif self.data_type == consts.DATE:
                     if self.default_value == 'current date':
-                        self.value = datetime.date.today()
+                        result = datetime.date.today()
                 elif self.data_type == consts.DATETIME:
                     if self.default_value == 'current datetime':
-                        self.value = datetime.datetime.now()
+                        result = datetime.datetime.now()
                 elif self.data_type == consts.BOOLEAN:
                     if self.default_value == 'true':
-                        self.value = True
+                        result = 0
                     elif self.default_value == 'false':
-                        self.value = False
-                elif self.data_type in [consts.TEXT, consts.LONGTEXT]:
-                    self.value = self.default_value
+                        result = 1
+                elif self.data_type in [consts.TEXT, consts.LONGTEXT, \
+                    consts.IMAGE, consts.FILE, consts.KEYS]:
+                    result = self.default_value
             except Exception as e:
-                self.log.exception(error_message(e))
+                self.owner.log.exception(error_message(e))
+        return result
+
+    def assign_default_value(self):
+        if not self.default_value is None:
+            self.value = self.get_default_value()
 
     def check_type(self):
         if (self.data_type == consts.TEXT) and (self.field_size != 0) and \
@@ -730,9 +739,12 @@ class ChangeLog(object):
 
     def detail_modified(self):
         if self.item.record_status == consts.RECORD_UNCHANGED:
-            record_log = self.get_record_log()
-            record_log['old_record'] = self.copy_record()
+            # ~ record_log = self.get_record_log()
+            # ~ record_log['old_record'] = self.copy_record()
             self.item.record_status = consts.RECORD_DETAILS_MODIFIED
+        if self.item.master:
+            self.item.master.change_log.detail_modified()
+
 
     def log_change(self):
         record_log = self.get_record_log()
@@ -912,24 +924,25 @@ class ChangeLog(object):
                     info = self.item.get_rec_info(record)
                     info[consts.REC_STATUS] = consts.RECORD_UNCHANGED
                     info[consts.REC_LOG_REC] = None
-                    if isinstance(rec, list):
-                        rec = rec[:self.item._record_lookup_index]
-                        record[:self.item._record_lookup_index] = rec
-                        rec_id = record[self.item._primary_key_field.bind_index];
-                    else:
-                        rec_id = rec;
-                        if rec_id and not record[self.item._primary_key_field.bind_index]:
-                            record[self.item._primary_key_field.bind_index] = rec_id
-                        if master_rec_id and not record[self.item._master_rec_id_field.bind_index]:
-                            record[self.item._master_rec_id_field.bind_index] = master_rec_id
-                    if details:
-                        for detail in details:
-                            ID = detail['ID']
-                            detail_item = self.item.detail_by_ID(int(ID))
-                            item_detail = record_details.get(str(ID))
-                            if item_detail:
-                                detail_item.change_log.logs = item_detail['logs']
-                                detail_item.change_log.update(detail, rec_id)
+                    if self.item._primary_key_field:
+                        if isinstance(rec, list):
+                            rec = rec[:self.item._record_lookup_index]
+                            record[:self.item._record_lookup_index] = rec
+                            rec_id = record[self.item._primary_key_field.bind_index];
+                        else:
+                            rec_id = rec;
+                            if rec_id and not record[self.item._primary_key_field.bind_index]:
+                                record[self.item._primary_key_field.bind_index] = rec_id
+                            if master_rec_id and not record[self.item._master_rec_id_field.bind_index]:
+                                record[self.item._master_rec_id_field.bind_index] = master_rec_id
+                        if details:
+                            for detail in details:
+                                ID = detail['ID']
+                                detail_item = self.item.detail_by_ID(int(ID))
+                                item_detail = record_details.get(str(ID))
+                                if item_detail:
+                                    detail_item.change_log.logs = item_detail['logs']
+                                    detail_item.change_log.update(detail, rec_id)
                 self.logs[log_id] = None;
             l = len(self.logs)
             index = -1
@@ -1494,8 +1507,8 @@ class AbstractDataSet(object):
             sys_field = getattr(self, sys_field_name)
             if sys_field:
                 field = self.field_by_name(sys_field)
-                if field:
-                    setattr(self, sys_field_name + '_field', field)
+                # ~ if field:
+                setattr(self, sys_field_name + '_field', field)
 
     def _do_before_open(self, expanded, fields, where, order_by, open_empty,
         params, offset, limit, funcs, group_by):

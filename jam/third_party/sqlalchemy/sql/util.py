@@ -1,5 +1,5 @@
 # sql/util.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -17,6 +17,7 @@ from . import visitors
 from .annotation import _deep_annotate  # noqa
 from .annotation import _deep_deannotate  # noqa
 from .annotation import _shallow_annotate  # noqa
+from .base import _expand_cloned
 from .base import _from_objects
 from .base import ColumnSet
 from .ddl import sort_tables  # noqa
@@ -29,11 +30,13 @@ from .elements import ColumnElement
 from .elements import Null
 from .elements import UnaryExpression
 from .schema import Column
+from .selectable import Alias
 from .selectable import FromClause
 from .selectable import FromGrouping
 from .selectable import Join
 from .selectable import ScalarSelect
 from .selectable import SelectBase
+from .selectable import TableClause
 from .. import exc
 from .. import util
 
@@ -147,6 +150,14 @@ def find_left_clause_to_join_from(clauses, join_to, onclause):
                 idx.append(i)
                 break
 
+    if len(idx) > 1:
+        # this is the same "hide froms" logic from
+        # Selectable._get_display_froms
+        toremove = set(
+            chain(*[_expand_cloned(f._hide_froms) for f in clauses])
+        )
+        idx = [i for i in idx if clauses[i] not in toremove]
+
     # onclause was given and none of them resolved, so assume
     # all indexes can match
     if not idx and onclause is not None:
@@ -215,6 +226,7 @@ def visit_binary_product(fn, expr):
                     yield e
 
     list(visit(expr))
+    visit = None  # remove gc cycles
 
 
 def find_tables(
@@ -339,23 +351,33 @@ def surface_selectables(clause):
             stack.append(elem.element)
 
 
-def surface_column_elements(clause, include_scalar_selects=True):
-    """traverse and yield only outer-exposed column elements, such as would
-    be addressable in the WHERE clause of a SELECT if this element were
-    in the columns clause."""
+def surface_selectables_only(clause):
+    stack = [clause]
+    while stack:
+        elem = stack.pop()
+        if isinstance(elem, (TableClause, Alias)):
+            yield elem
+        if isinstance(elem, Join):
+            stack.extend((elem.left, elem.right))
+        elif isinstance(elem, FromGrouping):
+            stack.append(elem.element)
+        elif isinstance(elem, ColumnClause):
+            stack.append(elem.table)
 
-    filter_ = (FromGrouping,)
-    if not include_scalar_selects:
-        filter_ += (SelectBase,)
 
-    stack = deque([clause])
+def extract_first_column_annotation(column, annotation_name):
+    filter_ = (FromGrouping, SelectBase)
+
+    stack = deque([column])
     while stack:
         elem = stack.popleft()
-        yield elem
+        if annotation_name in elem._annotations:
+            return elem._annotations[annotation_name]
         for sub in elem.get_children():
             if isinstance(sub, filter_):
                 continue
             stack.append(sub)
+    return None
 
 
 def selectables_overlap(left, right):
@@ -443,31 +465,29 @@ class _repr_params(_repr_base):
 
     """
 
-    __slots__ = "params", "batches"
+    __slots__ = "params", "batches", "ismulti"
 
-    def __init__(self, params, batches, max_chars=300):
+    def __init__(self, params, batches, max_chars=300, ismulti=None):
         self.params = params
+        self.ismulti = ismulti
         self.batches = batches
         self.max_chars = max_chars
 
     def __repr__(self):
+        if self.ismulti is None:
+            return self.trunc(self.params)
+
         if isinstance(self.params, list):
             typ = self._LIST
-            ismulti = self.params and isinstance(
-                self.params[0], (list, dict, tuple)
-            )
+
         elif isinstance(self.params, tuple):
             typ = self._TUPLE
-            ismulti = self.params and isinstance(
-                self.params[0], (list, dict, tuple)
-            )
         elif isinstance(self.params, dict):
             typ = self._DICT
-            ismulti = False
         else:
             return self.trunc(self.params)
 
-        if ismulti and len(self.params) > self.batches:
+        if self.ismulti and len(self.params) > self.batches:
             msg = " ... displaying %i of %i total bound parameter sets ... "
             return " ".join(
                 (
@@ -478,7 +498,7 @@ class _repr_params(_repr_base):
                     self._repr_multi(self.params[-2:], typ)[1:],
                 )
             )
-        elif ismulti:
+        elif self.ismulti:
             return self._repr_multi(self.params, typ)
         else:
             return self._repr_params(self.params, typ)
@@ -715,7 +735,7 @@ def criterion_as_pairs(
     return pairs
 
 
-class ClauseAdapter(visitors.ReplacingCloningVisitor):
+class ClauseAdapter(visitors.ReplacingExternalTraversal):
     """Clones and modifies clauses based on column correspondence.
 
     E.g.::
@@ -777,14 +797,29 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
                 if newcol is not None:
                     return newcol
         if self.adapt_on_names and newcol is None:
-            newcol = self.selectable.c.get(col.name)
+            newcol = self.selectable.exported_columns.get(col.name)
         return newcol
 
     def replace(self, col):
-        if isinstance(col, FromClause) and self.selectable.is_derived_from(
-            col
-        ):
-            return self.selectable
+        if isinstance(col, FromClause):
+            if self.selectable.is_derived_from(col):
+                return self.selectable
+            elif isinstance(col, Alias) and isinstance(
+                col.element, TableClause
+            ):
+                # we are a SELECT statement and not derived from an alias of a
+                # table (which nonetheless may be a table our SELECT derives
+                # from), so return the alias to prevent futher traversal
+                # or
+                # we are an alias of a table and we are not derived from an
+                # alias of a table (which nonetheless may be the same table
+                # as ours) so, same thing
+                return col
+            else:
+                # other cases where we are a selectable and the element
+                # is another join or selectable that contains a table which our
+                # selectable derives from, that we want to process
+                return None
         elif not isinstance(col, ColumnElement):
             return None
         elif self.include_fn and not self.include_fn(col):
@@ -847,7 +882,7 @@ class ColumnAdapter(ClauseAdapter):
             anonymize_labels=anonymize_labels,
         )
 
-        self.columns = util.populate_column_dict(self._locate_col)
+        self.columns = util.WeakPopulateDict(self._locate_col)
         if self.include_fn or self.exclude_fn:
             self.columns = self._IncludeExcludeMapping(self, self.columns)
         self.adapt_required = adapt_required
@@ -873,7 +908,7 @@ class ColumnAdapter(ClauseAdapter):
         ac = self.__class__.__new__(self.__class__)
         ac.__dict__.update(self.__dict__)
         ac._wrap = adapter
-        ac.columns = util.populate_column_dict(ac._locate_col)
+        ac.columns = util.WeakPopulateDict(ac._locate_col)
         if ac.include_fn or ac.exclude_fn:
             ac.columns = self._IncludeExcludeMapping(ac, ac.columns)
 
@@ -908,4 +943,4 @@ class ColumnAdapter(ClauseAdapter):
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self.columns = util.PopulateDict(self._locate_col)
+        self.columns = util.WeakPopulateDict(self._locate_col)

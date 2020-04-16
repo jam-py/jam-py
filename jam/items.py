@@ -378,6 +378,21 @@ class Item(AbstrItem, ServerDataset):
             result.append(report.ID)
         return result
 
+    def get_select_statement(self, query, db=None): # depricated
+        if db is None:
+            db = self.task.db
+        return db.get_select_statement(self, query)
+
+    def order_clause(self, query, db=None): # depricated
+        if db is None:
+            db = self.task.db
+        return db.order_clause(self, query)
+
+    def where_clause(self, query, db=None): # depricated
+        if db is None:
+            db = self.task.db
+        return db.where_clause(self, query)
+
 
 class Report(AbstrReport, ParamReport, Report):
     def __init__(self, task, owner, name='', caption=''):
@@ -416,15 +431,18 @@ class Report(AbstrReport, ParamReport, Report):
         copy = self.copy()
         copy.name = self.item_name
         copy.template = os.path.join(self.task.work_dir, 'reports', self.template)
+        copy.url = url
         copy.dest_folder = os.path.join(self.task.work_dir, 'static', 'reports')
+        copy.dest_url = os.path.join(url, 'static', 'reports')
+        copy.url = url
         if not os.path.exists(copy.dest_folder):
             os.makedirs(copy.dest_folder)
         copy.on_convert = self.on_convert_report
         for i, param in enumerate(copy.params):
             param.data = param_values[i];
-        result = copy.prepare_report(self.on_generate, ext='.' + ext)
+        copy.prepare_report(self.on_generate, ext='.' + ext)
         if url:
-            return os.path.join(url, 'static', 'reports', result)
+            return copy.report_url
 
     def delete_reports(self):
         task = self.task
@@ -488,12 +506,7 @@ class AbstractServerTask(AbstrTask):
     def get_child_class(self):
         return Group
 
-    def create_pool(self, db_type, db_info, con_pool_size=1, persist_con=True):
-        self.db_type = db_type
-        self.db_info = db_info
-        if db_type == consts.SQLITE:
-            self.db_info.database = os.path.join(self.work_dir, self.db_info.database)
-        self.db = get_database(db_type, db_info.lib)
+    def create_pool(self, con_pool_size=1, persist_con=True):
         if self.pool:
             self.pool.dispose()
         if persist_con:
@@ -516,7 +529,7 @@ class AbstractServerTask(AbstrTask):
         for query in query_list:
             if query:
                 if type(query) == list:
-                    self.__execute_query_list(cursor, query_list)
+                    self.__execute_query_list(cursor, query)
                 else:
                     if type(query) == tuple:
                         self.execute_query(cursor, query[0], query[1])
@@ -552,6 +565,7 @@ class AbstractServerTask(AbstrTask):
         try:
             self.execute_query(cursor, select_query)
             result = cursor.fetchall()
+            result = [list(r) for r in result]
         except Exception as x:
             error = error_message(x)
         finally:
@@ -648,10 +662,12 @@ class Task(AbstractServerTask):
 
 class AdminTask(AbstractServerTask):
     def __init__(self, app, name, caption, db_type, db_database = ''):
-        db_info = DBInfo(database=db_database)
         AbstractServerTask.__init__(self, app, name, caption)
         self.timeout = 43200
-        self.create_pool(db_type, db_info)
+        self.db_type = db_type
+        self.db_info = DBInfo(database=os.path.join(app.work_dir, db_database))
+        self.db = get_database(db_type, self.db_info.lib)
+        self.create_pool()
 
 class Detail(AbstrDetail, ServerDataset):
     def __init__(self, task, owner, name='', caption='', table_name=''):

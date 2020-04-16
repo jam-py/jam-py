@@ -2,7 +2,7 @@ import os
 import json
 import sqlite3
 
-from werkzeug._compat import iteritems
+from werkzeug._compat import iteritems, iterkeys
 
 from ..common import consts, error_message, file_read, file_write
 from ..items import AdminTask, Group
@@ -18,6 +18,7 @@ class FieldInfo(object):
         self.data_type = field.f_data_type.value
         self.size = field.f_size.value
         self.default_value = field.f_default_value.value
+        self.not_null = field.f_not_null.value
         self.master_field = field.f_master_field.value
         self.calc_item = field.f_calc_item.value
         self.primary_key = field.id.value == item.f_primary_key.value
@@ -120,6 +121,7 @@ def get_item_fields(item, fields, delta_fields=None):
                         info.data_type = field.f_data_type.value
                         info.size = field.f_size.value
                         info.default_value = field.f_default_value.value
+                        info.not_null = field.f_not_null.value
                     else:
                         info = field_info(field)
                         if info:
@@ -130,7 +132,7 @@ def get_item_fields(item, fields, delta_fields=None):
                     result.remove(info)
     return result
 
-def recreate_table(delta, old_fields, new_fields, fk_delta=None):
+def recreate_table(delta, old_fields, new_fields, comp=None, fk_delta=None):
 
     def foreign_key_dict(ind):
         fields = ind.task.sys_fields.copy()
@@ -176,12 +178,9 @@ def recreate_table(delta, old_fields, new_fields, fk_delta=None):
         return result
 
     def find_field(fields, id_value):
-        found = False
         for f in fields:
             if f.id == id_value:
-                found = True
-                break
-        return found
+                return True
 
     def prepare_fields():
         for f in list(new_fields):
@@ -191,10 +190,30 @@ def recreate_table(delta, old_fields, new_fields, fk_delta=None):
             if not find_field(new_fields, f.id):
                 old_fields.remove(f)
 
+    def not_null_fields(db):
+        nn_field_names = []
+        nn_old_field_list = []
+        nn_new_field_list = []
+        for key, (old_field, new_field) in iteritems(comp):
+            if old_field and new_field:
+                if old_field.not_null != new_field.not_null and new_field.not_null:
+                    nn_field_names.append(old_field.field_name)
+                    field_name = '"%s"' % old_field.field_name
+                    nn_new_field_list.append(field_name)
+                    nn_old_field_list.append(
+                        'CASE WHEN %s ISNULL THEN %s ELSE %s END' % (field_name, db.default_value(new_field), field_name)
+                    )
+            elif not old_field and new_field and new_field.not_null:
+                    field_name = '"%s"' % new_field.field_name
+                    nn_new_field_list.append(field_name)
+                    nn_old_field_list.append(db.default_value(new_field))
+        return nn_field_names, nn_old_field_list, nn_new_field_list
+
     connection = connect_task_db(delta.task)
     cursor = connection.cursor()
     db = delta.task.task_db_module
     table_name = delta.f_table_name.value
+    nn_field_names, nn_old_field_list, nn_new_field_list = not_null_fields(db)
     result = []
     cursor.execute('PRAGMA foreign_keys=off')
     cursor.execute('ALTER TABLE "%s" RENAME TO Temp' % table_name)
@@ -203,10 +222,13 @@ def recreate_table(delta, old_fields, new_fields, fk_delta=None):
         sql = db.create_table(table_name, new_fields, foreign_fields=foreign_fields)
         cursor.execute(sql)
         prepare_fields()
-        old_field_list = ['"%s"' % field.field_name for field in old_fields]
-        new_field_list = ['"%s"' % field.field_name for field in new_fields]
+        old_field_list = ['"%s"' % field.field_name for field in old_fields if not field.field_name in nn_field_names]
+        new_field_list = ['"%s"' % field.field_name for field in new_fields if not field.field_name in nn_field_names]
+        old_field_list += nn_old_field_list
+        new_field_list += nn_new_field_list
         cursor.execute('INSERT INTO "%s" (%s) SELECT %s FROM Temp' % (table_name, ', '.join(new_field_list), ', '.join(old_field_list)))
     except Exception as e:
+        cursor.execute('DROP TABLE "%s"' % table_name)
         cursor.execute('ALTER TABLE Temp RENAME TO "%s"' % table_name)
         cursor.execute('PRAGMA foreign_keys=on')
         delta.log.exception(error_message(e))
@@ -225,9 +247,11 @@ def change_item_query(delta, old_fields, new_fields):
             if old_field and new_field:
                 if old_field.field_name != new_field.field_name:
                     return True
-                elif old_field.default_value != new_field.default_value:
+                elif old_field.not_null != new_field.not_null:
                     return True
             elif old_field and not new_field:
+                return True
+            elif not old_field and new_field and new_field.not_null:
                 return True
 
     db = delta.task.task_db_module
@@ -245,7 +269,7 @@ def change_item_query(delta, old_fields, new_fields):
             else:
                 comp[field.field_name] = [None, field]
     if db.db_type == consts.SQLITE and recreate(comp):
-        recreate_table(delta, old_fields, new_fields)
+        recreate_table(delta, old_fields, new_fields, comp=comp)
         return
     else:
         for key, (old_field, new_field) in iteritems(comp):
@@ -309,7 +333,7 @@ def change_foreign_index(delta):
     it_fields.open()
     fields = get_item_fields(items, it_fields)
     new_fields = list(fields)
-    recreate_table(items, fields, new_fields, delta)
+    recreate_table(items, fields, new_fields, fk_delta=delta)
 
 def create_index(delta, table_name, fields=None, new_fields=None, foreign_key_dict=None):
 

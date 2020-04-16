@@ -183,7 +183,16 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
             self.client_address = (self.client_address, 0)
         else:
             pass
-        path_info = url_unquote(request_url.path)
+
+        # If there was no scheme but the path started with two slashes,
+        # the first segment may have been incorrectly parsed as the
+        # netloc, prepend it to the path again.
+        if not request_url.scheme and request_url.netloc:
+            path_info = "/%s%s" % (request_url.netloc, request_url.path)
+        else:
+            path_info = request_url.path
+
+        path_info = url_unquote(path_info)
 
         environ = {
             "wsgi.version": (1, 0),
@@ -223,6 +232,8 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
             environ["wsgi.input_terminated"] = True
             environ["wsgi.input"] = DechunkedInput(environ["wsgi.input"])
 
+        # Per RFC 2616, if the URL is absolute, use that as the host.
+        # We're using "has a scheme" to indicate an absolute URL.
         if request_url.scheme and request_url.netloc:
             environ["HTTP_HOST"] = request_url.netloc
 
@@ -280,7 +291,9 @@ class WSGIRequestHandler(BaseHTTPRequestHandler, object):
                 self.end_headers()
 
             assert isinstance(data, bytes), "applications must write bytes"
-            self.wfile.write(data)
+            if data:
+                # Only write data if there is any to avoid Python 3.5 SSL bug
+                self.wfile.write(data)
             self.wfile.flush()
 
         def start_response(status, response_headers, exc_info=None):
@@ -520,6 +533,10 @@ def generate_adhoc_ssl_pair(cn=None):
         .serial_number(x509.random_serial_number())
         .not_valid_before(dt.utcnow())
         .not_valid_after(dt.utcnow() + timedelta(days=365))
+        .add_extension(x509.ExtendedKeyUsage([x509.OID_SERVER_AUTH]), critical=False)
+        .add_extension(
+            x509.SubjectAlternativeName([x509.DNSName(u"*")]), critical=False
+        )
         .sign(pkey, hashes.SHA256(), default_backend())
     )
     return cert, pkey

@@ -66,9 +66,8 @@ class SQLiteDB(AbstractDB):
             if field.primary_key:
                 primary_key = field.field_name
                 line += ' PRIMARY KEY'
-            default_value = self.default_value(field)
-            if default_value and not field.primary_key:
-                line += ' DEFAULT %s' % default_value
+            if field.not_null:
+                line += ' NOT NULL'
             lines.append(line)
         if foreign_fields:
             for field in foreign_fields:
@@ -81,9 +80,6 @@ class SQLiteDB(AbstractDB):
     def add_field(self, table_name, field):
         result = 'ALTER TABLE "%s" ADD COLUMN "%s" %s' % \
             (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
-        default_value = self.default_value(field)
-        if default_value:
-            result += ' DEFAULT %s' % default_value
         return result
 
     def del_field(self, table_name, field):

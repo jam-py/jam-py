@@ -1,5 +1,5 @@
 # event/api.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -64,6 +64,13 @@ def listen(target, identifier, fn, *args, **kw):
     .. versionadded:: 0.9.4 Added ``once=True`` to :func:`.event.listen`
        and :func:`.event.listens_for`.
 
+    .. warning:: The ``once`` argument does not imply automatic de-registration
+       of the listener function after it has been invoked a first time; a
+       listener entry will remain associated with the target object.
+       Associating an arbitrarily high number of listeners without explictitly
+       removing them will cause memory to grow unbounded even if ``once=True``
+       is specified.
+
     .. note::
 
         The :func:`.listen` function cannot be called at the same time
@@ -123,6 +130,13 @@ def listens_for(target, identifier, *args, **kw):
 
     .. versionadded:: 0.9.4 Added ``once=True`` to :func:`.event.listen`
        and :func:`.event.listens_for`.
+
+    .. warning:: The ``once`` argument does not imply automatic de-registration
+       of the listener function after it has been invoked a first time; a
+       listener entry will remain associated with the target object.
+       Associating an arbitrarily high number of listeners without explictitly
+       removing them will cause memory to grow unbounded even if ``once=True``
+       is specified.
 
     .. seealso::
 

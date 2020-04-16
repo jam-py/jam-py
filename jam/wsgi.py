@@ -203,17 +203,16 @@ class App(object):
             request.max_content_length = 1024 * 1024 * consts.MAX_CONTENT_LENGTH
         adapter = self.url_map.bind_to_environ(request.environ)
         try:
-            endpoint, values = adapter.match()
-            if endpoint in ['file', 'root_file']:
-                result = self.serve_file(environ, start_response, endpoint, **values)
-                return result
-            elif endpoint in ['api', 'upload']:
-                response = getattr(self, 'on_' + endpoint)(request, **values)
-        except HTTPException as e:
             if peek_path_info(environ) == 'ext':
                 response = self.on_ext(request)
             else:
-                response = e
+                endpoint, values = adapter.match()
+                if endpoint in ['file', 'root_file']:
+                    return self.serve_file(environ, start_response, endpoint, **values)
+                elif endpoint in ['api', 'upload']:
+                    response = getattr(self, 'on_' + endpoint)(request, **values)
+        except HTTPException as e:
+            response = e
         return response(environ, start_response)
 
     def check_modified(self, file_path, environ):
@@ -246,22 +245,16 @@ class App(object):
                     environ['PATH_INFO'] = '/jam/builder.html'
         if file_name:
             base, ext = os.path.splitext(file_name)
-        init_path_info = None
         if consts.COMPRESSED_JS and ext and ext in ['.js', '.css']:
-            init_path_info = environ['PATH_INFO']
             min_file_name = base + '.min' + ext
             environ['PATH_INFO'] = environ['PATH_INFO'].replace(file_name, min_file_name)
         try:
-            try:
-                return self.fileserver(environ, start_response)
-            except Exception as e:
-                if init_path_info:
-                    environ['PATH_INFO'] = init_path_info
-                    return self.fileserver(environ, start_response)
-                else:
-                    raise
+            return self.fileserver(environ, start_response)
         except Exception as e:
-            return Response('')(environ, start_response)
+            if file_name == 'dummy.html':
+                return Response('')(environ, start_response)
+            else:
+                raise NotFound()
 
     def create_post_response(self, request, result):
         response = Response()
@@ -371,14 +364,6 @@ class App(object):
     def logout(self, request, task):
         del request.client_cookie['info']
         jam.context.session = None
-
-    def create_connection_pool(self):
-        if self.task:
-            self.__task_locked = False
-            try:
-                self.task.create_pool()
-            finally:
-                self.__task_locked = True
 
     def get_privileges(self, role_id):
         if self.privileges is None:
@@ -695,22 +680,25 @@ class App(object):
                     f = request.files.get('file')
                     file_name = request.form.get('file_name')
                     if f and file_name:
-                        base, ext = os.path.splitext(file_name)
                         if not path:
+                            file_name = secure_filename(file_name)
+                            file_name = file_name.replace('?', '')
+                            base, ext = os.path.splitext(file_name)
+                            date_suffix = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
+                            file_name = ('%s_%s%s') % (base, date_suffix, ext)
+                            if len(file_name) > 255:
+                                base = base[:len(base) - (len(file_name) - 255)]
+                                file_name = ('%s_%s%s') % (base, date_suffix, ext)
                             if task_id == 0:
                                 path = os.path.join('static', 'builder')
                             else:
                                 path = os.path.join('static', 'files')
-                            file_name = ('%s_%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
-                            file_name = secure_filename(file_name)
-                            file_name = file_name.replace('?', '')
                         if not r['error']:
                             dir_path = os.path.join(to_unicode(self.work_dir, 'utf-8'), path)
                             if not os.path.exists(dir_path):
                                 os.makedirs(dir_path)
                             f.save(os.path.join(dir_path, file_name))
                             r['result']['data'] = {'file_name': file_name, 'path': path}
-                            # ~ r['result'] = {'status': consts.RESPONSE, 'data': {'file_name': file_name, 'path': path}, 'modification': consts.MODIFICATION}
                     else:
                         r['error'] = 'File upload invalid parameters'
             else:

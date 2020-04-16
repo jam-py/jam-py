@@ -1,5 +1,5 @@
 # sql/annotation.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,11 +12,109 @@ associations.
 """
 
 from . import operators
+from .base import HasCacheKey
+from .visitors import InternalTraversal
 from .. import util
 
 
+class SupportsAnnotations(object):
+    @util.memoized_property
+    def _annotations_cache_key(self):
+        return (
+            "_annotations",
+            tuple(
+                (
+                    key,
+                    value._gen_cache_key(None, [])
+                    if isinstance(value, HasCacheKey)
+                    else value,
+                )
+                for key, value in self._annotations.items()
+            ),
+        )
+
+
+class SupportsCloneAnnotations(SupportsAnnotations):
+    _annotations = util.immutabledict()
+
+    _clone_annotations_traverse_internals = [
+        ("_annotations_cache_key", InternalTraversal.dp_plain_obj)
+    ]
+
+    def _annotate(self, values):
+        """return a copy of this ClauseElement with annotations
+        updated by the given dictionary.
+
+        """
+        new = self._clone()
+        new._annotations = new._annotations.union(values)
+        new.__dict__.pop("_annotations_cache_key", None)
+        return new
+
+    def _with_annotations(self, values):
+        """return a copy of this ClauseElement with annotations
+        replaced by the given dictionary.
+
+        """
+        new = self._clone()
+        new._annotations = util.immutabledict(values)
+        new.__dict__.pop("_annotations_cache_key", None)
+        return new
+
+    def _deannotate(self, values=None, clone=False):
+        """return a copy of this :class:`.ClauseElement` with annotations
+        removed.
+
+        :param values: optional tuple of individual values
+         to remove.
+
+        """
+        if clone or self._annotations:
+            # clone is used when we are also copying
+            # the expression for a deep deannotation
+            new = self._clone()
+            new._annotations = {}
+            new.__dict__.pop("_annotations_cache_key", None)
+            return new
+        else:
+            return self
+
+
+class SupportsWrappingAnnotations(SupportsAnnotations):
+    def _annotate(self, values):
+        """return a copy of this ClauseElement with annotations
+        updated by the given dictionary.
+
+        """
+        return Annotated(self, values)
+
+    def _with_annotations(self, values):
+        """return a copy of this ClauseElement with annotations
+        replaced by the given dictionary.
+
+        """
+        return Annotated(self, values)
+
+    def _deannotate(self, values=None, clone=False):
+        """return a copy of this :class:`.ClauseElement` with annotations
+        removed.
+
+        :param values: optional tuple of individual values
+         to remove.
+
+        """
+        if clone:
+            # clone is used when we are also copying
+            # the expression for a deep deannotation
+            return self._clone()
+        else:
+            # if no clone, since we have no annotations we return
+            # self
+            return self
+
+
 class Annotated(object):
-    """clones a ClauseElement and applies an 'annotations' dictionary.
+    """clones a SupportsAnnotated and applies an 'annotations' dictionary.
 
     Unlike regular clones, this clone also mimics __hash__() and
     __cmp__() of the original element so that it takes its place
@@ -51,6 +149,7 @@ class Annotated(object):
 
     def __init__(self, element, values):
         self.__dict__ = element.__dict__.copy()
+        self.__dict__.pop("_annotations_cache_key", None)
         self.__element = element
         self._annotations = values
         self._hash = hash(element)
@@ -63,6 +162,7 @@ class Annotated(object):
     def _with_annotations(self, values):
         clone = self.__class__.__new__(self.__class__)
         clone.__dict__ = self.__dict__.copy()
+        clone.__dict__.pop("_annotations_cache_key", None)
         clone._annotations = values
         return clone
 
@@ -120,7 +220,17 @@ def _deep_annotate(element, annotations, exclude=None):
 
     """
 
-    def clone(elem):
+    # annotated objects hack the __hash__() method so if we want to
+    # uniquely process them we have to use id()
+
+    cloned_ids = {}
+
+    def clone(elem, **kw):
+        id_ = id(elem)
+
+        if id_ in cloned_ids:
+            return cloned_ids[id_]
+
         if (
             exclude
             and hasattr(elem, "proxy_set")
@@ -132,36 +242,37 @@ def _deep_annotate(element, annotations, exclude=None):
         else:
             newelem = elem
         newelem._copy_internals(clone=clone)
+        cloned_ids[id_] = newelem
         return newelem
 
     if element is not None:
         element = clone(element)
+    clone = None  # remove gc cycles
     return element
 
 
 def _deep_deannotate(element, values=None):
     """Deep copy the given element, removing annotations."""
 
-    cloned = util.column_dict()
+    cloned = {}
 
-    def clone(elem):
-        # if a values dict is given,
-        # the elem must be cloned each time it appears,
-        # as there may be different annotations in source
-        # elements that are remaining.  if totally
-        # removing all annotations, can assume the same
-        # slate...
-        if values or elem not in cloned:
+    def clone(elem, **kw):
+        if values:
+            key = id(elem)
+        else:
+            key = elem
+
+        if key not in cloned:
             newelem = elem._deannotate(values=values, clone=True)
             newelem._copy_internals(clone=clone)
-            if not values:
-                cloned[elem] = newelem
+            cloned[key] = newelem
             return newelem
         else:
-            return cloned[elem]
+            return cloned[key]
 
     if element is not None:
         element = clone(element)
+    clone = None  # remove gc cycles
     return element
 
 
@@ -196,6 +307,11 @@ def _new_annotation_type(cls, base_cls):
         "Annotated%s" % cls.__name__, (base_cls, cls), {}
     )
     globals()["Annotated%s" % cls.__name__] = anno_cls
+
+    if "_traverse_internals" in cls.__dict__:
+        anno_cls._traverse_internals = list(cls._traverse_internals) + [
+            ("_annotations_cache_key", InternalTraversal.dp_plain_obj)
+        ]
     return anno_cls
 
 

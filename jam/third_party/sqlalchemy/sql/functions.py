@@ -1,5 +1,5 @@
 # sql/functions.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,14 +9,14 @@
 
 """
 from . import annotation
+from . import coercions
 from . import operators
+from . import roles
 from . import schema
 from . import sqltypes
 from . import util as sqlutil
 from .base import ColumnCollection
 from .base import Executable
-from .elements import _clone
-from .elements import _literal_as_binds
 from .elements import _type_from_args
 from .elements import BinaryExpression
 from .elements import BindParameter
@@ -32,7 +32,8 @@ from .elements import WithinGroup
 from .selectable import Alias
 from .selectable import FromClause
 from .selectable import Select
-from .visitors import VisitableType
+from .visitors import InternalTraversal
+from .visitors import TraversibleType
 from .. import util
 
 
@@ -49,6 +50,15 @@ def register_function(identifier, fn, package="_default"):
 
     """
     reg = _registry[package]
+
+    identifier = util.text_type(identifier).lower()
+
+    # Check if a function with the same identifier is registered.
+    if identifier in reg:
+        util.warn(
+            "The GenericFunction '{}' is already registered and "
+            "is going to be overriden.".format(identifier)
+        )
     reg[identifier] = fn
 
 
@@ -56,6 +66,8 @@ class FunctionElement(Executable, ColumnElement, FromClause):
     """Base for SQL function-oriented constructs.
 
     .. seealso::
+
+        :ref:`coretutorial_functions` - in the Core tutorial
 
         :class:`.Function` - named SQL function.
 
@@ -67,14 +79,38 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
     """
 
+    _traverse_internals = [("clause_expr", InternalTraversal.dp_clauseelement)]
+
     packagenames = ()
 
     _has_args = False
 
+    _memoized_property = FromClause._memoized_property
+
     def __init__(self, *clauses, **kwargs):
-        """Construct a :class:`.FunctionElement`.
+        r"""Construct a :class:`.FunctionElement`.
+
+        :param \*clauses: list of column expressions that form the arguments
+         of the SQL function call.
+
+        :param \**kwargs:  additional kwargs are typically consumed by
+         subclasses.
+
+        .. seealso::
+
+            :data:`.func`
+
+            :class:`.Function`
+
         """
-        args = [_literal_as_binds(c, self.name) for c in clauses]
+        args = [
+            coercions.expect(
+                roles.ExpressionElementRole,
+                c,
+                name=getattr(self, "name", None),
+            )
+            for c in clauses
+        ]
         self._has_args = self._has_args or bool(args)
         self.clause_expr = ClauseList(
             operator=operators.comma_op, group_contents=True, *args
@@ -102,9 +138,10 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
 
         """
-        return ColumnCollection(self.label(None))
+        col = self.label(None)
+        return ColumnCollection(columns=[(col.key, col)])
 
-    @util.memoized_property
+    @_memoized_property
     def clauses(self):
         """Return the underlying :class:`.ClauseList` which contains
         the arguments for this :class:`.FunctionElement`.
@@ -251,14 +288,6 @@ class FunctionElement(Executable, ColumnElement, FromClause):
     def _from_objects(self):
         return self.clauses._from_objects
 
-    def get_children(self, **kwargs):
-        return (self.clause_expr,)
-
-    def _copy_internals(self, clone=_clone, **kw):
-        self.clause_expr = clone(self.clause_expr, **kw)
-        self._reset_exported()
-        FunctionElement.clauses._reset(self)
-
     def within_group_type(self, within_group):
         """For types that define their return type as based on the criteria
         within a WITHIN GROUP (ORDER BY) expression, called by the
@@ -301,7 +330,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
         """
 
-        return Alias(self, name)
+        return Alias._construct(self, name)
 
     def select(self):
         """Produce a :func:`~.expression.select` construct
@@ -312,7 +341,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
             s = select([function_element])
 
         """
-        s = Select([self])
+        s = Select._create_select(self)
         if self._execution_options:
             s = s.execution_options(**self._execution_options)
         return s
@@ -369,19 +398,26 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
 
 class FunctionAsBinary(BinaryExpression):
+    _traverse_internals = [
+        ("sql_function", InternalTraversal.dp_clauseelement),
+        ("left_index", InternalTraversal.dp_plain_obj),
+        ("right_index", InternalTraversal.dp_plain_obj),
+        ("modifiers", InternalTraversal.dp_plain_dict),
+    ]
+
+    def _gen_cache_key(self, anon_map, bindparams):
+        return ColumnElement._gen_cache_key(self, anon_map, bindparams)
+
     def __init__(self, fn, left_index, right_index):
-        left = fn.clauses.clauses[left_index - 1]
-        right = fn.clauses.clauses[right_index - 1]
         self.sql_function = fn
         self.left_index = left_index
         self.right_index = right_index
 
-        super(FunctionAsBinary, self).__init__(
-            left,
-            right,
-            operators.function_as_comparison_op,
-            type_=sqltypes.BOOLEANTYPE,
-        )
+        self.operator = operators.function_as_comparison_op
+        self.type = sqltypes.BOOLEANTYPE
+        self.negate = None
+        self._is_implicitly_boolean = True
+        self.modifiers = {}
 
     @property
     def left(self):
@@ -399,14 +435,82 @@ class FunctionAsBinary(BinaryExpression):
     def right(self, value):
         self.sql_function.clauses.clauses[self.right_index - 1] = value
 
-    def _copy_internals(self, **kw):
-        clone = kw.pop("clone")
-        self.sql_function = clone(self.sql_function, **kw)
-        super(FunctionAsBinary, self)._copy_internals(**kw)
-
 
 class _FunctionGenerator(object):
-    """Generate :class:`.Function` objects based on getattr calls."""
+    """Generate SQL function expressions.
+
+    :data:`.func` is a special object instance which generates SQL
+    functions based on name-based attributes, e.g.::
+
+        >>> print(func.count(1))
+        count(:param_1)
+
+    The returned object is an instance of :class:`.Function`, and  is a
+    column-oriented SQL element like any other, and is used in that way::
+
+        >>> print(select([func.count(table.c.id)]))
+        SELECT count(sometable.id) FROM sometable
+
+    Any name can be given to :data:`.func`. If the function name is unknown to
+    SQLAlchemy, it will be rendered exactly as is. For common SQL functions
+    which SQLAlchemy is aware of, the name may be interpreted as a *generic
+    function* which will be compiled appropriately to the target database::
+
+        >>> print(func.current_timestamp())
+        CURRENT_TIMESTAMP
+
+    To call functions which are present in dot-separated packages,
+    specify them in the same manner::
+
+        >>> print(func.stats.yield_curve(5, 10))
+        stats.yield_curve(:yield_curve_1, :yield_curve_2)
+
+    SQLAlchemy can be made aware of the return type of functions to enable
+    type-specific lexical and result-based behavior. For example, to ensure
+    that a string-based function returns a Unicode value and is similarly
+    treated as a string in expressions, specify
+    :class:`~sqlalchemy.types.Unicode` as the type:
+
+        >>> print(func.my_string(u'hi', type_=Unicode) + ' ' +
+        ...       func.my_string(u'there', type_=Unicode))
+        my_string(:my_string_1) || :my_string_2 || my_string(:my_string_3)
+
+    The object returned by a :data:`.func` call is usually an instance of
+    :class:`.Function`.
+    This object meets the "column" interface, including comparison and labeling
+    functions.  The object can also be passed the :meth:`~.Connectable.execute`
+    method of a :class:`.Connection` or :class:`.Engine`, where it will be
+    wrapped inside of a SELECT statement first::
+
+        print(connection.execute(func.current_timestamp()).scalar())
+
+    In a few exception cases, the :data:`.func` accessor
+    will redirect a name to a built-in expression such as :func:`.cast`
+    or :func:`.extract`, as these names have well-known meaning
+    but are not exactly the same as "functions" from a SQLAlchemy
+    perspective.
+
+    Functions which are interpreted as "generic" functions know how to
+    calculate their return type automatically. For a listing of known generic
+    functions, see :ref:`generic_functions`.
+
+    .. note::
+
+        The :data:`.func` construct has only limited support for calling
+        standalone "stored procedures", especially those with special
+        parameterization concerns.
+
+        See the section :ref:`stored_procedures` for details on how to use
+        the DBAPI-level ``callproc()`` method for fully traditional stored
+        procedures.
+
+    .. seealso::
+
+        :ref:`coretutorial_functions` - in the Core Tutorial
+
+        :class:`.Function`
+
+    """
 
     def __init__(self, **opts):
         self.__names = []
@@ -440,7 +544,7 @@ class _FunctionGenerator(object):
             package = None
 
         if package is not None:
-            func = _registry[package].get(fname)
+            func = _registry[package].get(fname.lower())
             if func is not None:
                 return func(*c, **o)
 
@@ -450,85 +554,36 @@ class _FunctionGenerator(object):
 
 
 func = _FunctionGenerator()
-"""Generate SQL function expressions.
-
-   :data:`.func` is a special object instance which generates SQL
-   functions based on name-based attributes, e.g.::
-
-        >>> print(func.count(1))
-        count(:param_1)
-
-   The element is a column-oriented SQL element like any other, and is
-   used in that way::
-
-        >>> print(select([func.count(table.c.id)]))
-        SELECT count(sometable.id) FROM sometable
-
-   Any name can be given to :data:`.func`. If the function name is unknown to
-   SQLAlchemy, it will be rendered exactly as is. For common SQL functions
-   which SQLAlchemy is aware of, the name may be interpreted as a *generic
-   function* which will be compiled appropriately to the target database::
-
-        >>> print(func.current_timestamp())
-        CURRENT_TIMESTAMP
-
-   To call functions which are present in dot-separated packages,
-   specify them in the same manner::
-
-        >>> print(func.stats.yield_curve(5, 10))
-        stats.yield_curve(:yield_curve_1, :yield_curve_2)
-
-   SQLAlchemy can be made aware of the return type of functions to enable
-   type-specific lexical and result-based behavior. For example, to ensure
-   that a string-based function returns a Unicode value and is similarly
-   treated as a string in expressions, specify
-   :class:`~sqlalchemy.types.Unicode` as the type:
-
-        >>> print(func.my_string(u'hi', type_=Unicode) + ' ' +
-        ...       func.my_string(u'there', type_=Unicode))
-        my_string(:my_string_1) || :my_string_2 || my_string(:my_string_3)
-
-   The object returned by a :data:`.func` call is usually an instance of
-   :class:`.Function`.
-   This object meets the "column" interface, including comparison and labeling
-   functions.  The object can also be passed the :meth:`~.Connectable.execute`
-   method of a :class:`.Connection` or :class:`.Engine`, where it will be
-   wrapped inside of a SELECT statement first::
-
-        print(connection.execute(func.current_timestamp()).scalar())
-
-   In a few exception cases, the :data:`.func` accessor
-   will redirect a name to a built-in expression such as :func:`.cast`
-   or :func:`.extract`, as these names have well-known meaning
-   but are not exactly the same as "functions" from a SQLAlchemy
-   perspective.
-
-   Functions which are interpreted as "generic" functions know how to
-   calculate their return type automatically. For a listing of known generic
-   functions, see :ref:`generic_functions`.
-
-   .. note::
-
-        The :data:`.func` construct has only limited support for calling
-        standalone "stored procedures", especially those with special
-        parameterization concerns.
-
-        See the section :ref:`stored_procedures` for details on how to use
-        the DBAPI-level ``callproc()`` method for fully traditional stored
-        procedures.
-
-"""
+func.__doc__ = _FunctionGenerator.__doc__
 
 modifier = _FunctionGenerator(group=False)
 
 
 class Function(FunctionElement):
-    """Describe a named SQL function.
+    r"""Describe a named SQL function.
 
-    See the superclass :class:`.FunctionElement` for a description
-    of public methods.
+    The :class:`.Function` object is typically generated from the
+    :data:`.func` generation object.
+
+
+    :param \*clauses: list of column expressions that form the arguments
+     of the SQL function call.
+
+    :param type\_: optional :class:`.TypeEngine` datatype object that will be
+     used as the return value of the column expression generated by this
+     function call.
+
+    :param packagenames: a string which indicates package prefix names
+     to be prepended to the function name when the SQL is generated.
+     The :data:`.func` generator creates these when it is called using
+     dotted format, e.g.::
+
+        func.mypackage.some_function(col1, col2)
+
 
     .. seealso::
+
+        :ref:`coretutorial_functions`
 
         :data:`.func` - namespace which produces registered or ad-hoc
         :class:`.Function` instances.
@@ -539,6 +594,12 @@ class Function(FunctionElement):
     """
 
     __visit_name__ = "function"
+
+    _traverse_internals = FunctionElement._traverse_internals + [
+        ("packagenames", InternalTraversal.dp_plain_obj),
+        ("name", InternalTraversal.dp_string),
+        ("type", InternalTraversal.dp_type),
+    ]
 
     def __init__(self, name, *clauses, **kw):
         """Construct a :class:`.Function`.
@@ -565,7 +626,7 @@ class Function(FunctionElement):
         )
 
 
-class _GenericMeta(VisitableType):
+class _GenericMeta(TraversibleType):
     def __init__(cls, clsname, bases, clsdict):
         if annotation.Annotated not in cls.__mro__:
             cls.name = name = clsdict.get("name", clsname)
@@ -574,7 +635,17 @@ class _GenericMeta(VisitableType):
             # legacy
             if "__return_type__" in clsdict:
                 cls.type = clsdict["__return_type__"]
-            register_function(identifier, cls, package)
+
+            # Check _register attribute status
+            cls._register = getattr(cls, "_register", True)
+
+            # Register the function if required
+            if cls._register:
+                register_function(identifier, cls, package)
+            else:
+                # Set _register to True to register child classes by default
+                cls._register = True
+
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
 
@@ -603,7 +674,7 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
         class as_utc(GenericFunction):
             type = DateTime
 
-        print select([func.as_utc()])
+        print(select([func.as_utc()]))
 
     User-defined generic functions can be organized into
     packages by specifying the "package" attribute when defining
@@ -620,7 +691,7 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
     The above function would be available from :data:`.func`
     using the package name ``time``::
 
-        print select([func.time.as_utc()])
+        print(select([func.time.as_utc()]))
 
     A final option is to allow the function to be accessed
     from one name in :data:`.func` but to render as a different name.
@@ -636,17 +707,47 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
 
     The above function will render as follows::
 
-        >>> print func.geo.buffer()
+        >>> print(func.geo.buffer())
         ST_Buffer()
+
+    The name will be rendered as is, however without quoting unless the name
+    contains special characters that require quoting.  To force quoting
+    on or off for the name, use the :class:`.sqlalchemy.sql.quoted_name`
+    construct::
+
+        from sqlalchemy.sql import quoted_name
+
+        class GeoBuffer(GenericFunction):
+            type = Geometry
+            package = "geo"
+            name = quoted_name("ST_Buffer", True)
+            identifier = "buffer"
+
+    The above function will render as::
+
+        >>> print(func.geo.buffer())
+        "ST_Buffer"()
+
+    .. versionadded:: 1.3.13  The :class:`.quoted_name` construct is now
+       recognized for quoting when used with the "name" attribute of the
+       object, so that quoting can be forced on or off for the function
+       name.
+
 
     """
 
     coerce_arguments = True
+    _register = False
 
     def __init__(self, *args, **kwargs):
         parsed_args = kwargs.pop("_parsed_args", None)
         if parsed_args is None:
-            parsed_args = [_literal_as_binds(c, self.name) for c in args]
+            parsed_args = [
+                coercions.expect(
+                    roles.ExpressionElementRole, c, name=self.name
+                )
+                for c in args
+            ]
         self._has_args = self._has_args or bool(parsed_args)
         self.packagenames = []
         self._bind = kwargs.get("bind", None)
@@ -675,12 +776,22 @@ class next_value(GenericFunction):
     type = sqltypes.Integer()
     name = "next_value"
 
+    _traverse_internals = [
+        ("sequence", InternalTraversal.dp_named_ddl_element)
+    ]
+
     def __init__(self, seq, **kw):
         assert isinstance(
             seq, schema.Sequence
         ), "next_value() accepts a Sequence object as input."
         self._bind = kw.get("bind", None)
         self.sequence = seq
+
+    def compare(self, other, **kw):
+        return (
+            isinstance(other, next_value)
+            and self.sequence.name == other.sequence.name
+        )
 
     @property
     def _from_objects(self):
@@ -696,7 +807,10 @@ class ReturnTypeFromArgs(GenericFunction):
     """Define a function whose return type is the same as its arguments."""
 
     def __init__(self, *args, **kwargs):
-        args = [_literal_as_binds(c, self.name) for c in args]
+        args = [
+            coercions.expect(roles.ExpressionElementRole, c, name=self.name)
+            for c in args
+        ]
         kwargs.setdefault("type_", _type_from_args(args))
         kwargs["_parsed_args"] = args
         super(ReturnTypeFromArgs, self).__init__(*args, **kwargs)
@@ -825,7 +939,7 @@ class array_agg(GenericFunction):
     type = sqltypes.ARRAY
 
     def __init__(self, *args, **kwargs):
-        args = [_literal_as_binds(c) for c in args]
+        args = [coercions.expect(roles.ExpressionElementRole, c) for c in args]
 
         default_array_type = kwargs.pop("_default_array_type", sqltypes.ARRAY)
         if "type_" not in kwargs:

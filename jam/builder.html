@@ -59,18 +59,17 @@
                                         <div id="editor-tabs">
                                             <ul class="nav nav-tabs editor">
                                             </ul>
-                                            <div id="info-grids">
-                                            </div>
+                                            <div id="info-grids"></div>
                                         </div>
                                     </td>
                                     <td id="center-box" class="td-panel" style="width: auto">
                                         <div id="editor-box">
-                                            <div id="editor">
-                                            </div>
+                                            <div id="editor"></div>
                                         </div>
                                     </td>
                                 </tr>
                             </table>
+                        </div>                            
                         <div class="modal-footer">
                             <span id="error-info" class="code_error pull-left"></span>
                             <button type="button" id="find-btn" class="btn"><i class="icon-search"></i> find_in_task<small class="muted">&nbsp;[Alt+F]</small></button>
@@ -79,7 +78,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div>        
     </div>
 
     <div class="templates" style="display: none">
@@ -532,19 +531,19 @@
 
         <form id="login-form" target="dummy" class="form-horizontal" data-caption="Log in" style="margin: 10px 0 0; padding: 0px">
             <div class="control-group">
-                <label class="control-label" for="inputLoging">Login</label>
+                <label class="control-label" for="input-login">Login</label>
                 <div class="controls">
-                    <input type="text" id="inputLoging" name="username" tabindex="1" placeholder="login">
+                    <input type="text" id="input-login" name="login" tabindex="1" placeholder="login">
                 </div>
             </div>
             <div class="control-group">
-                <label class="control-label" for="inputPassword">Password</label>
+                <label class="control-label" for="input-password">Password</label>
                 <div class="controls">
-                    <input type="password" id="inputPassword" name="password" tabindex="2" placeholder="password">
+                    <input type="password" id="input-password" name="password" tabindex="2" placeholder="password" autocomplete="on">
                 </div>
             </div>
-            <div class="modal-footer">
-                <input type="submit" class="btn expanded-btn" id="login-btn" value="OK" tabindex="3">
+            <div class="form-footer">
+                <input type="submit" class="btn expanded-btn pull-right" id="login-btn" value="OK" tabindex="3">
             </div>
         </form>
 
@@ -555,10 +554,8 @@
     <script src="jam/js/bootstrap-modal.js"></script>
     <script src="jam/js/bootstrap-modalmanager.js"></script>
     <script src="jam/js/bootstrap-datepicker.js"></script>
-    <script src="jam/js/md5.js"></script>
     <script src="jam/js/ace/ace.js"></script>
     <script src="jam/js/jam.js"></script>
-    <script src="js/events.js"></script>
 
     <script>
     $(document).ready(function(){

@@ -15,9 +15,9 @@ class MySQLDB(AbstractDB):
             consts.DATETIME: 'DATETIME',
             consts.BOOLEAN: 'INT',
             consts.LONGTEXT: 'LONGTEXT',
-            consts.KEYS: 'LONGTEXT',
-            consts.FILE: 'LONGTEXT',
-            consts.IMAGE: 'LONGTEXT'
+            consts.KEYS: 'TEXT',
+            consts.FILE: 'VARCHAR(512)',
+            consts.IMAGE: 'VARCHAR(256)'
         }
 
     def get_params(self, lib):
@@ -56,6 +56,14 @@ class MySQLDB(AbstractDB):
     def convert_like(self, field_name, val, data_type):
         return field_name, val
 
+    def default_datetime_value(self, field_info):
+        if field_info.data_type == consts.DATE:
+            if field_info.default_value == 'current date':
+                return "CURRENT_DATE"
+        elif field_info.data_type == consts.DATETIME:
+            if field_info.default_value == 'current datetime':
+                return "CURRENT_TIMESTAMP"
+
     def create_table(self, table_name, fields, gen_name=None, foreign_fields=None):
         result = []
         primary_key = ''
@@ -65,12 +73,11 @@ class MySQLDB(AbstractDB):
             line = '"%s" %s' % (field.field_name, self.FIELD_TYPES[field.data_type])
             if field.size != 0 and field.data_type == consts.TEXT:
                 line += '(%d)' % field.size
-            default_value = self.default_value(field)
-            if default_value and not field.primary_key:
-                line += ' DEFAULT %s' % default_value
             if field.primary_key:
                 line += ' NOT NULL AUTO_INCREMENT'
                 primary_key = field.field_name
+            elif field.not_null:
+                line += ' NOT NULL'
             lines.append(line)
         if primary_key:
             lines.append('PRIMARY KEY("%s")' % primary_key)
@@ -95,13 +102,24 @@ class MySQLDB(AbstractDB):
         return 'ALTER TABLE "%s" DROP FOREIGN KEY "%s"' % (table_name, index_name)
 
     def add_field(self, table_name, field):
-        result = 'ALTER TABLE "%s" ADD "%s" %s' % \
+        result = []
+        line = 'ALTER TABLE "%s" ADD "%s" %s' % \
             (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
         if field.size:
-            result += '(%d)' % field.size
+            line += '(%d)' % field.size
         default_value = self.default_value(field)
-        if default_value:
-            result += ' DEFAULT %s' % default_value
+        if default_value and field.not_null:
+            line += ' DEFAULT %s' % default_value
+            line += ' NOT NULL'
+        result.append(line)
+        if default_value and field.not_null:
+            line = 'ALTER TABLE "%s" CHANGE "%s" "%s" %s' % \
+                (table_name, field.field_name, field.field_name, self.FIELD_TYPES[field.data_type])
+            if field.size:
+                line += '(%d)' % field.size
+            if field.not_null:
+                line += ' NOT NULL'
+            result.append(line)
         return result
 
     def del_field(self, table_name, field):
@@ -109,25 +127,19 @@ class MySQLDB(AbstractDB):
 
     def change_field(self, table_name, old_field, new_field):
         result = []
-        if self.FIELD_TYPES[old_field.data_type] != self.FIELD_TYPES[new_field.data_type] \
-            or old_field.size != new_field.size:
-            raise Exception("Changing field size or type is prohibited: field %s, table name %s" % \
-                (old_field.field_name, table_name))
-        if old_field.field_name != new_field.field_name:
-            sql = 'ALTER TABLE "%s" CHANGE  "%s" "%s" %s' % (table_name, old_field.field_name,
-                new_field.field_name, self.FIELD_TYPES[new_field.data_type])
-            if old_field.size:
-                sql += '(%d)' % old_field.size
-            result.append(sql)
-        if old_field.default_value != new_field.default_value:
-            default_value = self.default_value(new_field)
-            if default_value:
-                sql = 'ALTER TABLE "%s" ALTER "%s" SET DEFAULT %s' % \
-                    (table_name, new_field.field_name, default_value)
-            else:
-                sql = 'ALTER TABLE "%s" ALTER "%s" DROP DEFAULT' % \
-                    (table_name, new_field.field_name)
-            result.append(sql)
+        if old_field.not_null != new_field.not_null:
+            if new_field.not_null:
+                default_value = self.default_value(new_field)
+                sql = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
+                    (table_name, new_field.field_name, default_value, new_field.field_name)
+                result.append(sql)
+        sql = 'ALTER TABLE "%s" CHANGE  "%s" "%s" %s' % (table_name, old_field.field_name,
+            new_field.field_name, self.FIELD_TYPES[new_field.data_type])
+        if new_field.size:
+            sql += '(%d)' % new_field.size
+        if new_field.not_null:
+            sql += ' NOT NULL'
+        result.append(sql)
         return result
 
     def after_insert(self, cursor, pk_field):

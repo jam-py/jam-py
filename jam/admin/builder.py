@@ -128,7 +128,7 @@ def execute_db(task, task_id, sql, params=None):
     try:
         con = connect_task_db(task)
         cursor = con.cursor()
-        task.execute(sql, params, con)
+        error = task.execute(sql, params, con)
         con.commit()
     except Exception as x:
         error = 'Error: %s\n query: %s\n params: %s' % (error_message(x), sql, params)
@@ -763,7 +763,7 @@ def server_save_file(task, file_name, code):
     return result
 
 def server_get_db_params(task, db_type, lib):
-    db = get_database(db_type, lib)
+    db = get_database(db_type, None)
     result = db.get_params(lib)
     return result
 
@@ -1191,16 +1191,6 @@ def update_interface(delta, type_id, item_id):
                         item._order_list = delete_id_from_list(item._order_list, fields.id.value)
         item.store_interface()
 
-def change_item_sql(item, old_fields, new_fields):
-    return item.change_table_sql(item.task.task_db_type, old_fields, new_fields)
-
-def update_table(delta):
-    if delta.f_virtual_table.value or \
-        delta.type_id.value in (consts.ITEMS_TYPE, consts.TABLES_TYPE, consts.REPORTS_TYPE):
-        return False
-    else:
-        return True
-
 def init_priviliges(item, item_id):
     item.task.execute('DELETE FROM SYS_PRIVILEGES WHERE ITEM_ID = %s' % item_id)
     priv = item.task.sys_privileges.copy(handlers=False)
@@ -1361,19 +1351,29 @@ def server_store_interface(item, id_value, info):
     item.store_interface()
     set_server_modified(item.task)
 
+def create_calc_field_index(task, item_id, calc_item_id):
+    fields = task.sys_fields.copy()
+    fields.set_where(owner_rec_id=calc_item_id, f_object=item_id, f_master_field__isnull=True)
+    fields.open()
+    if fields.rec_count == 1:
+        create_index(task, calc_item_id, [fields.id.value], '_CALC_IDX')
+
 def create_detail_index(task, table_id):
+    create_index(task, table_id, ['f_master_id', 'f_master_rec_id'], '_DETAIL_IDX')
+
+def create_index(task, table_id, fields, suffix):
     items = task.sys_items.copy()
     items.set_where(type_id=consts.TASK_TYPE)
-    items.open(fields = ['id', 'type_id', 'f_item_name'])
+    items.open(fields=['id', 'type_id', 'f_item_name'])
     task_id = items.id.value
     task_name = items.f_item_name.value
 
     tables = task.sys_items.copy(handlers=False)
     tables.set_where(id=table_id)
     tables.open()
-
-    if not tables.f_master_id.value:
-        return
+    for i, f in enumerate(fields):
+        if type(f) != int:
+            fields[i] = tables.field_by_name(f).value
 
     found = False
     indexes = task.sys_indices.copy(handlers=False)
@@ -1382,17 +1382,23 @@ def create_detail_index(task, table_id):
     for i in indexes:
         if not i.f_foreign_index.value:
             field_list = i.load_index_fields(i.f_fields_list.value)
-            if len(field_list) >= 2 and \
-                field_list[0][0] == tables.f_master_id.value and \
-                field_list[1][0] == tables.f_master_rec_id.value:
-                found = True
+            if len(field_list) >= len(fields):
+                valid = True
+                for i, f in enumerate(fields):
+                    if field_list[i][0] != f:
+                        valid = False
+                        break
+                if valid:
+                    found = True
     if not found:
-        dest_list = [[tables.f_master_id.value, False], [tables.f_master_rec_id.value, False]]
+        dest_list = []
+        for f in fields:
+            dest_list.append([f, False])
         indexes.append()
         index_name = task_name.upper() + '_' + tables.f_item_name.value.upper()
         if len(index_name) > 20:
             index_name = index_name[0:20]
-        indexes.f_index_name.value = index_name + '_DETAIL_' + 'IDX';
+        indexes.f_index_name.value = index_name + suffix;
         indexes.task_id.value = task_id
         indexes.owner_rec_id.value = table_id
         indexes.f_foreign_index.value = False
@@ -1890,6 +1896,7 @@ def register_events(task):
     task.register(create_system_item)
     task.register(create_detail_index)
     task.register(prepare_files)
+    task.register(create_calc_field_index)
     task.sys_params.on_apply = do_on_apply_param_changes
     task.sys_tasks.on_apply = do_on_apply_param_changes
     task.sys_items.register(server_can_delete)

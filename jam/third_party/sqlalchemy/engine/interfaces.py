@@ -1,5 +1,5 @@
 # engine/interfaces.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -22,86 +22,80 @@ class Dialect(object):
     database-specific object implementations including
     ExecutionContext, Compiled, DefaultGenerator, and TypeEngine.
 
-    All Dialects implement the following attributes:
+    .. note:: Third party dialects should not subclass :class:`.Dialect`
+       directly.  Instead, subclass :class:`.default.DefaultDialect` or
+       descendant class.
 
-    name
+    All dialects include the following attributes.   There are many other
+    attributes that may be supported as well:
+
+    ``name``
       identifying name for the dialect from a DBAPI-neutral point of view
       (i.e. 'sqlite')
 
-    driver
+    ``driver``
       identifying name for the dialect's DBAPI
 
-    positional
+    ``positional``
       True if the paramstyle for this Dialect is positional.
 
-    paramstyle
+    ``paramstyle``
       the paramstyle to be used (some DB-APIs support multiple
       paramstyles).
 
-    convert_unicode
-      True if Unicode conversion should be applied to all ``str``
-      types.
-
-    encoding
+    ``encoding``
       type of encoding to use for unicode, usually defaults to
       'utf-8'.
 
-    statement_compiler
+    ``statement_compiler``
       a :class:`.Compiled` class used to compile SQL statements
 
-    ddl_compiler
+    ``ddl_compiler``
       a :class:`.Compiled` class used to compile DDL statements
 
-    server_version_info
+    ``server_version_info``
       a tuple containing a version number for the DB backend in use.
       This value is only available for supporting dialects, and is
       typically populated during the initial connection to the database.
 
-    default_schema_name
+    ``default_schema_name``
      the name of the default schema.  This value is only available for
      supporting dialects, and is typically populated during the
      initial connection to the database.
 
-    execution_ctx_cls
+    ``execution_ctx_cls``
       a :class:`.ExecutionContext` class used to handle statement execution
 
-    execute_sequence_format
+    ``execute_sequence_format``
       either the 'tuple' or 'list' type, depending on what cursor.execute()
       accepts for the second argument (they vary).
 
-    preparer
+    ``preparer``
       a :class:`~sqlalchemy.sql.compiler.IdentifierPreparer` class used to
       quote identifiers.
 
-    supports_alter
-      ``True`` if the database supports ``ALTER TABLE``.
+    ``supports_alter``
+      ``True`` if the database supports ``ALTER TABLE`` - used only for
+      generating foreign key constraints in certain circumstances
 
-    max_identifier_length
+    ``max_identifier_length``
       The maximum length of identifier names.
 
-    supports_unicode_statements
-      Indicate whether the DB-API can receive SQL statements as Python
-      unicode strings
-
-    supports_unicode_binds
-      Indicate whether the DB-API can receive string bind parameters
-      as Python unicode strings
-
-    supports_sane_rowcount
+    ``supports_sane_rowcount``
       Indicate whether the dialect properly implements rowcount for
       ``UPDATE`` and ``DELETE`` statements.
 
-    supports_sane_multi_rowcount
+    ``supports_sane_multi_rowcount``
       Indicate whether the dialect properly implements rowcount for
       ``UPDATE`` and ``DELETE`` statements when executed via
       executemany.
 
-    preexecute_autoincrement_sequences
+    ``preexecute_autoincrement_sequences``
       True if 'implicit' primary key functions must be executed separately
       in order to get their value.   This is currently oriented towards
       PostgreSQL.
 
-    implicit_returning
+    ``implicit_returning``
       use RETURNING or equivalent during INSERT execution in order to load
       newly generated primary keys and other column defaults in one execution,
       which are then available via inserted_primary_key.
@@ -109,37 +103,37 @@ class Dialect(object):
       the "implicit" functionality is not used and inserted_primary_key
       will not be available.
 
-    colspecs
+    ``colspecs``
       A dictionary of TypeEngine classes from sqlalchemy.types mapped
       to subclasses that are specific to the dialect class.  This
       dictionary is class-level only and is not accessed from the
       dialect instance itself.
 
-    supports_default_values
+    ``supports_default_values``
       Indicates if the construct ``INSERT INTO tablename DEFAULT
       VALUES`` is supported
 
-    supports_sequences
+    ``supports_sequences``
       Indicates if the dialect supports CREATE SEQUENCE or similar.
 
-    sequences_optional
+    ``sequences_optional``
       If True, indicates if the "optional" flag on the Sequence() construct
       should signal to not generate a CREATE SEQUENCE. Applies only to
       dialects that support sequences. Currently used only to allow PostgreSQL
       SERIAL to be used on a column that specifies Sequence() for usage on
       other backends.
 
-    supports_native_enum
+    ``supports_native_enum``
       Indicates if the dialect supports a native ENUM construct.
       This will prevent types.Enum from generating a CHECK
       constraint when that type is used.
 
-    supports_native_boolean
+    ``supports_native_boolean``
       Indicates if the dialect supports a native boolean construct.
       This will prevent types.Boolean from generating a CHECK
       constraint when that type is used.
 
-    dbapi_exception_translation_map
+    ``dbapi_exception_translation_map``
        A dictionary of names that will contain as values the names of
        pep-249 exceptions ("IntegrityError", "OperationalError", etc)
        keyed to alternate class names, to support the case where a
@@ -156,9 +150,31 @@ class Dialect(object):
     def create_connect_args(self, url):
         """Build DB-API compatible connection arguments.
 
-        Given a :class:`~sqlalchemy.engine.url.URL` object, returns a tuple
-        consisting of a `*args`/`**kwargs` suitable to send directly
-        to the dbapi's connect function.
+        Given a :class:`.URL` object, returns a tuple
+        consisting of a ``(*args, **kwargs)`` suitable to send directly
+        to the dbapi's connect function.   The arguments are sent to the
+        :meth:`.Dialect.connect` method which then runs the DBAPI-level
+        ``connect()`` function.
+
+        The method typically makes use of the
+        :meth:`.URL.translate_connect_args`
+        method in order to generate a dictionary of options.
+
+        The default implementation is::
+
+            def create_connect_args(self, url):
+                opts = url.translate_connect_args()
+                opts.update(url.query)
+                return [[], opts]
+
+        :param url: a :class:`.URL` object
+
+        :return: a tuple of ``(*args, **kwargs)`` which will be passed to the
+         :meth:`.Dialect.connect` method.
+
+        .. seealso::
+
+            :meth:`.URL.translate_connect_args`
 
         """
 
@@ -195,28 +211,6 @@ class Dialect(object):
         """
 
         pass
-
-    def reflecttable(
-        self, connection, table, include_columns, exclude_columns
-    ):
-        """Load table description from the database.
-
-        Given a :class:`.Connection` and a
-        :class:`~sqlalchemy.schema.Table` object, reflect its columns and
-        properties from the database.
-
-        The implementation of this method is provided by
-        :meth:`.DefaultDialect.reflecttable`, which makes use of
-        :class:`.Inspector` to retrieve column information.
-
-        Dialects should **not** seek to implement this method, and should
-        instead implement individual schema inspection operations such as
-        :meth:`.Dialect.get_columns`, :meth:`.Dialect.get_pk_constraint`,
-        etc.
-
-        """
-
-        raise NotImplementedError()
 
     def get_columns(self, connection, table_name, schema=None, **kw):
         """Return information about columns in `table_name`.
@@ -450,7 +444,7 @@ class Dialect(object):
         """
         raise NotImplementedError()
 
-    def has_table(self, connection, table_name, schema=None):
+    def has_table(self, connection, table_name, schema=None, **kw):
         """Check the existence of a particular table in the database.
 
         Given a :class:`.Connection` object and a string
@@ -461,7 +455,25 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def has_sequence(self, connection, sequence_name, schema=None):
+    def has_index(self, connection, table_name, index_name, schema=None):
+        """Check the existence of a particular index name in the database.
+
+        Given a :class:`.Connection` object, a string
+        `table_name` and stiring index name, return True if an index of the
+        given name on the given table exists, false otherwise.
+
+        The :class:`.DefaultDialect` implements this in terms of the
+        :meth:`.Dialect.has_table` and :meth:`.Dialect.get_indexes` methods,
+        however dialects can implement a more performant version.
+
+
+        .. versionadded:: 1.4
+
+        """
+
+        raise NotImplementedError()
+
+    def has_sequence(self, connection, sequence_name, schema=None, **kw):
         """Check the existence of a particular sequence in the database.
 
         Given a :class:`.Connection` object and a string
@@ -680,19 +692,79 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def connect(self):
+    def connect(self, *cargs, **cparams):
+        r"""Establish a connection using this dialect's DBAPI.
+
+        The default implementation of this method is::
+
+            def connect(self, *cargs, **cparams):
+                return self.dbapi.connect(*cargs, **cparams)
+
+        The ``*cargs, **cparams`` parameters are generated directly
+        from this dialect's :meth:`.Dialect.create_connect_args` method.
+
+        This method may be used for dialects that need to perform programmatic
+        per-connection steps when a new connection is procured from the
+        DBAPI.
+
+
+        :param \*cargs: positional parameters returned from the
+         :meth:`.Dialect.create_connect_args` method
+
+        :param \*\*cparams: keyword parameters returned from the
+         :meth:`.Dialect.create_connect_args` method.
+
+        :return: a DBAPI connection, typically from the :pep:`249` module
+         level ``.connect()`` function.
+
+        .. seealso::
+
+            :meth:`.Dialect.create_connect_args`
+
+            :meth:`.Dialect.on_connect`
+
+        """
+
+    def on_connect(self):
         """return a callable which sets up a newly created DBAPI connection.
 
-        The callable accepts a single argument "conn" which is the
-        DBAPI connection itself.  It has no return value.
+        The callable should accept a single argument "conn" which is the
+        DBAPI connection itself.  The inner callable has no
+        return value.
+
+        E.g.::
+
+            class MyDialect(default.DefaultDialect):
+                # ...
+
+                def on_connect(self):
+                    def do_on_connect(connection):
+                        connection.execute("SET SPECIAL FLAGS etc")
+
+                    return do_on_connect
 
         This is used to set dialect-wide per-connection options such as
-        isolation modes, unicode modes, etc.
+        isolation modes, Unicode modes, etc.
 
-        If a callable is returned, it will be assembled into a pool listener
-        that receives the direct DBAPI connection, with all wrappers removed.
+        The "do_on_connect" callable is invoked by using the
+        :meth:`.PoolEvents.first_connect` and :meth:`.PoolEvents.connect` event
+        hooks, then unwrapping the DBAPI connection and passing it into the
+        callable.  The reason it is invoked for both events is so that any
+        dialect-level initialization that occurs upon first connection, which
+        also makes use of the :meth:`.PoolEvents.first_connect` method, will
+        proceed after this hook has been called. This currently means the
+        hook is in fact called twice for the very first  connection in which a
+        dialect creates; and once per connection afterwards.
 
-        If None is returned, no listener will be generated.
+        If None is returned, no event listener is generated.
+
+        :return: a callable that accepts a single DBAPI connection as an
+         argument, or None.
+
+        .. seealso::
+
+            :meth:`.Dialect.connect` - allows the DBAPI ``connect()`` sequence
+            itself to be controlled.
 
         """
         return None
@@ -1048,6 +1120,44 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
+    def get_out_parameter_values(self, out_param_names):
+        """Return a sequence of OUT parameter values from a cursor.
+
+        For dialects that support OUT parameters, this method will be called
+        when there is a :class:`.SQLCompiler` object which has the
+        :attr:`.SQLCompiler.has_out_parameters` flag set.  This flag in turn
+        will be set to True if the statement itself has :class:`.BindParameter`
+        objects that have the ``.isoutparam`` flag set which are consumed by
+        the :meth:`.SQLCompiler.visit_bindparam` method.  If the dialect
+        compiler produces :class:`.BindParameter` objects with ``.isoutparam``
+        set which are not handled by :meth:`.SQLCompiler.visit_bindparam`, it
+        should set this flag explicitly.
+
+        The list of names that were rendered for each bound parameter
+        is passed to the method.  The method should then return a sequence of
+        values corresponding to the list of parameter objects. Unlike in
+        previous SQLAlchemy versions, the values can be the **raw values** from
+        the DBAPI; the execution context will apply the appropriate type
+        handler based on what's present in self.compiled.binds and update the
+        values.  The processed dictionary will then be made available via the
+        ``.out_parameters`` collection on the result object.  Note that
+        SQLAlchemy 1.4 has multiple kinds of result object as part of the 2.0
+        transition.
+
+        .. versionadded:: 1.4 - added
+           :meth:`.ExecutionContext.get_out_parameter_values`, which is invoked
+           automatically by the :class:`.DefaultExecutionContext` when there
+           are :class:`.BindParameter` objects with the ``.isoutparam`` flag
+           set.  This replaces the practice of setting out parameters within
+           the now-removed ``get_result_proxy()`` method.
+
+        .. seealso::
+
+            :meth:`.ExecutionContext.get_result_cursor_strategy`
+
+        """
+        raise NotImplementedError()
+
     def post_exec(self):
         """Called after the execution of a compiled statement.
 
@@ -1058,12 +1168,67 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
-    def result(self):
-        """Return a result object corresponding to this ExecutionContext.
+    def get_result_cursor_strategy(self, result):
+        """Return a result cursor strategy for a given result object.
 
-        Returns a ResultProxy.
+        This method is implemented by the :class:`.DefaultDialect` and is
+        only needed by implementing dialects in the case where some special
+        steps regarding the cursor must be taken, such as manufacturing
+        fake results from some other element of the cursor, or pre-buffering
+        the cursor's results.
+
+        A simplified version of the default implementation is::
+
+            from sqlalchemy.engine.result import DefaultCursorFetchStrategy
+
+            class MyExecutionContext(DefaultExecutionContext):
+                def get_result_cursor_strategy(self, result):
+                    return DefaultCursorFetchStrategy.create(result)
+
+        Above, the :class:`.DefaultCursorFetchStrategy` will be applied
+        to the result object.   For results that are pre-buffered from a
+        cursor that might be closed, an implementation might be::
+
+
+            from sqlalchemy.engine.result import (
+                FullyBufferedCursorFetchStrategy
+            )
+
+            class MyExecutionContext(DefaultExecutionContext):
+                _pre_buffered_result = None
+
+                def pre_exec(self):
+                    if self.special_condition_prebuffer_cursor():
+                        self._pre_buffered_result = (
+                            self.cursor.description,
+                            self.cursor.fetchall()
+                        )
+
+                def get_result_cursor_strategy(self, result):
+                    if self._pre_buffered_result:
+                        description, cursor_buffer = self._pre_buffered_result
+                        return (
+                            FullyBufferedCursorFetchStrategy.
+                                create_from_buffer(
+                                    result, description, cursor_buffer
+                            )
+                        )
+                    else:
+                        return DefaultCursorFetchStrategy.create(result)
+
+        This method replaces the previous not-quite-documented
+        ``get_result_proxy()`` method.
+
+        .. versionadded:: 1.4  - result objects now interpret cursor results
+           based on a pluggable "strategy" object, which is delivered
+           by the :class:`.ExecutionContext` via the
+           :meth:`.ExecutionContext.get_result_cursor_strategy` method.
+
+        .. seealso::
+
+            :meth:`.ExecutionContext.get_out_parameter_values`
+
         """
-
         raise NotImplementedError()
 
     def handle_dbapi_exception(self, e):
@@ -1096,6 +1261,16 @@ class ExecutionContext(object):
         raise NotImplementedError()
 
 
+@util.deprecated_20_cls(
+    ":class:`.Connectable`",
+    alternative=(
+        "The :class:`.Engine` will be the only Core "
+        "object that features a .connect() method, and the "
+        ":class:`.Connection` will be the only object that features "
+        "an .execute() method."
+    ),
+    constructor=None,
+)
 class Connectable(object):
     """Interface for an object which supports execution of SQL constructs.
 
@@ -1117,57 +1292,12 @@ class Connectable(object):
 
         """
 
-    @util.deprecated(
-        "1.3",
-        "The :meth:`.Engine.contextual_connect` and "
-        ":meth:`.Connection.contextual_connect` methods are deprecated.  This "
-        "method is an artifact of the threadlocal engine strategy which is "
-        "also to be deprecated.   For explicit connections from an "
-        ":class:`.Engine`, use the :meth:`.Engine.connect` method.",
-    )
-    def contextual_connect(self, *arg, **kw):
-        """Return a :class:`.Connection` object which may be part of an ongoing
-        context.
+    engine = None
+    """The :class:`.Engine` instance referred to by this :class:`.Connectable`.
 
-        Depending on context, this may be ``self`` if this object
-        is already an instance of :class:`.Connection`, or a newly
-        procured :class:`.Connection` if this object is an instance
-        of :class:`.Engine`.
+    May be ``self`` if this is already an :class:`.Engine`.
 
-        """
-
-        return self._contextual_connect(*arg, **kw)
-
-    def _contextual_connect(self):
-        raise NotImplementedError()
-
-    @util.deprecated(
-        "0.7",
-        "The :meth:`.Connectable.create` method is deprecated and will be "
-        "removed in a future release.  Please use the ``.create()`` method "
-        "on specific schema objects to emit DDL sequences, including "
-        ":meth:`.Table.create`, :meth:`.Index.create`, and "
-        ":meth:`.MetaData.create_all`.",
-    )
-    def create(self, entity, **kwargs):
-        """Emit CREATE statements for the given schema entity.
-        """
-
-        raise NotImplementedError()
-
-    @util.deprecated(
-        "0.7",
-        "The :meth:`.Connectable.drop` method is deprecated and will be "
-        "removed in a future release.  Please use the ``.drop()`` method "
-        "on specific schema objects to emit DDL sequences, including "
-        ":meth:`.Table.drop`, :meth:`.Index.drop`, and "
-        ":meth:`.MetaData.drop_all`.",
-    )
-    def drop(self, entity, **kwargs):
-        """Emit DROP statements for the given schema entity.
-        """
-
-        raise NotImplementedError()
+    """
 
     def execute(self, object_, *multiparams, **params):
         """Executes the given construct and returns a :class:`.ResultProxy`."""

@@ -17,6 +17,7 @@ from itertools import repeat
 from . import exceptions
 from ._compat import BytesIO
 from ._compat import collections_abc
+from ._compat import fspath
 from ._compat import integer_types
 from ._compat import iteritems
 from ._compat import iterkeys
@@ -1079,20 +1080,29 @@ class Headers(object):
         for _, value in iteritems(self):
             yield value
 
-    def extend(self, iterable):
-        """Extend the headers with a dict or an iterable yielding keys and
-        values.
+    def extend(self, *args, **kwargs):
+        """Extend headers in this object with items from another object
+        containing header items as well as keyword arguments.
+
+        To replace existing keys instead of extending, use
+        :meth:`update` instead.
+
+        If provided, the first argument can be another :class:`Headers`
+        object, a :class:`MultiDict`, :class:`dict`, or iterable of
+        pairs.
+
+        .. versionchanged:: 1.0
+            Support :class:`MultiDict`. Allow passing ``kwargs``.
         """
-        if isinstance(iterable, dict):
-            for key, value in iteritems(iterable):
-                if isinstance(value, (tuple, list)):
-                    for v in value:
-                        self.add(key, v)
-                else:
-                    self.add(key, value)
-        else:
-            for key, value in iterable:
+        if len(args) > 1:
+            raise TypeError("update expected at most 1 arguments, got %d" % len(args))
+
+        if args:
+            for key, value in iter_multi_items(args[0]):
                 self.add(key, value)
+
+        for key, value in iter_multi_items(kwargs):
+            self.add(key, value)
 
     def __delitem__(self, key, _index_operation=True):
         if _index_operation and isinstance(key, (integer_types, slice)):
@@ -1234,18 +1244,56 @@ class Headers(object):
             return
         self._list[idx + 1 :] = [t for t in listiter if t[0].lower() != ikey]
 
-    def setdefault(self, key, default):
-        """Returns the value for the key if it is in the dict, otherwise it
-        returns `default` and sets that value for `key`.
+    def setlist(self, key, values):
+        """Remove any existing values for a header and add new ones.
 
-        :param key: The key to be looked up.
-        :param default: The default value to be returned if the key is not
-                        in the dict.  If not further specified it's `None`.
+        :param key: The header key to set.
+        :param values: An iterable of values to set for the key.
+
+        .. versionadded:: 1.0
+        """
+        if values:
+            values_iter = iter(values)
+            self.set(key, next(values_iter))
+
+            for value in values_iter:
+                self.add(key, value)
+        else:
+            self.remove(key)
+
+    def setdefault(self, key, default):
+        """Return the first value for the key if it is in the headers,
+        otherwise set the header to the value given by ``default`` and
+        return that.
+
+        :param key: The header key to get.
+        :param default: The value to set for the key if it is not in the
+            headers.
         """
         if key in self:
             return self[key]
+
         self.set(key, default)
         return default
+
+    def setlistdefault(self, key, default):
+        """Return the list of values for the key if it is in the
+        headers, otherwise set the header to the list of values given
+        by ``default`` and return that.
+
+        Unlike :meth:`MultiDict.setlistdefault`, modifying the returned
+        list will not affect the headers.
+
+        :param key: The header key to get.
+        :param default: An iterable of values to set for the key if it
+            is not in the headers.
+
+        .. versionadded:: 1.0
+        """
+        if key not in self:
+            self.setlist(key, default)
+
+        return self.getlist(key)
 
     def __setitem__(self, key, value):
         """Like :meth:`set` but also supports index/slice based setting."""
@@ -1263,6 +1311,44 @@ class Headers(object):
                 self._list[key] = value
         else:
             self.set(key, value)
+
+    def update(self, *args, **kwargs):
+        """Replace headers in this object with items from another
+        headers object and keyword arguments.
+
+        To extend existing keys instead of replacing, use :meth:`extend`
+        instead.
+
+        If provided, the first argument can be another :class:`Headers`
+        object, a :class:`MultiDict`, :class:`dict`, or iterable of
+        pairs.
+
+        .. versionadded:: 1.0
+        """
+        if len(args) > 1:
+            raise TypeError("update expected at most 1 arguments, got %d" % len(args))
+
+        if args:
+            mapping = args[0]
+
+            if isinstance(mapping, (Headers, MultiDict)):
+                for key in mapping.keys():
+                    self.setlist(key, mapping.getlist(key))
+            elif isinstance(mapping, dict):
+                for key, value in iteritems(mapping):
+                    if isinstance(value, (list, tuple)):
+                        self.setlist(key, value)
+                    else:
+                        self.set(key, value)
+            else:
+                for key, value in mapping:
+                    self.set(key, value)
+
+        for key, value in iteritems(kwargs):
+            if isinstance(value, (list, tuple)):
+                self.setlist(key, value)
+            else:
+                self.set(key, value)
 
     def to_wsgi_list(self):
         """Convert the headers into a list suitable for WSGI.
@@ -1310,14 +1396,25 @@ class ImmutableHeadersMixin(object):
     def __setitem__(self, key, value):
         is_immutable(self)
 
-    set = __setitem__
+    def set(self, key, value):
+        is_immutable(self)
+
+    def setlist(self, key, value):
+        is_immutable(self)
 
     def add(self, item):
         is_immutable(self)
 
-    remove = add_header = add
+    def add_header(self, item):
+        is_immutable(self)
 
-    def extend(self, iterable):
+    def remove(self, item):
+        is_immutable(self)
+
+    def extend(self, *args, **kwargs):
+        is_immutable(self)
+
+    def update(self, *args, **kwargs):
         is_immutable(self)
 
     def insert(self, pos, value):
@@ -1330,6 +1427,9 @@ class ImmutableHeadersMixin(object):
         is_immutable(self)
 
     def setdefault(self, key, default):
+        is_immutable(self)
+
+    def setlistdefault(self, key, default):
         is_immutable(self)
 
 
@@ -1643,6 +1743,12 @@ class Accept(ImmutableList):
 
     .. versionchanged:: 0.5
        :class:`Accept` objects are forced immutable now.
+
+    .. versionchanged:: 1.0.0
+       :class:`Accept` internal values are no longer ordered
+       alphabetically for equal quality tags. Instead the initial
+       order is preserved.
+
     """
 
     def __init__(self, values=()):
@@ -1655,9 +1761,7 @@ class Accept(ImmutableList):
         else:
             self.provided = True
             values = sorted(
-                values,
-                key=lambda x: (self._specificity(x[0]), x[1], x[0]),
-                reverse=True,
+                values, key=lambda x: (self._specificity(x[0]), x[1]), reverse=True,
             )
             list.__init__(self, values)
 
@@ -2943,18 +3047,23 @@ class FileStorage(object):
 
         For secure file saving also have a look at :func:`secure_filename`.
 
-        :param dst: a filename or open file object the uploaded file
-                    is saved to.
-        :param buffer_size: the size of the buffer.  This works the same as
-                            the `length` parameter of
-                            :func:`shutil.copyfileobj`.
+        :param dst: a filename, :class:`os.PathLike`, or open file
+            object to write to.
+        :param buffer_size: Passed as the ``length`` parameter of
+            :func:`shutil.copyfileobj`.
+
+        .. versionchanged:: 1.0
+            Supports :mod:`pathlib`.
         """
         from shutil import copyfileobj
 
         close_dst = False
+        dst = fspath(dst)
+
         if isinstance(dst, string_types):
             dst = open(dst, "wb")
             close_dst = True
+
         try:
             copyfileobj(self.stream, dst, buffer_size)
         finally:

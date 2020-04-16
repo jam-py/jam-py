@@ -1,5 +1,5 @@
 # sql/types_api.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,8 +12,8 @@
 
 from . import operators
 from .base import SchemaEventTarget
-from .visitors import Visitable
-from .visitors import VisitableType
+from .visitors import Traversible
+from .visitors import TraversibleType
 from .. import exc
 from .. import util
 
@@ -28,7 +28,7 @@ INDEXABLE = None
 _resolve_value_to_type = None
 
 
-class TypeEngine(Visitable):
+class TypeEngine(Traversible):
     """The ultimate base class for all SQL datatypes.
 
     Common subclasses of :class:`.TypeEngine` include
@@ -56,6 +56,9 @@ class TypeEngine(Visitable):
         __slots__ = "expr", "type"
 
         default_comparator = None
+
+        def __clause_element__(self):
+            return self.expr
 
         def __init__(self, expr):
             self.expr = expr
@@ -129,6 +132,16 @@ class TypeEngine(Visitable):
     Rudimentary usage of this hook is allowed through simple subclassing
     of existing types, or alternatively by using :class:`.TypeDecorator`.
     See the documentation section :ref:`types_operators` for examples.
+
+    """
+
+    sort_key_function = None
+    """A sorting function that can be passed as the key to sorted.
+
+    The default value of ``None`` indicates that the values stored by
+    this type are self-sorting.
+
+    .. versionadded:: 1.3.8
 
     """
 
@@ -466,9 +479,12 @@ class TypeEngine(Visitable):
         try:
             return dialect._type_memos[self]["literal"]
         except KeyError:
-            d = self._dialect_info(dialect)
-            d["literal"] = lp = d["impl"].literal_processor(dialect)
-            return lp
+            pass
+        # avoid KeyError context coming into literal_processor() function
+        # raises
+        d = self._dialect_info(dialect)
+        d["literal"] = lp = d["impl"].literal_processor(dialect)
+        return lp
 
     def _cached_bind_processor(self, dialect):
         """Return a dialect-specific bind processor for this type."""
@@ -476,9 +492,12 @@ class TypeEngine(Visitable):
         try:
             return dialect._type_memos[self]["bind"]
         except KeyError:
-            d = self._dialect_info(dialect)
-            d["bind"] = bp = d["impl"].bind_processor(dialect)
-            return bp
+            pass
+        # avoid KeyError context coming into bind_processor() function
+        # raises
+        d = self._dialect_info(dialect)
+        d["bind"] = bp = d["impl"].bind_processor(dialect)
+        return bp
 
     def _cached_result_processor(self, dialect, coltype):
         """Return a dialect-specific result processor for this type."""
@@ -486,21 +505,27 @@ class TypeEngine(Visitable):
         try:
             return dialect._type_memos[self][coltype]
         except KeyError:
-            d = self._dialect_info(dialect)
-            # key assumption: DBAPI type codes are
-            # constants.  Else this dictionary would
-            # grow unbounded.
-            d[coltype] = rp = d["impl"].result_processor(dialect, coltype)
-            return rp
+            pass
+        # avoid KeyError context coming into result_processor() function
+        # raises
+        d = self._dialect_info(dialect)
+        # key assumption: DBAPI type codes are
+        # constants.  Else this dictionary would
+        # grow unbounded.
+        d[coltype] = rp = d["impl"].result_processor(dialect, coltype)
+        return rp
 
     def _cached_custom_processor(self, dialect, key, fn):
         try:
             return dialect._type_memos[self][key]
         except KeyError:
-            d = self._dialect_info(dialect)
-            impl = d["impl"]
-            d[key] = result = fn(impl)
-            return result
+            pass
+        # avoid KeyError context coming into fn() function
+        # raises
+        d = self._dialect_info(dialect)
+        impl = d["impl"]
+        d[key] = result = fn(impl)
+        return result
 
     def _dialect_info(self, dialect):
         """Return a dialect-specific registry which
@@ -520,6 +545,15 @@ class TypeEngine(Visitable):
 
     def _gen_dialect_impl(self, dialect):
         return dialect.type_descriptor(self)
+
+    @util.memoized_property
+    def _static_cache_key(self):
+        names = util.get_cls_kwargs(self.__class__)
+        return (self.__class__,) + tuple(
+            (k, self.__dict__[k])
+            for k in names
+            if k in self.__dict__ and not k.startswith("_")
+        )
 
     def adapt(self, cls, **kw):
         """Produce an "adapted" form of this type, given an "impl" class
@@ -600,7 +634,7 @@ class TypeEngine(Visitable):
         return util.generic_repr(self)
 
 
-class VisitableCheckKWArg(util.EnsureKWArgType, VisitableType):
+class VisitableCheckKWArg(util.EnsureKWArgType, TraversibleType):
     pass
 
 
@@ -903,6 +937,15 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
     """
 
     class Comparator(TypeEngine.Comparator):
+        """A :class:`.TypeEngine.Comparator` that is specific to
+        :class:`.TypeDecorator`.
+
+        User-defined :class:`.TypeDecorator` classes should not typically
+        need to modify this.
+
+
+        """
+
         __slots__ = ()
 
         def operate(self, op, *other, **kwargs):
@@ -1338,6 +1381,10 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         """
         return self.impl.compare_values(x, y)
 
+    @property
+    def sort_key_function(self):
+        return self.impl.sort_key_function
+
     def __repr__(self):
         return util.generic_repr(self, to_inspect=self.impl)
 
@@ -1431,7 +1478,7 @@ def to_instance(typeobj, *arg, **kw):
     if typeobj is None:
         return NULLTYPE
 
-    if util.callable(typeobj):
+    if callable(typeobj):
         return typeobj(*arg, **kw)
     else:
         return typeobj

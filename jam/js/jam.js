@@ -86,7 +86,7 @@
             "field_caption",
             "data_type",
             "field_size",
-            "required",
+            "_required",
             "lookup_item",
             "lookup_field",
             "lookup_field1",
@@ -107,7 +107,8 @@
             "field_image",
             "field_file",
             "reserved",
-            "calculated"
+            "calculated",
+            "not_null"
         ],
         filter_attr = [
             "filter_name",
@@ -129,6 +130,13 @@
         locale,
         language;
 
+
+    class AbortError extends Error {
+        constructor(message) {
+            super(message);
+            this.name = "AbortError";
+        }
+    }
 
     class AbsrtactItem {
         constructor(owner, ID, item_name, caption, visible, type, js_filename) {
@@ -500,7 +508,7 @@
                         callback.call(this, res, err);
                     }
                     if (err) {
-                        throw err;
+                        throw new Error(err);
                     }
                 });
             } else {
@@ -508,7 +516,7 @@
                 res = result[0];
                 err = result[1];
                 if (err) {
-                    throw err;
+                    throw new Error(err);
                 } else {
                     return res;
                 }
@@ -1205,8 +1213,7 @@
                 this[form_name].bind('destroyed', function() {
                     self._close_modeless_form(form_type);
                 });
-                console.trace();
-                throw this.item_name + " - can't close form";
+                throw new Error(this.item_name + " - can't close form");
             }
         }
 
@@ -1781,7 +1788,7 @@
 
         abort(message) {
             message = message ? ' - ' + message : '';
-            throw 'aborted: ' + this.item_name + message;
+            throw new AbortError(this.item_name + message);
         }
 
         log_message(message) {
@@ -1792,6 +1799,9 @@
         }
 
         round(num, dec) {
+            if (dec === undefined) {
+                dec = 0;
+            }
             let result = Number(Math.round(Math.abs(num) + 'e' + dec) + 'e-' + dec);
             if (isNaN(result)) {
                 result = 0;
@@ -1805,8 +1815,7 @@
         str_to_int(str) {
             var result = parseInt(str, 10);
             if (isNaN(result)) {
-                console.trace();
-                throw "invalid integer value";
+                throw new Error(language.invalid_int.replace('%s', ''));
             }
             return result;
         }
@@ -1825,8 +1834,7 @@
             text = text.replace(locale.MON_DECIMAL_POINT, ".")
             result = parseFloat(text);
             if (isNaN(result)) {
-                console.trace();
-                throw "invalid float value";
+                throw new Error(language.invalid_float.replace('%s', ''));
             }
             return result;
         }
@@ -2009,9 +2017,7 @@
         parseDateInt(str, digits) {
             var result = parseInt(str.substring(0, digits), 10);
             if (isNaN(result)) {
-                //            result = 0
-                console.trace();
-                throw 'invalid date';
+                throw new Error(language.invalid_date.replace('%s', ''))
             }
             return result;
         }
@@ -2058,7 +2064,7 @@
             }
             if (month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 24 ||
                 min < 0 || min > 60 || sec < 0 || sec > 60) {
-                    throw language.invalid_date.replace('%s', str);
+                    throw new Error(language.invalid_date.replace('%s', str));
             }
             return new Date(year, month - 1, day, hour, min, sec);
         }
@@ -2667,7 +2673,8 @@
                         hist = item.task.history_item.copy();
                     hist.set_where({item_id: item.item_id.value, item_rec_id: item.item_rec_id.value});
                     hist.set_order_by(['-date']);
-                    hist.open(function() {
+                    hist.open({limit: 100}, function() {
+                    //~ hist.open(function() {
                         it.display_history(hist);
                     });
                 }
@@ -2872,7 +2879,15 @@
                 custom_menu = [];
                 task.each_item(function(group) {
                     if (group.visible) {
-                        custom_menu.push(group);
+                        let item_count = 0;
+                        group.each_item(function(item) {
+                            if (item.visible) {
+                                item_count += 1;
+                            }
+                        });
+                        if (item_count > 0) {
+                            custom_menu.push(group);
+                        }
                     }
                 });
                 if (custom_menu.length === 1 && !options.create_single_group) {
@@ -3192,7 +3207,7 @@
                 return result;
             }
             else {
-                throw 'Can not find record log for empty dataset.'
+                throw new Error('Can not find record log for empty dataset.');
             }
         }
 
@@ -3276,11 +3291,10 @@
 
         detail_modified() {
             if (this.item.record_status === consts.RECORD_UNCHANGED) {
-                let record_log = this.item.change_log.get_record_log();
-                if (!record_log.old_record) {
-                    record_log.old_record = this.item.change_log.copy_record();
-                }
                 this.item.record_status = consts.RECORD_DETAILS_MODIFIED;
+            }
+            if (this.item.master) {
+                this.item.master.change_log.detail_modified();
             }
         }
 
@@ -3305,8 +3319,7 @@
                         this.item.record_status = consts.RECORD_DELETED;
                     }
                 } else {
-                    console.trace();
-                    throw this.item.item_name + ': change log invalid records state';
+                    throw new Error(this.item.item_name + ': change log invalid records state');
                 }
                 if (this.item.master) {
                     this.item.master.change_log.detail_modified();
@@ -3468,18 +3481,20 @@
                             info = self.item.get_record_info(record);
                         info[consts.REC_STATUS] = consts.RECORD_UNCHANGED;
                         info[consts.REC_LOG_REC] = null;
-                        if (rec instanceof Array) {
-                            rec = rec.slice(0, self.item._record_lookup_index),
-                            Array.prototype.splice.apply(record, [0, rec.length].concat(rec));
-                            rec_id = record[self.item._primary_key_field.bind_index];
-                        }
-                        else {
-                            rec_id = rec;
-                            if (rec_id && !record[self.item._primary_key_field.bind_index]) {
-                                record[self.item._primary_key_field.bind_index] = rec_id;
+                        if (self.item._primary_key_field) {
+                            if (rec instanceof Array) {
+                                rec = rec.slice(0, self.item._record_lookup_index),
+                                Array.prototype.splice.apply(record, [0, rec.length].concat(rec));
+                                rec_id = record[self.item._primary_key_field.bind_index];
                             }
-                            if (master_rec_id && !record[self.item._master_rec_id_field.bind_index]) {
-                                record[self.item._master_rec_id_field.bind_index] = master_rec_id;
+                            else {
+                                rec_id = rec;
+                                if (rec_id && !record[self.item._primary_key_field.bind_index]) {
+                                    record[self.item._primary_key_field.bind_index] = rec_id;
+                                }
+                                if (master_rec_id && !record[self.item._master_rec_id_field.bind_index]) {
+                                    record[self.item._master_rec_id_field.bind_index] = master_rec_id;
+                                }
                             }
                         }
                         details.forEach(function(detail) {
@@ -4144,13 +4159,13 @@
                 self.process_selection_changed([undefined, deleted]);
             };
             this._selections.pop = function() {
-                throw 'Item selections do not support pop method';
+                throw new Error('Item selections do not support pop method');
             };
             this._selections.shift = function() {
-                throw 'Item selections do not support shift method';
+                throw new Error('Item selections do not support shift method');
             }
             this._selections.unshift = function() {
-                throw 'Item selections do not support unshift method';
+                throw new Error('Item selections do not support unshift method');
             }
 
             this.process_selection_changed([this._selections.slice(0), undefined]);
@@ -4159,8 +4174,7 @@
 
         copy(options) {
             if (this.master) {
-                console.trace();
-                throw 'A detail can not be copied.';
+                throw new Error('A detail can not be copied.');
             }
             return this._copy(options);
         }
@@ -4466,7 +4480,7 @@
                     fld = this.field_by_name(field_name);
                 } catch (e) {
                     console.error(e);
-                    throw this.item_name + ': set_order_by method arument error - ' + field + ' ' + e;
+                    throw new Error(this.item_name + ': set_order_by method arument error - ' + field + ' ' + e);
                 }
                 result.push([fld.field_name, desc]);
             }
@@ -4501,13 +4515,12 @@
                     if (filter_type !== -1) {
                         filter_type += 1
                     } else {
-                        console.trace();
-                        throw this.item_name + ': set_where method arument error - ' + field_arg;
+                        throw new Error(this.item_name + ': set_where method arument error - ' + field_arg);
                     }
                     field = this._field_by_name(field_name);
                     if (!field) {
                         console.trace();
-                        throw this.item_name + ': set_where method arument error - ' + field_arg;
+                        throw new Error(this.item_name + ': set_where method arument error - ' + field_arg);
                     }
                     if (value !== null) {
                         if (value instanceof Date) {
@@ -4526,23 +4539,14 @@
         }
 
         _update_system_fields() {
-            var i,
-                len,
-                field,
-                sys_field,
-                sys_field_name,
+            let self = this,
                 sys_fields = ['_primary_key', '_deleted_flag', '_master_id', '_master_rec_id'];
-            len = sys_fields.length;
-            for (i = 0; i < len; i++) {
-                sys_field_name = sys_fields[i];
-                sys_field = this[sys_field_name];
+            sys_fields.forEach(function(sys_field_name) {
+                let sys_field = self[sys_field_name];
                 if (sys_field) {
-                    field = this.field_by_name(sys_field)
-                    if (field) {
-                        this[sys_field_name + '_field'] = field;
-                    }
+                    self[sys_field_name + '_field'] = self.field_by_name(sys_field);
                 }
-            }
+            });
         }
 
         _update_fields(fields) {
@@ -4792,16 +4796,13 @@
         _check_open_options(options) {
             if (options) {
                 if (options.fields && !$.isArray(options.fields)) {
-                    console.trace();
-                    throw this.item_name + ': open method options error: the fields option must be an array.';
+                    throw new Error(this.item_name + ': open method options error: the fields option must be an array.');
                 }
                 if (options.order_by && !$.isArray(options.order_by)) {
-                    console.trace();
-                    throw this.item_name + ': open method options error: the order_by option must be an array.';
+                    throw new Error(this.item_name + ': open method options error: the order_by option must be an array.');
                 }
                 if (options.group_by && !$.isArray(options.group_by)) {
-                    console.trace();
-                    throw this.item_name + ': open method options error: the group_by option must be an array.';
+                    throw new Error(this.item_name + ': open method options error: the group_by option must be an array.');
                 }
             }
         }
@@ -5200,8 +5201,7 @@
                     text = text.replace(locale.MON_DECIMAL_POINT, ".");
                     if (text && isNaN(text)) {
                         this.alert_error(language.invalid_value.replace('%s', ''));
-                        console.trace();
-                        throw language.invalid_value.replace('%s', '');
+                        throw new Error(language.invalid_value.replace('%s', ''));
                     }
                 }
                 params.__search = undefined;
@@ -5237,20 +5237,16 @@
 
         append(index) {
             if (!this._active) {
-                console.trace();
-                throw language.append_not_active.replace('%s', this.item_name);
+                throw new Error(language.append_not_active.replace('%s', this.item_name));
             }
             if (this._applying) {
-                console.trace();
-                throw 'Can not perform this operation. Item is applying data to the database';
+                throw new Error('Can not perform this operation. Item is applying data to the database');
             }
             if (this.master && !this.master.is_changing()) {
-                console.trace();
-                throw language.append_master_not_changing.replace('%s', this.item_name);
+                throw new Error(language.append_master_not_changing.replace('%s', this.item_name));
             }
             if (this.item_state !== consts.STATE_BROWSE) {
-                console.trace();
-                throw language.append_not_browse.replace('%s', this.item_name);
+                throw new Error(language.append_not_browse.replace('%s', this.item_name));
             }
             if (this.on_before_append) {
                 this.on_before_append.call(this, this);
@@ -5268,7 +5264,7 @@
             this._do_after_scroll();
             this.record_status = consts.RECORD_INSERTED;
             for (var i = 0; i < this.fields.length; i++) {
-                if (this.fields[i].default_value) {
+                if (this.fields[i].default_value !== undefined) {
                     this.fields[i].assign_default_value();
                 }
             }
@@ -5297,27 +5293,22 @@
 
         edit() {
             if (!this._active) {
-                console.trace();
-                throw language.edit_not_active.replace('%s', this.item_name);
+                throw new Error(language.edit_not_active.replace('%s', this.item_name));
             }
             if (this._applying) {
-                console.trace();
-                throw 'Can not perform this operation. Item is applying data to the database';
+                throw new Error('Can not perform this operation. Item is applying data to the database');
             }
             if (this.record_count() === 0) {
-                console.trace();
-                throw language.edit_no_records.replace('%s', this.item_name);
+                throw new Error(language.edit_no_records.replace('%s', this.item_name));
             }
             if (this.item_state === consts.STATE_EDIT) {
                 return
             }
             if (this.master && !this.master.is_changing()) {
-                console.trace();
-                throw language.edit_master_not_changing.replace('%s', this.item_name);
+                throw new Error(language.edit_master_not_changing.replace('%s', this.item_name));
             }
             if (this.item_state !== consts.STATE_BROWSE) {
-                console.trace();
-                throw language.edit_not_browse.replace('%s', this.item_name);
+                throw new Error(language.edit_not_browse.replace('%s', this.item_name));
             }
             this._do_before_edit();
             this._buffer = this.change_log.store_record();
@@ -5347,8 +5338,7 @@
                     this.change_log.remove_record_log();
                     this._dataset.splice(this.rec_no, 1);
                 } else {
-                    console.trace();
-                    throw language.cancel_invalid_state.replace('%s', this.item_name);
+                    throw new Error(language.cancel_invalid_state.replace('%s', this.item_name));
                 }
 
                 prev_state = this.item_state;
@@ -5379,16 +5369,13 @@
         delete() {
             var rec = this.rec_no;
             if (!this._active) {
-                console.trace();
-                throw language.delete_not_active.replace('%s', this.item_name);
+                throw new Error(language.delete_not_active.replace('%s', this.item_name));
             }
             if (this.record_count() === 0) {
-                console.trace();
-                throw language.delete_no_records.replace('%s', this.item_name);
+                throw new Error(language.delete_no_records.replace('%s', this.item_name));
             }
             if (this.master && !this.master.is_changing()) {
-                console.trace();
-                throw language.delete_master_not_changing.replace('%s', this.item_name);
+                throw new Error(language.delete_master_not_changing.replace('%s', this.item_name));
             }
             try {
                 if (this.on_before_delete) {
@@ -5412,7 +5399,7 @@
                 }
             } catch (e) {
                 console.error(e);
-                throw e;
+                throw new Error(e);
             } finally {
                 this.item_state = consts.STATE_BROWSE;
             }
@@ -5461,8 +5448,7 @@
                 was_modified = this._modified;
 
             if (!this.is_changing()) {
-                console.trace();
-                throw this.item_name + ' post method: dataset is not in edit or insert mode';
+                throw new Error(this.item_name + ' post method: dataset is not in edit or insert mode');
             }
             if (this.on_before_post) {
                 this.on_before_post.call(this, this);
@@ -5548,7 +5534,7 @@
                     if (callback) {
                         callback.call(this, err);
                     }
-                    throw err;
+                    throw new Error(err);
                 } else {
                     this.change_log.update(res)
                     if (this.on_after_apply) {
@@ -6437,9 +6423,8 @@
         check_record_valid() {
             var error;
             this.each_field(function(field, j) {
-                try {
-                    field.check_valid();
-                } catch (e) {
+                let e = field.check_valid();
+                if (e) {
                     field.update_control_state(e);
                     if (!error) {
                         error = e;
@@ -6447,7 +6432,7 @@
                 }
             });
             if (error) {
-                throw error;
+                throw new Error(error);
             }
         }
 
@@ -6467,7 +6452,7 @@
                 }
             });
             if (error) {
-                throw error;
+                throw new Error(error);
             }
         }
 
@@ -6512,12 +6497,14 @@
                 }
                 catch (e) {
                     console.error(e);
-                    if (e && e.indexOf('aborted:') !== 0) {
+                    if (!(e.name && e.name === 'AbortError')) {
                         this.alert_error(e);
                     }
                     if (this.edit_form_disabled()) {
                         this.enable_edit_form();
-                        this.edit();
+                        if (!this.is_changing()) {
+                            this.edit();
+                        }
                     }
                 }
             }
@@ -7542,7 +7529,7 @@
                 copy;
             if (this.master) {
                 console.trace();
-                throw 'The refresh_record method can not be executed for a detail item';
+                throw new Error('The refresh_record method can not be executed for a detail item');
             }
             if (!this.rec_count) {
                 return
@@ -7553,8 +7540,8 @@
                 self.each_field(function(field) {
                     fields.push(field.field_name)
                 })
-                copy._where_list = this._open_params.__filters.slice();
-                copy._where_list.push([primary_key, consts.FILTER_EQ, this._primary_key_field.value, -2]);
+                //~ copy._where_list = this._open_params.__filters.slice();
+                copy._where_list = [[primary_key, consts.FILTER_EQ, this._primary_key_field.value, -2]];
                 if (callback || async) {
                     copy.open({expanded: this.expanded, fields: fields, params: options.params}, function() {
                         self._do_on_refresh_record(copy, options, callback, async);
@@ -7909,8 +7896,7 @@
                 if (this.owner) {
                     this.owner.alert_error(mess, {duration: 0});
                 }
-                console.trace();
-                throw mess
+                throw new Error(mess);
             }
         }
 
@@ -8114,7 +8100,7 @@
                         value = Boolean(value);
                         break;
                     case consts.KEYS:
-                        value = value.split(';').map(function(i) { return parseInt(i, 10) });
+                        value = this._parse_keys(value);
                         break;
                     case consts.FILE:
                         value = this.get_secure_file_name(value);
@@ -8122,6 +8108,15 @@
                 }
             }
             return value;
+        }
+
+        _parse_keys(value) {
+            if (value) {
+                return value.split(';').map(function(i) { return parseInt(i, 10) });
+            }
+            else {
+                return [];
+            }
         }
 
         set value(value) {
@@ -8159,8 +8154,7 @@
         _do_before_changed() {
             if (this.field_kind === consts.ITEM_FIELD) {
                 if (!this.owner.is_changing()) {
-                    console.trace();
-                    throw language.not_edit_insert_state.replace('%s', this.owner.item_name);
+                    throw new Error(language.not_edit_insert_state.replace('%s', this.owner.item_name));
                 }
                 if (this.owner.on_before_field_changed) {
                     this.owner.on_before_field_changed.call(this.owner, this);
@@ -8183,12 +8177,10 @@
         _check_system_field_value(value) {
             if (this.field_kind === consts.ITEM_FIELD) {
                 if (this.field_name === this.owner._primary_key && this.value && this.value !== value) {
-                    console.trace();
-                    throw language.no_primary_field_changing.replace('%s', this.owner.item_name);
+                    throw new Error(language.no_primary_field_changing.replace('%s', this.owner.item_name));
                 }
                 if (this.field_name === this.owner._deleted_flag && this.value !== value) {
-                    console.trace();
-                    throw language.no_deleted_field_changing.replace('%s', this.owner.item_name);
+                    throw new Error(language.no_deleted_field_changing.replace('%s', this.owner.item_name));
                 }
             }
         }
@@ -8342,10 +8334,10 @@
                         result = Boolean(result);
                         break;
                     case consts.KEYS:
-                        result = result.split(';').map(function(i) { return parseInt(i, 10) });
+                        result = this._parse_keys(result);
                         break;
                     case consts.FILE:
-                        result = this.get_secure_file_name(result)
+                        result = this.get_secure_file_name(result);
                         break;
                 }
             }
@@ -8525,7 +8517,7 @@
         }
 
         assign_default_value() {
-            if (this.default_value) {
+            if (this.default_value !== null) {
                 try {
                     switch (this.data_type) {
                         case consts.INTEGER:
@@ -8555,6 +8547,9 @@
                             break;
                         case consts.TEXT:
                         case consts.LONGTEXT:
+                        case consts.IMAGE:
+                        case consts.FILE:
+                        case consts.KEYS:
                             this.value = this.default_value;
                             break;
                     }
@@ -8583,6 +8578,10 @@
                 {
                     accept: this.field_file.accept,
                     callback: function(server_file_name, file_name) {
+                        if (file_name.length > 255) {
+                            let ext = file_name.split('.').pop();
+                            file_name = file_name.substr(0, 255 - ext.length - 1) + '.' + ext;
+                        }
                         self.value = server_file_name + '?' +  file_name;
                     }
                 }
@@ -8618,6 +8617,42 @@
             }
         }
 
+        check_valid() {
+            if (this.required && this.data === null) {
+                return this.field_caption + ': ' + language.value_required;
+            }
+            if (this.data_type === consts.TEXT && this.field_size !== 0 && this.text.length > this.field_size) {
+                return this.field_caption + ': ' + language.invalid_length.replace('%s', this.field_size);
+            }
+            if (this.owner && this.owner.on_field_validate) {
+                let err = this.owner.on_field_validate.call(this.owner, this);
+                if (err) {
+                    return err;
+                }
+            }
+            if (this.filter) {
+                err = this.filter.check_value(this)
+                if (err) {
+                    return err;
+                }
+            }
+        }
+
+        get required() {
+            if (this.not_null) {
+                return true;
+            }
+            else {
+                return this._required;
+            }
+        }
+
+        set required(value) {
+            if (!this.not_null) {
+                this._required = value;
+            }
+        }
+
         set read_only(value) {
             this._read_only = value;
             this.update_controls();
@@ -8641,22 +8676,6 @@
 
         get alignment() {
             return this._alignment;
-        }
-
-        check_type() {
-            if ((this.data_type === consts.TEXT) && (this.field_size !== 0) && (this.text.length > this.field_size)) {
-                console.trace();
-                throw this.field_caption + ': ' + language.invalid_length.replace('%s', this.field_size);
-            }
-            return true;
-        }
-
-        check_reqired() {
-            if (this.required && this.data === null) {
-                console.trace();
-                throw this.field_caption + ': ' + language.value_required;
-            }
-            return true;
         }
 
         get_mask() {
@@ -8693,31 +8712,6 @@
                 }
             }
             return result;
-        }
-
-        check_valid() {
-            var err;
-            if (this.check_reqired()) {
-                if (this.check_type()) {
-                    if (this.owner && this.owner.on_field_validate) {
-                        err = this.owner.on_field_validate.call(this.owner, this);
-                        if (err) {
-                            console.trace();
-                            throw err;
-                            return;
-                        }
-                    }
-                    if (this.filter) {
-                        err = this.filter.check_value(this)
-                        if (err) {
-                            console.trace();
-                            throw err;
-                            return;
-                        }
-                    }
-                    return true;
-                }
-            }
         }
 
         typeahead_options() {
@@ -9105,8 +9099,7 @@
         check_valid() {
             var error = this.check_value(this.field);
             if (error) {
-                console.trace();
-                throw error;
+                throw new Error(error);
             }
         }
 
@@ -13108,7 +13101,10 @@
                         } else {
                             this.field.text = text;
                             if (!(this.field.field_kind === consts.ITEM_FIELD && !this.field.owner.rec_count)) {
-                                this.field.check_valid();
+                                let err = this.field.check_valid();
+                                if (err) {
+                                    throw new Error(err);
+                                }
                                 if (this.$input.is(':visible')) {
                                     this.$input.val(text);
                                 }
@@ -13118,7 +13114,9 @@
                 } catch (e) {
                     this.errorValue = text;
                     this.error = e;
-                    this.updateState(false);
+                    if (!(e.name && e.name === 'AbortError')) {
+                        this.updateState(false);
+                    }
                     if (e.stack) {
                         console.error(e.stack);
                     }

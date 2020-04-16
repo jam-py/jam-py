@@ -66,7 +66,7 @@ class MetaDataImport(object):
             self.show_error(self.error)
 
     def update_gen_names(self):
-        if not get_database(self.db_type).NEED_GENERATOR:
+        if not get_database(self.db_type, self.task.task_db_info.lib).NEED_GENERATOR:
             self.items_hidden_fields.append('f_gen_name')
 
     def update_indexes(self):
@@ -102,7 +102,7 @@ class MetaDataImport(object):
             it.post()
 
     def update_idents(self):
-        case = get_database(self.db_type).identifier_case
+        case = get_database(self.db_type, self.task.task_db_info.lib).identifier_case
         self.update_item_idents('sys_items', ['f_table_name', 'f_gen_name'], case)
         self.update_item_idents('sys_fields', ['f_db_field_name'], case)
         self.update_item_idents('sys_indices', ['f_index_name'], case)

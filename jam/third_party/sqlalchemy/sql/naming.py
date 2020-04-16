@@ -1,5 +1,5 @@
 # sqlalchemy/naming.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,6 +12,7 @@
 
 import re
 
+from . import events  # noqa
 from .elements import _defer_name
 from .elements import _defer_none_name
 from .elements import conv
@@ -24,7 +25,6 @@ from .schema import PrimaryKeyConstraint
 from .schema import Table
 from .schema import UniqueConstraint
 from .. import event
-from .. import events  # noqa
 from .. import exc
 
 
@@ -67,7 +67,7 @@ class ConventionDict(object):
         return self._column_X(idx).name
 
     def _key_column_X_label(self, idx):
-        return self._column_X(idx)._label
+        return self._column_X(idx)._ddl_label
 
     def _key_referred_table_name(self):
         fk = self.const.elements[0]

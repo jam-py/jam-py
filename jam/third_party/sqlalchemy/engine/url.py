@@ -1,5 +1,5 @@
 # engine/url.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -120,7 +120,11 @@ class URL(object):
             and self.host == other.host
             and self.database == other.database
             and self.query == other.query
+            and self.port == other.port
         )
+
+    def __ne__(self, other):
+        return not self == other
 
     @property
     def password(self):

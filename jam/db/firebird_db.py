@@ -1,6 +1,6 @@
 import fdb
 
-from werkzeug._compat import text_type
+from werkzeug._compat import text_type, to_bytes, to_unicode
 
 from ..common import consts
 from .db import AbstractDB
@@ -22,7 +22,7 @@ class FirebirdDB(AbstractDB):
             consts.LONGTEXT: 'BLOB',
             consts.KEYS: 'BLOB',
             consts.FILE: 'VARCHAR(512)',
-            consts.IMAGE: 'VARCHAR(512)'
+            consts.IMAGE: 'VARCHAR(256)'
         }
 
     def get_params(self, lib):
@@ -87,10 +87,8 @@ class FirebirdDB(AbstractDB):
             line = '"%s" %s' % (field.field_name, self.FIELD_TYPES[field.data_type])
             if field.size != 0 and field.data_type == consts.TEXT:
                 line += '(%d)' % field.size
-            default_value = self.default_value(field)
-            if default_value and not field.primary_key:
-                if default_value:
-                    line += ' DEFAULT %s' % default_value
+            if field.not_null:
+                line += ' NOT NULL'
             lines.append(line)
             if field.primary_key:
                 primary_key = field.field_name
@@ -122,13 +120,20 @@ class FirebirdDB(AbstractDB):
         return 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % (table_name, index_name)
 
     def add_field(self, table_name, field):
-        result = 'ALTER TABLE "%s" ADD "%s" %s'
-        result = result % (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
+        result = []
+        line = 'ALTER TABLE "%s" ADD "%s" %s' % \
+            (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
         if field.size:
-            result += '(%d)' % field.size
+            line += '(%d)' % field.size
         default_value = self.default_value(field)
-        if default_value:
-            result += ' DEFAULT %s' % default_value
+        if default_value and field.not_null:
+            line += ' DEFAULT %s' % default_value
+            line += ' NOT NULL'
+        result.append(line)
+        if default_value and field.not_null:
+            line = 'ALTER TABLE "%s" ALTER "%s" DROP DEFAULT' % \
+                (table_name, field.field_name)
+            result.append(line)
         return result
 
     def del_field(self, table_name, field):
@@ -136,23 +141,27 @@ class FirebirdDB(AbstractDB):
 
     def change_field(self, table_name, old_field, new_field):
         result = []
-        if self.FIELD_TYPES[old_field.data_type] != self.FIELD_TYPES[new_field.data_type] \
-            or old_field.size != new_field.size:
-            raise Exception("Changing field size or type is prohibited: field %s, table name %s" % \
-                (old_field.field_name, table_name))
         if old_field.field_name != new_field.field_name:
-            sql = 'ALTER TABLE "%s" ALTER "%s" TO "%s"' % \
+            line = 'ALTER TABLE "%s" ALTER "%s" TO "%s"' % \
                 (table_name, old_field.field_name, new_field.field_name)
-            result.append(sql)
-        if old_field.default_value != new_field.default_value:
+            result.append(line)
+        if old_field.size != new_field.size:
+            line = 'ALTER TABLE "%s" ALTER "%s" %s(%d) ' % \
+                (table_name, new_field.field_name, self.FIELD_TYPES[field.data_type], field.size)
+            result.append(line)
+        if old_field.not_null != new_field.not_null:
             default_value = self.default_value(new_field)
-            if default_value:
-                sql = 'ALTER TABLE "%s" ALTER "%s" SET DEFAULT %s' % \
-                    (table_name, new_field.field_name, default_value)
+            if default_value and new_field.not_null:
+                line = 'UPDATE "%s" SET "%s"=%s WHERE "%s" IS NULL' % \
+                    (table_name, new_field.field_name, default_value, new_field.field_name)
+                result.append(line)
+            if new_field.not_null:
+                line = "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = 1 WHERE RDB$FIELD_NAME = '%s' AND RDB$RELATION_NAME = '%s'" % \
+                    (new_field.field_name, table_name)
             else:
-                sql = 'ALTER TABLE "%s" ALTER "%s" DROP DEFAULT' % \
-                    (table_name, new_field.field_name)
-            result.append(sql)
+                line = "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = NULL WHERE RDB$FIELD_NAME = '%s' AND RDB$RELATION_NAME = '%s'" % \
+                    (new_field.field_name, table_name)
+            result.append(line)
         return result
 
     def before_insert(self, cursor, pk_field):

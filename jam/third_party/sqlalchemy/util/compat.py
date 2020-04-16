@@ -1,5 +1,5 @@
 # util/compat.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,9 +9,10 @@
 
 import collections
 import contextlib
+import inspect
 import operator
+import platform
 import sys
-import time
 
 
 py36 = sys.version_info >= (3, 6)
@@ -21,28 +22,17 @@ py32 = sys.version_info >= (3, 2)
 py3k = sys.version_info >= (3, 0)
 py2k = sys.version_info < (3, 0)
 py265 = sys.version_info >= (2, 6, 5)
-jython = sys.platform.startswith("java")
-pypy = hasattr(sys, "pypy_version_info")
+
+
+cpython = platform.python_implementation() == "CPython"
 win32 = sys.platform.startswith("win")
-cpython = not pypy and not jython  # TODO: something better for this ?
+
+has_refcount_gc = bool(cpython)
 
 contextmanager = contextlib.contextmanager
 dottedgetter = operator.attrgetter
 namedtuple = collections.namedtuple
 next = next  # noqa
-
-FullArgSpec = collections.namedtuple(
-    "FullArgSpec",
-    [
-        "args",
-        "varargs",
-        "varkw",
-        "defaults",
-        "kwonlyargs",
-        "kwonlydefaults",
-        "annotations",
-    ],
-)
 
 FullArgSpec = collections.namedtuple(
     "FullArgSpec",
@@ -70,6 +60,44 @@ else:
     safe_kwarg = str
 
 
+def inspect_getfullargspec(func):
+    """Fully vendored version of getfullargspec from Python 3.3."""
+
+    if inspect.ismethod(func):
+        func = func.__func__
+    if not inspect.isfunction(func):
+        raise TypeError("{!r} is not a Python function".format(func))
+
+    co = func.__code__
+    if not inspect.iscode(co):
+        raise TypeError("{!r} is not a code object".format(co))
+
+    nargs = co.co_argcount
+    names = co.co_varnames
+    nkwargs = co.co_kwonlyargcount if py3k else 0
+    args = list(names[:nargs])
+    kwonlyargs = list(names[nargs : nargs + nkwargs])
+
+    nargs += nkwargs
+    varargs = None
+    if co.co_flags & inspect.CO_VARARGS:
+        varargs = co.co_varnames[nargs]
+        nargs = nargs + 1
+    varkw = None
+    if co.co_flags & inspect.CO_VARKEYWORDS:
+        varkw = co.co_varnames[nargs]
+
+    return FullArgSpec(
+        args,
+        varargs,
+        varkw,
+        func.__defaults__,
+        kwonlyargs,
+        func.__kwdefaults__ if py3k else None,
+        func.__annotations__ if py3k else {},
+    )
+
+
 if py3k:
     import base64
     import builtins
@@ -78,7 +106,6 @@ if py3k:
     import pickle
 
     from functools import reduce
-    from inspect import getfullargspec as inspect_getfullargspec
     from io import BytesIO as byte_buffer
     from io import StringIO
     from itertools import zip_longest
@@ -120,13 +147,42 @@ if py3k:
     def cmp(a, b):
         return (a > b) - (a < b)
 
-    def reraise(tp, value, tb=None, cause=None):
-        if cause is not None:
-            assert cause is not value, "Same cause emitted"
-            value.__cause__ = cause
-        if value.__traceback__ is not tb:
-            raise value.with_traceback(tb)
-        raise value
+    def raise_(
+        exception, with_traceback=None, replace_context=None, from_=False
+    ):
+        r"""implement "raise" with cause support.
+
+        :param exception: exception to raise
+        :param with_traceback: will call exception.with_traceback()
+        :param replace_context: an as-yet-unsupported feature.  This is
+         an exception object which we are "replacing", e.g., it's our
+         "cause" but we don't want it printed.    Basically just what
+         ``__suppress_context__`` does but we don't want to suppress
+         the enclosing context, if any.  So for now we make it the
+         cause.
+        :param from\_: the cause.  this actually sets the cause and doesn't
+         hope to hide it someday.
+
+        """
+        if with_traceback is not None:
+            exception = exception.with_traceback(with_traceback)
+
+        if from_ is not False:
+            exception.__cause__ = from_
+        elif replace_context is not None:
+            # no good solution here, we would like to have the exception
+            # have only the context of replace_context.__context__ so that the
+            # intermediary exception does not change, but we can't figure
+            # that out.
+            exception.__cause__ = replace_context
+
+        try:
+            raise exception
+        finally:
+            # credit to
+            # https://cosmicpercolator.com/2016/01/13/exception-leaks-in-python-2-and-3/
+            # as the __traceback__ object creates a cycle
+            del exception, replace_context, from_, with_traceback
 
     def u(s):
         return s
@@ -134,14 +190,10 @@ if py3k:
     def ue(s):
         return s
 
-    if py32:
-        callable = callable  # noqa
-    else:
+    from typing import TYPE_CHECKING
 
-        def callable(fn):  # noqa
-            return hasattr(fn, "__call__")
-
-
+    # Unused. Kept for backwards compatibility.
+    callable = callable  # noqa
 else:
     import base64
     import ConfigParser as configparser  # noqa
@@ -149,7 +201,6 @@ else:
 
     from StringIO import StringIO  # noqa
     from cStringIO import StringIO as byte_buffer  # noqa
-    from inspect import getargspec as _getargspec
     from itertools import izip_longest as zip_longest  # noqa
     from urllib import quote  # noqa
     from urllib import quote_plus  # noqa
@@ -167,9 +218,6 @@ else:
     binary_type = str
     text_type = unicode  # noqa
     int_types = int, long  # noqa
-
-    def inspect_getfullargspec(func):
-        return FullArgSpec(*_getargspec(func)[0:4] + ([], None, {}))
 
     callable = callable  # noqa
     cmp = cmp  # noqa
@@ -227,18 +275,42 @@ else:
             # error callback"
             return repr(text)[1:-1].decode()
 
-    # not as nice as that of Py3K, but at least preserves
-    # the code line where the issue occurred
+    def safe_bytestring(text):
+        # py2k only
+        if not isinstance(text, string_types):
+            return unicode(text).encode(  # noqa: F821
+                "ascii", errors="backslashreplace"
+            )
+        elif isinstance(text, unicode):  # noqa: F821
+            return text.encode("ascii", errors="backslashreplace")
+        else:
+            return text
+
     exec(
-        "def reraise(tp, value, tb=None, cause=None):\n"
-        "    if cause is not None:\n"
-        "        assert cause is not value, 'Same cause emitted'\n"
-        "    raise tp, value, tb\n"
+        "def raise_(exception, with_traceback=None, replace_context=None, "
+        "from_=False):\n"
+        "    if with_traceback:\n"
+        "        raise type(exception), exception, with_traceback\n"
+        "    else:\n"
+        "        raise exception\n"
     )
+
+    TYPE_CHECKING = False
 
 
 if py35:
-    from inspect import formatannotation
+
+    def _formatannotation(annotation, base_module=None):
+        """vendored from python 3.7
+        """
+
+        if getattr(annotation, "__module__", None) == "typing":
+            return repr(annotation).replace("typing.", "")
+        if isinstance(annotation, type):
+            if annotation.__module__ in ("builtins", base_module):
+                return annotation.__qualname__
+            return annotation.__module__ + "." + annotation.__qualname__
+        return repr(annotation)
 
     def inspect_formatargspec(
         args,
@@ -253,7 +325,7 @@ if py35:
         formatvarkw=lambda name: "**" + name,
         formatvalue=lambda value: "=" + repr(value),
         formatreturns=lambda text: " -> " + text,
-        formatannotation=formatannotation,
+        formatannotation=_formatannotation,
     ):
         """Copy formatargspec from python 3.7 standard library.
 
@@ -318,11 +390,6 @@ else:
     from inspect import formatargspec as inspect_formatargspec  # noqa
 
 
-if win32 or jython:
-    time_func = time.clock
-else:
-    time_func = time.time
-
 # Fix deprecation of accessing ABCs straight from collections module
 # (which will stop working in 3.8).
 if py33:
@@ -331,47 +398,20 @@ else:
     import collections as collections_abc  # noqa
 
 
-@contextlib.contextmanager
-def nested(*managers):
-    """Implement contextlib.nested, mostly for unit tests.
-
-    As tests still need to run on py2.6 we can't use multiple-with yet.
-
-    Function is removed in py3k but also emits deprecation warning in 2.7
-    so just roll it here for everyone.
-
-    """
-
-    exits = []
-    vars_ = []
-    exc = (None, None, None)
-    try:
-        for mgr in managers:
-            exit_ = mgr.__exit__
-            enter = mgr.__enter__
-            vars_.append(enter())
-            exits.append(exit_)
-        yield vars_
-    except:
-        exc = sys.exc_info()
-    finally:
-        while exits:
-            exit_ = exits.pop()  # noqa
-            try:
-                if exit_(*exc):
-                    exc = (None, None, None)
-            except:
-                exc = sys.exc_info()
-        if exc != (None, None, None):
-            reraise(exc[0], exc[1], exc[2])
-
-
 def raise_from_cause(exception, exc_info=None):
+    r"""legacy.  use raise\_()"""
+
     if exc_info is None:
         exc_info = sys.exc_info()
     exc_type, exc_value, exc_tb = exc_info
     cause = exc_value if exc_value is not exception else None
     reraise(type(exception), exception, tb=exc_tb, cause=cause)
+
+
+def reraise(tp, value, tb=None, cause=None):
+    r"""legacy.  use raise\_()"""
+
+    raise_(value, with_traceback=tb, from_=cause)
 
 
 def with_metaclass(meta, *bases):
@@ -393,3 +433,106 @@ def with_metaclass(meta, *bases):
             return meta(name, bases, d)
 
     return metaclass("temporary_class", None, {})
+
+
+if py3k:
+    from datetime import timezone
+else:
+    from datetime import datetime
+    from datetime import timedelta
+    from datetime import tzinfo
+
+    class timezone(tzinfo):
+        """Minimal port of python 3 timezone object"""
+
+        __slots__ = "_offset"
+
+        def __init__(self, offset):
+            if not isinstance(offset, timedelta):
+                raise TypeError("offset must be a timedelta")
+            if not self._minoffset <= offset <= self._maxoffset:
+                raise ValueError(
+                    "offset must be a timedelta "
+                    "strictly between -timedelta(hours=24) and "
+                    "timedelta(hours=24)."
+                )
+            self._offset = offset
+
+        def __eq__(self, other):
+            if type(other) != timezone:
+                return False
+            return self._offset == other._offset
+
+        def __hash__(self):
+            return hash(self._offset)
+
+        def __repr__(self):
+            return "sqlalchemy.util.%s(%r)" % (
+                self.__class__.__name__,
+                self._offset,
+            )
+
+        def __str__(self):
+            return self.tzname(None)
+
+        def utcoffset(self, dt):
+            return self._offset
+
+        def tzname(self, dt):
+            return self._name_from_offset(self._offset)
+
+        def dst(self, dt):
+            return None
+
+        def fromutc(self, dt):
+            if isinstance(dt, datetime):
+                if dt.tzinfo is not self:
+                    raise ValueError("fromutc: dt.tzinfo " "is not self")
+                return dt + self._offset
+            raise TypeError(
+                "fromutc() argument must be a datetime instance" " or None"
+            )
+
+        @staticmethod
+        def _timedelta_to_microseconds(timedelta):
+            """backport of timedelta._to_microseconds()"""
+            return (
+                timedelta.days * (24 * 3600) + timedelta.seconds
+            ) * 1000000 + timedelta.microseconds
+
+        @staticmethod
+        def _divmod_timedeltas(a, b):
+            """backport of timedelta.__divmod__"""
+
+            q, r = divmod(
+                timezone._timedelta_to_microseconds(a),
+                timezone._timedelta_to_microseconds(b),
+            )
+            return q, timedelta(0, 0, r)
+
+        @staticmethod
+        def _name_from_offset(delta):
+            if not delta:
+                return "UTC"
+            if delta < timedelta(0):
+                sign = "-"
+                delta = -delta
+            else:
+                sign = "+"
+            hours, rest = timezone._divmod_timedeltas(
+                delta, timedelta(hours=1)
+            )
+            minutes, rest = timezone._divmod_timedeltas(
+                rest, timedelta(minutes=1)
+            )
+            result = "UTC%s%02d:%02d" % (sign, hours, minutes)
+            if rest.seconds:
+                result += ":%02d" % (rest.seconds,)
+            if rest.microseconds:
+                result += ".%06d" % (rest.microseconds,)
+            return result
+
+        _maxoffset = timedelta(hours=23, minutes=59)
+        _minoffset = -_maxoffset
+
+    timezone.utc = timezone(timedelta(0))

@@ -4,6 +4,7 @@ from werkzeug._compat import iterkeys
 
 from ..common import consts, ProjectNotCompleted
 from ..items import DBInfo, Task, Group, ReportGroup
+from ..db.databases import get_database
 
 def create_task(app):
     result = None
@@ -49,7 +50,7 @@ def create_fields(item, parent_id, item_dict):
                     lookup_field=fields.f_object_field.value,
                     read_only=fields.f_read_only.value,
                     default=fields.f_default.value,
-                    default_value=fields.f_default_value.value,
+                    default_value=fields.f_default_value.data,
                     master_field=fields.f_master_field.value,
                     alignment=fields.f_alignment.value,
                     lookup_values=fields.f_lookup_values.value,
@@ -313,8 +314,13 @@ def load_task(task, app, first_build=True, after_import=False):
     task.bind_items()
     task.compile_all()
 
-    task.create_pool(admin.task_db_type, admin.task_db_info, \
-        admin.task_con_pool_size, admin.task_persist_con)
+    task.db_type = admin.task_db_type
+    task.db_info = admin.task_db_info
+    if task.db_type == consts.SQLITE:
+        task.db_info.database = os.path.join(app.work_dir, task.db_info.database)
+    task.db = get_database(task.db_type, task.db_info.lib)
+
+    task.create_pool(admin.task_con_pool_size, admin.task_persist_con)
 
     params = admin.sys_params.copy()
     params.open(fields=['f_history_item'])

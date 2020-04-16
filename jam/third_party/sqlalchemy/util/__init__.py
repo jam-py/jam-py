@@ -1,5 +1,5 @@
 # util/__init__.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -23,15 +23,12 @@ from ._collections import IdentitySet  # noqa
 from ._collections import ImmutableContainer  # noqa
 from ._collections import immutabledict  # noqa
 from ._collections import ImmutableProperties  # noqa
-from ._collections import KeyedTuple  # noqa
-from ._collections import lightweight_named_tuple  # noqa
 from ._collections import LRUCache  # noqa
 from ._collections import ordered_column_set  # noqa
 from ._collections import OrderedDict  # noqa
 from ._collections import OrderedIdentitySet  # noqa
 from ._collections import OrderedProperties  # noqa
 from ._collections import OrderedSet  # noqa
-from ._collections import populate_column_dict  # noqa
 from ._collections import PopulateDict  # noqa
 from ._collections import Properties  # noqa
 from ._collections import ScopedRegistry  # noqa
@@ -42,6 +39,7 @@ from ._collections import to_set  # noqa
 from ._collections import unique_list  # noqa
 from ._collections import UniqueAppender  # noqa
 from ._collections import update_copy  # noqa
+from ._collections import WeakPopulateDict  # noqa
 from ._collections import WeakSequence  # noqa
 from .compat import b  # noqa
 from .compat import b64decode  # noqa
@@ -53,14 +51,13 @@ from .compat import cmp  # noqa
 from .compat import cpython  # noqa
 from .compat import decode_backslashreplace  # noqa
 from .compat import dottedgetter  # noqa
+from .compat import has_refcount_gc  # noqa
 from .compat import inspect_getfullargspec  # noqa
 from .compat import int_types  # noqa
 from .compat import iterbytes  # noqa
 from .compat import itertools_filter  # noqa
 from .compat import itertools_filterfalse  # noqa
-from .compat import jython  # noqa
 from .compat import namedtuple  # noqa
-from .compat import nested  # noqa
 from .compat import next  # noqa
 from .compat import parse_qsl  # noqa
 from .compat import pickle  # noqa
@@ -69,8 +66,8 @@ from .compat import py2k  # noqa
 from .compat import py33  # noqa
 from .compat import py36  # noqa
 from .compat import py3k  # noqa
-from .compat import pypy  # noqa
 from .compat import quote_plus  # noqa
+from .compat import raise_  # noqa
 from .compat import raise_from_cause  # noqa
 from .compat import reduce  # noqa
 from .compat import reraise  # noqa
@@ -79,6 +76,8 @@ from .compat import string_types  # noqa
 from .compat import StringIO  # noqa
 from .compat import text_type  # noqa
 from .compat import threading  # noqa
+from .compat import timezone  # noqa
+from .compat import TYPE_CHECKING  # noqa
 from .compat import u  # noqa
 from .compat import ue  # noqa
 from .compat import unquote  # noqa
@@ -87,12 +86,14 @@ from .compat import win32  # noqa
 from .compat import with_metaclass  # noqa
 from .compat import zip_longest  # noqa
 from .deprecations import deprecated  # noqa
+from .deprecations import deprecated_20  # noqa
+from .deprecations import deprecated_20_cls  # noqa
 from .deprecations import deprecated_cls  # noqa
 from .deprecations import deprecated_params  # noqa
 from .deprecations import inject_docstring_text  # noqa
-from .deprecations import pending_deprecation  # noqa
 from .deprecations import warn_deprecated  # noqa
-from .deprecations import warn_pending_deprecation  # noqa
+from .deprecations import warn_deprecated_20  # noqa
+from .langhelpers import add_parameter_text  # noqa
 from .langhelpers import as_interface  # noqa
 from .langhelpers import asbool  # noqa
 from .langhelpers import asint  # noqa
@@ -105,6 +106,7 @@ from .langhelpers import classproperty  # noqa
 from .langhelpers import clsname_as_plain_name  # noqa
 from .langhelpers import coerce_kw_type  # noqa
 from .langhelpers import constructor_copy  # noqa
+from .langhelpers import constructor_key  # noqa
 from .langhelpers import counter  # noqa
 from .langhelpers import decode_slice  # noqa
 from .langhelpers import decorator  # noqa
@@ -138,6 +140,7 @@ from .langhelpers import portable_instancemethod  # noqa
 from .langhelpers import quoted_token_parser  # noqa
 from .langhelpers import safe_reraise  # noqa
 from .langhelpers import set_creation_order  # noqa
+from .langhelpers import string_or_unprintable  # noqa
 from .langhelpers import symbol  # noqa
 from .langhelpers import unbound_method_to_callable  # noqa
 from .langhelpers import warn  # noqa

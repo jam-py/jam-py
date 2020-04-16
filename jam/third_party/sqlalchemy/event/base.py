@@ -1,5 +1,5 @@
 # event/base.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -161,7 +161,7 @@ class _EventMeta(type):
 
     def __init__(cls, classname, bases, dict_):
         _create_dispatcher_class(cls, classname, bases, dict_)
-        return type.__init__(cls, classname, bases, dict_)
+        type.__init__(cls, classname, bases, dict_)
 
 
 def _create_dispatcher_class(cls, classname, bases, dict_):

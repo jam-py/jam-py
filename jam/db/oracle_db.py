@@ -23,7 +23,7 @@ class OracleDB(AbstractDB):
             consts.BOOLEAN: 'NUMBER',
             consts.LONGTEXT: 'CLOB',
             consts.KEYS: 'CLOB',
-            consts.FILE: 'VARCHAR2(512)',
+            consts.FILE: 'VARCHAR2(256)',
             consts.IMAGE: 'VARCHAR2(512)'
         }
 
@@ -107,11 +107,10 @@ class OracleDB(AbstractDB):
             line = '"%s" %s' % (field.field_name, self.FIELD_TYPES[field.data_type])
             if field.size != 0 and field.data_type == consts.TEXT:
                 line += '(%d)' % field.size
-            default_value = self.default_value(field)
-            if default_value and not field.primary_key:
-                line += ' DEFAULT %s' % default_value
             if field.primary_key:
                 primary_key = field.field_name
+            elif field.not_null:
+                line += ' NOT NULL'
             lines.append(line)
         if primary_key:
             lines.append('CONSTRAINT %s_PR_INDEX PRIMARY KEY ("%s")\n' % \
@@ -145,13 +144,20 @@ class OracleDB(AbstractDB):
         return 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % (table_name, index_name)
 
     def add_field(self, table_name, field):
-        result = 'ALTER TABLE "%s" ADD "%s" %s'
-        result = result % (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
+        result = []
+        line = 'ALTER TABLE "%s" ADD "%s" %s' % \
+            (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
         if field.size:
-            result += '(%d)' % field.size
+            line += '(%d)' % field.size
         default_value = self.default_value(field)
-        if default_value:
-            result += ' DEFAULT %s' % default_value
+        if default_value and field.not_null:
+            line += ' DEFAULT %s' % default_value
+            line += ' NOT NULL'
+        result.append(line)
+        if default_value and field.not_null:
+            line = 'ALTER TABLE "%s" MODIFY "%s" DEFAULT NULL' % \
+                (table_name, field.field_name)
+            result.append(line)
         return result
 
     def del_field(self, table_name, field):
@@ -159,23 +165,26 @@ class OracleDB(AbstractDB):
 
     def change_field(self, table_name, old_field, new_field):
         result = []
-        if self.FIELD_TYPES[old_field.data_type] != self.FIELD_TYPES[new_field.data_type] \
-            or old_field.size != new_field.size:
-            raise Exception("Changing field size or type is prohibited: field %s, table name %s" % \
-                (old_field.field_name, table_name))
+        default_value = self.default_value(new_field)
+        if old_field.not_null != new_field.not_null:
+            if default_value and new_field.not_null:
+                line = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
+                    (table_name, old_field.field_name, default_value, old_field.field_name)
+                result.append(line)
         if old_field.field_name != new_field.field_name:
-            sql = 'ALTER TABLE "%s" RENAME COLUMN "%s" TO "%s"' % \
+            line = 'ALTER TABLE "%s" RENAME COLUMN "%s" TO "%s"' % \
                 (table_name, old_field.field_name, new_field.field_name)
-            result.append(sql)
-        if old_field.default_value != new_field.default_value:
-            if new_field.default_value:
-                default_value = self.default_value(new_field)
-                sql = 'ALTER TABLE "%s" MODIFY "%s" DEFAULT %s' % \
-                    (table_name, new_field.field_name, default_value)
+            result.append(line)
+        if old_field.not_null != new_field.not_null or old_field.size != new_field.size:
+            line = 'ALTER TABLE "%s" MODIFY "%s" %s' % \
+                (table_name, new_field.field_name, self.FIELD_TYPES[new_field.data_type])
+            if new_field.size:
+                line += '(%d)' % new_field.size
+            if new_field.not_null:
+                line += ' NOT NULL'
             else:
-                sql = 'ALTER TABLE "%s" MODIFY "%s" DEFAULT %s' % \
-                    (table_name, new_field.field_name, 'NULL')
-            result.append(sql)
+                line += ' NULL'
+            result.append(line)
         return result
 
     def before_insert(self, cursor, pk_field):

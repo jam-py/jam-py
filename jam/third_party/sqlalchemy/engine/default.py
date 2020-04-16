@@ -1,5 +1,5 @@
 # engine/default.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -19,8 +19,7 @@ import re
 import weakref
 
 from . import interfaces
-from . import reflection
-from . import result
+from . import result as _result
 from .. import event
 from .. import exc
 from .. import pool
@@ -30,7 +29,7 @@ from .. import util
 from ..sql import compiler
 from ..sql import expression
 from ..sql import schema
-
+from ..sql.elements import quoted_name
 
 AUTOCOMMIT_REGEXP = re.compile(
     r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)", re.I | re.UNICODE
@@ -66,7 +65,6 @@ class DefaultDialect(interfaces.Dialect):
     postfetch_lastrowid = True
     implicit_returning = False
 
-    supports_right_nested_joins = True
     cte_follows_insert = False
 
     supports_native_enum = False
@@ -74,6 +72,8 @@ class DefaultDialect(interfaces.Dialect):
     non_native_boolean_check_constraint = True
 
     supports_simple_order_by_label = True
+
+    tuple_in_values = False
 
     engine_config_types = util.immutabledict(
         [
@@ -84,7 +84,6 @@ class DefaultDialect(interfaces.Dialect):
             ("pool_recycle", util.asint),
             ("pool_size", util.asint),
             ("max_overflow", util.asint),
-            ("pool_threadlocal", util.asbool),
         ]
     )
 
@@ -109,6 +108,7 @@ class DefaultDialect(interfaces.Dialect):
     # length at which to truncate
     # any identifier.
     max_identifier_length = 9999
+    _user_defined_max_identifier_length = None
 
     # length at which to truncate
     # the name of an index.
@@ -191,7 +191,23 @@ class DefaultDialect(interfaces.Dialect):
             "and corresponding dialect-level parameters are deprecated, "
             "and will be removed in a future release.  Modern DBAPIs support "
             "Python Unicode natively and this parameter is unnecessary.",
-        )
+        ),
+        empty_in_strategy=(
+            "1.4",
+            "The :paramref:`.create_engine.empty_in_strategy` keyword is "
+            "deprecated, and no longer has any effect.  All IN expressions "
+            "are now rendered using "
+            'the "expanding parameter" strategy which renders a set of bound'
+            'expressions, or an "empty set" SELECT, at statement execution'
+            "time.",
+        ),
+        case_sensitive=(
+            "1.4",
+            "The :paramref:`.create_engine.case_sensitive` parameter "
+            "is deprecated and will be removed in a future release. "
+            "Applications should work with result column names in a case "
+            "sensitive fashion.",
+        ),
     )
     def __init__(
         self,
@@ -200,11 +216,13 @@ class DefaultDialect(interfaces.Dialect):
         paramstyle=None,
         dbapi=None,
         implicit_returning=None,
-        supports_right_nested_joins=None,
         case_sensitive=True,
         supports_native_boolean=None,
-        empty_in_strategy="static",
+        max_identifier_length=None,
         label_length=None,
+        # int() is because the @deprecated_params decorator cannot accommodate
+        # the direct reference to the "NO_LINTING" object
+        compiler_linting=int(compiler.NO_LINTING),
         **kwargs
     ):
 
@@ -230,32 +248,17 @@ class DefaultDialect(interfaces.Dialect):
         self.positional = self.paramstyle in ("qmark", "format", "numeric")
         self.identifier_preparer = self.preparer(self)
         self.type_compiler = self.type_compiler(self)
-        if supports_right_nested_joins is not None:
-            self.supports_right_nested_joins = supports_right_nested_joins
         if supports_native_boolean is not None:
             self.supports_native_boolean = supports_native_boolean
         self.case_sensitive = case_sensitive
 
-        self.empty_in_strategy = empty_in_strategy
-        if empty_in_strategy == "static":
-            self._use_static_in = True
-        elif empty_in_strategy in ("dynamic", "dynamic_warn"):
-            self._use_static_in = False
-            self._warn_on_empty_in = empty_in_strategy == "dynamic_warn"
-        else:
-            raise exc.ArgumentError(
-                "empty_in_strategy may be 'static', "
-                "'dynamic', or 'dynamic_warn'"
-            )
-
-        if label_length and label_length > self.max_identifier_length:
-            raise exc.ArgumentError(
-                "Label length of %d is greater than this dialect's"
-                " maximum identifier length of %d"
-                % (label_length, self.max_identifier_length)
+        self._user_defined_max_identifier_length = max_identifier_length
+        if self._user_defined_max_identifier_length:
+            self.max_identifier_length = (
+                self._user_defined_max_identifier_length
             )
         self.label_length = label_length
-
+        self.compiler_linting = compiler_linting
         if self.description_encoding == "use_encoding":
             self._description_decoder = (
                 processors.to_unicode_processor_factory
@@ -277,6 +280,13 @@ class DefaultDialect(interfaces.Dialect):
 
     @property
     def supports_sane_rowcount_returning(self):
+        """True if this dialect supports sane rowcount even if RETURNING is
+        in use.
+
+        For dialects that don't support RETURNING, this is synomous
+        with supports_sane_rowcount.
+
+        """
         return self.supports_sane_rowcount
 
     @classmethod
@@ -312,18 +322,33 @@ class DefaultDialect(interfaces.Dialect):
         ):
             self._description_decoder = self.description_encoding = None
 
-        self.do_rollback(connection.connection)
+        if not self._user_defined_max_identifier_length:
+            max_ident_length = self._check_max_identifier_length(connection)
+            if max_ident_length:
+                self.max_identifier_length = max_ident_length
+
+        if (
+            self.label_length
+            and self.label_length > self.max_identifier_length
+        ):
+            raise exc.ArgumentError(
+                "Label length of %d is greater than this dialect's"
+                " maximum identifier length of %d"
+                % (self.label_length, self.max_identifier_length)
+            )
 
     def on_connect(self):
-        """return a callable which sets up a newly created DBAPI connection.
+        # inherits the docstring from interfaces.Dialect.on_connect
+        return None
 
-        This is used to set dialect-wide per-connection options such as
-        isolation modes, unicode modes, etc.
+    def _check_max_identifier_length(self, connection):
+        """Perform a connection / server version specific check to determine
+        the max_identifier_length.
 
-        If a callable is returned, it will be assembled into a pool listener
-        that receives the direct DBAPI connection, with all wrappers removed.
+        If the dialect's class level max_identifier_length should be used,
+        can return None.
 
-        If None is returned, no listener will be generated.
+        .. versionadded:: 1.3.9
 
         """
         return None
@@ -384,9 +409,7 @@ class DefaultDialect(interfaces.Dialect):
             return results == {True}
 
     def _check_unicode_description(self, connection):
-        # all DBAPIs on Py2K return cursor.description as encoded,
-        # until pypy2.1beta2 with sqlite, so let's just check it -
-        # it's likely others will start doing this too in Py2k.
+        # all DBAPIs on Py2K return cursor.description as encoded
 
         if util.py2k and not self.supports_unicode_statements:
             cast_to = util.binary_type
@@ -417,14 +440,6 @@ class DefaultDialect(interfaces.Dialect):
         """
         return sqltypes.adapt_type(typeobj, self.colspecs)
 
-    def reflecttable(
-        self, connection, table, include_columns, exclude_columns, **opts
-    ):
-        insp = reflection.Inspector.from_engine(connection)
-        return insp.reflecttable(
-            table, include_columns, exclude_columns, **opts
-        )
-
     def get_pk_constraint(self, conn, table_name, schema=None, **kw):
         """Compatibility method, adapts the result of get_primary_keys()
         for those dialects which don't implement get_pk_constraint().
@@ -436,6 +451,15 @@ class DefaultDialect(interfaces.Dialect):
             )
         }
 
+    def has_index(self, connection, table_name, index_name, schema=None):
+        if not self.has_table(connection, table_name, schema=schema):
+            return False
+        for idx in self.get_indexes(connection, table_name, schema=schema):
+            if idx["name"] == index_name:
+                return True
+        else:
+            return False
+
     def validate_identifier(self, ident):
         if len(ident) > self.max_identifier_length:
             raise exc.IdentifierError(
@@ -444,9 +468,11 @@ class DefaultDialect(interfaces.Dialect):
             )
 
     def connect(self, *cargs, **cparams):
+        # inherits the docstring from interfaces.Dialect.connect
         return self.dbapi.connect(*cargs, **cparams)
 
     def create_connect_args(self, url):
+        # inherits the docstring from interfaces.Dialect.create_connect_args
         opts = url.translate_connect_args()
         opts.update(url.query)
         return [[], opts]
@@ -557,6 +583,57 @@ class DefaultDialect(interfaces.Dialect):
         # the configured default of this dialect.
         self.set_isolation_level(dbapi_conn, self.default_isolation_level)
 
+    def normalize_name(self, name):
+        if name is None:
+            return None
+        if util.py2k:
+            if isinstance(name, str):
+                name = name.decode(self.encoding)
+
+        name_lower = name.lower()
+        name_upper = name.upper()
+
+        if name_upper == name_lower:
+            # name has no upper/lower conversion, e.g. non-european characters.
+            # return unchanged
+            return name
+        elif name_upper == name and not (
+            self.identifier_preparer._requires_quotes
+        )(name_lower):
+            # name is all uppercase and doesn't require quoting; normalize
+            # to all lower case
+            return name_lower
+        elif name_lower == name:
+            # name is all lower case, which if denormalized means we need to
+            # force quoting on it
+            return quoted_name(name, quote=True)
+        else:
+            # name is mixed case, means it will be quoted in SQL when used
+            # later, no normalizes
+            return name
+
+    def denormalize_name(self, name):
+        if name is None:
+            return None
+
+        name_lower = name.lower()
+        name_upper = name.upper()
+
+        if name_upper == name_lower:
+            # name has no upper/lower conversion, e.g. non-european characters.
+            # return unchanged
+            return name
+        elif name_lower == name and not (
+            self.identifier_preparer._requires_quotes
+        )(name_lower):
+            name = name_upper
+        if util.py2k:
+            if not self.supports_unicode_binds:
+                name = name.encode(self.encoding)
+            else:
+                name = unicode(name)  # noqa
+        return name
+
 
 class StrCompileDialect(DefaultDialect):
 
@@ -589,9 +666,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     returned_defaults = None
     _is_implicit_returning = False
     _is_explicit_returning = False
+    _is_future_result = False
+    _is_server_side = False
 
     # a hook for SQLite's translation of
     # result column names
+    # NOTE: pyhive is using this hook, can't remove it :(
     _translate_colname = None
 
     _expanded_parameters = util.immutabledict()
@@ -646,6 +726,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         # we get here
         assert compiled.can_execute
 
+        self._is_future_result = connection._execution_options.get(
+            "future_result", False
+        )
         self.execution_options = compiled.execution_options.union(
             connection._execution_options
         )
@@ -654,20 +737,20 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             compiled._result_columns,
             compiled._ordered_columns,
             compiled._textual_ordered_columns,
+            compiled._loose_column_name_matching,
         )
-
-        self.unicode_statement = util.text_type(compiled)
-        if not dialect.supports_unicode_statements:
-            self.statement = self.unicode_statement.encode(
-                self.dialect.encoding
-            )
-        else:
-            self.statement = self.unicode_statement
 
         self.isinsert = compiled.isinsert
         self.isupdate = compiled.isupdate
         self.isdelete = compiled.isdelete
         self.is_text = compiled.isplaintext
+
+        if self.isinsert or self.isupdate or self.isdelete:
+            self.is_crud = True
+            self._is_explicit_returning = bool(compiled.statement._returning)
+            self._is_implicit_returning = bool(
+                compiled.returning and not compiled.statement._returning
+            )
 
         if not parameters:
             self.compiled_parameters = [compiled.construct_params()]
@@ -679,14 +762,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
             self.executemany = len(parameters) > 1
 
-        self.cursor = self.create_cursor()
+        # this must occur before create_cursor() since the statement
+        # has to be regexed in some cases for server side cursor
+        self.unicode_statement = util.text_type(compiled)
 
-        if self.isinsert or self.isupdate or self.isdelete:
-            self.is_crud = True
-            self._is_explicit_returning = bool(compiled.statement._returning)
-            self._is_implicit_returning = bool(
-                compiled.returning and not compiled.statement._returning
-            )
+        self.cursor = self.create_cursor()
 
         if self.compiled.insert_prefetch or self.compiled.update_prefetch:
             if self.executemany:
@@ -696,10 +776,37 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         processors = compiled._bind_processors
 
-        if compiled.contains_expanding_parameters:
-            positiontup = self._expand_in_parameters(compiled, processors)
+        if compiled.literal_execute_params or compiled.post_compile_params:
+            if self.executemany:
+                raise exc.InvalidRequestError(
+                    "'literal_execute' or 'expanding' parameters can't be "
+                    "used with executemany()"
+                )
+
+            expanded_state = compiled._process_parameters_for_postcompile(
+                self.compiled_parameters[0]
+            )
+
+            # re-assign self.unicode_statement
+            self.unicode_statement = expanded_state.statement
+
+            # used by set_input_sizes() which is needed for Oracle
+            self._expanded_parameters = expanded_state.parameter_expansion
+
+            processors = dict(processors)
+            processors.update(expanded_state.processors)
+            positiontup = expanded_state.positiontup
         elif compiled.positional:
             positiontup = self.compiled.positiontup
+
+        # final self.unicode_statement is now assigned, encode if needed
+        # by dialect
+        if not dialect.supports_unicode_statements:
+            self.statement = self.unicode_statement.encode(
+                self.dialect.encoding
+            )
+        else:
+            self.statement = self.unicode_statement
 
         # Convert the dictionary of bind parameter values
         # into a dict or list to be sent to the DBAPI's
@@ -707,12 +814,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         parameters = []
         if compiled.positional:
             for compiled_params in self.compiled_parameters:
-                param = []
-                for key in positiontup:
-                    if key in processors:
-                        param.append(processors[key](compiled_params[key]))
-                    else:
-                        param.append(compiled_params[key])
+                param = [
+                    processors[key](compiled_params[key])
+                    if key in processors
+                    else compiled_params[key]
+                    for key in positiontup
+                ]
                 parameters.append(dialect.execute_sequence_format(param))
         else:
             encode = not dialect.supports_unicode_statements
@@ -745,114 +852,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         return self
 
-    def _expand_in_parameters(self, compiled, processors):
-        """handle special 'expanding' parameters, IN tuples that are rendered
-        on a per-parameter basis for an otherwise fixed SQL statement string.
-
-        """
-        if self.executemany:
-            raise exc.InvalidRequestError(
-                "'expanding' parameters can't be used with " "executemany()"
-            )
-
-        if self.compiled.positional and self.compiled._numeric_binds:
-            # I'm not familiar with any DBAPI that uses 'numeric'
-            raise NotImplementedError(
-                "'expanding' bind parameters not supported with "
-                "'numeric' paramstyle at this time."
-            )
-
-        self._expanded_parameters = {}
-
-        compiled_params = self.compiled_parameters[0]
-        if compiled.positional:
-            positiontup = []
-        else:
-            positiontup = None
-
-        replacement_expressions = {}
-        to_update_sets = {}
-
-        for name in (
-            self.compiled.positiontup
-            if compiled.positional
-            else self.compiled.binds
-        ):
-            parameter = self.compiled.binds[name]
-            if parameter.expanding:
-
-                if name in replacement_expressions:
-                    to_update = to_update_sets[name]
-                else:
-                    # we are removing the parameter from compiled_params
-                    # because it is a list value, which is not expected by
-                    # TypeEngine objects that would otherwise be asked to
-                    # process it. the single name is being replaced with
-                    # individual numbered parameters for each value in the
-                    # param.
-                    values = compiled_params.pop(name)
-
-                    if not values:
-                        to_update = to_update_sets[name] = []
-                        replacement_expressions[
-                            name
-                        ] = self.compiled.visit_empty_set_expr(
-                            parameter._expanding_in_types
-                            if parameter._expanding_in_types
-                            else [parameter.type]
-                        )
-
-                    elif isinstance(values[0], (tuple, list)):
-                        to_update = to_update_sets[name] = [
-                            ("%s_%s_%s" % (name, i, j), value)
-                            for i, tuple_element in enumerate(values, 1)
-                            for j, value in enumerate(tuple_element, 1)
-                        ]
-                        replacement_expressions[name] = ", ".join(
-                            "(%s)"
-                            % ", ".join(
-                                self.compiled.bindtemplate
-                                % {
-                                    "name": to_update[
-                                        i * len(tuple_element) + j
-                                    ][0]
-                                }
-                                for j, value in enumerate(tuple_element)
-                            )
-                            for i, tuple_element in enumerate(values)
-                        )
-                    else:
-                        to_update = to_update_sets[name] = [
-                            ("%s_%s" % (name, i), value)
-                            for i, value in enumerate(values, 1)
-                        ]
-                        replacement_expressions[name] = ", ".join(
-                            self.compiled.bindtemplate % {"name": key}
-                            for key, value in to_update
-                        )
-
-                compiled_params.update(to_update)
-                processors.update(
-                    (key, processors[name])
-                    for key, value in to_update
-                    if name in processors
-                )
-                if compiled.positional:
-                    positiontup.extend(name for name, value in to_update)
-                self._expanded_parameters[name] = [
-                    expand_key for expand_key, value in to_update
-                ]
-            elif compiled.positional:
-                positiontup.append(name)
-
-        def process_expanding(m):
-            return replacement_expressions[m.group(1)]
-
-        self.statement = re.sub(
-            r"\[EXPANDING_(\S+)\]", process_expanding, self.statement
-        )
-        return positiontup
-
     @classmethod
     def _init_statement(
         cls, dialect, connection, dbapi_connection, statement, parameters
@@ -864,6 +863,10 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self._dbapi_connection = dbapi_connection
         self.dialect = connection.dialect
         self.is_text = True
+
+        self._is_future_result = connection._execution_options.get(
+            "future_result", False
+        )
 
         # plain text statement
         self.execution_options = connection._execution_options
@@ -953,7 +956,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         else:
             return autocommit
 
-    def _execute_scalar(self, stmt, type_):
+    def _execute_scalar(self, stmt, type_, parameters=None):
         """Execute a string statement on the current cursor, returning a
         scalar result.
 
@@ -970,12 +973,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         ):
             stmt = self.dialect._encoder(stmt)[0]
 
-        if self.dialect.positional:
-            default_params = self.dialect.execute_sequence_format()
-        else:
-            default_params = {}
+        if not parameters:
+            if self.dialect.positional:
+                parameters = self.dialect.execute_sequence_format()
+            else:
+                parameters = {}
 
-        conn._cursor_execute(self.cursor, stmt, default_params, context=self)
+        conn._cursor_execute(self.cursor, stmt, parameters, context=self)
         r = self.cursor.fetchone()[0]
         if type_ is not None:
             # apply type post processors to the result
@@ -1013,8 +1017,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                                 self.compiled.statement, expression.TextClause
                             )
                         )
-                        and self.statement
-                        and SERVER_SIDE_CURSOR_RE.match(self.statement)
+                        and self.unicode_statement
+                        and SERVER_SIDE_CURSOR_RE.match(self.unicode_statement)
                     )
                 )
             )
@@ -1039,6 +1043,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     def pre_exec(self):
         pass
 
+    def get_out_parameter_values(self, names):
+        raise NotImplementedError(
+            "This dialect does not support OUT parameters"
+        )
+
     def post_exec(self):
         pass
 
@@ -1055,27 +1064,18 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     def get_lastrowid(self):
         """return self.cursor.lastrowid, or equivalent, after an INSERT.
 
-        This may involve calling special cursor functions,
-        issuing a new SELECT on the cursor (or a new one),
-        or returning a stored value that was
+        This may involve calling special cursor functions, issuing a new SELECT
+        on the cursor (or a new one), or returning a stored value that was
         calculated within post_exec().
 
-        This function will only be called for dialects
-        which support "implicit" primary key generation,
-        keep preexecute_autoincrement_sequences set to False,
-        and when no explicit id value was bound to the
-        statement.
+        This function will only be called for dialects which support "implicit"
+        primary key generation, keep preexecute_autoincrement_sequences set to
+        False, and when no explicit id value was bound to the statement.
 
-        The function is called once, directly after
-        post_exec() and before the transaction is committed
-        or ResultProxy is generated.   If the post_exec()
-        method assigns a value to `self._lastrowid`, the
-        value is used in place of calling get_lastrowid().
-
-        Note that this method is *not* equivalent to the
-        ``lastrowid`` method on ``ResultProxy``, which is a
-        direct proxy to the DBAPI ``lastrowid`` accessor
-        in all cases.
+        The function is called once for an INSERT statement that would need to
+        return the last inserted primary key for those dialects that make use
+        of the lastrowid concept.  In these cases, it is called directly after
+        :meth:`.ExecutionContext.post_exec`.
 
         """
         return self.cursor.lastrowid
@@ -1083,11 +1083,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     def handle_dbapi_exception(self, e):
         pass
 
-    def get_result_proxy(self):
+    def get_result_cursor_strategy(self, result):
         if self._is_server_side:
-            return result.BufferedRowResultProxy(self)
+            strat_cls = _result.BufferedRowCursorFetchStrategy
         else:
-            return result.ResultProxy(self)
+            strat_cls = _result.DefaultCursorFetchStrategy
+
+        return strat_cls.create(result)
 
     @property
     def rowcount(self):
@@ -1098,6 +1100,49 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     def supports_sane_multi_rowcount(self):
         return self.dialect.supports_sane_multi_rowcount
+
+    def _setup_result_proxy(self):
+        if self.is_crud or self.is_text:
+            result = self._setup_crud_result_proxy()
+        else:
+            result = _result.ResultProxy._create_for_context(self)
+
+        if (
+            self.compiled
+            and not self.isddl
+            and self.compiled.has_out_parameters
+        ):
+            self._setup_out_parameters(result)
+
+        return result
+
+    def _setup_out_parameters(self, result):
+
+        out_bindparams = [
+            (param, name)
+            for param, name in self.compiled.bind_names.items()
+            if param.isoutparam
+        ]
+        out_parameters = {}
+
+        for bindparam, raw_value in zip(
+            [param for param, name in out_bindparams],
+            self.get_out_parameter_values(
+                [name for param, name in out_bindparams]
+            ),
+        ):
+
+            type_ = bindparam.type
+            impl_type = type_.dialect_impl(self.dialect)
+            dbapi_type = impl_type.get_dbapi_type(self.dialect.dbapi)
+            result_processor = impl_type.result_processor(
+                self.dialect, dbapi_type
+            )
+            if result_processor is not None:
+                raw_value = result_processor(raw_value)
+            out_parameters[bindparam.key] = raw_value
+
+        result.out_parameters = out_parameters
 
     def _setup_crud_result_proxy(self):
         if self.isinsert and not self.executemany:
@@ -1112,11 +1157,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             elif not self._is_implicit_returning:
                 self._setup_ins_pk_from_empty()
 
-        result = self.get_result_proxy()
+        result = _result.ResultProxy._create_for_context(self)
 
         if self.isinsert:
             if self._is_implicit_returning:
-                row = result.fetchone()
+                row = result._onerow()
                 self.returned_defaults = row
                 self._setup_ins_pk_from_implicit_returning(row)
                 result._soft_close()
@@ -1125,7 +1170,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 result._soft_close()
                 result._metadata = None
         elif self.isupdate and self._is_implicit_returning:
-            row = result.fetchone()
+            row = result._onerow()
             self.returned_defaults = row
             result._soft_close()
             result._metadata = None
@@ -1183,8 +1228,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         key_getter = self.compiled._key_getters_for_crud_column[2]
         table = self.compiled.statement.table
         compiled_params = self.compiled_parameters[0]
+
+        # TODO: why are we using keyed index here?  can't we get the ints?
+        # can compiler build up the structure here as far as what was
+        # explicit and what comes back in returning?
+        row_mapping = row._mapping
         self.inserted_primary_key = [
-            row[col] if value is None else value
+            row_mapping[col] if value is None else value
             for col, value in [
                 (col, compiled_params.get(key_getter(col), None))
                 for col in table.primary_key
@@ -1213,6 +1263,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         inputsizes = {}
         for bindparam in self.compiled.bind_names:
+            if bindparam in self.compiled.literal_execute_params:
+                continue
 
             dialect_impl = bindparam.type._unwrapped_dialect_impl(self.dialect)
             dialect_impl_cls = type(dialect_impl)
@@ -1291,17 +1343,50 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             self.current_column = column
             return default.arg(self)
         elif default.is_clause_element:
-            # TODO: expensive branching here should be
-            # pulled into _exec_scalar()
-            conn = self.connection
-            if not default._arg_is_typed:
-                default_arg = expression.type_coerce(default.arg, type_)
-            else:
-                default_arg = default.arg
-            c = expression.select([default_arg]).compile(bind=conn)
-            return conn._execute_compiled(c, (), {}).scalar()
+            return self._exec_default_clause_element(column, default, type_)
         else:
             return default.arg
+
+    def _exec_default_clause_element(self, column, default, type_):
+        # execute a default that's a complete clause element.  Here, we have
+        # to re-implement a miniature version of the compile->parameters->
+        # cursor.execute() sequence, since we don't want to modify the state
+        # of the connection  / result in progress or create new connection/
+        # result objects etc.
+        # .. versionchanged:: 1.4
+
+        if not default._arg_is_typed:
+            default_arg = expression.type_coerce(default.arg, type_)
+        else:
+            default_arg = default.arg
+        compiled = expression.select([default_arg]).compile(
+            dialect=self.dialect
+        )
+        compiled_params = compiled.construct_params()
+        processors = compiled._bind_processors
+        if compiled.positional:
+            positiontup = compiled.positiontup
+            parameters = self.dialect.execute_sequence_format(
+                [
+                    processors[key](compiled_params[key])
+                    if key in processors
+                    else compiled_params[key]
+                    for key in positiontup
+                ]
+            )
+        else:
+            parameters = dict(
+                (
+                    key,
+                    processors[key](compiled_params[key])
+                    if key in processors
+                    else compiled_params[key],
+                )
+                for key in compiled_params
+            )
+        return self._execute_scalar(
+            util.text_type(compiled), type_, parameters=parameters
+        )
 
     current_parameters = None
     """A dictionary of parameters applied to the current row.

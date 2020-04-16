@@ -1,5 +1,5 @@
 # engine/reflection.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -25,11 +25,16 @@ methods such as get_table_names, get_columns, etc.
    'name' attribute..
 """
 
+import contextlib
+
 from .base import Connectable
+from .base import Connection
+from .base import Engine
 from .. import exc
 from .. import inspection
 from .. import sql
 from .. import util
+from ..sql import operators
 from ..sql import schema as sa_schema
 from ..sql.type_api import TypeEngine
 from ..util import deprecated
@@ -44,11 +49,7 @@ def cache(fn, self, con, *args, **kw):
     key = (
         fn.__name__,
         tuple(a for a in args if isinstance(a, util.string_types)),
-        tuple(
-            (k, v)
-            for k, v in kw.items()
-            if isinstance(v, util.string_types + util.int_types + (float,))
-        ),
+        tuple((k, v) for k, v in kw.items() if k != "info_cache"),
     )
     ret = info_cache.get(key)
     if ret is None:
@@ -57,6 +58,7 @@ def cache(fn, self, con, *args, **kw):
     return ret
 
 
+@inspection._self_inspects
 class Inspector(object):
     """Performs database schema inspection.
 
@@ -66,24 +68,27 @@ class Inspector(object):
     fetched metadata.
 
     A :class:`.Inspector` object is usually created via the
-    :func:`.inspect` function::
+    :func:`.inspect` function, which may be passed an :class:`.Engine`
+    or a :class:`.Connection`::
 
         from sqlalchemy import inspect, create_engine
         engine = create_engine('...')
         insp = inspect(engine)
 
-    The inspection method above is equivalent to using the
-    :meth:`.Inspector.from_engine` method, i.e.::
-
-        engine = create_engine('...')
-        insp = Inspector.from_engine(engine)
-
-    Where above, the :class:`~sqlalchemy.engine.interfaces.Dialect` may opt
-    to return an :class:`.Inspector` subclass that provides additional
-    methods specific to the dialect's target database.
+    Where above, the :class:`~sqlalchemy.engine.interfaces.Dialect` associated
+    with the engine may opt to return an :class:`.Inspector` subclass that
+    provides additional methods specific to the dialect's target database.
 
     """
 
+    @util.deprecated(
+        "1.4",
+        "The __init__() method on :class:`.Inspector` is deprecated and "
+        "will be removed in a future release.  Please use the "
+        ":func:`.sqlalchemy.inspect` "
+        "function on an :class:`.Engine` or :class:`.Connection` in order to "
+        "acquire an :class:`.Inspector`.",
+    )
     def __init__(self, bind):
         """Initialize a new :class:`.Inspector`.
 
@@ -96,23 +101,47 @@ class Inspector(object):
         :meth:`.Inspector.from_engine`
 
         """
-        # this might not be a connection, it could be an engine.
-        self.bind = bind
+        return self._init_legacy(bind)
 
-        # set the engine
+    @classmethod
+    def _construct(cls, init, bind):
+
+        if hasattr(bind.dialect, "inspector"):
+            cls = bind.dialect.inspector
+
+        self = cls.__new__(cls)
+        init(self, bind)
+        return self
+
+    def _init_legacy(self, bind):
         if hasattr(bind, "engine"):
-            self.engine = bind.engine
+            self._init_connection(bind)
         else:
-            self.engine = bind
+            self._init_engine(bind)
 
-        if self.engine is bind:
-            # if engine, ensure initialized
-            bind.connect().close()
+    def _init_engine(self, engine):
+        self.bind = self.engine = engine
+        engine.connect().close()
+        self._op_context_requires_connect = True
+        self.dialect = self.engine.dialect
+        self.info_cache = {}
 
+    def _init_connection(self, connection):
+        self.bind = connection
+        self.engine = connection.engine
+        self._op_context_requires_connect = False
         self.dialect = self.engine.dialect
         self.info_cache = {}
 
     @classmethod
+    @util.deprecated(
+        "1.4",
+        "The from_engine() method on :class:`.Inspector` is deprecated and "
+        "will be removed in a future release.  Please use the "
+        ":func:`.sqlalchemy.inspect` "
+        "function on an :class:`.Engine` or :class:`.Connection` in order to "
+        "acquire an :class:`.Inspector`.",
+    )
     def from_engine(cls, bind):
         """Construct a new dialect-specific Inspector object from the given
         engine or connection.
@@ -131,13 +160,53 @@ class Inspector(object):
         See the example at :class:`.Inspector`.
 
         """
-        if hasattr(bind.dialect, "inspector"):
-            return bind.dialect.inspector(bind)
-        return Inspector(bind)
+        return cls._construct(cls._init_legacy, bind)
 
     @inspection._inspects(Connectable)
-    def _insp(bind):
-        return Inspector.from_engine(bind)
+    def _connectable_insp(bind):
+        # this method should not be used unless some unusual case
+        # has subclassed "Connectable"
+
+        return Inspector._construct(Inspector._init_legacy, bind)
+
+    @inspection._inspects(Engine)
+    def _engine_insp(bind):
+        return Inspector._construct(Inspector._init_engine, bind)
+
+    @inspection._inspects(Connection)
+    def _connection_insp(bind):
+        return Inspector._construct(Inspector._init_connection, bind)
+
+    @contextlib.contextmanager
+    def _operation_context(self):
+        """Return a context that optimizes for multiple operations on a single
+        transaction.
+
+        This essentially allows connect()/close() to be called if we detected
+        that we're against an :class:`.Engine` and not a :class:`.Connection`.
+
+        """
+        if self._op_context_requires_connect:
+            conn = self.bind.connect()
+        else:
+            conn = self.bind
+        try:
+            yield conn
+        finally:
+            if self._op_context_requires_connect:
+                conn.close()
+
+    @contextlib.contextmanager
+    def _inspection_context(self):
+        """Return an :class:`.Inspector` from this one that will run all
+        operations on a single connection.
+
+        """
+
+        with self._operation_context() as conn:
+            sub_insp = self._construct(self.__class__._init_connection, conn)
+            sub_insp.info_cache = self.info_cache
+            yield sub_insp
 
     @property
     def default_schema_name(self):
@@ -155,22 +224,13 @@ class Inspector(object):
         """
 
         if hasattr(self.dialect, "get_schema_names"):
-            return self.dialect.get_schema_names(
-                self.bind, info_cache=self.info_cache
-            )
+            with self._operation_context() as conn:
+                return self.dialect.get_schema_names(
+                    conn, info_cache=self.info_cache
+                )
         return []
 
-    @util.deprecated_params(
-        order_by=(
-            "1.0",
-            "The :paramref:`get_table_names.order_by` parameter is deprecated "
-            "and will be removed in a future release.  Please refer to "
-            ":meth:`.Inspector.get_sorted_table_and_fkc_names` for a "
-            "more comprehensive solution to resolving foreign key cycles "
-            "between tables.",
-        )
-    )
-    def get_table_names(self, schema=None, order_by=None):
+    def get_table_names(self, schema=None):
         """Return all table names in referred to within a particular schema.
 
         The names are expected to be real tables only, not views.
@@ -197,20 +257,20 @@ class Inspector(object):
 
         """
 
-        if hasattr(self.dialect, "get_table_names"):
-            tnames = self.dialect.get_table_names(
-                self.bind, schema, info_cache=self.info_cache
+        with self._operation_context() as conn:
+            return self.dialect.get_table_names(
+                conn, schema, info_cache=self.info_cache
             )
-        else:
-            tnames = self.engine.table_names(schema)
-        if order_by == "foreign_key":
-            tuples = []
-            for tname in tnames:
-                for fkey in self.get_foreign_keys(tname, schema):
-                    if tname != fkey["referred_table"]:
-                        tuples.append((fkey["referred_table"], tname))
-            tnames = list(topological.sort(tuples, tnames))
-        return tnames
+
+    def has_table(self, table_name, schema=None):
+        """Return True if the backend has a table of the given name.
+
+        .. versionadded:: 1.4
+
+        """
+        # TODO: info_cache?
+        with self._operation_context() as conn:
+            return self.dialect.has_table(conn, table_name, schema)
 
     def get_sorted_table_and_fkc_names(self, schema=None):
         """Return dependency-sorted table and foreign key constraint names in
@@ -236,12 +296,11 @@ class Inspector(object):
              with an already-given :class:`.MetaData`.
 
         """
-        if hasattr(self.dialect, "get_table_names"):
+
+        with self._operation_context() as conn:
             tnames = self.dialect.get_table_names(
-                self.bind, schema, info_cache=self.info_cache
+                conn, schema, info_cache=self.info_cache
             )
-        else:
-            tnames = self.engine.table_names(schema)
 
         tuples = set()
         remaining_fkcs = set()
@@ -277,9 +336,11 @@ class Inspector(object):
         .. versionadded:: 1.0.0
 
         """
-        return self.dialect.get_temp_table_names(
-            self.bind, info_cache=self.info_cache
-        )
+
+        with self._operation_context() as conn:
+            return self.dialect.get_temp_table_names(
+                conn, info_cache=self.info_cache
+            )
 
     def get_temp_view_names(self):
         """return a list of temporary view names for the current bind.
@@ -290,9 +351,10 @@ class Inspector(object):
         .. versionadded:: 1.0.0
 
         """
-        return self.dialect.get_temp_view_names(
-            self.bind, info_cache=self.info_cache
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_temp_view_names(
+                conn, info_cache=self.info_cache
+            )
 
     def get_table_options(self, table_name, schema=None, **kw):
         """Return a dictionary of options specified when the table of the
@@ -309,9 +371,10 @@ class Inspector(object):
 
         """
         if hasattr(self.dialect, "get_table_options"):
-            return self.dialect.get_table_options(
-                self.bind, table_name, schema, info_cache=self.info_cache, **kw
-            )
+            with self._operation_context() as conn:
+                return self.dialect.get_table_options(
+                    conn, table_name, schema, info_cache=self.info_cache, **kw
+                )
         return {}
 
     def get_view_names(self, schema=None):
@@ -322,9 +385,10 @@ class Inspector(object):
 
         """
 
-        return self.dialect.get_view_names(
-            self.bind, schema, info_cache=self.info_cache
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_view_names(
+                conn, schema, info_cache=self.info_cache
+            )
 
     def get_view_definition(self, view_name, schema=None):
         """Return definition for `view_name`.
@@ -334,9 +398,10 @@ class Inspector(object):
 
         """
 
-        return self.dialect.get_view_definition(
-            self.bind, view_name, schema, info_cache=self.info_cache
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_view_definition(
+                conn, view_name, schema, info_cache=self.info_cache
+            )
 
     def get_columns(self, table_name, schema=None, **kw):
         """Return information about columns in `table_name`.
@@ -368,9 +433,10 @@ class Inspector(object):
 
         """
 
-        col_defs = self.dialect.get_columns(
-            self.bind, table_name, schema, info_cache=self.info_cache, **kw
-        )
+        with self._operation_context() as conn:
+            col_defs = self.dialect.get_columns(
+                conn, table_name, schema, info_cache=self.info_cache, **kw
+            )
         for col_def in col_defs:
             # make this easy and only return instances for coltype
             coltype = col_def["type"]
@@ -391,9 +457,10 @@ class Inspector(object):
         primary key information as a list of column names.
         """
 
-        return self.dialect.get_pk_constraint(
-            self.bind, table_name, schema, info_cache=self.info_cache, **kw
-        )["constrained_columns"]
+        with self._operation_context() as conn:
+            return self.dialect.get_pk_constraint(
+                conn, table_name, schema, info_cache=self.info_cache, **kw
+            )["constrained_columns"]
 
     def get_pk_constraint(self, table_name, schema=None, **kw):
         """Return information about primary key constraint on `table_name`.
@@ -415,9 +482,10 @@ class Inspector(object):
          use :class:`.quoted_name`.
 
         """
-        return self.dialect.get_pk_constraint(
-            self.bind, table_name, schema, info_cache=self.info_cache, **kw
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_pk_constraint(
+                conn, table_name, schema, info_cache=self.info_cache, **kw
+            )
 
     def get_foreign_keys(self, table_name, schema=None, **kw):
         """Return information about foreign_keys in `table_name`.
@@ -450,9 +518,10 @@ class Inspector(object):
 
         """
 
-        return self.dialect.get_foreign_keys(
-            self.bind, table_name, schema, info_cache=self.info_cache, **kw
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_foreign_keys(
+                conn, table_name, schema, info_cache=self.info_cache, **kw
+            )
 
     def get_indexes(self, table_name, schema=None, **kw):
         """Return information about indexes in `table_name`.
@@ -469,6 +538,12 @@ class Inspector(object):
         unique
           boolean
 
+        column_sorting
+          optional dict mapping column names to tuple of sort keywords,
+          which may include ``asc``, ``desc``, ``nullsfirst``, ``nullslast``.
+
+          .. versionadded:: 1.3.5
+
         dialect_options
           dict of dialect-specific index options.  May not be present
           for all dialects.
@@ -484,9 +559,10 @@ class Inspector(object):
 
         """
 
-        return self.dialect.get_indexes(
-            self.bind, table_name, schema, info_cache=self.info_cache, **kw
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_indexes(
+                conn, table_name, schema, info_cache=self.info_cache, **kw
+            )
 
     def get_unique_constraints(self, table_name, schema=None, **kw):
         """Return information about unique constraints in `table_name`.
@@ -509,9 +585,10 @@ class Inspector(object):
 
         """
 
-        return self.dialect.get_unique_constraints(
-            self.bind, table_name, schema, info_cache=self.info_cache, **kw
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_unique_constraints(
+                conn, table_name, schema, info_cache=self.info_cache, **kw
+            )
 
     def get_table_comment(self, table_name, schema=None, **kw):
         """Return information about the table comment for ``table_name``.
@@ -529,9 +606,10 @@ class Inspector(object):
 
         """
 
-        return self.dialect.get_table_comment(
-            self.bind, table_name, schema, info_cache=self.info_cache, **kw
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_table_comment(
+                conn, table_name, schema, info_cache=self.info_cache, **kw
+            )
 
     def get_check_constraints(self, table_name, schema=None, **kw):
         """Return information about check constraints in `table_name`.
@@ -545,6 +623,12 @@ class Inspector(object):
         sqltext
           the check constraint's SQL expression
 
+        dialect_options
+          may or may not be present; a dictionary with additional
+          dialect-specific options for this CHECK constraint
+
+          .. versionadded:: 1.3.8
+
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
 
@@ -556,12 +640,18 @@ class Inspector(object):
 
         """
 
-        return self.dialect.get_check_constraints(
-            self.bind, table_name, schema, info_cache=self.info_cache, **kw
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_check_constraints(
+                conn, table_name, schema, info_cache=self.info_cache, **kw
+            )
 
     def reflecttable(
-        self, table, include_columns, exclude_columns=(), _extend_on=None
+        self,
+        table,
+        include_columns,
+        exclude_columns=(),
+        resolve_fks=True,
+        _extend_on=None,
     ):
         """Given a Table object, load its internal constructs based on
         introspection.
@@ -650,6 +740,7 @@ class Inspector(object):
             table,
             cols_by_orig_name,
             exclude_columns,
+            resolve_fks,
             _extend_on,
             reflection_options,
         )
@@ -783,6 +874,7 @@ class Inspector(object):
         table,
         cols_by_orig_name,
         exclude_columns,
+        resolve_fks,
         _extend_on,
         reflection_options,
     ):
@@ -806,29 +898,31 @@ class Inspector(object):
             referred_columns = fkey_d["referred_columns"]
             refspec = []
             if referred_schema is not None:
-                sa_schema.Table(
-                    referred_table,
-                    table.metadata,
-                    autoload=True,
-                    schema=referred_schema,
-                    autoload_with=self.bind,
-                    _extend_on=_extend_on,
-                    **reflection_options
-                )
+                if resolve_fks:
+                    sa_schema.Table(
+                        referred_table,
+                        table.metadata,
+                        autoload=True,
+                        schema=referred_schema,
+                        autoload_with=self.bind,
+                        _extend_on=_extend_on,
+                        **reflection_options
+                    )
                 for column in referred_columns:
                     refspec.append(
                         ".".join([referred_schema, referred_table, column])
                     )
             else:
-                sa_schema.Table(
-                    referred_table,
-                    table.metadata,
-                    autoload=True,
-                    autoload_with=self.bind,
-                    schema=sa_schema.BLANK_SCHEMA,
-                    _extend_on=_extend_on,
-                    **reflection_options
-                )
+                if resolve_fks:
+                    sa_schema.Table(
+                        referred_table,
+                        table.metadata,
+                        autoload=True,
+                        autoload_with=self.bind,
+                        schema=sa_schema.BLANK_SCHEMA,
+                        _extend_on=_extend_on,
+                        **reflection_options
+                    )
                 for column in referred_columns:
                     refspec.append(".".join([referred_table, column]))
             if "options" in fkey_d:
@@ -845,6 +939,13 @@ class Inspector(object):
                 )
             )
 
+    _index_sort_exprs = [
+        ("asc", operators.asc_op),
+        ("desc", operators.desc_op),
+        ("nullsfirst", operators.nullsfirst_op),
+        ("nullslast", operators.nullslast_op),
+    ]
+
     def _reflect_indexes(
         self,
         table_name,
@@ -860,6 +961,7 @@ class Inspector(object):
         for index_d in indexes:
             name = index_d["name"]
             columns = index_d["column_names"]
+            column_sorting = index_d.get("column_sorting", {})
             unique = index_d["unique"]
             flavor = index_d.get("type", "index")
             dialect_options = index_d.get("dialect_options", {})
@@ -888,8 +990,12 @@ class Inspector(object):
                         "%s key '%s' was not located in "
                         "columns for table '%s'" % (flavor, c, table_name)
                     )
-                else:
-                    idx_cols.append(idx_col)
+                    continue
+                c_sorting = column_sorting.get(c, ())
+                for k, op in self._index_sort_exprs:
+                    if k in c_sorting:
+                        idx_col = op(idx_col)
+                idx_cols.append(idx_col)
 
             sa_schema.Index(
                 name,

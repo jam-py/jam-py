@@ -334,9 +334,16 @@ function Events10() { // demo.catalogs.customers
 		task.customers_report.customers.value = item.selections;
 		task.customers_report.print(false);
 	}
+	
+	
+	
+	function on_edit_form_shown(item) {
+		item.edit_form.find('label.photo').remove()
+	}
 	this.on_view_form_created = on_view_form_created;
 	this.send_email = send_email;
 	this.print = print;
+	this.on_edit_form_shown = on_edit_form_shown;
 }
 
 task.events.events10 = new Events10();

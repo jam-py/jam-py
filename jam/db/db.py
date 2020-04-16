@@ -11,10 +11,10 @@ class AbstractDB(object):
         self.db_info = None
         self.DDL_ROLLBACK = False
         self.NEED_GENERATOR = False
+        self.CAN_CHANGE_NOT_NULL = True
         self.FROM = '"%s" AS %s'
         self.LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" AS %s'
         self.FIELD_AS = 'AS'
-        self.LIKE = 'LIKE'
         self.DESC_NULLS = None
         self.ASC_NULLS = None
 
@@ -33,6 +33,7 @@ class AbstractDB(object):
             'port': False,
             'ddl_rollback': self.DDL_ROLLBACK,
             'generator': self.NEED_GENERATOR,
+            'can_change_not_null': self.CAN_CHANGE_NOT_NULL,
             'import_support': True
         }
     @property
@@ -96,7 +97,7 @@ class AbstractDB(object):
 
     def default_value(self, field_info):
         result = field_info.default_value
-        if result:
+        if not result is None:
             if field_info.data_type == consts.TEXT:
                 result =  "'%s'" % result
             elif field_info.data_type == consts.BOOLEAN:
@@ -107,9 +108,11 @@ class AbstractDB(object):
                 else:
                     result = ''
             elif field_info.data_type == consts.DATE:
-                result = ''
+                result = "'%s'" % datetime.date.today().strftime('%Y-%m-%d')
             elif field_info.data_type == consts.DATETIME:
-                result = ''
+                result = "'%s'" % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        elif field_info.data_type in [consts.TEXT, consts.IMAGE, consts.FILE]:
+            return "''"
         return result
 
     def before_insert(self, cursor, pk_field):
@@ -125,11 +128,9 @@ class AbstractDB(object):
         return 'INSERT INTO "%s" (%s) VALUES (%s)'
 
     def insert_record(self, delta, cursor, changes, details_changes):
-        if delta._deleted_flag:
+        if delta._deleted_flag_field:
             delta._deleted_flag_field.data = 0
-        pk = None
-        if delta._primary_key:
-            pk = delta._primary_key_field
+        pk = delta._primary_key_field
         self.before_insert(cursor, pk)
         row = []
         fields = []
@@ -140,14 +141,26 @@ class AbstractDB(object):
                 index += 1
                 fields.append('"%s"' % field.db_field_name)
                 values.append('%s' % self.value_literal(index))
+                if field.data is None and not field.default_value is None:
+                    field.data = field.get_default_value()
                 value = (field.data, field.data_type)
                 row.append(value)
+        if len(delta.fields) != len(delta._fields):
+            dif_fields = list(set(delta._fields).difference(delta.fields))
+            for field in dif_fields:
+                if not field.default_value is None:
+                    index += 1
+                    fields.append('"%s"' % field.db_field_name)
+                    values.append('%s' % self.value_literal(index))
+                    value = (field.get_default_value(), field.data_type)
+                    row.append(value)
         fields = ', '.join(fields)
         values = ', '.join(values)
         sql = self.insert_query(pk) % (delta.table_name, fields, values)
         row = self.process_query_params(row, cursor)
         delta.execute_query(cursor, sql, row, arg_params=self.arg_params)
-        self.after_insert(cursor, pk)
+        if pk:
+            self.after_insert(cursor, pk)
         changes.append([delta.get_rec_info()[consts.REC_LOG_REC], delta._dataset[delta.rec_no], details_changes])
 
     def update_record(self, delta, cursor, changes, details_changes):
@@ -491,8 +504,6 @@ class AbstractDB(object):
                 result = 'IS NULL'
             else:
                 result = 'IS NOT NULL'
-        if (result == 'LIKE'):
-            result = self.LIKE
         return result
 
     def convert_field_value(self, item, field, value, filter_type):
@@ -519,7 +530,7 @@ class AbstractDB(object):
                 if type(value) in string_types:
                     result = value
                 else:
-                    result = value.strftime('%Y-%m-%d %H:%M')
+                    result = value.strftime('%Y-%m-%d %H:%M:%S')
                 result = self.cast_datetime(result)
                 return result
             elif data_type == consts.INTEGER:
@@ -591,11 +602,11 @@ class AbstractDB(object):
                 else:
                     value = "'" + value + "'"
         sql = cond_string % (cond_field_name, filter_sign, value)
-        if field.data_type == consts.BOOLEAN and value == '0':
+        if field.data_type == consts.BOOLEAN and not field.not_null and value == '0':
             if filter_sign == '=':
                 sql = '(' + sql + ' OR %s IS NULL)' % cond_field_name
-            elif filter_sign == '<>':
-                sql = '(' + sql + ' AND %s IS NOT NULL)' % cond_field_name
+        if filter_sign == '<>' and not field.not_null:
+            sql = '(' + sql + ' AND %s IS NOT NULL)' % cond_field_name
         return sql
 
     def add_master_conditions(self, item, query, conditions):

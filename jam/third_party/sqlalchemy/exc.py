@@ -1,5 +1,5 @@
 # sqlalchemy/exc.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -76,7 +76,7 @@ class SQLAlchemyError(Exception):
         return self._sql_message(compat.py3k)
 
     def __unicode__(self):
-        return self._sql_message(True)
+        return self._sql_message(as_unicode=True)
 
 
 class ArgumentError(SQLAlchemyError):
@@ -154,7 +154,14 @@ class CompileError(SQLAlchemyError):
 class UnsupportedCompilationError(CompileError):
     """Raised when an operation is not supported by the given compiler.
 
+    .. seealso::
+
+        :ref:`faq_sql_expression_string`
+
+        :ref:`error_l7de`
     """
+
+    code = "l7de"
 
     def __init__(self, compiler, element_type):
         super(UnsupportedCompilationError, self).__init__(
@@ -222,7 +229,7 @@ class ResourceClosedError(InvalidRequestError):
 
 
 class NoSuchColumnError(KeyError, InvalidRequestError):
-    """A nonexistent column is requested from a ``RowProxy``."""
+    """A nonexistent column is requested from a ``Row``."""
 
 
 class NoReferenceError(InvalidRequestError):
@@ -325,11 +332,24 @@ class StatementError(SQLAlchemyError):
     orig = None
     """The DBAPI exception object."""
 
-    def __init__(self, message, statement, params, orig, code=None):
+    ismulti = None
+
+    def __init__(
+        self,
+        message,
+        statement,
+        params,
+        orig,
+        hide_parameters=False,
+        code=None,
+        ismulti=None,
+    ):
         SQLAlchemyError.__init__(self, message, code=code)
         self.statement = statement
         self.params = params
         self.orig = orig
+        self.ismulti = ismulti
+        self.hide_parameters = hide_parameters
         self.detail = []
 
     def add_detail(self, msg):
@@ -338,7 +358,14 @@ class StatementError(SQLAlchemyError):
     def __reduce__(self):
         return (
             self.__class__,
-            (self.args[0], self.statement, self.params, self.orig),
+            (
+                self.args[0],
+                self.statement,
+                self.params,
+                self.orig,
+                self.hide_parameters,
+                self.ismulti,
+            ),
         )
 
     def _sql_message(self, as_unicode):
@@ -346,14 +373,27 @@ class StatementError(SQLAlchemyError):
 
         details = [self._message(as_unicode=as_unicode)]
         if self.statement:
-            details.append("[SQL: %r]" % self.statement)
+            if not as_unicode and not compat.py3k:
+                stmt_detail = "[SQL: %s]" % compat.safe_bytestring(
+                    self.statement
+                )
+            else:
+                stmt_detail = "[SQL: %s]" % self.statement
+            details.append(stmt_detail)
             if self.params:
-                params_repr = util._repr_params(self.params, 10)
-                details.append("[parameters: %r]" % params_repr)
+                if self.hide_parameters:
+                    details.append(
+                        "[SQL parameters hidden due to hide_parameters=True]"
+                    )
+                else:
+                    params_repr = util._repr_params(
+                        self.params, 10, ismulti=self.ismulti
+                    )
+                    details.append("[parameters: %r]" % params_repr)
         code_str = self._code_str()
         if code_str:
             details.append(code_str)
-        return " ".join(["(%s)" % det for det in self.detail] + details)
+        return "\n".join(["(%s)" % det for det in self.detail] + details)
 
 
 class DBAPIError(StatementError):
@@ -388,8 +428,10 @@ class DBAPIError(StatementError):
         params,
         orig,
         dbapi_base_err,
+        hide_parameters=False,
         connection_invalidated=False,
         dialect=None,
+        ismulti=None,
     ):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
@@ -412,7 +454,9 @@ class DBAPIError(StatementError):
                     statement,
                     params,
                     orig,
+                    hide_parameters=hide_parameters,
                     code=orig.code,
+                    ismulti=ismulti,
                 )
             elif not isinstance(orig, dbapi_base_err) and statement:
                 return StatementError(
@@ -425,6 +469,8 @@ class DBAPIError(StatementError):
                     statement,
                     params,
                     orig,
+                    hide_parameters=hide_parameters,
+                    ismulti=ismulti,
                 )
 
             glob = globals()
@@ -439,7 +485,13 @@ class DBAPIError(StatementError):
                     break
 
         return cls(
-            statement, params, orig, connection_invalidated, code=cls.code
+            statement,
+            params,
+            orig,
+            connection_invalidated=connection_invalidated,
+            hide_parameters=hide_parameters,
+            code=cls.code,
+            ismulti=ismulti,
         )
 
     def __reduce__(self):
@@ -449,12 +501,21 @@ class DBAPIError(StatementError):
                 self.statement,
                 self.params,
                 self.orig,
+                self.hide_parameters,
                 self.connection_invalidated,
+                self.ismulti,
             ),
         )
 
     def __init__(
-        self, statement, params, orig, connection_invalidated=False, code=None
+        self,
+        statement,
+        params,
+        orig,
+        hide_parameters=False,
+        connection_invalidated=False,
+        code=None,
+        ismulti=None,
     ):
         try:
             text = str(orig)
@@ -467,7 +528,9 @@ class DBAPIError(StatementError):
             statement,
             params,
             orig,
+            hide_parameters,
             code=code,
+            ismulti=ismulti,
         )
         self.connection_invalidated = connection_invalidated
 
@@ -524,11 +587,24 @@ class NotSupportedError(DatabaseError):
 
 
 class SADeprecationWarning(DeprecationWarning):
-    """Issued once per usage of a deprecated API."""
+    """Issued for usage of deprecated APIs."""
+
+
+class RemovedIn20Warning(SADeprecationWarning):
+    """Issued for usage of APIs specifically deprecated in SQLAlchemy 2.0.
+
+    .. seealso::
+
+        :ref:`error_b8d9`.
+
+    """
 
 
 class SAPendingDeprecationWarning(PendingDeprecationWarning):
-    """Issued once per usage of a deprecated API."""
+    """A similar warning as :class:`.SADeprecationWarning`, this warning
+    is not used in modern versions of SQLAlchemy.
+
+    """
 
 
 class SAWarning(RuntimeWarning):

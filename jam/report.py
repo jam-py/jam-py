@@ -66,7 +66,9 @@ class Report(object):
     def prepare_report(self, on_generate, ext='.ods', hidden_columns=None):
         self.hidden_columns = hidden_columns
         self.ext = ext
-        self.report_filename = self.gen_file_name()
+        file_name = self.gen_file_name()
+        self.report_filename = os.path.join(self.dest_folder, file_name)
+        self.report_url = os.path.join(self.dest_url, file_name)
 
         self.header = Band(self)
         self.columns = Band(self)
@@ -82,11 +84,12 @@ class Report(object):
         if self.ext != '.ods':
             self.convert_report()
         self.content_xml = None
-        return os.path.basename(self.report_filename)
 
     def generate_report(self, on_generate):
         if self.on_before_generate:
             self.on_before_generate(self)
+        if self.on_parsed:
+            self.on_parsed(self)
         self.content_xml += self.header.text
         for col in self.columns.cols:
             self.content_xml += col.text
@@ -154,6 +157,7 @@ class Report(object):
             if os.path.exists(converted_file_name):
                 os.remove(self.report_filename)
                 self.report_filename = converted_file_name
+                self.report_url = self.report_url.replace('.ods', self.ext)
 
     def convert(self):
         with self.task.lock('$report_conversion'):
@@ -177,7 +181,6 @@ class Report(object):
     def gen_file_name(self):
         file_name = escape(self.name, { char: '' for char in ['\\', '/', ':', '*', '"', '<', '>', '|', 'NUL']})
         file_name = file_name + '_' + datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S.%f') + '.ods'
-        file_name = os.path.join(self.dest_folder, file_name)
         return file_name
 
     def parse(self):
@@ -374,17 +377,19 @@ class Report(object):
 
 # ~ class Report(JReport):
 
-    # ~ def __init__(self, name, template, dest_folder):
+    # ~ def __init__(self, name, template, dest_folder, dest_url):
         # ~ JReport.__init__(self)
         # ~ self.name = name
         # ~ self.template = template
         # ~ self.dest_folder = dest_folder
+        # ~ self.dest_url = dest_url
         # ~ if not os.path.exists(self.template):
             # ~ raise Exception('Template file "%s" not found.' % self.template)
         # ~ if not os.path.exists(self.dest_folder):
             # ~ raise Exception('Destination folder "%s" not found.' % self.dest_folder)
         # ~ if not self.name:
             # ~ name = 'report'
+        # ~ self.on_parsed = None
         # ~ self.on_before_generate = None
         # ~ self.on_generate = None
         # ~ self.on_after_generate = None

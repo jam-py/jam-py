@@ -1,10 +1,14 @@
 # sql/__init__.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+from .compiler import COLLECT_CARTESIAN_PRODUCTS  # noqa
+from .compiler import FROM_LINTING  # noqa
+from .compiler import NO_LINTING  # noqa
+from .compiler import WARN_LINTING  # noqa
 from .expression import Alias  # noqa
 from .expression import alias  # noqa
 from .expression import all_  # noqa
@@ -21,6 +25,7 @@ from .expression import column  # noqa
 from .expression import ColumnCollection  # noqa
 from .expression import ColumnElement  # noqa
 from .expression import CompoundSelect  # noqa
+from .expression import cte  # noqa
 from .expression import Delete  # noqa
 from .expression import delete  # noqa
 from .expression import desc  # noqa
@@ -57,6 +62,7 @@ from .expression import quoted_name  # noqa
 from .expression import Select  # noqa
 from .expression import select  # noqa
 from .expression import Selectable  # noqa
+from .expression import Subquery  # noqa
 from .expression import subquery  # noqa
 from .expression import table  # noqa
 from .expression import TableClause  # noqa
@@ -92,6 +98,23 @@ def __go(lcls):
     from .elements import AnnotatedColumnElement
     from .elements import ClauseList  # noqa
     from .selectable import AnnotatedFromClause  # noqa
+
+    from . import base
+    from . import coercions
+    from . import elements
+    from . import events  # noqa
+    from . import selectable
+    from . import schema
+    from . import sqltypes
+    from . import type_api
+
+    base.coercions = elements.coercions = coercions
+    base.elements = elements
+    base.type_api = type_api
+    coercions.elements = elements
+    coercions.schema = schema
+    coercions.selectable = selectable
+    coercions.sqltypes = sqltypes
 
     _prepare_annotations(ColumnElement, AnnotatedColumnElement)
     _prepare_annotations(FromClause, AnnotatedFromClause)

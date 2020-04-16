@@ -1,5 +1,5 @@
 # sqlalchemy/pool/__init__.py
-# Copyright (C) 2005-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -17,10 +17,10 @@ regular DB-API connect() methods to be transparently managed by a
 SQLAlchemy connection pool.
 """
 
+from . import events  # noqa
 from .base import _ConnectionFairy  # noqa
 from .base import _ConnectionRecord  # noqa
 from .base import _finalize_fairy  # noqa
-from .base import _refs  # noqa
 from .base import Pool
 from .base import reset_commit
 from .base import reset_none

@@ -227,7 +227,9 @@ class Consts(object):
     def language(self, key):
         return self.lang.get(key, key)
 
-    def round(self, value, dec):
+    def round(self, value, dec=None):
+        if dec is None:
+            dec = 0
         precision = Decimal(10) ** (-dec)
         result = Decimal(str(value)).quantize(Decimal(precision), rounding=ROUND_HALF_UP)
         return float(result)

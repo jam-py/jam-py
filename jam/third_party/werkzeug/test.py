@@ -10,6 +10,7 @@
 """
 import mimetypes
 import sys
+from collections import defaultdict
 from io import BytesIO
 from itertools import chain
 from random import random
@@ -740,8 +741,13 @@ class EnvironBuilder(object):
             result["CONTENT_LENGTH"] = str(content_length)
             headers.set("Content-Length", content_length)
 
+        combined_headers = defaultdict(list)
+
         for key, value in headers.to_wsgi_list():
-            result["HTTP_%s" % key.upper().replace("-", "_")] = value
+            combined_headers["HTTP_%s" % key.upper().replace("-", "_")].append(value)
+
+        for key, values in combined_headers.items():
+            result[key] = ", ".join(values)
 
         if self.environ_overrides:
             result.update(self.environ_overrides)
@@ -824,6 +830,7 @@ class Client(object):
         domain=None,
         secure=None,
         httponly=False,
+        samesite=None,
         charset="utf-8",
     ):
         """Sets a cookie in the client's cookie jar.  The server name
@@ -832,7 +839,16 @@ class Client(object):
         """
         assert self.cookie_jar is not None, "cookies disabled"
         header = dump_cookie(
-            key, value, max_age, expires, path, domain, secure, httponly, charset
+            key,
+            value,
+            max_age,
+            expires,
+            path,
+            domain,
+            secure,
+            httponly,
+            charset,
+            samesite=samesite,
         )
         environ = create_environ(path, base_url="http://" + server_name)
         headers = [("Set-Cookie", header)]
