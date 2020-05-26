@@ -2390,7 +2390,7 @@
                 return true;
             }
             if (item.master) {
-                if (!this.has_privilege(item.master, priv_name)) {
+                if (!item.master.can_edit() && !item.master.can_create()) {
                     return false;
                 }
             }
