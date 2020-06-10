@@ -19,8 +19,7 @@ The ``item`` parameter is an item that triggered the event.
 
 Write an on_before_append event handler to take specific action immediately before 
 an application inserts or appends a record in an item. on_before_append is called 
-by :doc:`insert <m_insert>` or :doc:`append <m_append>` method. If the event returns 
-false, the operation is aborted. 
+by :doc:`insert <m_insert>` or :doc:`append <m_append>` method. 
 
 See also
 ========
