@@ -225,6 +225,7 @@ class ServerDataset(Dataset, SQL):
             params = {}
         params['__safe'] = safe
         delta = self.delta(changes)
+        delta.client_changes = safe
         if connection:
             autocommit = False
         else:
