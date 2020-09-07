@@ -1,4 +1,5 @@
 import sys
+import sys
 import os
 import json
 import uuid
@@ -13,21 +14,21 @@ sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(jam.__file__), 
 
 from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Map, Rule
-from werkzeug.exceptions import HTTPException, NotFound
+from werkzeug.exceptions import HTTPException, NotFound, Forbidden
 from werkzeug.middleware.shared_data import SharedDataMiddleware
 from werkzeug.wsgi import peek_path_info, get_path_info
 from werkzeug.local import Local, LocalManager
 from werkzeug.http import parse_date, http_date
-from werkzeug.utils import cached_property, secure_filename
+from werkzeug.utils import cached_property, secure_filename, redirect
 from werkzeug._compat import to_unicode, to_bytes
 from werkzeug.secure_cookie.securecookie import SecureCookie
 
 from .third_party.six import get_function_code
 
-from .common import consts, error_message, file_write
-from .common import consts, ProjectNotCompleted
+from .common import consts, error_message, file_read, file_write
+from .common import consts, ProjectError, ProjectNotCompleted
 from .common import json_defaul_handler, compressBuf
-from .admin.admin import create_admin, login_user, get_roles
+from .admin.admin import create_admin, login_user, get_privileges, get_field_restrictions
 from .admin.admin import user_valid_ip, user_valid_uuid
 from .admin.builder import update_events_code
 from .admin.import_metadata import import_metadata
@@ -50,7 +51,7 @@ class JamRequest(Request):
     def client_cookie(self):
         return JamSecureCookie.load_cookie(self, key=self.session_key, secret_key=self.task.app.admin.secret_key)
 
-    def save_client_cookie(self, response, app, task):
+    def save_client_cookie(self, response, task):
         if task:
             cookie = self.client_cookie
             expires = None
@@ -120,32 +121,22 @@ class App(object):
     def __init__(self, work_dir, load_task):
         mimetypes.add_type('text/cache-manifest', '.appcache')
         self.started = datetime.datetime.now()
-        self.work_dir = work_dir
+        self.work_dir = to_unicode(work_dir)
         self.state = consts.PROJECT_NONE
         self.__task = None
         self.privileges = None
+        self.field_restrictions = None
+        self.__is_locked = 0
+        self.__loading = False
         self._busy = 0
         self.pid = os.getpid()
-        self.jam_dir = os.path.realpath(os.path.dirname(jam.__file__))
+        self.jam_dir = to_unicode(os.path.realpath(os.path.dirname(jam.__file__)))
         self.jam_version = jam.version()
-        self.__is_locked = 0
         self.application_files = {
             '/': self.work_dir,
             '/jam/': self.jam_dir
         }
         self.fileserver = SharedDataMiddleware(None, self.application_files, cache_timeout=1)
-        self.url_map = Map([
-            Rule('/', endpoint='root_file'),
-            Rule('/<file_name>.html', endpoint='root_file'),
-            Rule('/js/<file_name>', endpoint='file'),
-            Rule('/css/<file_name>', endpoint='file'),
-            Rule('/jam/js/<file_name>', endpoint='file'),
-            Rule('/jam/js/ace/<file_name>', endpoint='file'),
-            Rule('/jam/css/<file_name>', endpoint='file'),
-            Rule('/jam/img/<file_name>', endpoint='file'),
-            Rule('/api', endpoint='api'),
-            Rule('/upload', endpoint='upload')
-        ])
         consts.app = self
         self.log = JamLogger(self)
         create_admin(self)
@@ -157,22 +148,29 @@ class App(object):
         self.check_migration()
 
     def create_task(self):
-        result = None
-        if self.state != consts.PROJECT_LOADING:
-            self.state = consts.PROJECT_LOADING
+        result = self.__task
+        if not result and not self.__loading:
+            self.__loading = True
             try:
                 result = create_task(self)
-                update_events_code(self.admin)
+                update_events_code(self.admin, loading=True)
                 consts.CLIENT_MODIFIED = False
                 consts.SERVER_MODIFIED = False
                 consts.write_settings()
                 self.state = consts.RESPONSE
                 result.__task_locked = True
             except ProjectNotCompleted:
-                self.state = consts.PROJECT_NO_PROJECT
+                raise
             except:
-                self.state = consts.PROJECT_ERROR
                 traceback.print_exc()
+                raise ProjectError()
+            finally:
+                self.__loading = False
+        else:
+            time.sleep(1)
+            result = self.__task
+            if not result:
+                result = self.create_task()
         return result
 
     @property
@@ -201,80 +199,158 @@ class App(object):
         request = JamRequest(environ)
         if consts.MAX_CONTENT_LENGTH > 0:
             request.max_content_length = 1024 * 1024 * consts.MAX_CONTENT_LENGTH
-        adapter = self.url_map.bind_to_environ(request.environ)
+        parts = request.path.strip('/').split('/')
+        prefix = parts[0]
+        suffix = parts[len(parts) - 1]
         try:
-            if peek_path_info(environ) == 'ext':
-                response = self.on_ext(request)
-            else:
-                endpoint, values = adapter.match()
-                if endpoint in ['file', 'root_file']:
-                    return self.serve_file(environ, start_response, endpoint, **values)
-                elif endpoint in ['api', 'upload']:
-                    response = getattr(self, 'on_' + endpoint)(request, **values)
-        except HTTPException as e:
-            response = e
-        return response(environ, start_response)
-
-    def check_modified(self, file_path, environ):
-        if environ.get('HTTP_IF_MODIFIED_SINCE'):
-            date1 = parse_date(environ['HTTP_IF_MODIFIED_SINCE'])
-            date2 = datetime.datetime.utcfromtimestamp(os.path.getmtime(file_path)).replace(microsecond=0)
-            if date1 != date2:
-                try:
-                    os.utime(file_path, None)
-                except:
-                    pass
-
-    def serve_file(self, environ, start_response, endpoint, file_name=None):
-        if endpoint == 'root_file':
-            if file_name:
-                file_name += '.html'
-            if not file_name:
-                file_name = 'index.html'
-                environ['PATH_INFO'] = '/index.html'
-            elif file_name == 'admin.html':
-                file_name = 'builder.html'
-            if file_name == 'index.html':
-                self.check_modified(file_name, environ)
-                self.check_project_modified()
-            elif file_name == 'builder.html':
-                if os.path.exists(file_name):
-                    self.check_modified(file_name, environ)
+            if prefix == 'api':
+                return self.on_api(request)(environ, start_response)
+            elif prefix == 'upload':
+                return self.on_upload(request)(environ, start_response)
+            elif prefix == 'jam':
+                return self.on_jam_file(request, suffix)(environ, start_response)
+            elif prefix == 'js':
+                return self.on_project_file(request, suffix)(environ, start_response)
+            elif prefix == 'css':
+                return self.on_project_file(request, suffix)(environ, start_response)
+            elif prefix in ['builder.html', 'builder_login.html']:
+                return self.on_builder(request, prefix)(environ, start_response)
+            if not self.under_maintenance:
+                if self.task.on_request:
+                    response = self.task.on_request(self.task, request)
+                    if response:
+                        return response(environ, start_response)
+                if not prefix or prefix in ['index.html', 'login.html']:
+                    return self.on_index(request, prefix)(environ, start_response)
+                elif prefix == 'ext':
+                    return self.on_ext(request)(environ, start_response) #depricated
                 else:
-                    self.check_modified(os.path.join(to_unicode(self.jam_dir, 'utf-8'), file_name), environ)
-                    environ['PATH_INFO'] = '/jam/builder.html'
-        if file_name:
-            base, ext = os.path.splitext(file_name)
+                    raise NotFound()
+        except ProjectNotCompleted:
+            return self.show_information(consts.lang['no_project'])(environ, start_response)
+        except ProjectError:
+            return self.show_error(consts.lang['project_error'])(environ, start_response)
+        except HTTPException(e):
+            self.log.exception(error_message(e))
+            return e
+
+    def serve_page(self, file_name, **kwargs):
+        path = os.path.join(self.work_dir, file_name)
+        if os.path.exists(path):
+            page = file_read(path)
+            if kwargs:
+                page = page % kwargs
+            return Response(page, mimetype="text/html")
+        else:
+            raise NotFound()
+
+    def show_information(self, message):
+        return self.show_error(message, 'alert-info', 'Information')
+
+    def show_error(self, message, error_class=None, error_type=None):
+        if not error_class:
+            error_class = 'alert-error'
+        if not error_type:
+            error_type = 'Error'
+        path = os.path.join(self.jam_dir, 'html', 'error.html')
+        return self.serve_page(path, error_class=error_class, \
+            error_type=error_type, message=message)
+
+    def on_index(self, request, file_name):
+        if file_name == 'login.html':
+            login_params = {
+                'title': self.task.item_name,
+                'error': '',
+                'form_title': consts.lang['log_in'],
+                'login': consts.lang['login'],
+                'password': consts.lang['password']
+            }
+            login_path = os.path.join(self.work_dir, 'login.html')
+            if not os.path.exists(login_path):
+                login_path = os.path.join(self.jam_dir, 'html', 'login.html')
+            if request.method == 'POST':
+                if self.login(request, self.task, request.form):
+                    response = redirect('/')
+                    request.save_client_cookie(response, self.task)
+                    return response
+                else:
+                    login_params['error'] = 'error-modal-border'
+                    return self.serve_page(login_path, **login_params)
+            else:
+                return self.serve_page(login_path, **login_params)
+        else:
+            if self.check_session(request, self.task):
+                file_name = 'index.html'
+                request.environ['PATH_INFO'] = '/%s' % file_name
+                path = os.path.join(self.work_dir, file_name)
+                self.check_project_modified()
+                return self.fileserver
+            else:
+                return redirect('/login.html')
+
+    def on_builder(self, request, file_name):
+        if file_name == 'builder.html':
+            if os.path.exists(os.path.join(self.work_dir, file_name)):
+                request.environ['PATH_INFO'] = '/%s' % file_name
+                return self.fileserver
+            if self.check_session(request, self.admin):
+                request.environ['PATH_INFO'] = '/jam/html/%s' % file_name
+                return self.fileserver
+            else:
+                return redirect('/builder_login.html')
+        elif file_name == 'builder_login.html':
+            login_params = {
+                'title': 'Jam.py Application Builder',
+                'error': '',
+                'form_title': consts.lang['log_in'],
+                'login': consts.lang['login'],
+                'password': consts.lang['password']
+            }
+            login_path = os.path.join(self.jam_dir, 'html', 'login.html')
+            if request.method == 'POST':
+                if self.login(request, self.admin, request.form):
+                    response = redirect('/builder.html')
+                    request.save_client_cookie(response, self.admin)
+                    return response
+                else:
+                    login_params['error'] = 'error-modal-border'
+                    return self.serve_page(login_path, **login_params)
+            else:
+                return self.serve_page(login_path, **login_params)
+
+    def serve_prog_file(self, request, file_name):
+        base, ext = os.path.splitext(file_name)
         if consts.COMPRESSED_JS and ext and ext in ['.js', '.css']:
             min_file_name = base + '.min' + ext
             environ['PATH_INFO'] = environ['PATH_INFO'].replace(file_name, min_file_name)
-        try:
-            return self.fileserver(environ, start_response)
-        except Exception as e:
-            if file_name == 'dummy.html':
-                return Response('')(environ, start_response)
-            else:
-                raise NotFound()
+        return self.fileserver
+
+    def on_jam_file(self, request, file_name):
+        return self.serve_prog_file(request, file_name)
+
+    def on_project_file(self, request, file_name):
+        if self.check_session(request, self.task):
+            return self.serve_prog_file(request, file_name)
+        else:
+            raise Forbidden()
 
     def create_post_response(self, request, result):
         response = Response()
-        accepts_gzip = 0
-        try:
-            if request.environ.get("HTTP_ACCEPT_ENCODING").find("gzip") != -1:
-                accepts_gzip = 1
-        except:
-            pass
+        response.headers['Content-Type'] = 'application/json'
         try:
             buff = json.dumps(result, default=json_defaul_handler)
         except Exception as e:
             self.log.exception('wsgi.py create_post_response error %s' % error_message(e))
             self.log.debug(result)
             raise
-        response.headers['Content-Type'] = 'application/json'
-        if accepts_gzip:
-            buff = compressBuf(buff)
-            response.headers['Content-encoding'] = 'gzip'
-            response.headers['Content-Length'] = str(len(buff))
+        accept_encoding = request.headers.get('Accept-Encoding', '')
+        if 'gzip' not in accept_encoding.lower():
+            response.set_data(buff)
+            return response
+        buff = compressBuf(buff)
+        response.headers['Content-Encoding'] = 'gzip'
+        response.headers['Vary'] = 'Accept-Encoding'
+        response.headers['Content-Length'] = len(buff)
         response.set_data(buff)
         return response
 
@@ -321,6 +397,7 @@ class App(object):
         return True
 
     def check_session(self, request, task):
+        request.task = task
         c = request.client_cookie
         if not c.get('info') and not consts.SAFE_MODE:
             c = self.create_session(request, task)
@@ -337,6 +414,7 @@ class App(object):
 
     def login(self, request, task, form_data):
         time.sleep(0.3)
+        request.task = task
         ip = None
         session_uuid = None
         ip = self.get_client_address(request)
@@ -353,7 +431,6 @@ class App(object):
                         user_info = task.on_login(task, form_data['login'], form_data['password'], ip, session_uuid)
                     else:
                         raise
-
             except:
                 user_info = None
                 traceback.print_exc()
@@ -365,15 +442,17 @@ class App(object):
         del request.client_cookie['info']
         jam.context.session = None
 
-    def get_privileges(self, role_id):
-        if self.privileges is None:
-            roles, privileges = get_roles(self.admin)
-            self.privileges = privileges
-        try:
-            result = self.privileges[role_id]
-        except:
-            result = {}
-        return result
+    def get_role_privileges(self, role_id):
+        if consts.SAFE_MODE:
+            if self.privileges is None:
+                self.privileges = get_privileges(self.admin)
+            return self.privileges[role_id]
+
+    def get_role_field_restrictions(self, role_id):
+        if consts.SAFE_MODE:
+            if self.field_restrictions is None:
+                self.field_restrictions = get_field_restrictions(self.admin)
+            return self.field_restrictions[role_id]
 
     def init_client(self, task):
         session = jam.context.session
@@ -383,7 +462,7 @@ class App(object):
             user_info = session['user_info']
             role_id = user_info.get('role_id')
             if role_id:
-                priv = self.get_privileges(role_id)
+                priv = self.get_role_privileges(role_id)
         result = {
             'task': task.get_info(),
             'settings': consts.settings,
@@ -413,6 +492,7 @@ class App(object):
     def import_md(self, file_name, from_client):
         if not self.under_maintenance:
             with self.admin.lock('$metadata_import'):
+                success = False
                 consts.MAINTENANCE = True
                 consts.PARAMS_VERSION += 1
                 consts.write_settings()
@@ -535,54 +615,28 @@ class App(object):
                     task = self.admin
                 else:
                     task = self.task
-                    if not task:
-                        task = self.task
-                        if not task:
-                            lang = consts.lang
-                            result = {'status': None, 'data': {'error': lang['error'], \
-                                'info': lang['info']}, 'modification': None}
-                            result['status'] = self.state
-                            if self.state == consts.PROJECT_LOADING:
-                                result['data']['project_loading'] = lang['project_loading']
-                            elif self.state == consts.PROJECT_NO_PROJECT:
-                                result['data']['no_project'] = lang['no_project']
-                            elif self.state == consts.PROJECT_ERROR:
-                                result['data']['project_error'] = lang['project_error']
-                            r ['result'] = result
-                            return self.create_post_response(request, r)
-                if not task:
-                    result = {'status': consts.PROJECT_NO_PROJECT, 'data': None, 'modification': None}
+                request.task = task
+                self.check_build()
+                result = {'status': consts.RESPONSE, 'data': None, 'modification': consts.MODIFICATION}
+                if not self.check_session(request, task):
+                    result['status'] = consts.PROJECT_NOT_LOGGED
+                elif task_id and modification and modification != consts.MODIFICATION:
+                    result['status'] = consts.PROJECT_MODIFIED
+                elif self.under_maintenance:
+                    result['status'] = consts.PROJECT_MAINTAINANCE
+                elif method == 'logout':
+                    self.logout(request, task)
+                    result['status'] = consts.PROJECT_NOT_LOGGED
                 else:
-                    request.task = task
-                    self.check_build()
-                    result = {'status': consts.RESPONSE, 'data': None, 'modification': consts.MODIFICATION}
-                    if task_id and modification and modification != consts.MODIFICATION:
-                        result['status'] = consts.PROJECT_MODIFIED
-                    elif self.under_maintenance:
-                        result['status'] = consts.PROJECT_MAINTAINANCE
-                    elif method == 'connect':
-                        self.connect(request, task)
-                        result['data'] = self.connect(request, task)
-                    elif method == 'login':
-                        result['data'] = self.login(request, task, params[0])
-                    elif method == 'logout':
-                        self.logout(request, task)
-                        result['status'] = consts.PROJECT_NOT_LOGGED
-                        result['data'] = consts.PROJECT_NOT_LOGGED
-                    else:
-                        if not self.check_session(request, task):
-                            result['status'] = consts.PROJECT_NOT_LOGGED
-                            result['data'] = consts.PROJECT_NOT_LOGGED
-                        else:
-                            item = task
-                            if task and item_id:
-                                item = task.item_by_ID(item_id)
-                            self._busy += 1
-                            try:
-                                data = self.get_response(item, method, params)
-                            finally:
-                                self._busy -= 1
-                            result['data'] = data
+                    item = task
+                    if task and item_id:
+                        item = task.item_by_ID(item_id)
+                    self._busy += 1
+                    try:
+                        data = self.get_response(item, method, params)
+                    finally:
+                        self._busy -= 1
+                    result['data'] = data
                 r ['result'] = result
             except AbortException as e:
                 traceback.print_exc()
@@ -597,12 +651,12 @@ class App(object):
                 r['result'] = {'data': [None, error]}
                 r['error'] = error
             response = self.create_post_response(request, r)
-            request.save_client_cookie(response, self, task)
+            request.save_client_cookie(response, task)
             return response
 
     def get_response(self, item, method, params):
         if method == 'open':
-            return item.select_records(params, safe=True)
+            return item.select_records(params, client_request=True)
         elif method == 'apply':
             return item.apply_changes(params, safe=True)
         elif method == 'server':

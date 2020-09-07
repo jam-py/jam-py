@@ -22,7 +22,7 @@ class AbstractDB(object):
     def params(self):
         return {
             'name': None,
-            'dns': False,
+            'dsn': False,
             'lib': [],
             'server': False,
             'database': True,
@@ -40,17 +40,11 @@ class AbstractDB(object):
     def arg_params(self):
         return False
 
-    def connect(self, db_info):
-        pass
-
     def value_literal(self, index):
         return '?'
 
     def identifier_case(self, name):
         return name.upper()
-
-    def get_select(self, query, fields_clause, from_clause, where_clause, group_clause, order_clause, fields):
-        pass
 
     def cast_date(self, date_str):
         return "CAST('" + date_str + "' AS DATE)"
@@ -60,18 +54,6 @@ class AbstractDB(object):
 
     def convert_like(self, field_name, val, data_type):
         return 'UPPER(%s)' % field_name, val.upper()
-
-    def create_table(self, table_name, fields, gen_name=None, foreign_fields=None):
-        pass
-
-    def drop_table(self, table_name, gen_name):
-        pass
-
-    def create_index(self, index_name, table_name, unique, fields, desc):
-        pass
-
-    def drop_index(self, table_name, index_name):
-        pass
 
     def next_sequence(self, table_name):
         pass
@@ -108,12 +90,32 @@ class AbstractDB(object):
                 else:
                     result = ''
             elif field_info.data_type == consts.DATE:
-                result = "'%s'" % datetime.date.today().strftime('%Y-%m-%d')
+                if field_info.default_value == 'current date':
+                    result = "'%s'" % datetime.date.today().strftime('%Y-%m-%d')
             elif field_info.data_type == consts.DATETIME:
-                result = "'%s'" % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        elif field_info.data_type in [consts.TEXT, consts.IMAGE, consts.FILE]:
-            return "''"
+                if field_info.default_value == 'current datetime':
+                    result = "'%s'" % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         return result
+
+    def default_date_text(self, field_info):
+        pass
+
+    def default_text(self, field_info):
+        if field_info.data_type in [consts.DATE, consts.DATETIME]:
+            if not field_info.default_value is None:
+                return self.default_date_text(field_info)
+        else:
+            return self.default_value(field_info)
+
+    def get_field_info(self, field_name, table_name, db_name=None):
+        connection = self.connect(self.app.admin.task_db_info)
+        try:
+            fields_info = self.get_table_info(connection, table_name, db_name)
+        finally:
+            connection.close()
+        for field in fields_info['fields']:
+            if field['field_name'] == field_name:
+                return field
 
     def before_insert(self, cursor, pk_field):
         pass
@@ -206,8 +208,8 @@ class AbstractDB(object):
     def delete_record(self, delta, cursor, changes, details_changes):
         log_rec = delta.get_rec_info()[consts.REC_LOG_REC]
         soft_delete = delta.soft_delete
-        if delta.master:
-            soft_delete = delta.master.soft_delete
+        if delta.master or delta.master_field:
+            soft_delete = delta.owner.soft_delete
         if delta._primary_key_field.data_type == consts.TEXT:
             id_literal = "'%s'" % delta._primary_key_field.value
         else:
@@ -236,20 +238,19 @@ class AbstractDB(object):
             changes = None
             user = self.get_user(delta)
             item_id = delta.ID
-            if delta.master:
+            if delta.master or delta.master_field:
                 item_id = delta.prototype.ID
             if delta.record_status != consts.RECORD_DELETED:
                 old_rec = delta.get_rec_info()[consts.REC_OLD_REC]
                 new_rec = delta._dataset[delta.rec_no]
                 f_list = []
                 for f in delta.fields:
-                    if not f.system_field():
-                        new = new_rec[f.bind_index]
-                        old = None
-                        if old_rec:
-                            old = old_rec[f.bind_index]
-                        if old != new:
-                            f_list.append([f.ID, new])
+                    new = new_rec[f.bind_index]
+                    old = None
+                    if old_rec:
+                        old = old_rec[f.bind_index]
+                    if old != new:
+                        f_list.append([f.ID, new])
                 changes_str = json.dumps(f_list, separators=(',',':'), default=json_defaul_handler)
                 changes = ('%s%s' % ('0', changes_str), consts.LONGTEXT)
             params = [item_id, delta._primary_key_field.value, delta.record_status, changes, user, datetime.datetime.now()]
@@ -259,11 +260,17 @@ class AbstractDB(object):
     def update_deleted_detail(self, delta, detail, cursor):
         fields = [detail._primary_key]
         detail.open(fields=fields, open_empty=True)
-        sql = 'SELECT "%s" FROM "%s" WHERE "%s" = %s AND "%s" = %s and "%s" = 0' % \
-            (detail._primary_key_db_field_name, detail.table_name,
-            detail._master_id_db_field_name, delta.ID,
-            detail._master_rec_id_db_field_name, delta._primary_key_field.value,
-            detail._deleted_flag_db_field_name)
+        if detail.master_field:
+            sql = 'SELECT "%s" FROM "%s" WHERE "%s" = %s AND "%s" = 0' % \
+                (detail._primary_key_db_field_name, detail.table_name,
+                detail._master_field_db_field_name, delta._primary_key_field.value,
+                detail._deleted_flag_db_field_name)
+        else:
+            sql = 'SELECT "%s" FROM "%s" WHERE "%s" = %s AND "%s" = %s AND "%s" = 0' % \
+                (detail._primary_key_db_field_name, detail.table_name,
+                detail._master_id_db_field_name, delta.ID,
+                detail._master_rec_id_db_field_name, delta._primary_key_field.value,
+                detail._deleted_flag_db_field_name)
         try:
             cursor.execute(sql)
             rows = self.process_query_result(cursor.fetchall())
@@ -322,7 +329,8 @@ class AbstractDB(object):
                 raise Exception(consts.language('cant_edit') % delta.item_caption)
             self.update_record(delta, cursor, changes, details_changes)
         elif delta.record_status == consts.RECORD_DETAILS_MODIFIED:
-            pass
+            changes.append([delta.get_rec_info()[consts.REC_LOG_REC], \
+                delta._primary_key_field.value, details_changes])
         elif delta.record_status == consts.RECORD_DELETED:
             if safe and not delta.can_delete():
                 raise Exception(consts.language('cant_delete') % delta.item_caption)
@@ -337,19 +345,17 @@ class AbstractDB(object):
             details = []
             self.process_record(it, connection, cursor, safe, changes, details)
             for detail in delta.details:
-                detail_changes = []
-                detail_result = {'ID': str(detail.ID), 'changes': detail_changes}
-                details.append(detail_result)
                 if delta.record_status == consts.RECORD_DELETED:
                     self.delete_detail_records(delta, connection, cursor, detail)
-                else:
+                elif detail.master:
+                    detail_changes = []
+                    detail_result = {'ID': str(detail.ID), 'changes': detail_changes}
+                    details.append(detail_result)
                     self.process_records(detail, connection, cursor, safe, detail_changes)
 
     def process_changes(self, delta, connection, params=None):
         error = None
-        safe = False
-        if params:
-            safe = params['__safe']
+        safe = delta.client_changes
         changes = []
         result = {'ID': str(delta.ID), 'changes': changes}
         cursor = connection.cursor()
@@ -397,17 +403,17 @@ class AbstractDB(object):
         return result
 
     def fields_clause(self, item, query, fields):
-        summary = query.get('__summary')
-        funcs = query.get('__funcs')
+        summary = query.summary
+        funcs = query.funcs
         if funcs:
             functions = {}
             for key, value in iteritems(funcs):
                 functions[key.upper()] = value
-        repls = query.get('__replace')
-        if repls:
-            replace = {}
-            for key, value in iteritems(repls):
-                replace[key.upper()] = value
+        # ~ repls = query.replace
+        # ~ if repls:
+            # ~ replace = {}
+            # ~ for key, value in iteritems(repls):
+                # ~ replace[key.upper()] = value
         sql = []
         for i, field in enumerate(fields):
             if i == 0 and summary:
@@ -416,24 +422,22 @@ class AbstractDB(object):
                 pass
             elif field.calculated:
                 pass
-                # ~ if query['__expanded']:
-                    # ~ sql.append(self.calculated_sql(item, field))
             else:
-                if repls and replace.get(field.field_name.upper()):
-                    field_sql = ('%s %s "%s"') % (replace[field.field_name.upper()], self.FIELD_AS, field.db_field_name)
-                else:
-                    field_sql = '%s."%s"' % (self.table_alias(item), field.db_field_name)
-                    func = None
-                    if funcs:
-                        func = functions.get(field.field_name.upper())
-                        if func:
-                            field_sql = '%s(%s) %s "%s"' % (func.upper(), field_sql, self.FIELD_AS, field.db_field_name)
+                # ~ if repls and replace.get(field.field_name.upper()):
+                    # ~ field_sql = ('%s %s "%s"') % (replace[field.field_name.upper()], self.FIELD_AS, field.db_field_name)
+                # ~ else:
+                field_sql = '%s."%s"' % (self.table_alias(item), field.db_field_name)
+                func = None
+                if funcs:
+                    func = functions.get(field.field_name.upper())
+                    if func:
+                        field_sql = '%s(%s) %s "%s"' % (func.upper(), field_sql, self.FIELD_AS, field.db_field_name)
                 sql.append(field_sql)
         for i, field in enumerate(fields):
             if field.calculated:
-                if query['__expanded']:
+                if query.expanded:
                     sql.append(self.calculated_sql(item, field))
-        if query['__expanded']:
+        if query.expanded:
             for i, field in enumerate(fields):
                 if i == 0 and summary:
                     continue
@@ -453,7 +457,7 @@ class AbstractDB(object):
     def from_clause(self, item, query, fields):
         result = []
         result.append(self.FROM % (item.table_name, self.table_alias(item)))
-        if query['__expanded']:
+        if query.expanded:
             joins = {}
             for field in fields:
                 if field.lookup_item and field.data_type != consts.KEYS:
@@ -610,20 +614,22 @@ class AbstractDB(object):
         return sql
 
     def add_master_conditions(self, item, query, conditions):
-        master_id = query['__master_id']
-        master_rec_id = query['__master_rec_id']
-        if master_id and master_rec_id:
-            if item._master_id:
+        if query.master_field:
+            conditions.append('%s."%s"=%s' % \
+                (self.table_alias(item), item._master_field_db_field_name, str(query.master_field)))
+        else:
+            if query.master_id:
                 conditions.append('%s."%s"=%s' % \
-                    (self.table_alias(item), item._master_id_db_field_name, str(master_id)))
+                    (self.table_alias(item), item._master_id_db_field_name, str(query.master_id)))
+            if query.master_rec_id:
                 conditions.append('%s."%s"=%s' % \
-                    (self.table_alias(item), item._master_rec_id_db_field_name, str(master_rec_id)))
+                    (self.table_alias(item), item._master_rec_id_db_field_name, str(query.master_rec_id)))
 
     def where_clause(self, item, query):
         conditions = []
-        if item.master:
+        if item.master or item.master_field:
             self.add_master_conditions(item,query, conditions)
-        filters = query['__filters']
+        filters = query.filters
         deleted_in_filters = False
         if filters:
             for field_name, filter_type, value in filters:
@@ -648,8 +654,8 @@ class AbstractDB(object):
         return result
 
     def group_clause(self, item, query, fields):
-        group_fields = query.get('__group_by')
-        funcs = query.get('__funcs')
+        group_fields = query.group_by
+        funcs = query.funcs
         if funcs:
             functions = {}
             for key, value in iteritems(funcs):
@@ -658,7 +664,7 @@ class AbstractDB(object):
         if group_fields:
             for field_name in group_fields:
                 field = item._field_by_name(field_name)
-                if query['__expanded'] and field.lookup_item and field.data_type != consts.KEYS:
+                if query.expanded and field.lookup_item and field.data_type != consts.KEYS:
                     func = functions.get(field.field_name.upper())
                     if func:
                         result += '%s."%s", ' % (self.table_alias(item), field.db_field_name)
@@ -675,26 +681,26 @@ class AbstractDB(object):
             return ''
 
     def order_clause(self, item, query):
-        limit = query.get('__limit')
-        if limit and not query.get('__order') and item._primary_key:
-            query['__order'] = [[item._primary_key, False]]
-        if query.get('__funcs') and not query.get('__group_by'):
+        limit = query.limit
+        if limit and not query.order and item._primary_key:
+            query.order = [[item._primary_key, False]]
+        if query.funcs and not query.group_by:
             return ''
-        funcs = query.get('__funcs')
+        funcs = query.funcs
         functions = {}
         if funcs:
             for key, value in iteritems(funcs):
                 functions[key.upper()] = value
-        order_list = query.get('__order', [])
+        order_list = query.order
         orders = []
         for order in order_list:
             field = item._field_by_name(order[0])
             if field:
                 func = functions.get(field.field_name.upper())
-                if not query['__expanded'] and field.lookup_item1:
+                if not query.expanded and field.lookup_item1:
                    orders = []
                    break
-                if query['__expanded'] and field.lookup_item:
+                if query.expanded and field.lookup_item:
                     if field.data_type == consts.KEYS:
                         ord_str = '%s."%s"' % (self.table_alias(item), field.db_field_name)
                     else:
@@ -727,7 +733,7 @@ class AbstractDB(object):
 
     def split_query(self, query):
         MAX_IN_LIST = 1000
-        filters = query['__filters']
+        filters = query.filters
         filter_index = -1
         max_list = 0
         if filters:
@@ -756,9 +762,9 @@ class AbstractDB(object):
         if filter_in_info:
             filter_index, lists = filter_in_info
             for lst in lists:
-                query['__limit'] = None
-                query['__offset'] = None
-                query['__filters'][filter_index][2] = lst
+                query.limit = None
+                query.offset = None
+                query.filters[filter_index][2] = lst
                 result.append(self.get_select_query(item, query))
         else:
             result.append(self.get_select_query(item, query))
@@ -769,7 +775,7 @@ class AbstractDB(object):
 
     def get_select_query(self, item, query):
         try:
-            field_list = query['__fields']
+            field_list = query.fields
             if len(field_list):
                 fields = [item._field_by_name(field_name) for field_name in field_list]
             else:
@@ -791,7 +797,7 @@ class AbstractDB(object):
         if filter_in_info:
             filter_index, lists = filter_in_info
             for lst in lists:
-                query['__filters'][filter_index][2] = lst
+                query.filters[filter_index][2] = lst
                 result.append(item.get_record_count_query(query))
         else:
             result.append(item.get_record_count_query(query))
@@ -799,7 +805,7 @@ class AbstractDB(object):
 
     def get_record_count_query(self, item, query):
         fields = []
-        filters = query['__filters']
+        filters = query.filters
         if filters:
             for (field_name, filter_type, value) in filters:
                 fields.append(item._field_by_name(field_name))

@@ -24,6 +24,9 @@ from .keywords import keywords
 class ProjectNotCompleted(Exception):
     pass
 
+class ProjectError(Exception):
+    pass
+
 class Consts(object):
     DEFAULT_SETTINGS = {
         'LANGUAGE': 1,
@@ -45,6 +48,7 @@ class Consts(object):
         'FORMS_IN_TABS': True,
         'MAX_CONTENT_LENGTH': 0,
         'IMPORT_DELAY': 0,
+        'SHOW_NOT_NULL': False,
         'MODIFICATION': 0,
         'MAINTENANCE': False,
         'CLIENT_MODIFIED': False,
@@ -381,7 +385,7 @@ class FieldInfo(object):
         self.field_name = field.f_db_field_name.value
         self.data_type = field.f_data_type.value
         self.size = field.f_size.value
-        self.default_value = field.f_default_value.value
+        self.default_value = field.f_default_value.data
         self.master_field = field.f_master_field.value
         self.primary_key = field.id.value == item.f_primary_key.value
 

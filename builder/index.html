@@ -15,8 +15,6 @@
   </head>
 
   <body>
-    <iframe src="dummy.html" name="dummy" style="display: none"></iframe>
-
     <div class="container">
         <div class="row-fluid">
             <div class="span6">
@@ -149,11 +147,13 @@
             </div>
             <div class="modal-footer">
                 <button id="delete-btn" class="btn expanded-btn pull-left" type="button"><i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small></button>
-
+                
+                <button type="button" id="move-btn" class="btn arrow_btn up-down-btn"><i class="icon-share"></i></button>
                 <button type="button" id="up-btn" class="btn arrow_btn up-down-btn"><i class="icon-arrow-up"></i></button>
                 <button type="button" id="down-btn" class="btn arrow_btn up-down-btn"><i class="icon-arrow-down"></i></button>
                 <button id="import-btn" class="btn expanded-btn" type="button"> Import</button>
                 <button id="edit-btn" class="btn expanded-btn" type="button"><i class="icon-edit"></i> Edit</button>
+                <button id="new-report-group-btn" class="btn expanded-btn" type="button"> New report group</button>
                 <button id="new-btn" class="btn expanded-btn" type="button"><i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small></button>
             </div>
         </div>
@@ -230,12 +230,15 @@
                             </div>
                         </div>
                         <div id="priv-panel" class="span8">
-                            <div class="view-table">
+                            <div class="view-table" style="padding-bottom: 2px">
                             </div>
+                            <div class="view-fields">
+                            </div>                                               
                             <div class="modal-footer">
                                 <button id="unselect-all-btn" class="btn expanded-btn" type="button"><i class="icon-minus"></i> Unselect all</button>
                                 <button id="select-all-btn" class="btn expanded-btn" type="button"><i class="icon-plus"></i> Select all</button>
                             </div>
+             
                         </div>
                     </div>
                 </div>
@@ -244,12 +247,10 @@
 
         <div class="sys_privileges-view">
             <div class="modal-body">
-                <div class="row-fluid">
-                    <div id="title-left" class="span6"></div>
-                    <div id="title-right" class="text-right span6"></div>
+                <div class="view-table" style="padding-bottom: 2px">
                 </div>
-                <div class="view-table">
-                </div>
+                <div class="view-fields">
+                </div>                                               
             </div>
             <div class="modal-footer">
                 <button id="unselect-all-btn" class="btn expanded-btn" type="button"><i class="icon-minus"></i> Unselect all</button>
@@ -259,13 +260,11 @@
 
         <div class="sys_fields_editor-view">
             <div class="modal-body">
-<!--
-                <ul class="nav nav-tabs" id="media-tabs" style="display: none">
-                    <li class="active" data-media="0"><a href="#media0">Desktop</a></li>
-                    <li data-media="1"><a href="#media1">Tablet</a></li>
-                    <li data-media="2"><a href="#media2">Phone</a></li>
-                </ul>
--->
+                <!--<ul class="nav nav-tabs" id="media-tabs" style="display: none">-->
+                <!--    <li class="active" data-media="0"><a href="#media0">Desktop</a></li>-->
+                    <!--<li data-media="1"><a href="#media1">Tablet</a></li>-->
+                <!--    <li data-media="1"><a href="#media1">Phone</a></li>-->
+                <!--</ul>-->
                 <ul class="nav nav-pills" id="section-tabs" style="display: none">
                     <li class="active"><a href="#layout">Layout</a></li>
                     <li><a href="#form">Form</a></li>
@@ -528,25 +527,6 @@
                 <button type="button" id="cancel-btn" class="btn expanded-btn"><i class="icon-remove"></i> Close</button>
             </div>
         </div>
-
-        <form id="login-form" target="dummy" class="form-horizontal" data-caption="Log in" style="margin: 10px 0 0; padding: 0px">
-            <div class="control-group">
-                <label class="control-label" for="input-login">Login</label>
-                <div class="controls">
-                    <input type="text" id="input-login" name="login" tabindex="1" placeholder="login">
-                </div>
-            </div>
-            <div class="control-group">
-                <label class="control-label" for="input-password">Password</label>
-                <div class="controls">
-                    <input type="password" id="input-password" name="password" tabindex="2" placeholder="password" autocomplete="on">
-                </div>
-            </div>
-            <div class="form-footer">
-                <input type="submit" class="btn expanded-btn pull-right" id="login-btn" value="OK" tabindex="3">
-            </div>
-        </form>
-
     </div>
 
     <script src="jam/js/jquery.js"></script>

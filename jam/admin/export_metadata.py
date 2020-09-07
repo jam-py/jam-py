@@ -16,6 +16,7 @@ metadata_items = [
     'sys_roles',
     'sys_params',
     'sys_privileges',
+    'sys_field_privileges',
     'sys_lookup_lists',
 ]
 

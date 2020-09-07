@@ -1,7 +1,7 @@
 
 from ..common import consts
 
-def get_database(db_type, lib):
+def get_database(app, db_type, lib):
     db = None
     if db_type == consts.SQLITE:
         from .sqlite_db import db
@@ -25,4 +25,6 @@ def get_database(db_type, lib):
             from .mssql_db2 import db
         else:
             from .mssql_db import db
+    if db:
+        db.app = app
     return db

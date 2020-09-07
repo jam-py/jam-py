@@ -240,6 +240,18 @@ input.input-text {
     .form-horizontal .control-group.label-size5 .controls {
         margin-left: 0;
     }
+    .expanded-btn {
+        min-width: 30px;
+    }
+    .expanded-btn small {
+        display: none;
+    }
+    .expanded-btn i {
+        display: none;
+    }
+    .form-body {
+        padding: 4px 4px;
+    }
 }
 
 @media (max-width: 767px) {
@@ -568,6 +580,9 @@ div.th-text {
 
 .form-frame.no-border {
     border-style: none;
+    -webkit-box-shadow: none;
+        -moz-box-shadow: none;
+            box-shadow: none;
 }
 
 .modal-header {
@@ -580,6 +595,7 @@ div.th-text {
 
 .no-border .modal-header {
     border-style: none;
+    padding: 4px 0px;
 }
 
 .modal .modal-header {
@@ -677,4 +693,17 @@ sup {
 .logging-info {
     margin-top: 20px;
     text-align: right;
+}
+
+@media (min-width: 979px) {
+
+    .modal-centered {
+        width: 500px;
+        top: 50%;
+        transform: translate(0%, -50%);
+    }
+
+    .modal-centered .form-horizontal {
+        margin: 0;
+    }
 }

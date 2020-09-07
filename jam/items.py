@@ -10,6 +10,7 @@ import types
 
 from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_bytes, to_unicode
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import redirect
 
 from .third_party.filelock import FileLock
 from .third_party.sqlalchemy.pool import NullPool, QueuePool
@@ -22,6 +23,24 @@ from .dataset import Dataset, DBField, DBFilter, ParamReport, Param, DatasetExce
 from .admin.copy_db import copy_database
 from .report import Report
 
+
+class QueryData(object):
+    def __init__(self, params):
+        self.fields = params.get('__fields', [])
+        self.filters = params.get('__filters', [])
+        self.order = params.get('__order', [])
+        self.group_by = params.get('__group_by', [])
+        self.expanded = params.get('__expanded')
+        self.offset = params.get('__offset')
+        self.limit = params.get('__limit')
+        self.summary = params.get('__summary')
+        self.funcs = params.get('__funcs')
+        self.master_field = params.get('__master_field')
+        self.master_id = params.get('__master_id')
+        self.master_rec_id = params.get('__master_rec_id')
+        # ~ self.replace = params.get('__replace')
+
+
 class ServerDataset(Dataset):
     def __init__(self):
         Dataset.__init__(self)
@@ -30,7 +49,11 @@ class ServerDataset(Dataset):
         self._order_by = []
         self.values = None
         self.on_open = None
+        self.on_before_open = None
+        self.on_after_open = None
         self.on_apply = None
+        self.on_before_apply = None
+        self.on_after_apply = None
         self.on_count = None
         self.on_field_get_text = None
 
@@ -63,6 +86,8 @@ class ServerDataset(Dataset):
         result._record_version = self._record_version
         result._master_id = self._master_id
         result._master_rec_id = self._master_rec_id
+        result._master_field = self._master_field
+        result._master_field_db_field_name = self._master_field_db_field_name
         result._primary_key_db_field_name = self._primary_key_db_field_name
         result._deleted_flag_db_field_name = self._deleted_flag_db_field_name
         result._master_id_db_field_name = self._master_id_db_field_name
@@ -110,9 +135,10 @@ class ServerDataset(Dataset):
                 elif data:
                     self.change_log.update(data)
 
-    def add_detail(self, table):
-        detail = Detail(self.task, self, table.item_name, table.item_caption, table.table_name)
-        detail.prototype = table
+    def add_detail(self, master, master_field):
+        detail = Detail(self.task, self, master.item_name, master.item_caption,
+            master.table_name, master_field=master_field)
+        detail.prototype = master
         self.details.append(detail)
         detail.owner = self
         detail.init_fields()
@@ -130,14 +156,16 @@ class ServerDataset(Dataset):
         except Exception as x:
             self.log.exception('%s:\n%s' % (error_message(x), sql))
 
-    def execute_open(self, params, connection=None, db=None):
+    def execute_open(self, params, connection=None, db=None, query_data=None, ):
         rows = None
         error_mes = ''
         if not db:
             db = self.task.db
-        limit = params['__limit']
-        offset = params['__offset']
-        sqls = db.get_select_queries(self, params)
+        if not query_data:
+            query_data = QueryData(params)
+        limit = query_data.limit
+        offset = query_data.offset
+        sqls = db.get_select_queries(self, query_data)
         if connection:
             con = connection
         else:
@@ -158,7 +186,7 @@ class ServerDataset(Dataset):
                             break
                 if (limit or offset) and not cut:
                     rows = rows[offset:offset + limit]
-                if params.get('__summary'):
+                if query_data.summary:
                     new_rows = [0 for r in rows[0]]
                     for row in rows:
                         for i, r in enumerate(row):
@@ -170,27 +198,46 @@ class ServerDataset(Dataset):
                 con.close()
         return rows, error_mes
 
-    def open_records(self, params, connection=None):
-        dataset, error = self.execute_open(params, connection)
-        result = self.copy(filters=False, details=False, handlers=False)
-        result.log_changes = False
-        result.open(expanded = params['__expanded'], fields=params['__fields'], open_empty=True)
-        result._dataset = dataset
-        return result
+    def init_open_dataset(self, query_data, dataset, result):
+        if not dataset:
+            dataset = self.copy(filters=False, details=False, handlers=False)
+            dataset.log_changes = False
+            dataset.open(expanded = query_data.expanded, fields=query_data.fields, open_empty=True)
+            dataset._dataset = result
+        return dataset
 
-    def select_records(self, params, connection=None, safe=False):
-        if safe and not self.can_view():
+    def select_records(self, params, connection=None, client_request=False):
+        if client_request and not self.can_view():
             raise Exception(consts.language('cant_view') % self.item_caption)
-        result = None
+
+        result = None # on_open is depricated
         if self.task.on_open:
             result = self.task.on_open(self, params)
         if result is None and self.on_open:
             result = self.on_open(self, params)
-        if result is None:
-            result = self.execute_open(params, connection)
-        if isinstance(result, Dataset):
-            result = result.dataset, ''
-        return result
+        if result:
+            return result
+
+        exec_query = True
+        query_data = QueryData(params)
+        if self.task.on_before_open:
+            exec_query = self.task.on_before_open(self, query_data, params)
+        if self.on_before_open:
+            exec_query = self.on_before_open(self, query_data, params)
+
+        if exec_query:
+            result, error = self.execute_open(params, connection)
+
+        dataset = None
+        if self.task.on_after_open:
+            self = init_open_dataset(query_data, dataset, result)
+            self.task.on_after_open(self, query_data, params, dataset)
+        if self.on_after_open:
+            self = init_open_dataset(query_data, dataset, result)
+            exec_query = self.on_after_open(self, query_data, params, dataset)
+        if dataset:
+            result = dataset._dataset, ''
+        return result, error
 
     def apply_delta(self, delta, params, connection, db=None):
         if not db:
@@ -199,13 +246,14 @@ class ServerDataset(Dataset):
 
     def apply_changes(self, data, safe, connection=None):
         result = None
+        result_data = None
         error = None
         changes, params = data
         if not params:
             params = {}
         params['__safe'] = safe
-        params['__replace'] = None
         delta = self.delta(changes)
+        delta.client_changes = safe
         if connection:
             con = connection
         else:
@@ -216,7 +264,17 @@ class ServerDataset(Dataset):
             if result is None and self.on_apply:
                 result = self.on_apply(self, delta, params, con)
             if result is None:
+                if self.task.on_before_apply:
+                    self.task.on_before_apply(self, delta, params, con)
+                if self.on_before_apply:
+                    self.on_before_apply(self, delta, params, con)
                 result = self.apply_delta(delta, params, con)
+                if self.task.on_after_apply:
+                    result_data = self.task.on_after_apply(self, delta, params, con)
+                if result_data is None and self.on_after_apply:
+                    result_data = self.on_after_apply(self, delta, params, con)
+                if not result_data is None:
+                    result[0]['result'] = result_data
             if not connection and con:
                 con.commit()
         finally:
@@ -316,7 +374,7 @@ class ServerDataset(Dataset):
             if lists.get('reports'):
                 self._reports_list = lists['reports']
 
-    def store_interface(self, connection=None):
+    def store_interface(self, connection=None, apply_interface=True):
         handlers = self.store_handlers()
         self.clear_handlers()
         try:
@@ -327,7 +385,8 @@ class ServerDataset(Dataset):
                     'reports': self._reports_list}
             self.f_info.value = 'json' + json.dumps(dic, default=json_defaul_handler)
             self.post()
-            self.apply(connection)
+            if apply_interface:
+                self.apply(connection)
         finally:
             handlers = self.load_handlers(handlers)
 
@@ -430,11 +489,10 @@ class Report(AbstrReport, ParamReport, Report):
             raise Exception(consts.language('cant_view') % self.item_caption)
         copy = self.copy()
         copy.name = self.item_name
-        copy.template = os.path.join(self.task.work_dir, 'reports', self.template)
+        copy.template_path = os.path.join(self.task.work_dir, 'reports', self.template)
         copy.url = url
         copy.dest_folder = os.path.join(self.task.work_dir, 'static', 'reports')
         copy.dest_url = os.path.join(url, 'static', 'reports')
-        copy.url = url
         if not os.path.exists(copy.dest_folder):
             os.makedirs(copy.dest_folder)
         copy.on_convert = self.on_convert_report
@@ -459,9 +517,9 @@ class Report(AbstrReport, ParamReport, Report):
 
 
 class DBInfo(object):
-    def __init__(self, dns='', server = '', lib=None, database = '',
+    def __init__(self, dsn='', server = '', lib=None, database = '',
         user = '', password = '', host='', port='', encoding=''):
-        self.dns = dns
+        self.dsn = dsn
         self.server = server
         self.lib = lib
         self.database = database
@@ -491,8 +549,13 @@ class AbstractServerTask(AbstrTask):
         self.on_before_request = None
         self.on_after_request = None
         self.on_open = None
+        self.on_before_open = None
+        self.on_after_open = None
         self.on_apply = None
+        self.on_before_apply = None
+        self.on_after_apply = None
         self.on_count = None
+        self.on_request = None
         self.work_dir = app.work_dir
         self.modules = []
         self.log = app.log
@@ -656,6 +719,21 @@ class Task(AbstractServerTask):
     def timeout(self):
         return consts.TIMEOUT
 
+    def login(self, request):
+        return self.app.login(request, self, request.form)
+
+    def save_cookie(self, request, response):
+        request.save_client_cookie(response, self)
+
+    def logged_in(self, request):
+        return self.app.check_session(request, self)
+
+    def redirect(self, location, code=302, Response=None):
+        return redirect(location, code, Response)
+
+    def serve_page(self, file_path, **kwargs):
+        return self.app.serve_page(file_path, **kwargs)
+
     def copy_database(self, dbtype, connection, limit = 1000):
         copy_database(self, dbtype, connection, limit)
 
@@ -666,15 +744,17 @@ class AdminTask(AbstractServerTask):
         self.timeout = 43200
         self.db_type = db_type
         self.db_info = DBInfo(database=os.path.join(app.work_dir, db_database))
-        self.db = get_database(db_type, self.db_info.lib)
+        self.db = get_database(app, db_type, self.db_info.lib)
         self.create_pool()
 
 class Detail(AbstrDetail, ServerDataset):
-    def __init__(self, task, owner, name='', caption='', table_name=''):
+    def __init__(self, task, owner, name='', caption='', table_name='', master_field=None):
         AbstrDetail.__init__(self, task, owner, name, caption)
         ServerDataset.__init__(self)
         self.item_type_id = consts.DETAIL_TYPE
-        self.master = owner
+        self.master_field = master_field
+        if not master_field:
+            self.master = owner
         self.soft_delete = None
 
     def init_fields(self):

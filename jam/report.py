@@ -80,9 +80,6 @@ class Report(object):
         self.cur_row = 1
         self.content_xml = tobytes('')
         self.generate_report(on_generate)
-        self.save()
-        if self.ext != '.ods':
-            self.convert_report()
         self.content_xml = None
 
     def generate_report(self, on_generate):
@@ -96,13 +93,16 @@ class Report(object):
         if on_generate:
             on_generate(self)
         self.content_xml += self.footer.text
+        self.save()
+        if self.ext != '.ods':
+            self.convert_report()
         if self.on_after_generate:
             self.on_after_generate(self)
 
     def save(self):
         image_links = self.get_image_links()
         with zipfile.ZipFile(self.report_filename, 'w', zipfile.ZIP_DEFLATED) as dest:
-            with zipfile.ZipFile(self.template, 'r') as source:
+            with zipfile.ZipFile(self.template_path, 'r') as source:
                 manifest_data = None
                 for file_name in source.namelist():
                     data = source.read(file_name)
@@ -184,7 +184,7 @@ class Report(object):
         return file_name
 
     def parse(self):
-        with zipfile.ZipFile(self.template, 'r') as z:
+        with zipfile.ZipFile(self.template_path, 'r') as z:
             content = z.read('content.xml')
         dom = parseString(content)
         tables = dom.getElementsByTagName('table:table')
@@ -209,7 +209,7 @@ class Report(object):
             self.process_rows(child)
         cur_band.rows = self.cur_rows[:]
         if not len(self.bands):
-            raise Exception('No bands in the report template "%s"' % self.template)
+            raise Exception('No bands in the report template "%s"' % self.template_path)
         self.process_bands(content)
         self.bands_dict = { band.tag: band for band in self.bands }
 
@@ -374,23 +374,3 @@ class Report(object):
             if d == 0:
                 break
         return result
-
-# ~ class Report(JReport):
-
-    # ~ def __init__(self, name, template, dest_folder, dest_url):
-        # ~ JReport.__init__(self)
-        # ~ self.name = name
-        # ~ self.template = template
-        # ~ self.dest_folder = dest_folder
-        # ~ self.dest_url = dest_url
-        # ~ if not os.path.exists(self.template):
-            # ~ raise Exception('Template file "%s" not found.' % self.template)
-        # ~ if not os.path.exists(self.dest_folder):
-            # ~ raise Exception('Destination folder "%s" not found.' % self.dest_folder)
-        # ~ if not self.name:
-            # ~ name = 'report'
-        # ~ self.on_parsed = None
-        # ~ self.on_before_generate = None
-        # ~ self.on_generate = None
-        # ~ self.on_after_generate = None
-        # ~ self.on_convert = None

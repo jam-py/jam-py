@@ -37,8 +37,8 @@ class MySQLDB(AbstractDB):
     def get_select(self, query, fields_clause, from_clause, where_clause, group_clause, order_clause, fields):
         start = fields_clause
         end = ''.join([from_clause, where_clause, group_clause, order_clause])
-        offset = query['__offset']
-        limit = query['__limit']
+        offset = query.offset
+        limit = query.limit
         result = 'SELECT %s FROM %s' % (start, end)
         if limit:
             result += ' LIMIT %d, %d' % (offset, limit)
@@ -56,20 +56,13 @@ class MySQLDB(AbstractDB):
     def convert_like(self, field_name, val, data_type):
         return field_name, val
 
-    def default_datetime_value(self, field_info):
-        if field_info.data_type == consts.DATE:
-            if field_info.default_value == 'current date':
-                return "CURRENT_DATE"
-        elif field_info.data_type == consts.DATETIME:
-            if field_info.default_value == 'current datetime':
-                return "CURRENT_TIMESTAMP"
-
     def create_table(self, table_name, fields, gen_name=None, foreign_fields=None):
         result = []
         primary_key = ''
         sql = 'CREATE TABLE "%s"\n(\n' % table_name
         lines = []
         for field in fields:
+            default_text = self.default_text(field)
             line = '"%s" %s' % (field.field_name, self.FIELD_TYPES[field.data_type])
             if field.size != 0 and field.data_type == consts.TEXT:
                 line += '(%d)' % field.size
@@ -78,6 +71,8 @@ class MySQLDB(AbstractDB):
                 primary_key = field.field_name
             elif field.not_null:
                 line += ' NOT NULL'
+            if not default_text is None:
+                line += ' DEFAULT %s' % default_text
             lines.append(line)
         if primary_key:
             lines.append('PRIMARY KEY("%s")' % primary_key)
@@ -87,6 +82,47 @@ class MySQLDB(AbstractDB):
 
     def drop_table(self, table_name, gen_name):
         return 'DROP TABLE IF EXISTS "%s"' % table_name
+
+    def add_field(self, table_name, field):
+        line = 'ALTER TABLE "%s" ADD "%s" %s' % \
+            (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
+        if field.size:
+            line += '(%d)' % field.size
+        if field.not_null:
+            line += ' NOT NULL'
+        default_text = self.default_text(field)
+        if not default_text is None:
+            line += ' DEFAULT %s' % default_text
+        return line
+
+    def del_field(self, table_name, field):
+        return 'ALTER TABLE "%s" DROP "%s"' % (table_name, field.field_name)
+
+    def change_field(self, table_name, old_field, new_field):
+        result = []
+        if old_field.not_null != new_field.not_null:
+            if new_field.not_null:
+                default_value = self.default_value(new_field)
+                sql = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
+                    (table_name, old_field.field_name, default_value, old_field.field_name)
+                result.append(sql)
+        field_info = self.get_field_info(old_field.field_name, table_name, self.app.admin.task_db_info.database)
+        sql = 'ALTER TABLE "%s" CHANGE  "%s" "%s" %s' % (table_name, old_field.field_name,
+            new_field.field_name, field_info['data_type'])
+        size = field_info['size']
+        if size and field_info['data_type'].upper() in ['VARCHAR', 'CHAR', 'BINARY', 'VARBINARY']:
+            if new_field.size > size:
+                size = new_field.size
+            sql += '(%d)' % size
+        if new_field.not_null:
+            sql += ' NOT NULL'
+        default_text = self.default_text(new_field)
+        if not default_text is None:
+            line += ' DEFAULT %s' % default_text
+        elif not field_info['default_value'] is None:
+            line += ' DEFAULT %s' % field_info['default_value']
+        result.append(sql)
+        return result
 
     def create_index(self, index_name, table_name, unique, fields, desc):
         return 'CREATE %s INDEX "%s" ON "%s" (%s)' % (unique, index_name, table_name, fields)
@@ -100,47 +136,6 @@ class MySQLDB(AbstractDB):
 
     def drop_foreign_index(self, table_name, index_name):
         return 'ALTER TABLE "%s" DROP FOREIGN KEY "%s"' % (table_name, index_name)
-
-    def add_field(self, table_name, field):
-        result = []
-        line = 'ALTER TABLE "%s" ADD "%s" %s' % \
-            (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
-        if field.size:
-            line += '(%d)' % field.size
-        default_value = self.default_value(field)
-        if default_value and field.not_null:
-            line += ' DEFAULT %s' % default_value
-            line += ' NOT NULL'
-        result.append(line)
-        if default_value and field.not_null:
-            line = 'ALTER TABLE "%s" CHANGE "%s" "%s" %s' % \
-                (table_name, field.field_name, field.field_name, self.FIELD_TYPES[field.data_type])
-            if field.size:
-                line += '(%d)' % field.size
-            if field.not_null:
-                line += ' NOT NULL'
-            result.append(line)
-        return result
-
-    def del_field(self, table_name, field):
-        return 'ALTER TABLE "%s" DROP "%s"' % (table_name, field.field_name)
-
-    def change_field(self, table_name, old_field, new_field):
-        result = []
-        if old_field.not_null != new_field.not_null:
-            if new_field.not_null:
-                default_value = self.default_value(new_field)
-                sql = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
-                    (table_name, new_field.field_name, default_value, new_field.field_name)
-                result.append(sql)
-        sql = 'ALTER TABLE "%s" CHANGE  "%s" "%s" %s' % (table_name, old_field.field_name,
-            new_field.field_name, self.FIELD_TYPES[new_field.data_type])
-        if new_field.size:
-            sql += '(%d)' % new_field.size
-        if new_field.not_null:
-            sql += ' NOT NULL'
-        result.append(sql)
-        return result
 
     def after_insert(self, cursor, pk_field):
         if pk_field and not pk_field.data:
@@ -168,6 +163,8 @@ class MySQLDB(AbstractDB):
                     pk = True
                 data_type = type_size.split('(')[0].upper()
                 size = type_size.split('(')[1].split(')')[0]
+                if size:
+                    size = int(size)
                 if not data_type in ['VARCHAR', 'CHAR']:
                     size = 0
             except:
@@ -178,7 +175,8 @@ class MySQLDB(AbstractDB):
                 'data_type': data_type,
                 'size': size,
                 'default_value': default_value,
-                'pk': pk
+                'pk': pk,
+                'not_null': null == 'NO'
             })
         return {'fields': fields, 'field_types': self.FIELD_TYPES}
 

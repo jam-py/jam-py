@@ -1,0 +1,37 @@
+=============================
+Events do not work for detail
+=============================
+
+There are different types of details.
+
+Firstly, the items that are in the Detail group in the project tree
+
+.. image:: _images/detail1.png
+	:align: center
+	:alt: Detail in detail group
+
+They are the same as items in other groups such as Journals, Catalogs or
+any other that you can create. The only difference is that they has two
+additional fields ``master_id`` and ``master_rec_id``, that are used to store 
+information about the ``ID`` of the master (each item have its own unique ID) 
+and the value of the primary field of the record of its master.
+
+When you link detail to the master item
+
+.. image:: _images/detail_linking.png
+	:align: center
+	:alt: Linking detail to master
+
+Application Builder creates a new item that have its own attributes and client 
+and server modules. 
+
+To access it, expand the group to which the master belongs, select the master in 
+the project tree, and when the master details appear in the table in the middle 
+of the screen, select the details.
+
+.. image:: _images/detail2.png
+	:align: center
+	:alt: Detail of master item
+	
+You can link one detail to different masters and setup these master details 
+differently.

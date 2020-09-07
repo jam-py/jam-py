@@ -45,8 +45,8 @@ class FirebirdDB(AbstractDB):
     def get_select(self, query, fields_clause, from_clause, where_clause, group_clause, order_clause, fields):
         start = fields_clause
         end = ''.join([from_clause, where_clause, group_clause, order_clause])
-        offset = query['__offset']
-        limit = query['__limit']
+        offset = query.offset
+        limit = query.limit
         page = ''
         if limit:
             page = 'FIRST %d SKIP %d' % (limit, offset)
@@ -84,9 +84,12 @@ class FirebirdDB(AbstractDB):
         sql = 'CREATE TABLE "%s"\n(\n' % table_name
         lines = []
         for field in fields:
+            default_text = self.default_text(field)
             line = '"%s" %s' % (field.field_name, self.FIELD_TYPES[field.data_type])
             if field.size != 0 and field.data_type == consts.TEXT:
                 line += '(%d)' % field.size
+            if not default_text is None:
+                line += ' DEFAULT %s' % default_text
             if field.not_null:
                 line += ' NOT NULL'
             lines.append(line)
@@ -102,53 +105,34 @@ class FirebirdDB(AbstractDB):
             result.append('CREATE SEQUENCE "%s"' % gen_name)
         return result
 
-    def drop_table(self, table_name, gen_name):
-        result = ['DROP TABLE "%s"' % table_name]
-        if gen_name:
-            result.append('DROP SEQUENCE "%s"' % gen_name)
-        return result
-
-    def create_index(self, index_name, table_name, unique, fields, desc):
-        return 'CREATE %s %s INDEX "%s" ON "%s" (%s)' % \
-            (unique, desc, index_name, table_name, fields)
-
-    def create_foreign_index(self, table_name, index_name, key, ref, primary_key):
-        return 'ALTER TABLE "%s" ADD CONSTRAINT "%s" FOREIGN KEY ("%s") REFERENCES "%s"("%s")' % \
-            (table_name, index_name, key, ref, primary_key)
-
-    def drop_foreign_index(self, table_name, index_name):
-        return 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % (table_name, index_name)
-
     def add_field(self, table_name, field):
-        result = []
+        default_text = self.default_text(field)
         line = 'ALTER TABLE "%s" ADD "%s" %s' % \
             (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
         if field.size:
             line += '(%d)' % field.size
-        default_value = self.default_value(field)
-        if default_value and field.not_null:
-            line += ' DEFAULT %s' % default_value
+        if not default_text is None:
+            line += ' DEFAULT %s' % default_text
+        if field.not_null:
             line += ' NOT NULL'
-        result.append(line)
-        if default_value and field.not_null:
-            line = 'ALTER TABLE "%s" ALTER "%s" DROP DEFAULT' % \
-                (table_name, field.field_name)
-            result.append(line)
-        return result
+        return line
 
     def del_field(self, table_name, field):
         return 'ALTER TABLE "%s" DROP "%s"' % (table_name, field.field_name)
 
     def change_field(self, table_name, old_field, new_field):
         result = []
+        field_info = self.get_field_info(old_field.field_name, table_name)
         if old_field.field_name != new_field.field_name:
             line = 'ALTER TABLE "%s" ALTER "%s" TO "%s"' % \
                 (table_name, old_field.field_name, new_field.field_name)
             result.append(line)
         if old_field.size != new_field.size:
-            line = 'ALTER TABLE "%s" ALTER "%s" %s(%d) ' % \
-                (table_name, new_field.field_name, self.FIELD_TYPES[field.data_type], field.size)
-            result.append(line)
+            if field_info['data_type'].upper() in ['CHAR', 'VARCHAR', 'NCHAR'] and \
+                field_info['size'] < new_field.size:
+                line = 'ALTER TABLE "%s" ALTER "%s" TYPE %s(%d) ' % \
+                    (table_name, new_field.field_name, field_info['data_type'], new_field.size)
+                result.append(line)
         if old_field.not_null != new_field.not_null:
             default_value = self.default_value(new_field)
             if default_value and new_field.not_null:
@@ -162,7 +146,34 @@ class FirebirdDB(AbstractDB):
                 line = "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = NULL WHERE RDB$FIELD_NAME = '%s' AND RDB$RELATION_NAME = '%s'" % \
                     (new_field.field_name, table_name)
             result.append(line)
+        if old_field.default_value != new_field.default_value:
+            default_text = self.default_text(new_field)
+            if not default_text is None:
+                line = 'SET DEFAULT %s' % default_text
+            else:
+                line = 'SET DEFAULT NULL'
+            result.append(line)
         return result
+
+    def drop_table(self, table_name, gen_name):
+        result = ['DROP TABLE "%s"' % table_name]
+        if gen_name:
+            result.append('DROP SEQUENCE "%s"' % gen_name)
+        return result
+
+    def create_index(self, index_name, table_name, unique, fields, desc):
+        return 'CREATE %s %s INDEX "%s" ON "%s" (%s)' % \
+            (unique, desc, index_name, table_name, fields)
+
+    def drop_index(self, table_name, index_name):
+        return 'DROP INDEX "%s"' % index_name
+
+    def create_foreign_index(self, table_name, index_name, key, ref, primary_key):
+        return 'ALTER TABLE "%s" ADD CONSTRAINT "%s" FOREIGN KEY ("%s") REFERENCES "%s"("%s")' % \
+            (table_name, index_name, key, ref, primary_key)
+
+    def drop_foreign_index(self, table_name, index_name):
+        return 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % (table_name, index_name)
 
     def before_insert(self, cursor, pk_field):
         if pk_field and not pk_field.data:
@@ -204,7 +215,8 @@ class FirebirdDB(AbstractDB):
                     WHEN 261 THEN 'BLOB'
                 END AS DATA_TYPE,
                 F.RDB$FIELD_LENGTH,
-                F.RDB$DEFAULT_VALUE
+                F.RDB$DEFAULT_VALUE,
+                IIF(COALESCE(RF.RDB$NULL_FLAG, 0) = 0, 0, 1)
             FROM RDB$FIELDS F
                 JOIN RDB$RELATION_FIELDS RF ON RF.RDB$FIELD_SOURCE = F.RDB$FIELD_NAME
             WHERE RF.RDB$RELATION_NAME = '%s'
@@ -212,7 +224,7 @@ class FirebirdDB(AbstractDB):
         cursor.execute(sql % table_name)
         result = cursor.fetchall()
         fields = []
-        for (field_name, data_type, size, default_value) in result:
+        for (field_name, data_type, size, default_value, not_null) in result:
             data_type = data_type.strip()
             if not data_type in ['VARCHAR', 'CHAR']:
                 size = 0
@@ -221,7 +233,8 @@ class FirebirdDB(AbstractDB):
                 'data_type': data_type,
                 'size': size,
                 'default_value': default_value,
-                'pk': False
+                'pk': False,
+                'not_null': bool(not_null)
             })
         return {'fields': fields, 'FIELD_TYPES': self.FIELD_TYPES}
 

@@ -44,8 +44,8 @@ class SQLiteDB(AbstractDB):
     def get_select(self, query, fields_clause, from_clause, where_clause, group_clause, order_clause, fields):
         start = fields_clause
         end = ''.join([from_clause, where_clause, group_clause, order_clause])
-        offset = query['__offset']
-        limit = query['__limit']
+        offset = query.offset
+        limit = query.limit
         result = 'SELECT %s FROM %s' % (start, end)
         if limit:
             result += ' LIMIT %d, %d' % (offset, limit)
@@ -57,17 +57,28 @@ class SQLiteDB(AbstractDB):
     def cast_datetime(self, datetime_str):
         return "'%s'" % datetime_str
 
+    def default_date_text(self, field_info):
+        if field_info.data_type == consts.DATE:
+            if field_info.default_value == 'current date':
+                return "(date('now', 'localtime'))"
+        elif field_info.data_type == consts.DATETIME:
+            if field_info.default_value == 'current datetime':
+                return "(datetime('now', 'localtime'))"
+
     def create_table(self, table_name, fields, gen_name=None, foreign_fields=None):
         primary_key = ''
         sql = 'CREATE TABLE "%s"\n(\n' % table_name
         lines = []
         for field in fields:
+            default_text = self.default_text(field)
             line = '"%s" %s' % (field.field_name, self.FIELD_TYPES[field.data_type])
             if field.primary_key:
                 primary_key = field.field_name
                 line += ' PRIMARY KEY'
             if field.not_null:
                 line += ' NOT NULL'
+            if not default_text is None:
+                line += ' DEFAULT %s' % default_text
             lines.append(line)
         if foreign_fields:
             for field in foreign_fields:
@@ -78,8 +89,13 @@ class SQLiteDB(AbstractDB):
         return sql
 
     def add_field(self, table_name, field):
+        default_text = self.default_text(field)
         result = 'ALTER TABLE "%s" ADD COLUMN "%s" %s' % \
             (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
+        if field.not_null:
+            result += ' NOT NULL'
+        if not default_text is None:
+            result += ' DEFAULT %s' % default_text
         return result
 
     def del_field(self, table_name, field):
@@ -115,7 +131,7 @@ class SQLiteDB(AbstractDB):
 
     def get_table_info(self, connection, table_name, db_name):
         cursor = connection.cursor()
-        cursor.execute('PRAGMA table_info(%s)' % table_name)
+        cursor.execute("PRAGMA table_info('%s')" % table_name)
         result = cursor.fetchall()
         fields = []
         for r in result:
@@ -123,6 +139,7 @@ class SQLiteDB(AbstractDB):
                 'field_name': r[1],
                 'data_type': r[2],
                 'size': 0,
+                'not_null': r[3],
                 'default_value': r[4],
                 'pk': r[5]==1
             })

@@ -18,9 +18,10 @@ server module of the item will do the job:
       user_id = item.session['user_info']['user_id']
       if user_id:
         for d in delta:
-            d.edit()
-            d.user_id.value = user_id
-            d.post()
+            if d.rec_inseted():          
+                d.edit()
+                d.user_id.value = user_id
+                d.post()
             
 It uses a 
 :doc:`session </refs/server/abstr_item/at_session>`
@@ -32,14 +33,13 @@ event handlers.
 
 The 
 :doc:`on_open </refs/server/item/on_open>`
-event handler ensures that the sql select statement that applications generates 
+event handler ensures that the sql select query that applications generates 
 will return only records where the user_id field will be the same as the ID of 
 the user that sends the request.
 
 And the 
 :doc:`on_apply </refs/server/item/on_apply>`
-event handler sets the user_id to the ID of the user that appended or modified 
-the records.
+event handler sets the user_id to the ID of the user that appended the records.
 
 You can use a more general approach and add the following code to the server
 module of the task. Then a multi-tenancy will be applied to every item that have 
@@ -57,7 +57,8 @@ a user_id field:
       if item.field_by_name('user_id'):    
           user_id = item.session['user_info']['user_id']
           if user_id:
-            for d in delta:
-                d.edit()
-                d.user_id.value = user_id
-                d.post()
+              for d in delta:
+                  if d.rec_inseted():
+                      d.edit()
+                      d.user_id.value = user_id
+                      d.post()

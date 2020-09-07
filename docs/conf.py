@@ -223,7 +223,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  (master_doc, 'Jampydocumentation.tex', u'Jam.py documentation Documentation',
+  (master_doc, 'Jampydocumentation.tex', u'Jam.py Documentation',
    u'Andrew Yushev', 'manual'),
 ]
 
@@ -253,7 +253,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'jampydocumentation', u'Jam.py documentation Documentation',
+    (master_doc, 'jampydocumentation', u'Jam.py Documentation',
      [author], 1)
 ]
 
@@ -267,7 +267,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  (master_doc, 'Jampydocumentation', u'Jam.py documentation Documentation',
+  (master_doc, 'Jampydocumentation', u'Jam.py Documentation',
    author, 'Jampydocumentation', 'One line description of project.',
    'Miscellaneous'),
 ]

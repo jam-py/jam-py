@@ -101,7 +101,8 @@ detail_client_events = \
         'on_filter_select_value': 'field, lookup_item',
         'on_field_validate': 'field',
         'on_field_get_text': 'field',
-        'on_field_get_html': 'field'
+        'on_field_get_html': 'field',
+        'on_field_get_summary': 'field, text'
     }
 
 item_client_events = detail_client_events
@@ -125,9 +126,11 @@ task_server_events = \
     {
         'on_created': 'task',
         'on_login': 'task, form_data, info',
-        'on_open': 'item, params',
-        'on_apply': 'item, delta, params, connection',
-        'on_ext_request': 'task, request, params'
+        'on_before_open': 'item, query_data, params',
+        'on_after_open': 'item, query_data, params, ds',
+        'on_before_apply': 'item, delta, params, connection',
+        'on_after_apply': 'item, delta, params, connection',
+        'on_request': 'task, request'
     }
 
 group_server_events = \
@@ -141,11 +144,13 @@ reports_server_events = \
 
 detail_server_events = \
     {
-        'on_open': 'item, params'
+        'on_before_open': 'item, query_data, params',
+        'on_after_open': 'item, query_data, params, ds',
     }
 
 item_server_events = detail_server_events
-item_server_events['on_apply'] = 'item, delta, params, connection'
+item_server_events['on_before_apply'] = 'item, delta, params, connection'
+item_server_events['on_after_apply'] = 'item, delta, params, connection'
 
 report_server_events = \
     {

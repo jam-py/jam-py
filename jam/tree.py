@@ -165,28 +165,36 @@ class AbstractItem(object):
 
     def check_operation(self, operation):
         try:
-            app = self.task.app
             if not consts.SAFE_MODE:
                 return True
-            elif self.task == app.admin:
-                if consts.SAFE_MODE:
-                    session = self.session
-                    if session and session['user_info']['admin']:
-                        return True
-                else:
+            session = self.session
+            app = self.task.app
+            if self.task == app.admin:
+                if session and session['user_info']['admin']:
                     return True
-            else:
-                session = self.session
-                if session:
-                    role_id = session['user_info']['role_id']
-                    privileges = self.task.app.get_privileges(role_id)
-                    priv_dic = privileges.get(self.ID)
-                    if priv_dic:
-                        return priv_dic[operation]
+            elif session:
+                role_id = session['user_info']['role_id']
+                privileges = app.get_role_privileges(role_id)
+                priv_dic = privileges.get(self.ID)
+                if priv_dic:
+                    return priv_dic[operation]
         except:
             return False
 
+    def check_field_restricted(self, field_id, restriction, role_id=None):
+        app = self.task.app
+        if not consts.SAFE_MODE or self.task == app.admin:
+            return False
+        if role_id is None:
+            if self.session:
+                role_id = self.session['user_info']['role_id']
+        if role_id:
+            restrictions = app.get_role_field_restrictions(role_id)
+            restrictions = restrictions.get(field_id)
+            return restrictions and restrictions.get(restriction)
+
     def execute_query(self, cursor, query, params=None, arg_params=False):
+        # ~ print query
         try:
             if params:
                 if arg_params:
@@ -290,24 +298,30 @@ class AbstrItem(AbstractItem):
                 setattr(self.task, self.item_name, self)
 
     def write_info(self, info, server):
+        role_id = 0
+        if consts.SAFE_MODE and not server:
+            if self.task != self.task.app.admin:
+                role_id = self.session['user_info']['role_id']
         super(AbstrItem, self).write_info(info, server)
-        info['fields'] = self.get_field_defs()
-        info['filters'] = self.filter_defs
+        if server:
+            info['table_name'] = self.table_name
+            info['fields'] = self.field_defs
+        else:
+            info['fields'] = self.get_field_defs(role_id)
+        info['filters'] = self.get_filter_defs(role_id)
         info['reports'] = self.get_reports_info()
         info['default_order'] = self._order_by
         info['primary_key'] = self._primary_key
         info['deleted_flag'] = self._deleted_flag
         info['virtual_table'] = self.virtual_table
+        info['master_field'] = self.master_field
         info['master_id'] = self._master_id
         info['master_rec_id'] = self._master_rec_id
-        info['keep_history'] = self._keep_history
+        info['keep_history'] = self.keep_history
         info['edit_lock'] = self.edit_lock
         info['view_params'] = self._view_list
         info['edit_params'] = self._edit_list
         info['virtual_table'] = self.virtual_table
-        if server:
-            info['table_name'] = self.table_name
-            info['fields'] = self.field_defs
 
     def read_info(self, info):
         super(AbstrItem, self).read_info(info)
@@ -320,7 +334,7 @@ class AbstrItem(AbstractItem):
         self._virtual_table = info['virtual_table']
         self._master_id = info['master_id']
         self._master_rec_id = info['master_rec_id']
-        self._keep_history = info['keep_history']
+        self.keep_history = info['keep_history']
         self.edit_lock = info['edit_lock']
         self._view_list = info['view_params']
         self._edit_list = info['edit_params']

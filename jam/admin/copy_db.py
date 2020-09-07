@@ -141,7 +141,7 @@ def copy_database(task, dbtype, connection, limit = 1000):
         task.log.info('copying started')
         source_con = None
         con = task.connect()
-        db = get_database(dbtype, None)
+        db = get_database(task.app, dbtype, None)
         task.log.info('copying droping indexes')
         drop_indexes()
         if hasattr(task.db, 'set_foreign_keys'):

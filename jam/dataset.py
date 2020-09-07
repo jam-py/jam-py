@@ -477,9 +477,9 @@ class DBField(object):
                         result = datetime.datetime.now()
                 elif self.data_type == consts.BOOLEAN:
                     if self.default_value == 'true':
-                        result = 0
-                    elif self.default_value == 'false':
                         result = 1
+                    elif self.default_value == 'false':
+                        result = 0
                 elif self.data_type in [consts.TEXT, consts.LONGTEXT, \
                     consts.IMAGE, consts.FILE, consts.KEYS]:
                     result = self.default_value
@@ -494,7 +494,7 @@ class DBField(object):
     def check_type(self):
         if (self.data_type == consts.TEXT) and (self.field_size != 0) and \
             (len(self.text) > self.field_size):
-            raise FieldInvalidLength(consts.language('invalid_length') % self.field_size)
+            raise FieldInvalidLength(self.field_name + ' - ' + consts.language('invalid_length') % self.field_size)
         return True
 
     def check_reqired(self):
@@ -864,8 +864,9 @@ class ChangeLog(object):
                     'details': new_details
                 }
                 for detail in self.item.details:
-                    detail.change_log.refresh()
-                    new_details[str(detail.ID)] = detail.change_log.store_change_log()
+                    if detail.master:
+                        detail.change_log.refresh()
+                        new_details[str(detail.ID)] = detail.change_log.store_change_log()
             new_logs.append(new_log)
         return result
 
@@ -882,7 +883,7 @@ class ChangeLog(object):
             'details': details
         }
         for detail in self.item.details:
-            if detail.active:
+            if detail.active and detail.master:
                 detail.change_log.refresh()
                 details[str(detail.ID)] = detail.change_log.store_change_log()
         if self.item.log_changes and self.item.record_status == consts.RECORD_UNCHANGED:
@@ -892,7 +893,7 @@ class ChangeLog(object):
 
     def restore_details(self, details):
         for detail_id, detail in iteritems(details):
-            self.item.item_by_ID(int(detail_id))._dataset = detail.records
+            self.item.item_by_ID(int(detail_id))._dataset = detail['records']
             for log in detail['logs']:
                 if log:
                     self.restore_details(log.details)
@@ -918,13 +919,13 @@ class ChangeLog(object):
             for change in changes:
                 log_id, rec, details = change
                 record_log = self.logs[log_id]
-                if record_log and not rec is None:
+                if record_log:
                     record = record_log['record']
                     record_details = record_log['details']
                     info = self.item.get_rec_info(record)
                     info[consts.REC_STATUS] = consts.RECORD_UNCHANGED
                     info[consts.REC_LOG_REC] = None
-                    if self.item._primary_key_field:
+                    if self.item._primary_key_field and not rec is None:
                         if isinstance(rec, list):
                             rec = rec[:self.item._record_lookup_index]
                             record[:self.item._record_lookup_index] = rec
@@ -943,14 +944,12 @@ class ChangeLog(object):
                                 if item_detail:
                                     detail_item.change_log.logs = item_detail['logs']
                                     detail_item.change_log.update(detail, rec_id)
-                self.logs[log_id] = None;
-            l = len(self.logs)
-            index = -1
-            for i in range(l):
-                if not self.logs[l - i - 1] is None:
-                    index = l - i - 1
-                    break
-            self.logs = self.logs[0:index+1]
+            for log in self.logs:
+                if log:
+                    info = self.item.get_rec_info(log['record'])
+                    info[consts.REC_STATUS] = consts.RECORD_UNCHANGED
+                    info[consts.REC_LOG_REC] = None
+            self.logs = []
 
 
 class AbstractDataSet(object):
@@ -969,6 +968,9 @@ class AbstractDataSet(object):
         self._primary_key = None
         self._deleted_flag = None
         self._record_version = None
+        self.master_field = None
+        self._master_field = None
+        self._master_field_db_field_name = None
         self._master_id = None
         self._master_rec_id = None
         self._primary_key_db_field_name = None
@@ -997,7 +999,7 @@ class AbstractDataSet(object):
         self._open_params = {}
         self._disabled_count = 0
         self._is_delta = False
-        self._keep_history = False
+        self.keep_history = False
         self.edit_lock = False
         self.select_all = False
         self.on_field_get_text = None
@@ -1055,13 +1057,43 @@ class AbstractDataSet(object):
         self.field_defs.append(field_def)
         return field_def
 
-    def get_field_defs(self):
+    def field_def_restrictions(self, field_def, role_id):
+        prohibited = False
+        read_only = False
+        if not consts.SAFE_MODE or not role_id:
+            return prohibited, read_only
+        restrictions = self.task.app.get_role_field_restrictions(role_id)
+        for index in [FIELD_ID, MASTER_FIELD, LOOKUP_FIELD, LOOKUP_FIELD1, LOOKUP_FIELD2]:
+            ID = field_def[index]
+            if ID:
+                r = restrictions.get(ID)
+                if r:
+                    if index == FIELD_ID:
+                        read_only = r['read_only']
+                    prohibited = r['prohibited']
+                    if prohibited:
+                        break
+        return prohibited, read_only
+
+    def get_field_defs(self, role_id):
         result = []
         for field_def in self.field_defs:
-            fd = field_def[:]
-            fd[DB_FIELD_NAME] = ''
-            fd[FIELD_CALC] = bool(fd[FIELD_CALC])
-            result.append(fd)
+            prohibited, read_only = self.field_def_restrictions(field_def, role_id)
+            if not prohibited:
+                fd = field_def[:]
+                if read_only:
+                    fd[FIELD_READ_ONLY] = True
+                fd[DB_FIELD_NAME] = ''
+                fd[FIELD_CALC] = bool(fd[FIELD_CALC])
+                result.append(fd)
+        return result
+
+    def get_filter_defs(self, role_id):
+        result = []
+        for filter_def in self.filter_defs:
+            prohibited = self.check_field_restricted(filter_def[FILTER_FIELD_NAME], 'prohibited', role_id)
+            if not prohibited:
+                result.append(filter_def)
         return result
 
     def add_filter_def(self, filter_name, filter_caption, field_name, filter_type,
@@ -1096,12 +1128,12 @@ class AbstractDataSet(object):
     def dataset(self, value):
         self._dataset = value
 
-    @property
-    def keep_history(self):
-        if self.master:
-            return self.prototype._keep_history
-        else:
-            return self._keep_history
+    # ~ @property
+    # ~ def keep_history(self):
+        # ~ if self.master or self.master_field:
+            # ~ return self.prototype._keep_history
+        # ~ else:
+            # ~ return self._keep_history
 
     @property
     def lock_active(self):
@@ -1115,7 +1147,7 @@ class AbstractDataSet(object):
         result.field_defs = self.field_defs
         result.filter_defs = self.filter_defs
         result._virtual_table = self._virtual_table
-        result._keep_history = self._keep_history
+        result.keep_history = self.keep_history
         result.edit_lock = self.edit_lock
         result.select_all = self.select_all
         result.visible = self.visible
@@ -1212,13 +1244,16 @@ class AbstractDataSet(object):
         for field in self.fields:
             if not hasattr(self, field.field_name):
                 setattr(self, field.field_name, field)
-        for sys_field_name in ['_primary_key', '_deleted_flag', '_master_id', '_master_rec_id', '_record_version']:
+        self._master_field = self.master_field
+        for sys_field_name in ['_primary_key', '_deleted_flag', '_master_id',
+            '_master_rec_id', '_record_version', '_master_field']:
             sys_field = getattr(self, sys_field_name)
             if sys_field and type(sys_field) == int:
                 field = self.field_by_ID(sys_field)
                 if field:
                     setattr(self, sys_field_name, field.field_name)
                     setattr(self, '%s_%s' % (sys_field_name, 'db_field_name'), field.db_field_name)
+        self.master_field = self._master_field
 
     def prepare_filters(self):
         for fltr in self.filters:
@@ -1597,8 +1632,12 @@ class AbstractDataSet(object):
         return result
 
     def __append(self, index=None):
+        if self._is_delta:
+            raise 'You can not add records to delta'
         if not self.active:
             raise DatasetException(consts.language('append_not_active') % self.item_name)
+        if self.master_field and not self.owner._primary_key_field.value:
+            raise DatasetException('Master primary key field value is not defined.')
         if self.item_state != consts.STATE_BROWSE:
             raise DatasetInvalidState(consts.language('append_not_browse') % self.item_name)
         self._do_before_scroll()
@@ -1610,6 +1649,8 @@ class AbstractDataSet(object):
             index = len(self._dataset) - 1
         self.skip(index, False)
         self.record_status = consts.RECORD_INSERTED
+        if self.master_field:
+            self._master_field_field.data = self.owner._primary_key_field.value;
         for field in self.fields:
             field.assign_default_value()
         self._modified = False
@@ -1636,6 +1677,8 @@ class AbstractDataSet(object):
         self._old_status = self.record_status
 
     def delete(self):
+        if self._is_delta:
+            raise 'You can not add records to delta'
         if not self.active:
             raise DatasetException(consts.language('delete_not_active') % self.item_name)
         if self.record_count() == 0:
@@ -1799,7 +1842,9 @@ class MasterDataSet(AbstractDataSet):
         if details:
             for detail in self.details:
                 copy_table = detail._copy(filters, details, handlers)
-                copy_table.master = result
+                if detail.master:
+                    copy_table.master = result
+                copy_table.master_field = detail.master_field
                 copy_table.expanded = detail.expanded
                 result.details.append(copy_table)
                 result.items.append(copy_table)
@@ -1911,9 +1956,16 @@ class MasterDetailDataset(MasterDataSet):
         group_by
         if not params:
             params = {}
+        if self.master_field:
+            if self.owner.rec_count and not self.owner.is_new():
+                params['__master_field'] = self.owner.field_by_name(self.owner._primary_key).value;
+            else:
+                open_empty = true;
         if self.master:
             if not self.disabled and self.master.record_count() > 0:
-                params['__master_id'] = self.master.ID
+                params['__master_id'] = None
+                if self._master_id:
+                    params['__master_id'] = self.master.ID
                 params['__master_rec_id'] = self.master.field_by_name(self.master._primary_key).value
                 records = None
                 if self.master.is_new():
@@ -2036,6 +2088,21 @@ class MasterDetailDataset(MasterDataSet):
         return super(MasterDetailDataset, self)._set_read_only(value)
 
     read_only = property (_get_read_only, _set_read_only)
+
+    def store_dataset(self, details=True):
+        result = {
+            'ID': self.ID,
+            'expanded': self.expanded,
+            'fields': [field.field_name for field in self.fields],
+            'dataset': self.dataset
+        }
+        if details:
+            result['details'] = []
+            for detail in self.details:
+                if detail.rec_count:
+                    result['details'].append(detail.store_dataset())
+        return result
+
 
 class Dataset(MasterDetailDataset):
     pass

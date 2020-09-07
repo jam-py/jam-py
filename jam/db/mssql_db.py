@@ -28,7 +28,7 @@ class MSSqlDB(AbstractDB):
         params['name'] = 'MSSQL'
         params['lib'] = ['pymssql', 'pyodbc']
         if lib == 2:
-            params['dns'] = True
+            params['dsn'] = True
             params['database'] = False
         else:
             params['server'] = True
@@ -46,7 +46,7 @@ class MSSqlDB(AbstractDB):
                 pass
             else:
                 sql += '%s."%s", ' % (alias, field.db_field_name)
-        if query['__expanded']:
+        if query.expanded:
             for field in fields:
                 if field.lookup_item:
                     sql += '%s_LOOKUP, ' % field.db_field_name
@@ -54,8 +54,8 @@ class MSSqlDB(AbstractDB):
         return sql
 
     def get_select(self, query, fields_clause, from_clause, where_clause, group_clause, order_clause, fields):
-        offset = query['__offset']
-        limit = query['__limit']
+        offset = query.offset
+        limit = query.limit
         if limit:
             end = ''.join([from_clause, where_clause, group_clause])
             offset += 1
@@ -103,10 +103,13 @@ class MSSqlDB(AbstractDB):
         lines = []
         primary_key = None
         for field in fields:
+            default_text = self.default_text(field)
             line = '"%s" %s' % (field.field_name, self.FIELD_TYPES[field.data_type])
             if field.size != 0 and field.data_type == consts.TEXT:
                 line += '(%d)' % field.size
-            elif field.not_null:
+            if not default_text is None:
+                line += ' CONSTRAINT "%s" DEFAULT %s' % (field.field_name + '_DEFAULT_CONSTRAINT', default_text)
+            if field.not_null:
                 line += ' NOT NULL'
             if field.primary_key:
                 line += ' IDENTITY(1, 1)'
@@ -121,6 +124,56 @@ class MSSqlDB(AbstractDB):
     def drop_table(self, table_name, gen_name):
         return 'DROP TABLE "%s"' % table_name
 
+    def add_field(self, table_name, field):
+        default_text = self.default_text(field)
+        line = 'ALTER TABLE "%s" ADD "%s" %s' % \
+                 (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
+        if field.size:
+            line += '(%d)' % field.size
+        if not default_text is None:
+            line += ' CONSTRAINT "%s" DEFAULT %s' % (field.field_name + '_DEFAULT_CONSTRAINT', default_value)
+        if field.not_null:
+            line += ' NOT NULL'
+        return line
+
+    def del_field(self, table_name, field):
+        return 'ALTER TABLE "%s" DROP COLUMN "%s"' % (table_name, field.field_name)
+
+    def change_field(self, table_name, old_field, new_field):
+        if old_field.field_name != new_field.field_name:
+            raise Exception("Changing field name is prohibited: field %s" % old_field.field_name)
+        result = []
+        default_value = self.default_value(new_field)
+        default_text = self.default_text(new_field)
+        old_default_text = self.default_text(old_field)
+        if old_field.not_null != new_field.not_null:
+            if not default_text is None and default_value and new_field.not_null:
+                line = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
+                    (table_name, old_field.field_name, default_value, old_field.field_name)
+                result.append(line)
+        field_info = self.get_field_info(old_field.field_name, table_name)
+        if old_field.not_null != new_field.not_null or old_field.size != new_field.size:
+            line = 'ALTER TABLE "%s" ALTER COLUMN "%s" %s' % \
+                 (table_name, new_field.field_name, field_info['data_type'])
+            size = field_info['size']
+            if size and size > 0 and field_info['data_type'].upper() in ['CHAR', 'VARCHAR', 'NVARCHAR']:
+                if new_field.size > size:
+                    size = new_field.size
+                line += '(%d)' % size
+            if new_field.not_null:
+                line += ' NOT NULL'
+            else:
+                line += ' NULL'
+            result.append(line)
+        if old_field.default_value != new_field.default_value:
+            if not old_default_text is None:
+                line = 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % \
+                    (table_name, field.field_name + '_DEFAULT_CONSTRAINT')
+            if not default_text is None:
+                line = 'ALTER TABLE "%s" ADD CONSTRAINT "%s" DEFAULT %s' % \
+                    (table_name, field.field_name + '_DEFAULT_CONSTRAINT', default_text)
+        return result
+
     def create_index(self, index_name, table_name, unique, fields, desc):
         return 'CREATE %s INDEX "%s" ON "%s" (%s)' % (unique, index_name, table_name, fields)
 
@@ -133,48 +186,6 @@ class MSSqlDB(AbstractDB):
 
     def drop_foreign_index(self, table_name, index_name):
         return 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % (table_name, index_name)
-
-    def add_field(self, table_name, field):
-        result = []
-        line = 'ALTER TABLE "%s" ADD "%s" %s' % \
-                 (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
-        if field.size:
-            line += '(%d)' % field.size
-        default_value = self.default_value(field)
-        if default_value and field.not_null:
-            line += ' NOT NULL'
-            line += ' CONSTRAINT "%s" DEFAULT %s' % (field.field_name + '_CONSTRAINT', default_value)
-        result.append(line)
-        if default_value and field.not_null:
-            line = 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % \
-                (table_name, field.field_name + '_CONSTRAINT')
-            result.append(line)
-        return result
-
-    def del_field(self, table_name, field):
-        return 'ALTER TABLE "%s" DROP COLUMN "%s"' % (table_name, field.field_name)
-
-    def change_field(self, table_name, old_field, new_field):
-        if old_field.field_name != new_field.field_name:
-            raise Exception("Changing field name is prohibited: field %s" % old_field.field_name)
-        result = []
-        default_value = self.default_value(new_field)
-        if old_field.not_null != new_field.not_null:
-            if default_value and new_field.not_null:
-                line = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
-                    (table_name, old_field.field_name, default_value, old_field.field_name)
-                result.append(line)
-        if old_field.not_null != new_field.not_null or old_field.size != new_field.size:
-            line = 'ALTER TABLE "%s" ALTER COLUMN "%s" %s' % \
-                 (table_name, new_field.field_name, self.FIELD_TYPES[new_field.data_type])
-            if new_field.size:
-                line += '(%d)' % new_field.size
-            if new_field.not_null:
-                line += ' NOT NULL'
-            else:
-                line += ' NULL'
-            result.append(line)
-        return result
 
     def before_insert(self, cursor, pk_field):
         if pk_field and pk_field.data:
@@ -208,6 +219,7 @@ class MSSqlDB(AbstractDB):
                     DATA_TYPE,
                     CHARACTER_MAXIMUM_LENGTH,
                     COLUMN_DEFAULT,
+                    IS_NULLABLE,
                     COLUMNPROPERTY(object_id(TABLE_SCHEMA+'.'+TABLE_NAME), COLUMN_NAME, 'IsIdentity')
                 FROM
                     INFORMATION_SCHEMA.COLUMNS
@@ -217,26 +229,13 @@ class MSSqlDB(AbstractDB):
         cursor.execute(sql % (table_name))
         result = cursor.fetchall()
         fields = []
-        for column_name, data_type, character_maximum_length, column_default, itent in result:
-            #~ data_type = data.lower()
-            #~ if data_type in ('char', 'varchar', 'nchar', 'nvarchar'):
-                #~ data_type = nvarchar
-            #~ if data_type in (text, ntext):
-                #~ data_type = ntext
-            #~ if data_type in (binary, varbinary, image):
-                #~ data_type = image
-            #~ if data_type in (bit, tinyint, smallint, int):
-                #~ data_type = int
-            #~ if data_type in (bigint, decimal, dec, numeric, float, real, smallmoney, money):
-                #~ data_type = numeric
-            #~ if data_type in (datetime, datetime2, smalldatetime, datetimeoffset, time):
-                #~ data_type = datetime
+        for column_name, data_type, character_maximum_length, column_default, is_nullable, itent in result:
             size = 0
             if character_maximum_length:
                 size = character_maximum_length
             default_value = None
             if column_default:
-                default_value = column_default[1 : -1]  ## !!! NOTE -- THIS SHOULD BE DEBUG
+                default_value = column_default
             pk = False
             if itent == 1:
                 pk = True
@@ -245,7 +244,8 @@ class MSSqlDB(AbstractDB):
                 'data_type': data_type.upper(),
                 'size': size,
                 'default_value': default_value,
-                'pk': pk
+                'pk': pk,
+                'not_null': is_nullable == 'NO'
             })
         return {'fields': fields, 'self.FIELD_TYPES': self.FIELD_TYPES}
 

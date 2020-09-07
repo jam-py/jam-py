@@ -17,7 +17,7 @@ class FieldInfo(object):
         self.field_name = field.f_db_field_name.value
         self.data_type = field.f_data_type.value
         self.size = field.f_size.value
-        self.default_value = field.f_default_value.value
+        self.default_value = field.f_default_value.data
         self.not_null = field.f_not_null.value
         self.master_field = field.f_master_field.value
         self.calc_item = field.f_calc_item.value
@@ -51,13 +51,15 @@ def init_admin(task):
     check_version(task)
     langs.update_langs(task)
     create_items(task)
-    update_admin_fields(task)
+    update_admin_db(task)
     consts.read_settings()
     consts.MAINTENANCE = False
     consts.write_settings(['MAINTENANCE'])
     consts.read_language()
     from .builder import on_created
     on_created(task)
+    from .upgrade import version6_upgrade
+    version6_upgrade(task)
 
 def create_admin(app):
     if os.path.exists(os.path.join(app.work_dir, '_admin.sqlite')):
@@ -98,10 +100,7 @@ def get_item_fields(item, fields, delta_fields=None):
 
     task = item.task
     result = []
-    parent_fields = task.sys_fields.copy()
-    parent_fields.set_where(owner_rec_id=fields.owner.parent.value)
-    parent_fields.open()
-    result = fields_info(parent_fields) + fields_info(fields)
+    result = fields_info(fields)
     if delta_fields:
         for field in delta_fields:
             if not field.f_master_field.value and not field.f_calc_item.value:
@@ -120,7 +119,7 @@ def get_item_fields(item, fields, delta_fields=None):
                         info.field_name = field.f_db_field_name.value
                         info.data_type = field.f_data_type.value
                         info.size = field.f_size.value
-                        info.default_value = field.f_default_value.value
+                        info.default_value = field.f_default_value.data
                         info.not_null = field.f_not_null.value
                     else:
                         info = field_info(field)
@@ -228,10 +227,10 @@ def recreate_table(delta, old_fields, new_fields, comp=None, fk_delta=None):
         new_field_list += nn_new_field_list
         cursor.execute('INSERT INTO "%s" (%s) SELECT %s FROM Temp' % (table_name, ', '.join(new_field_list), ', '.join(old_field_list)))
     except Exception as e:
-        cursor.execute('DROP TABLE "%s"' % table_name)
+        delta.log.exception(error_message(e))
+        cursor.execute('DROP TABLE IF EXISTS "%s"' % table_name)
         cursor.execute('ALTER TABLE Temp RENAME TO "%s"' % table_name)
         cursor.execute('PRAGMA foreign_keys=on')
-        delta.log.exception(error_message(e))
         raise
     cursor.execute('DROP TABLE Temp')
     cursor.execute('PRAGMA foreign_keys=on')
@@ -249,9 +248,9 @@ def change_item_query(delta, old_fields, new_fields):
                     return True
                 elif old_field.not_null != new_field.not_null:
                     return True
+                elif db.default_text(old_field) != db.default_text(new_field):
+                    return True
             elif old_field and not new_field:
-                return True
-            elif not old_field and new_field and new_field.not_null:
                 return True
 
     db = delta.task.task_db_module
@@ -279,6 +278,7 @@ def change_item_query(delta, old_fields, new_fields):
             if old_field and new_field:
                 if (old_field.field_name != new_field.field_name) or \
                     (db.FIELD_TYPES[old_field.data_type] != db.FIELD_TYPES[new_field.data_type]) or \
+                    (old_field.not_null != new_field.not_null) or \
                     (old_field.default_value != new_field.default_value) or \
                     (old_field.size != new_field.size):
                     sql = db.change_field(table_name, old_field, new_field)
@@ -418,7 +418,7 @@ def indices_delete_query(delta, table_name=None, manual_update=False):
             else:
                 return db.drop_index(table_name, index_name)
 
-def update_admin_fields(task):
+def update_admin_db(task):
 
     def do_updates(con, field, item_name):
         if item_name == 'sys_privileges' and field.field_name.lower() == 'owner_item':
@@ -477,30 +477,39 @@ def update_admin_fields(task):
     finally:
         con.close()
 
-def get_privileges(task, role_id):
-    result = {}
-    privliges = task.sys_privileges.copy()
-    privliges.set_where(owner_rec_id=role_id)
-    privliges.open()
-    for p in privliges:
-        result[p.item_id.value] = \
-            {
-            'can_view': p.f_can_view.value,
-            'can_create': p.f_can_create.value,
-            'can_edit': p.f_can_edit.value,
-            'can_delete': p.f_can_delete.value
-            }
-    return result
-
-def get_roles(task):
-    privileges = {}
-    roles = []
+def get_privileges(task):
+    priv = {}
     r = task.sys_roles.copy()
     r.open()
+    privliges = task.sys_privileges.copy()
+    privliges.open()
     for r in r:
-        privileges[r.id.value] = get_privileges(task, r.id.value)
-        roles.append([r.id.value, r.f_name.value])
-    return roles, privileges
+        priv[r.id.value] = {}
+    for p in privliges:
+        priv[p.owner_rec_id.value][p.item_id.data] = \
+            {
+                'can_view': p.f_can_view.value,
+                'can_create': p.f_can_create.value,
+                'can_edit': p.f_can_edit.value,
+                'can_delete': p.f_can_delete.value
+            }
+    return priv
+
+def get_field_restrictions(task):
+    result = {}
+    r = task.sys_roles.copy()
+    r.open()
+    field_restrictions = task.sys_field_privileges.copy()
+    field_restrictions.open()
+    for r in r:
+        result[r.id.value] = {}
+    for p in field_restrictions:
+        result[p.owner_rec_id.value][p.field.data] = \
+            {
+                'prohibited': p.f_prohibited.value,
+                'read_only': p.f_read_only.value
+            }
+    return result
 
 def login_user(task, log, password, admin, ip=None, session_uuid=None):
     user_id = None

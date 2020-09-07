@@ -110,7 +110,7 @@ function Events1() { // demo
 	
 		task.view_form_created(item);
 		
-		if (!item.master && item.owner.on_view_form_created) {
+		if (!(item.master || item.master_field) && item.owner.on_view_form_created) {
 			item.owner.on_view_form_created(item);
 		}
 	
@@ -143,7 +143,7 @@ function Events1() { // demo
 	function on_edit_form_created(item) {
 		item.edit_options.inputs_container_class = 'edit-body';
 		item.edit_options.detail_container_class = 'edit-detail';
-		
+	
 		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
 		item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
 		if (!item.is_new() && !item.can_modify) {
@@ -152,7 +152,7 @@ function Events1() { // demo
 		
 		task.edit_form_created(item);
 		
-		if (!item.master && item.owner.on_edit_form_created) {
+		if (!(item.master || item.master_field) && item.owner.on_edit_form_created) {
 			item.owner.on_edit_form_created(item);
 		}
 	
@@ -334,16 +334,9 @@ function Events10() { // demo.catalogs.customers
 		task.customers_report.customers.value = item.selections;
 		task.customers_report.print(false);
 	}
-	
-	
-	
-	function on_edit_form_shown(item) {
-		item.edit_form.find('label.photo').remove()
-	}
 	this.on_view_form_created = on_view_form_created;
 	this.send_email = send_email;
 	this.print = print;
-	this.on_edit_form_shown = on_edit_form_shown;
 }
 
 task.events.events10 = new Events10();
@@ -352,57 +345,11 @@ function Events15() { // demo.catalogs.tracks
 
 	function on_view_form_created(item) {
 		if (!item.lookup_field) {
-			item.table_options.height -= 200;
-			item.invoice_table = task.invoice_table.copy();
-			item.invoice_table.paginate = false;
-			item.invoice_table.create_table(item.view_form.find('.view-detail'), {
-				height: 200,
-				summary_fields: ['date', 'total'],
-				on_dblclick: function() {
-					show_invoice(item.invoice_table);
-				}
-			});
-			item.alert('Double-click the record in the bottom table to see the invoice in which the track was sold.');
-			
 			item.table_options.multiselect = true;
 			item.add_view_button('Set media type').click(function() {
 				set_media_type(item);
 			});   
 		}
-	}
-	
-	var scroll_timeout;
-	
-	function on_after_scroll(item) {
-		if (!item.lookup_field && item.view_form.length) {
-			clearTimeout(scroll_timeout);
-			scroll_timeout = setTimeout(
-				function() {
-					if (item.rec_count) {
-						item.invoice_table.set_where({track: item.id.value});
-						item.invoice_table.set_order_by(['-invoice_date']);
-						item.invoice_table.open(true);
-					}
-					else {
-						item.invoice_table.close();
-					}
-				},
-				100
-			);
-		}
-	}
-	
-	function show_invoice(invoice_table) {
-		var invoices = task.invoices.copy();
-		invoices.set_where({id: invoice_table.master_rec_id.value});
-		invoices.open(function(i) {
-			i.edit_options.modeless = false;
-			i.can_modify = false;
-			i.invoice_table.on_after_open = function(t) {
-				t.locate('id', invoice_table.id.value);
-			};
-			i.edit_record();
-		});
 	}
 	
 	function set_media_type(item) {
@@ -447,38 +394,8 @@ function Events15() { // demo.catalogs.tracks
 			copy.append_record();
 		}
 	}
-	
-	function check_field_value(field) {
-		if (field.field_name === 'album' && !field.value) {
-			return 'Album must be specified';
-		}
-		if (field.field_name === 'unitprice' && field.value <= 0) {
-			return 'Unit price must be greater that 0';
-		}
-	}
-	
-	function on_before_post(item) {
-		item.each_field( function(field) {
-			var err = check_field_value(field);
-			if (err) {
-				item.edit_form.find('input.' + field.field_name).focus();
-				throw err;
-			}
-		});
-	}
-	
-	function on_field_validate(field) {
-		 if (field.field_name === 'unitprice' && field.value <= 0) {
-			return 'Unit price must be greater that 0';
-		}
-	}
 	this.on_view_form_created = on_view_form_created;
-	this.on_after_scroll = on_after_scroll;
-	this.show_invoice = show_invoice;
 	this.set_media_type = set_media_type;
-	this.check_field_value = check_field_value;
-	this.on_before_post = on_before_post;
-	this.on_field_validate = on_field_validate;
 }
 
 task.events.events15 = new Events15();
@@ -500,76 +417,65 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_field_changed(field, lookup_item) {
-		var item = field.owner,
-			rec;
 		if (field.field_name === 'taxrate') {
-			rec = item.invoice_table.rec_no;
-			item.invoice_table.disable_controls();
-			try {
-				item.invoice_table.each(function(t) {
-					t.edit();
-					t.calc(t);
-					t.post();
-				});
-			}
-			finally {
-				item.invoice_table.rec_no = rec;
-				item.invoice_table.enable_controls();
-			}
+			field.owner.apply(function(error, dataset) {
+				if (error) {
+					item.alert_error(error);   
+				}
+				else {
+					field.owner.update_dataset(dataset);
+				}
+				field.owner.edit();
+			});
 		}
 	}
 	
 	function on_detail_changed(item, detail) {
-		var fields = [
-			{"total": "total"}, 
-			{"tax": "tax"}, 
-			{"subtotal": "amount"}
-		];  
-		item.calc_summary(detail, fields);
+		detail.apply(function(error, dataset) {
+			if (error) {
+				item.alert_error(error);   
+			}
+			else {
+				item.update_dataset(dataset);
+			}
+			detail.edit();
+		});
 	}
 	
-	function on_before_post(item) {
-		var rec = item.invoice_table.rec_no;
-		item.invoice_table.disable_controls();
-		try {
-			item.invoice_table.each(function(t) {
-				t.edit();
-				t.customer.value = item.customer.value;
-				t.post();
-			});	
+	function on_after_scroll(item) {
+		if (item.view_form && item.rec_count) {
+			item.view_form.find("#delete-btn").prop("disabled", item.paid.value);
 		}
-		finally {
-			item.invoice_table.rec_no = rec;
-			item.invoice_table.enable_controls();
-		}
+	}
+	
+	function on_edit_form_created(item) {
+		item.read_only = item.paid.value;
+	}
+	
+	function on_view_form_created(item) {
+		var btn = item.add_view_button('Set invoice paid', {type: 'primary', btn_id: 'paid-btn'});
+		btn.click(function() {
+			item.question('Was the invoice paid?', function () {
+				item.edit();
+				item.paid.value = true;
+				item.post();
+				item.apply(true);
+			});
+		});
 	}
 	this.on_field_get_text = on_field_get_text;
 	this.on_field_get_html = on_field_get_html;
 	this.on_field_changed = on_field_changed;
 	this.on_detail_changed = on_detail_changed;
-	this.on_before_post = on_before_post;
+	this.on_after_scroll = on_after_scroll;
+	this.on_edit_form_created = on_edit_form_created;
+	this.on_view_form_created = on_view_form_created;
 }
 
 task.events.events16 = new Events16();
 
-function Events18() { // demo.journals.invoices.invoice_table 
+function Events17() { // demo.details.invoice_table 
 
-	function calc(item) {
-		item.amount.value = item.round(item.quantity.value * item.unitprice.value, 2);
-		item.tax.value = item.round(item.amount.value * item.owner.taxrate.value / 100, 2);
-		item.total.value = item.amount.value + item.tax.value;
-	}
-	
-	function on_field_changed(field, lookup_item) {
-		var item = field.owner;
-		if (field.field_name === 'track' && lookup_item) {
-			item.unitprice.value = lookup_item.unitprice.value;
-		}
-		else if (field.field_name === 'quantity' || field.field_name === 'unitprice') {
-			calc(item);
-		}
-	}
-	
 	function on_view_form_created(item) {
 		var btn = item.add_view_button('Select', {type: 'primary', btn_id: 'select-btn'});
 		btn.click(function() {
@@ -578,16 +484,25 @@ function Events18() { // demo.journals.invoices.invoice_table
 		});
 	}
 	
-	function on_after_append(item) {
-		item.invoice_date.value = new Date();
+	function on_field_changed(field, lookup_item) {
+		let item = field.owner,
+			invoice = item.owner;
+		if (lookup_item) {
+			item.unitprice.value = lookup_item.unitprice.value;
+		}
+		if (field.field_name === 'quantity' || field.field_name === 'unitprice') {
+			item.amount.value = item.quantity.value * item.unitprice.value;
+			item.tax.value = item.amount.value * invoice.taxrate.value / 100;
+			item.total.value = item.amount.value + item.tax.value;
+			item.customer.value = invoice.customer.value;
+			item.invoice_date.value = invoice.invoice_date.value;
+		}
 	}
-	this.calc = calc;
-	this.on_field_changed = on_field_changed;
 	this.on_view_form_created = on_view_form_created;
-	this.on_after_append = on_after_append;
+	this.on_field_changed = on_field_changed;
 }
 
-task.events.events18 = new Events18();
+task.events.events17 = new Events17();
 
 function Events19() { // demo.reports.invoice 
 

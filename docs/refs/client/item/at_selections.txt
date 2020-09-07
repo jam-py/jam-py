@@ -21,7 +21,7 @@ When a **Multiple selection** check box is checked on the
 multiselect attribute of the
 :doc:`table_options <at_table_options>` is set programmatically,
 the check box in the leftmost column of the table appears and
-each time a user clicks on the check box, the ``selections`` attrubute changes.
+each time a user clicks on the check box, the ``selections`` attribute changes.
 
 It can also be changed programmatically by using ``add`` or ``remove`` methods
 or assigning an array.

@@ -33,18 +33,22 @@ class PostgresDB(AbstractDB):
         params['encoding'] = True
         params['host'] = True
         params['port'] = True
+        params['dsn'] = True
         return params
 
     def connect(self, db_info):
-        return psycopg2.connect(dbname=db_info.database, user=db_info.user,
-            password=db_info.password, host=db_info.host, port=db_info.port,
-            client_encoding=db_info.encoding)
+        if db_info.dsn:
+            return psycopg2.connect(dsn=db_info.dsn)
+        else:
+            return psycopg2.connect(dbname=db_info.database, user=db_info.user,
+                password=db_info.password, host=db_info.host, port=db_info.port,
+                client_encoding=db_info.encoding)
 
     def get_select(self, query, fields_clause, from_clause, where_clause, group_clause, order_clause, fields):
         start = fields_clause
         end = ''.join([from_clause, where_clause, group_clause, order_clause])
-        offset = query['__offset']
-        limit = query['__limit']
+        offset = query.offset
+        limit = query.limit
         result = 'SELECT %s FROM %s' % (start, end)
         if limit:
             result += ' LIMIT %d OFFSET %d' % (limit, offset)
@@ -63,16 +67,20 @@ class PostgresDB(AbstractDB):
         sql = 'CREATE TABLE "%s"\n(\n' % table_name
         lines = []
         for field in fields:
-            field_type = self.FIELD_TYPES[field.data_type]
+            default_text = self.default_text(field)
             if field.primary_key:
-                primary_key = field.field_name
                 field_type = 'SERIAL PRIMARY KEY'
+            else:
+                field_type = self.FIELD_TYPES[field.data_type]
             line = '"%s" %s' % (field.field_name, field_type)
             if field.not_null:
                 line += ' NOT NULL'
+            if not default_text is None:
+                line += ' DEFAULT %s' % default_text
             lines.append(line)
         sql += ',\n'.join(lines)
         sql += ')\n'
+        print sql
         return sql
 
     def drop_table(self, table_name, gen_name):
@@ -82,30 +90,15 @@ class PostgresDB(AbstractDB):
             result.append('DROP SEQUENCE IF EXISTS "%s"' % gen_name)
         return result
 
-    def create_index(self, index_name, table_name, unique, fields, desc):
-        return 'CREATE %s INDEX "%s" ON "%s" (%s)' % (unique, index_name, table_name, fields)
-
-    def create_foreign_index(self, table_name, index_name, key, ref, primary_key):
-        return 'ALTER TABLE "%s" ADD CONSTRAINT "%s" FOREIGN KEY ("%s") REFERENCES "%s"("%s") MATCH SIMPLE' % \
-            (table_name, index_name, key, ref, primary_key)
-
-    def drop_foreign_index(self, table_name, index_name):
-        return 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % (table_name, index_name)
-
     def add_field(self, table_name, field):
-        result = []
+        default_text = self.default_text(field)
         line = 'ALTER TABLE "%s" ADD COLUMN "%s" %s' % \
             (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
-        default_value = self.default_value(field)
-        if default_value and field.not_null:
-            line += ' DEFAULT %s' % default_value
+        if field.not_null:
             line += ' NOT NULL'
-        result.append(line)
-        if default_value and field.not_null:
-            line = 'ALTER TABLE "%s" ALTER "%s" DROP DEFAULT' % \
-                (table_name, field.field_name)
-            result.append(line)
-        return result
+        if not default_text is None:
+            line += ' DEFAULT %s' % default_text
+        return line
 
     def del_field(self, table_name, field):
         return 'ALTER TABLE "%s" DROP COLUMN "%s"' % (table_name, field.field_name)
@@ -113,14 +106,22 @@ class PostgresDB(AbstractDB):
     def change_field(self, table_name, old_field, new_field):
         result = []
         default_value = self.default_value(new_field)
-        if old_field.not_null != new_field.not_null:
+        default_text = self.default_text(new_field)
+        if not default_text is None and old_field.not_null != new_field.not_null:
             if default_value and new_field.not_null:
                 line = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
                     (table_name, old_field.field_name, default_value, old_field.field_name)
                 result.append(line)
+        field_info = self.get_field_info(old_field.field_name, table_name)
         if old_field.field_name != new_field.field_name:
             result.append('ALTER TABLE "%s" RENAME COLUMN  "%s" TO "%s"' % \
                 (table_name, old_field.field_name, new_field.field_name))
+        if old_field.size != new_field.size:
+            if field_info['data_type'].upper() in ['CHARACTER VARYING', 'VARCHAR', 'CHARACTER', 'CHAR'] and \
+                field_info['size'] < new_field.size:
+                line = 'ALTER TABLE "%s" ALTER COLUMN "%s" TYPE %s(%d) ' % \
+                    (table_name, new_field.field_name, field_info['data_type'], new_field.size)
+                result.append(line)
         if old_field.not_null != new_field.not_null:
             if new_field.not_null:
                 line = 'ALTER TABLE "%s" ALTER "%s" SET NOT NULL' % \
@@ -129,7 +130,28 @@ class PostgresDB(AbstractDB):
                 line = 'ALTER TABLE "%s" ALTER "%s" DROP NOT NULL' % \
                     (table_name, new_field.field_name)
             result.append(line)
+        if old_field.default_value != new_field.default_value:
+            if not default_text is None:
+                line = 'ALTER TABLE "%s" ALTER "%s" SET DEFAULT %s' % \
+                    (table_name, new_field.field_name, default_text)
+            else:
+                line = 'ALTER TABLE "%s" ALTER "%s" DROP DEFAULT' % \
+                    (table_name, new_field.field_name)
+            result.append(line)
         return result
+
+    def create_index(self, index_name, table_name, unique, fields, desc):
+        return 'CREATE %s INDEX "%s" ON "%s" (%s)' % (unique, index_name, table_name, fields)
+
+    def drop_index(self, table_name, index_name):
+        return 'DROP INDEX "%s"' % index_name
+
+    def create_foreign_index(self, table_name, index_name, key, ref, primary_key):
+        return 'ALTER TABLE "%s" ADD CONSTRAINT "%s" FOREIGN KEY ("%s") REFERENCES "%s"("%s") MATCH SIMPLE' % \
+            (table_name, index_name, key, ref, primary_key)
+
+    def drop_foreign_index(self, table_name, index_name):
+        return 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % (table_name, index_name)
 
     def insert_query(self, pk_field):
         return 'INSERT INTO "%s" (%s) VALUES (%s) RETURNING ' + pk_field.db_field_name
@@ -161,14 +183,12 @@ class PostgresDB(AbstractDB):
 
     def get_table_info(self, connection, table_name, db_name):
         cursor = connection.cursor()
-        sql = "select column_name, data_type, character_maximum_length, column_default from information_schema.columns where table_name='%s'" % table_name
+        sql = "select column_name, data_type, character_maximum_length, column_default, is_nullable from information_schema.columns where table_name='%s'" % table_name
         cursor.execute(sql)
         result = cursor.fetchall()
         fields = []
-        for column_name, data_type, character_maximum_length, column_default in result:
+        for column_name, data_type, character_maximum_length, column_default, is_nullable in result:
             try:
-                if data_type == 'character varying':
-                    data_type = 'varchar'
                 size = 0
                 if character_maximum_length:
                     size = character_maximum_length
@@ -185,7 +205,8 @@ class PostgresDB(AbstractDB):
                 'data_type': data_type.upper(),
                 'size': size,
                 'default_value': column_default,
-                'pk': pk
+                'pk': pk,
+                'not_null': not is_nullable
             })
         return {'fields': fields, 'field_types': self.FIELD_TYPES}
 

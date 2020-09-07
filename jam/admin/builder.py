@@ -97,10 +97,10 @@ def init_task_attr(task):
     tasks = task.sys_tasks.copy()
     tasks.open()
     task.task_db_type = tasks.f_db_type.value
-    task.task_db_info = DBInfo(tasks.f_dns.value, tasks.f_server.value, tasks.f_python_library.value,
+    task.task_db_info = DBInfo(tasks.f_dsn.value, tasks.f_server.value, tasks.f_python_library.value,
         tasks.f_alias.value, tasks.f_login.value, tasks.f_password.value,
         tasks.f_host.value, tasks.f_port.value, tasks.f_encoding.value)
-    task.task_db_module = get_database(task.task_db_type, task.task_db_info.lib)
+    task.task_db_module = get_database(task.app, task.task_db_type, task.task_db_info.lib)
 
 def on_created(task):
     save_caption_keys(task)
@@ -137,76 +137,16 @@ def execute_db(task, task_id, sql, params=None):
         con.close()
     return error
 
-def get_privileges(task, role_id):
-    result = {}
-    privliges = task.sys_privileges.copy()
-    privliges.set_where(owner_rec_id=role_id)
-    privliges.open()
-    for p in privliges:
-        result[p.item_id.value] = \
-            {
-            'can_view': p.f_can_view.value,
-            'can_create': p.f_can_create.value,
-            'can_edit': p.f_can_edit.value,
-            'can_delete': p.f_can_delete.value
-            }
-    return result
-
-def get_roles(task):
-    privileges = {}
-    roles = []
-    r = task.sys_roles.copy()
-    r.open()
-    for r in r:
-        privileges[r.id.value] = get_privileges(task, r.id.value)
-        roles.append([r.id.value, r.f_name.value])
-    return roles, privileges
-
-def login_user(task, log, password, taskin, ip=None, session_uuid=None):
-    user_id = None
-    user_info = {}
-    if consts.SAFE_MODE:
-        users = task.sys_users.copy()
-        users.set_where(f_password=password)
-        users.open()
-        for u in users:
-            if u.f_login.value.strip() == log.strip() and u.f_password.value == password:
-                if not admin or u.f_admin.value == admin:
-                    user_id = u.id.value
-                    user_info = {
-                        'user_id': u.id.value,
-                        'role_id': u.f_role.value,
-                        'role_name': u.f_role.display_text,
-                        'user_name': u.f_name.value,
-                        'admin': u.f_admin.value
-                    }
-                    if ip or session_uuid:
-                        task.execute("UPDATE SYS_USERS SET F_IP='%s', F_UUID='%s' WHERE ID=%s" % (ip, session_uuid, u.id.value))
-                    break
-    return user_info
-
-def user_valid_ip(task, user_id, ip):
-    res = task.select("SELECT F_IP FROM SYS_USERS WHERE ID=%s" % user_id)
-    if res and res[0][0] == ip:
-        return True
-    return False
-
-def user_valid_uuid(task, user_id, session_uuid):
-    res = task.select("SELECT F_UUID FROM SYS_USERS WHERE ID=%s" % user_id)
-    if res and res[0][0] == session_uuid:
-        return True
-    return False
-
 ###############################################################################
 #                                 task                                        #
 ###############################################################################
 
-def server_check_connection(task, db_type, database, user, password, host, port, encoding, server, lib, dns):
+def server_check_connection(task, db_type, database, user, password, host, port, encoding, server, lib, dsn):
     error = ''
     if db_type:
         try:
-            db_info = DBInfo(dns, server, lib, database, user, password, host, port, encoding)
-            db = get_database(db_type, db_info.lib)
+            db_info = DBInfo(dsn, server, lib, database, user, password, host, port, encoding)
+            db = get_database(task.app, db_type, db_info.lib)
             connection = db.connect(db_info)
             if connection:
                 connection.close()
@@ -227,6 +167,12 @@ def server_set_task_name(task, f_name, f_item_name):
     items.post()
     items.apply()
     # ~ task.app.task = None
+
+def server_set_production(task):
+    task.execute("UPDATE SYS_PARAMS SET F_PRODUCTION=0")
+    with open(os.path.join(task.work_dir, 'builder.html'), 'wb') as f:
+        text = 'Application Builder production mode'
+        f.write(text)
 
 def server_set_project_langage(task, lang):
     consts.LANGUAGE = lang
@@ -271,6 +217,7 @@ def server_update_has_children(task):
     items = task.sys_items.copy(handlers=False)
     items.open()
     for it in items:
+        # if not it.f_master_field.value:
         has_children[it.parent.value] = True
         if it.type_id.value in (consts.ROOT_TYPE,
             consts.USERS_TYPE, consts.ROLES_TYPE,
@@ -418,7 +365,7 @@ def server_web_print_code(task, task_id):
             add_code(items, consts.SERVER_MODULE)
     return result
 
-def update_events_code(task):
+def update_events_code(task, loading=None):
 
     def process_events(code, js_funcs, ID, path):
         script = ''
@@ -516,13 +463,8 @@ def update_events_code(task):
     for key, value in iteritems(js_filenames):
         sql.append("UPDATE %s SET F_JS_FILENAME = '%s' WHERE ID = %s" % (it.table_name, value, key))
     it.task.execute(sql)
-    if it.task.app.task:
+    if not loading and it.task.app.task:
         it.task.app.task.all(update_task)
-    try:
-        from utils.js_code import update_js
-        update_js(task)
-    except:
-        pass
 
 def get_minified_name(file_name):
     result = file_name
@@ -763,7 +705,7 @@ def server_save_file(task, file_name, code):
     return result
 
 def server_get_db_params(task, db_type, lib):
-    db = get_database(db_type, None)
+    db = get_database(task.app, db_type, None)
     result = db.get_params(lib)
     return result
 
@@ -864,10 +806,10 @@ def server_lang_modified(task):
     consts.read_language()
     change_language(task)
 
-def update_version(task, version):
+def update_version(task):
     try:
         from utils.update_version import update
-        update(task, version)
+        update(task)
     except:
         pass
 
@@ -892,7 +834,7 @@ def do_on_apply_param_changes(item, delta, params, connection):
     task.app.save_build_id()
 
     if version != consts.VERSION:
-        update_version(task, consts.VERSION)
+        update_version(task)
     if language != consts.LANGUAGE:
         server_lang_modified(task)
     if theme != consts.THEME or small_font != consts.SMALL_FONT:
@@ -933,7 +875,7 @@ def server_get_table_names(task):
     try:
         tables = task.task_db_module.get_table_names(connection)
         tables = [t.strip() for t in tables]
-        ex_tables = task.select('SELECT F_TABLE_NAME FROM SYS_ITEMS')
+        ex_tables = task.select('SELECT F_TABLE_NAME FROM SYS_ITEMS WHERE DELETED=0')
         ex_tables = [t[0].upper() for t in ex_tables if t[0]]
         result = [t for t in tables if not t.upper() in ex_tables]
         result.sort()
@@ -1209,6 +1151,27 @@ def init_priviliges(item, item_id):
         priv.post()
     priv.apply()
 
+def delete_priviliges(item, item_id):
+    item.task.execute('DELETE FROM SYS_PRIVILEGES WHERE ITEM_ID = %s' % item_id)    
+    item.task.execute('DELETE FROM SYS_FIELD_PRIVILEGES WHERE ITEM = %s' % item_id)
+
+def update_priviliges(item, item_id):
+    fields = item.task.sys_fields.copy(handlers=False)
+    fields.set_where(owner_rec_id=item_id)
+    fields.open()
+    ids = {}
+    for f in fields:
+        ids[f.id.value] = True
+    p = item.task.sys_field_privileges.copy(handlers=False)
+    p.set_where(item=item_id)
+    p.open()
+    while not p.eof():
+        if ids.get(p.field.value) is None:
+            p.delete()
+        else:
+            p.next()
+    p.apply()
+
 def items_execute_insert(item, delta, connection, params, manual_update):
     sql = insert_item_query(delta, manual_update)
     if sql:
@@ -1230,6 +1193,7 @@ def items_execute_update(item, delta, connection, params, manual_update):
     result = item.apply_delta(delta, params, connection)
     connection.commit()
     update_interface(delta, delta.type_id.value, delta.id.value)
+    update_priviliges(item, delta.id.value)
     return result
 
 def sys_item_deleted_sql(delta):
@@ -1255,6 +1219,7 @@ def items_execute_delete(item, delta, connection, params, manual_update):
         commands.append('DELETE FROM %s WHERE OWNER_REC_ID = %s' % (it.table_name.upper(), delta.id.value))
     commands = commands + sys_item_deleted_sql(delta)
     item.task.execute(commands)
+    delete_priviliges(item, delta.id.value)
     return result
 
 def items_apply_changes(item, delta, params, connection):
@@ -1358,8 +1323,11 @@ def create_calc_field_index(task, item_id, calc_item_id):
     if fields.rec_count == 1:
         create_index(task, calc_item_id, [fields.id.value], '_CALC_IDX')
 
-def create_detail_index(task, table_id):
-    create_index(task, table_id, ['f_master_id', 'f_master_rec_id'], '_DETAIL_IDX')
+def create_detail_index(task, table_id, master_field):
+    if master_field:
+        create_index(task, table_id, [master_field], '_DETAIL_IDX')
+    else:
+        create_index(task, table_id, ['f_master_id', 'f_master_rec_id'], '_DETAIL_IDX')
 
 def create_index(task, table_id, fields, suffix):
     items = task.sys_items.copy()
@@ -1395,10 +1363,16 @@ def create_index(task, table_id, fields, suffix):
         for f in fields:
             dest_list.append([f, False])
         indexes.append()
-        index_name = task_name.upper() + '_' + tables.f_item_name.value.upper()
+        index_name = task_name + '_' + tables.f_item_name.value
         if len(index_name) > 20:
             index_name = index_name[0:20]
         indexes.f_index_name.value = index_name + suffix;
+        if len(fields) == 1:
+            f = task.sys_fields.copy(handlers=False)
+            f.set_where(id=fields[0])
+            f.open()
+            indexes.f_index_name.value = \
+                task.task_db_module.identifier_case(index_name + '_' + f.f_field_name.value + suffix)
         indexes.task_id.value = task_id
         indexes.owner_rec_id.value = table_id
         indexes.f_foreign_index.value = False
@@ -1431,14 +1405,20 @@ def server_update_details(item, item_id, dest_list):
         except:
             pass
         return i_list
+        
+    def do_on_apply(item, delta, params, connection):
+        for d in delta:
+            if d.rec_deleted():
+                delete_priviliges(d, d.id.value)
 
-    detail_list = [d[0] for d in dest_list]
+    detail_list = [[d[0], d[2]] for d in dest_list]
 
     items = item.copy(handlers=False)
+    items.on_apply = do_on_apply
     items.set_where(parent=item_id)
     items.open()
     while not items.eof():
-        cur_row = [row for row in dest_list if row[0] == items.table_id.value]
+        cur_row = [row for row in dest_list if row[0] == items.table_id.value and row[1] == items.f_master_field.value]
         if len(cur_row) == 1:
             dest_list.remove(cur_row[0])
             items.next()
@@ -1449,13 +1429,15 @@ def server_update_details(item, item_id, dest_list):
     item = item.copy(handlers=False)
     item.set_where(id=item_id)
     item.open()
-    for row in dest_list:
+    for row in detail_list:
         table_id = row[0]
+        master_field = row[1]
         name, obj_name, table_name = get_table_info(table_id)
         items.append()
         items.task_id.value = item.task_id.value
         items.type_id.value = consts.DETAIL_TYPE
         items.table_id.value = table_id
+        items.f_master_field.value = master_field
         items.parent.value = item.id.value
         items.f_name.value = name
         items.f_item_name.value = obj_name
@@ -1471,11 +1453,11 @@ def server_update_details(item, item_id, dest_list):
         items._edit_list = table._edit_list
         items._order_list = table._order_list
         items._reports_list = []
-        items.store_interface()
+        items.store_interface(apply_interface=False)
         items.apply()
         init_priviliges(items, items.id.value)
         try:
-            create_detail_index(items.task, table_id)
+            create_detail_index(items.task, table_id, master_field)
         except Exception as e:
             item.log.exception(error_message(e))
     set_server_modified(item.task)
@@ -1502,6 +1484,23 @@ def server_update_details(item, item_id, dest_list):
     item._view_list = convert_details(item._view_list, 'view_detail', detail_list)
     item._edit_list = convert_details(item._edit_list, 'edit_details', detail_list)
     item.store_interface()
+    roles_changed(item)
+
+def server_move_to_group(task, group_id, selections):
+    items = task.sys_items.copy(handlers=False, details=False)
+    items.set_where(parent=group_id)
+    items.open(fields=['id'])
+    rec_count = items.rec_count
+    items.set_where(id__in=selections)
+    items.open()
+    for i in items:
+        i.edit()
+        i.parent.value = group_id
+        i.f_index.value = rec_count
+        rec_count += 1
+        i.post()
+    items.apply()
+
 
 ###############################################################################
 #                                 sys_fields                                  #
@@ -1512,11 +1511,11 @@ def server_can_delete_field(item, id_value):
     item.set_where(id=id_value)
     item.open()
 
-    item_type_id = item.task.sys_items.field_by_id(item.owner_rec_id.value, 'type_id')
-    if item_type_id in (consts.ITEMS_TYPE, consts.TABLES_TYPE):
-        if not server_group_is_empty(item, item.owner_rec_id.value):
-            mess = "Can't delete the field: the group contains items."
-            return mess
+    # item_type_id = item.task.sys_items.field_by_id(item.owner_rec_id.value, 'type_id')
+    # if item_type_id in (consts.ITEMS_TYPE, consts.TABLES_TYPE):
+    #     if not server_group_is_empty(item, item.owner_rec_id.value):
+    #         mess = "Can't delete the field: the group contains items."
+    #         return mess
 
     field_id = item.id.value
     fields = item.task.sys_fields.copy()
@@ -1614,68 +1613,128 @@ def server_load_index_fields(item, value):
 #                                  sys_roles                                  #
 ###############################################################################
 
-def privileges_table_get_select(item, query):
-    owner_id = query['__master_id']
-    owner_rec_id = query['__master_rec_id']
-    result_sql =  \
-        """
-        SELECT P.ID, P.DELETED, P.OWNER_ID,
-        P.OWNER_REC_ID,
-        I.ID,
-        O.F_NAME,
-        P.F_CAN_VIEW,
-        P.F_CAN_CREATE,
-        P.F_CAN_EDIT,
-        P.F_CAN_DELETE,
-        I.F_NAME AS ITEM_ID_LOOKUP
-        FROM (SYS_ITEMS AS I
-            LEFT JOIN SYS_ITEMS AS O ON O.ID = I.PARENT
-            LEFT JOIN SYS_PRIVILEGES AS P ON P.ITEM_ID = I.ID AND P.DELETED = 0 and P.OWNER_ID = %s AND P.OWNER_REC_ID = %s)
-        WHERE I.DELETED = 0 AND I.TYPE_ID >= 10
-        ORDER BY O.F_NAME
-        """
-    result_sql = result_sql % (owner_id, owner_rec_id)
-
-    error_mes = ''
-    try:
-        rows = item.task.select(result_sql)
-    except Exception as e:
-        error_mes = error_message(e)
-        item.log.exception(error_mes)
-    return rows, error_mes
+def privileges_table_get_select(item, params):
+    owner_id = params['__master_id']
+    owner_rec_id = params['__master_rec_id']
+    pr = item.task.sys_privileges.copy(filters=False, details=False, handlers=False)
+    pr.set_where(owner_id=owner_id, owner_rec_id=owner_rec_id)
+    pr.open()
+    item_dict = {}
+    for p in pr:
+        item_dict[p.item_id.value] = p.rec_no
+    items = item.task.sys_items.copy(filters=False, details=False, handlers=False)
+    items.set_order_by(['f_name'])
+    items.open()
+    ds = init_open_dataset(item.task.sys_privileges, params)
+    names = {} 
+    for i in items:
+        names[i.id.value] = i.f_name.value
+    for i in items:
+        if i.type_id.value >= 10:
+            ds.append()
+            rec_no = item_dict.get(i.id.value)    
+            if not rec_no is None:
+                pr.rec_no = rec_no
+                for f in ds.fields:
+                    f.value = pr.field_by_name(f.field_name).value
+            ds.item_id.value = i.id.value
+            ds.item_id.lookup_value = i.f_name.value
+            ds.owner_item.value = names.get(i.parent.value, '')
+            ds.post()
+    return ds.dataset, ''
 
 def roles_changed(item):
     item.task.app.privileges = None
+    item.task.app.field_restrictions = None
 
+def init_open_dataset(item, params):
+    ds = item.copy(filters=False, details=False, handlers=False)
+    ds.log_changes = False
+    ds.open(expanded = params['__expanded'], fields=params['__fields'], open_empty=True)
+    return ds
+    
 def privileges_open(item, params):
     item_id = params['item_id']
-    result_sql =  \
-    """
-    SELECT p.ID,
-    p.DELETED,
-    %s AS OWNER_ID,
-    r.ID AS OWNER_REC_ID,
-    %s AS ITEM_ID,
-    "" AS OWNER_ITEM,
-    p."F_CAN_VIEW",
-    p."F_CAN_CREATE",
-    p."F_CAN_EDIT",
-    p."F_CAN_DELETE",
-    r."F_NAME" AS "ITEM_ID_LOOKUP"
-    FROM (SYS_ROLES AS r LEFT JOIN  "SYS_PRIVILEGES" AS p ON p."OWNER_REC_ID" = r."ID" AND
-        p."DELETED" = 0 AND ITEM_ID = %s)
-    WHERE r."DELETED" = 0
-    ORDER BY "ITEM_ID_LOOKUP"
-    """
-    result_sql = result_sql % (item.task.sys_roles.ID, item_id, item_id)
+    pr = item.task.sys_privileges.copy(filters=False, details=False, handlers=False)
+    pr.set_where(item_id=item_id)
+    pr.open()
+    role_dict = {}
+    for p in pr:
+        role_dict[p.owner_rec_id.value] = p.rec_no
+    roles = item.task.sys_roles.copy(filters=False, details=False, handlers=False)
+    roles.set_order_by(['f_name'])
+    roles.open()
+    ds = init_open_dataset(item.task.sys_privileges, params)
+    for r in roles:
+        ds.append()
+        rec_no = role_dict.get(r.id.value)    
+        if not rec_no is None:
+            pr.rec_no = rec_no
+            for f in ds.fields:
+                f.value = pr.field_by_name(f.field_name).value
+        ds.owner_rec_id.value = r.id.value
+        ds.owner_rec_id.lookup_value = r.f_name.value
+        ds.post()
+    return ds.dataset, ''
 
-    error_mes = ''
-    try:
-        rows = item.task.select(result_sql)
-    except Exception as e:
-        error_mes = error_message(e)
-    return rows, error_mes
+def field_privileges_open(item, params):
+    if len(params['__filters']) == 2:
+        role_id = params['__filters'][0][2]
+        item_id = params['__filters'][1][2]
+        ds = init_open_dataset(item.task.sys_field_privileges, params)
+        pr = item.task.sys_field_privileges.copy(filters=False, details=False, handlers=False)
+        pr.set_where(item=item_id, owner_rec_id=role_id)
+        pr.open()
+        fields = item.task.sys_fields.copy(handlers=False)
+        fields.set_where(owner_rec_id=item_id, f_master_field__isnull=True)
+        fields.set_order_by('f_name')
+        fields.open(fields=['id', 'f_name'])
+        for field in fields:
+            ds.append()
+            ds.item.value = item_id
+            if pr.locate('field', field.id.value):
+                ds.id.value = pr.id.value
+                ds.f_prohibited.value = pr.f_prohibited.value
+                ds.f_read_only.value = pr.f_read_only.value
+            ds.field.data = field.id.value
+            ds.field.lookup_value = field.f_name.value 
+            ds.owner_rec_id.value = role_id
+            ds.post()
+        return ds.dataset, ''
 
+def server_change_field_privilege(task, id_value, role_id, item_id, field_id, field_name, field_value):
+    pr = task.sys_field_privileges.copy(filters=False, details=False, handlers=False)
+    pr.set_where(id=id_value, owner_rec_id=role_id, item=item_id, field=field_id)
+    pr.open()
+    if pr.rec_count:
+        pr.edit()
+    else:
+        pr.append()
+    pr.owner_id.value = task.sys_roles.ID
+    pr.owner_rec_id.value = role_id
+    pr.item.value = item_id
+    pr.field.value = field_id
+    pr.field_by_name(field_name).value = field_value
+    pr.post()
+    pr.apply()
+    return pr.id.value
+
+def roles_on_apply(item, delta, params, connection):
+    result = item.apply_delta(delta, params, connection)
+    if delta.rec_inserted():
+        pr = item.task.sys_privileges.copy(handlers=False)
+        pr.open(open_empty=True)
+        items = item.task.sys_items.copy(filters=False, details=False, handlers=False)
+        items.set_where(type_id__ge=10)
+        items.open(connection=connection)
+        for i in items:
+            pr.append()
+            pr.item_id.value = i.id.value
+            pr.owner_rec_id.value = delta.id.value
+            pr.owner_id.value = delta.ID
+            pr.post()
+        pr.apply(connection=connection)
+    return result
 
 ###############################################################################
 #                               sys_lookup_lists                              #
@@ -1823,7 +1882,9 @@ def prepare_files(task):
         rmtree(folder)
     os.makedirs(folder)
 
-    builder_file = os.path.join(folder, 'builder.html')
+    html_folder = os.path.join(folder, 'html')
+    os.makedirs(html_folder)
+    builder_file = os.path.join(html_folder, 'builder.html')
     copy(os.path.join(task.work_dir, 'index.html'), builder_file)
     f = file_read(builder_file)
     f = f.replace('css/project.css', 'jam/css/admin.css')
@@ -1869,6 +1930,7 @@ def register_events(task):
     task.register(server_check_connection)
     task.register(server_set_task_name)
     task.register(server_set_project_langage)
+    task.register(server_set_production)
     task.register(server_update_has_children)
     task.register(server_export_task)
     task.register(server_import_task)
@@ -1897,6 +1959,8 @@ def register_events(task):
     task.register(create_detail_index)
     task.register(prepare_files)
     task.register(create_calc_field_index)
+    task.register(server_change_field_privilege)
+    task.register(server_move_to_group)
     task.sys_params.on_apply = do_on_apply_param_changes
     task.sys_tasks.on_apply = do_on_apply_param_changes
     task.sys_items.register(server_can_delete)
@@ -1913,6 +1977,9 @@ def register_events(task):
     task.sys_indices.register(server_load_index_fields)
     task.sys_roles.sys_privileges.on_open = privileges_table_get_select
     task.sys_privileges.on_open = privileges_open
+    task.sys_roles.sys_field_privileges.on_open = field_privileges_open
+    task.sys_roles.on_apply = roles_on_apply
+    task.sys_field_privileges.on_open = field_privileges_open    
     task.sys_roles.register(roles_changed)
     task.sys_lookup_lists.on_apply = lookup_lists_apply_changes
     task.sys_langs.register(get_lang_translation)

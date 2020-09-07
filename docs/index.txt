@@ -3,7 +3,7 @@ Jam.py documentation
 ====================
 
 How the documentation is organized
-==================================
+================================== 
 
 Here is an overview of how the documentation is organized, that 
 will help you know where to look for certain things:
@@ -85,3 +85,5 @@ Tutorial 11 - `Client-server interactions`_
 Tutorial 12 - `Working with data on the server`_
  
 .. _`Working with data on the server`: https://youtu.be/dDK78lIjHHY
+
+:doc:`How to create registration form <how_to/authentication/how_to_create_registration_form>`

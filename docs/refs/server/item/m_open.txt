@@ -49,7 +49,7 @@ method on the client:
 
     invoices.open({
         'fields': ['customer', 'invoicedate', 'total'], 
-        'where': {customer: customer_id, invoicedate__ge: date1, invoicedate__le: date2},
+        'where': {'customer': customer_id, 'invoicedate__ge': date1, 'invoicedate__le': date2},
         'order_by': ['invoicedate']
     })
 

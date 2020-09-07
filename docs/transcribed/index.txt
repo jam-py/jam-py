@@ -1,0 +1,25 @@
+===================================
+The transcript from video tutorials
+===================================
+
+The idea when added this part of the jam.py documentation was to transfer video 
+tutorials by Mr. Andrew Yushev in text format and a look at some pieces of code 
+that are often appear and repeat in specific places. 
+
+Thus, the adoption of general principles for application development with this 
+exceptional framework should be greatly facilitated.
+
+.. toctree::
+   :maxdepth: 1
+
+   overview
+   getting_started
+   task_tree
+   forms
+   form_events
+   data_aware
+   datasets
+   datasets2
+   datasets3
+   fields_filters
+   client-server

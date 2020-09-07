@@ -30,14 +30,14 @@ class OracleDB(AbstractDB):
     def get_params(self, lib):
         params = self.params
         params['name'] = 'ORACLE'
-        params['dns'] = True
+        params['dsn'] = True
         params['login'] = True
         params['password'] = True
         return params
 
     def connect(self, db_info):
-        if db_info.dns:
-            return cx_Oracle.connect(dsn=db_info.dns)
+        if db_info.dsn:
+            return cx_Oracle.connect(dsn=db_info.dsn)
         else:
             return cx_Oracle.connect(user=db_info.user, password=db_info.password, dsn=db_info.database)
 
@@ -48,7 +48,7 @@ class OracleDB(AbstractDB):
                 pass
             else:
                 sql += '%s."%s", ' % (alias, field.db_field_name)
-        if query['__expanded']:
+        if query.expanded:
             for field in fields:
                 if field.lookup_item:
                     sql += '%s_LOOKUP, ' % field.db_field_name
@@ -58,8 +58,8 @@ class OracleDB(AbstractDB):
     def get_select(self, query, fields_clause, from_clause, where_clause, group_clause, order_clause, fields):
         start = fields_clause
         end = ''.join([from_clause, where_clause, group_clause, order_clause])
-        offset = query['__offset']
-        limit = query['__limit']
+        offset = query.offset
+        limit = query.limit
         result = 'SELECT %s FROM %s' % (start, end)
         if limit:
             flds = self.get_fields(query, fields, 'b')
@@ -129,6 +129,55 @@ class OracleDB(AbstractDB):
             result.append('DROP SEQUENCE "%s"' % gen_name)
         return result
 
+    def add_field(self, table_name, field):
+        default_text = self.default_text(field)
+        line = 'ALTER TABLE "%s" ADD "%s" %s' % \
+            (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
+        if field.size:
+            line += '(%d)' % field.size
+        if not default_text is None:
+            line += ' DEFAULT %s' % default_text
+        if field.not_null:
+            line += ' NOT NULL'
+        return line
+
+    def del_field(self, table_name, field):
+        return 'ALTER TABLE "%s" DROP COLUMN "%s"' % (table_name, field.field_name)
+
+    def change_field(self, table_name, old_field, new_field):
+        result = []
+        default_value = self.default_value(new_field)
+        default_text = self.default_text(new_field)
+        if old_field.not_null != new_field.not_null:
+            if default_value and new_field.not_null:
+                line = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
+                    (table_name, old_field.field_name, default_value, old_field.field_name)
+                result.append(line)
+        field_info = self.get_field_info(old_field.field_name, table_name)
+        if old_field.field_name != new_field.field_name:
+            line = 'ALTER TABLE "%s" RENAME COLUMN "%s" TO "%s"' % \
+                (table_name, old_field.field_name, new_field.field_name)
+            result.append(line)
+        if old_field.not_null != new_field.not_null or old_field.size != new_field.size:
+            line = 'ALTER TABLE "%s" MODIFY "%s" %s' % \
+                (table_name, new_field.field_name, field_info['data_type'])
+            size = field_info['size']
+            if size and field_info['data_type'].upper() in ['CHAR', 'NCHAR', 'VARCHAR2', 'VARCHAR', 'NVARCHAR2']:
+                if new_field.size > size:
+                    size = new_field.size
+                line += '(%d)' % size
+            if old_field.default_value != new_field.default_value:
+                if not default_text is None:
+                    line += ' DEFAULT %s' % default_text
+                else:
+                    line += ' DEFAULT NULL'
+            if new_field.not_null:
+                line += ' NOT NULL'
+            else:
+                line += ' NULL'
+            result.append(line)
+        return result
+
     def create_index(self, index_name, table_name, unique, fields, desc):
         return 'CREATE %s INDEX "%s" ON "%s" (%s)' % \
             (unique, index_name, table_name, fields)
@@ -142,50 +191,6 @@ class OracleDB(AbstractDB):
 
     def drop_foreign_index(self, table_name, index_name):
         return 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % (table_name, index_name)
-
-    def add_field(self, table_name, field):
-        result = []
-        line = 'ALTER TABLE "%s" ADD "%s" %s' % \
-            (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
-        if field.size:
-            line += '(%d)' % field.size
-        default_value = self.default_value(field)
-        if default_value and field.not_null:
-            line += ' DEFAULT %s' % default_value
-            line += ' NOT NULL'
-        result.append(line)
-        if default_value and field.not_null:
-            line = 'ALTER TABLE "%s" MODIFY "%s" DEFAULT NULL' % \
-                (table_name, field.field_name)
-            result.append(line)
-        return result
-
-    def del_field(self, table_name, field):
-        return 'ALTER TABLE "%s" DROP COLUMN "%s"' % (table_name, field.field_name)
-
-    def change_field(self, table_name, old_field, new_field):
-        result = []
-        default_value = self.default_value(new_field)
-        if old_field.not_null != new_field.not_null:
-            if default_value and new_field.not_null:
-                line = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
-                    (table_name, old_field.field_name, default_value, old_field.field_name)
-                result.append(line)
-        if old_field.field_name != new_field.field_name:
-            line = 'ALTER TABLE "%s" RENAME COLUMN "%s" TO "%s"' % \
-                (table_name, old_field.field_name, new_field.field_name)
-            result.append(line)
-        if old_field.not_null != new_field.not_null or old_field.size != new_field.size:
-            line = 'ALTER TABLE "%s" MODIFY "%s" %s' % \
-                (table_name, new_field.field_name, self.FIELD_TYPES[new_field.data_type])
-            if new_field.size:
-                line += '(%d)' % new_field.size
-            if new_field.not_null:
-                line += ' NOT NULL'
-            else:
-                line += ' NULL'
-            result.append(line)
-        return result
 
     def before_insert(self, cursor, pk_field):
         if pk_field and not pk_field.data:
@@ -213,17 +218,19 @@ class OracleDB(AbstractDB):
 
     def get_table_info(self, connection, table_name, db_name):
         cursor = connection.cursor()
-        sql = "SELECT COLUMN_NAME, DATA_TYPE, CHAR_LENGTH, DATA_DEFAULT FROM USER_TAB_COLUMNS WHERE TABLE_NAME='%s'" % table_name
+        sql = "SELECT COLUMN_NAME, DATA_TYPE, CHAR_LENGTH, DATA_DEFAULT, NULLABLE FROM USER_TAB_COLUMNS WHERE TABLE_NAME='%s'" % table_name
         cursor.execute(sql)
         result = cursor.fetchall()
         fields = []
-        for (field_name, data_type, size, default_value) in result:
+        for (field_name, data_type, size, default_value, nullable) in result:
+            print(77777, field_name, data_type, size, default_value, nullable)
             fields.append({
                 'field_name': field_name,
                 'data_type': data_type,
                 'size': size,
                 'default_value': default_value,
-                'pk': False
+                'pk': False,
+                'not_null': nullable == 'N'
             })
         return {'fields': fields, 'self.FIELD_TYPES': self.FIELD_TYPES}
 

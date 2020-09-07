@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>%(title)s</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" href="static/img/j.png" type="image/png">
+        <link href="jam/css/bootstrap.css" rel="stylesheet">
+        <link href="jam/css/bootstrap-responsive.css" rel="stylesheet">
+        <link href="jam/css/bootstrap-modal.css" rel="stylesheet">
+        <link href="jam/css/jam.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="modal fade in modal-centered %(error)s">
+            <form class="form-horizontal" action="" method="post">
+                <div class="modal-header">
+                    <h4 class="modal-title">%(form_title)s</h4>
+                </div>
+                <div class="form-body">
+                    <div class="control-group">
+                        <label class="control-label" for="login">%(login)s</label>
+                        <div class="controls">
+                            <input type="text" name="login" placeholder="%(login)s" required>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="password">%(password)s</label>
+                        <div class="controls">
+                            <input type="password" name="password" placeholder="%(password)s" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-footer">
+                    <input class="btn expanded-btn pull-right" type="submit" value="OK">
+                </div>
+            </form>
+        </div>
+    </body>
+</html>
