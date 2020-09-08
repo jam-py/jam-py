@@ -144,8 +144,14 @@ function Events1() { // demo
 		item.edit_options.inputs_container_class = 'edit-body';
 		item.edit_options.detail_container_class = 'edit-detail';
 	
-		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
-		item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
+		item.edit_form.find("#cancel-btn").on('click.task', function(e) { 
+			e.preventDefault();
+			item.cancel_edit(e); 
+		});
+		item.edit_form.find("#ok-btn").on('click.task', function(e) { 
+			e.preventDefault();
+			item.apply_record(); 
+		});
 		if (!item.is_new() && !item.can_modify) {
 			item.edit_form.find("#ok-btn").prop("disabled", true);
 		}
@@ -208,10 +214,12 @@ function Events1() { // demo
 	function on_filter_form_created(item) {
 		item.filter_options.title = item.item_caption + ' - filters';
 		item.create_filter_inputs(item.filter_form.find(".edit-body"));
-		item.filter_form.find("#cancel-btn").on('click.task', function() {
+		item.filter_form.find("#cancel-btn").on('click.task', function(e) {
+			e.preventDefault();
 			item.close_filter_form(); 
 		});
-		item.filter_form.find("#ok-btn").on('click.task', function() { 
+		item.filter_form.find("#ok-btn").on('click.task', function(e) { 
+			e.preventDefault();
 			item.set_order_by(item.view_options.default_order);
 			item.apply_filters(item._search_params); 
 		});
@@ -219,10 +227,12 @@ function Events1() { // demo
 	
 	function on_param_form_created(item) {
 		item.create_param_inputs(item.param_form.find(".edit-body"));
-		item.param_form.find("#cancel-btn").on('click.task', function() { 
+		item.param_form.find("#cancel-btn").on('click.task', function(e) { 
+			e.preventDefault();
 			item.close_param_form();
 		});
-		item.param_form.find("#ok-btn").on('click.task', function() { 
+		item.param_form.find("#ok-btn").on('click.task', function(e) { 
+			e.preventDefault();
 			item.process_report();
 		});
 	}
@@ -423,7 +433,7 @@ function Events16() { // demo.journals.invoices
 					item.alert_error(error);   
 				}
 				else {
-					field.owner.update_dataset(dataset);
+					field.owner.update_record(dataset);
 				}
 				field.owner.edit();
 			});
@@ -436,16 +446,23 @@ function Events16() { // demo.journals.invoices
 				item.alert_error(error);   
 			}
 			else {
-				item.update_dataset(dataset);
+				item.update_record(dataset);
 			}
 			detail.edit();
 		});
 	}
 	
+	var scroll_timeout;
+	
 	function on_after_scroll(item) {
-		if (item.view_form && item.rec_count) {
-			item.view_form.find("#delete-btn").prop("disabled", item.paid.value);
-		}
+		clearTimeout(scroll_timeout);
+		scroll_timeout = setTimeout(
+			function() {
+				if (item.view_form && item.rec_count) {
+					item.view_form.find("#delete-btn").prop("disabled", item.paid.value);
+				}
+			}, 100
+		);
 	}
 	
 	function on_edit_form_created(item) {

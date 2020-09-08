@@ -2089,7 +2089,7 @@ class MasterDetailDataset(MasterDataSet):
 
     read_only = property (_get_read_only, _set_read_only)
 
-    def store_dataset(self, details=True):
+    def store_record(self, details=True):
         result = {
             'ID': self.ID,
             'expanded': self.expanded,
@@ -2099,8 +2099,8 @@ class MasterDetailDataset(MasterDataSet):
         if details:
             result['details'] = []
             for detail in self.details:
-                if detail.rec_count:
-                    result['details'].append(detail.store_dataset())
+                if detail.active:
+                    result['details'].append(detail.store_record())
         return result
 
 

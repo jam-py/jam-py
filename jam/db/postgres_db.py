@@ -80,7 +80,6 @@ class PostgresDB(AbstractDB):
             lines.append(line)
         sql += ',\n'.join(lines)
         sql += ')\n'
-        print sql
         return sql
 
     def drop_table(self, table_name, gen_name):

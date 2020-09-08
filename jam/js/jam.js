@@ -2805,6 +2805,7 @@
             }
             $menu.find('.item-menu').on('click', (function(e) {
                 var action = $(this).data('action');
+                e.preventDefault();
                 if (action) {
                     action.call(self);
                 }
@@ -4252,7 +4253,7 @@
             });
         }
 
-        update_dataset(data) {
+        update_record(data, detail) {
             let self = this;
             if (data && data.ID === this.ID) {
                 let source = this.copy({handlers: false, details: false}),
@@ -4268,19 +4269,29 @@
                     source.each(function(c) {
                         pks[c._primary_key_field.value] = [c.rec_no]
                     });
-                    dest.each(function(c) {
-                        let rec_no = pks[c._primary_key_field.value]
-                        if (rec_no !== undefined) {
-                            source.rec_no = rec_no;
-                            self._copy_record_fields(source, c)
+                    dest.first()
+                    while (!dest.eof()) {
+                        let rec_no = pks[dest._primary_key_field.value]
+                        if (rec_no === undefined) {
+                            if (detail) {
+                                dest.delete();
+                            }
+                            else {
+                                dest.next();
+                            }
                         }
-                    });
+                        else {
+                            source.rec_no = rec_no;
+                            self._copy_record_fields(source, dest)
+                            dest.next();
+                        }
+                    }
                 }
                 this.update_controls();
                 if (data.details) {
                     data.details.forEach(function(detail_data) {
                         let detail = self.item_by_ID(detail_data.ID)
-                        detail.update_dataset(detail_data)
+                        detail.update_record(detail_data, true)
                     })
                 }
             }
