@@ -1,3 +1,4 @@
+import os
 
 def version6_upgrade(task):
 
@@ -32,7 +33,6 @@ def version6_upgrade(task):
         if recs:
             for rec in recs:
                 sys_items.rec_no = rec
-                # ~ print '    ', sys_items.f_item_name.value
                 upgrade_interface(sys_items, field_dict)
         sys_items.rec_no = items_rec_no
 
@@ -199,6 +199,33 @@ def version6_upgrade(task):
         sys_fields.apply(connection=con)
         sys_indices.apply(connection=con)
         sys_filters.apply(connection=con)
+        sys_items.apply(connection=con)
+
+    sys_items = task.sys_items.copy(handlers=False, details=False)
+    sys_items.set_where(type_id=5)
+    sys_items.open(fields=['id', 'f_web_client_module'])
+    code = sys_items.f_web_client_module.value
+    code = code.replace('if (item.master) {', 'if (item.master || item.master_field) {')
+    code = code.replace('if (!item.master &&', 'if (!(item.master || item.master_field) &&')
+    sys_items.edit()
+    sys_items.f_web_client_module.value = code
+    sys_items.post()
+    sys_items.apply(connection=con)
+
+    if os.path.exists('register.html'):
+        sys_items.set_where(type_id=5)
+        sys_items.open(fields=['id', 'f_server_module'])
+        code = sys_items.f_server_module.value
+        code = code + """
+
+def on_request(task, request):
+    parts = request.path.strip('/').split('/')
+    if parts[0] == 'register.html':
+        return task.serve_page('register.html')
+        """
+        sys_items.edit()
+        sys_items.f_server_module.value = code
+        sys_items.post()
         sys_items.apply(connection=con)
 
     con.commit()

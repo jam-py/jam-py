@@ -466,6 +466,7 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_edit_form_created(item) {
+		item.edit_form.find('.form-footer').show();
 		item.read_only = item.paid.value;
 	}
 	

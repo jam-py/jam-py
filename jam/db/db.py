@@ -130,7 +130,7 @@ class AbstractDB(object):
         return 'INSERT INTO "%s" (%s) VALUES (%s)'
 
     def insert_record(self, delta, cursor, changes, details_changes):
-        if delta._deleted_flag_field:
+        if delta._deleted_flag:
             delta._deleted_flag_field.data = 0
         pk = delta._primary_key_field
         self.before_insert(cursor, pk)

@@ -215,6 +215,8 @@ class App(object):
                 return self.on_project_file(request, suffix)(environ, start_response)
             elif prefix in ['builder.html', 'builder_login.html']:
                 return self.on_builder(request, prefix)(environ, start_response)
+            elif prefix == 'ext':
+                return self.on_ext(request)(environ, start_response) #depricated
             elif prefix in ['favicon.ico', 'dummy.html']:
                 return Response('')(environ, start_response)
             if not self.under_maintenance:
@@ -224,16 +226,16 @@ class App(object):
                         return response(environ, start_response)
                 if not prefix or prefix in ['index.html', 'login.html']:
                     return self.on_index(request, prefix)(environ, start_response)
-                elif prefix == 'ext':
-                    return self.on_ext(request)(environ, start_response) #depricated
                 else:
                     raise NotFound()
-        except ProjectNotCompleted:
+        except ProjectNotCompleted as e:
+            self.log.exception(error_message(e))
             return self.show_information(consts.lang['no_project'])(environ, start_response)
-        except ProjectError:
+        except ProjectError as e:
+            self.log.exception(error_message(e))
             return self.show_error(consts.lang['project_error'])(environ, start_response)
         except HTTPException as e:
-            # ~ self.log.exception(error_message(e))
+            self.log.exception(error_message(e))
             return e
 
     def serve_page(self, file_name, **kwargs):

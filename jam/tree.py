@@ -194,7 +194,7 @@ class AbstractItem(object):
             return restrictions and restrictions.get(restriction)
 
     def execute_query(self, cursor, query, params=None, arg_params=False):
-        # ~ print query
+        # ~ print(query)
         try:
             if params:
                 if arg_params:
