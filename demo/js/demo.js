@@ -79,7 +79,7 @@ function Events1() { // demo
 		if (item.can_create()) {
 			item.view_form.find("#new-btn").on('click.task', function(e) {
 				e.preventDefault();
-				if (item.master) {
+				if (item.master || item.master_field) {
 					item.append_record();
 				}
 				else {
@@ -120,7 +120,7 @@ function Events1() { // demo
 		
 		item.create_view_tables();
 		
-		if (!item.master && item.view_options.open_item) {
+		if (!(item.master || item.master_field) && item.view_options.open_item) {
 			item.open(true);
 		}
 	
@@ -135,7 +135,7 @@ function Events1() { // demo
 	}
 	
 	function on_view_form_closed(item) {
-		if (!item.master && item.view_options.open_item) {	
+		if (!(item.master || item.master_field) && item.view_options.open_item) {	
 			item.close();
 		}
 	}
@@ -250,7 +250,7 @@ function Events1() { // demo
 	
 	function on_view_form_keyup(item, event) {
 		if (event.keyCode === 45 && event.ctrlKey === true){
-			if (item.master) {
+			if (item.master || item.master_field) {
 				item.append_record();
 			}
 			else {

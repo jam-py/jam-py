@@ -216,17 +216,18 @@ def version6_upgrade(task):
         sys_items.set_where(type_id=5)
         sys_items.open(fields=['id', 'f_server_module'])
         code = sys_items.f_server_module.value
-        code = code + """
+        if code.find('def on_request(task, request):') == -1:
+            code = code + """
 
 def on_request(task, request):
     parts = request.path.strip('/').split('/')
     if parts[0] == 'register.html':
         return task.serve_page('register.html')
         """
-        sys_items.edit()
-        sys_items.f_server_module.value = code
-        sys_items.post()
-        sys_items.apply(connection=con)
+            sys_items.edit()
+            sys_items.f_server_module.value = code
+            sys_items.post()
+            sys_items.apply(connection=con)
 
     con.commit()
 
