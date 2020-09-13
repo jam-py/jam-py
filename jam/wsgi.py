@@ -467,8 +467,15 @@ class App(object):
             role_id = user_info.get('role_id')
             if role_id:
                 priv = self.get_role_privileges(role_id)
+        templates = ''
+        templates_path = os.path.join(self.work_dir, 'templates.html')
+        if not os.path.exists(templates_path):
+            file_write(templates_path, '')
+        if task != self.admin:
+            templates = file_read(templates_path)
         result = {
             'task': task.get_info(),
+            'templates': templates,
             'settings': consts.settings,
             'locale': consts.locale,
             'language': consts.lang,

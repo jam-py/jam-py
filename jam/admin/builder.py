@@ -193,7 +193,7 @@ def server_set_project_langage(task, lang):
         it.post()
     it.apply()
 
-    file_name = 'index.html'
+    file_name = 'templates.html'
     data = file_read(file_name)
     start = data.find('__$_')
     label_list = []

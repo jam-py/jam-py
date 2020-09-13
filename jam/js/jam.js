@@ -425,37 +425,52 @@
             return this.task.has_privilege(this, 'can_view');
         }
 
-        _search_template(name, suffix) {
+        _search_template(templates, name, suffix) {
             var template,
                 search = "." + name;
             if (suffix) {
                 search = "." + name + "-" + suffix
             }
-            template = this.task.templates.find(search);
+            template = templates.find(search);
             if (template.length) {
                 return template;
             }
         }
 
         find_template(suffix, options) {
+            let result,
+                template = this._find_template(suffix, options, task.templates);
+            if (!template) {
+                template = this._find_template(suffix, options, task.index_templates);
+            }
+            if (template) {
+                result = template.clone();
+            }
+            else {
+                this.warning(this.item_caption + ': ' +  suffix + ' form template not found.')
+            }
+            return result
+        }
+
+        _find_template(suffix, options, templates) {
             var result,
                 template,
                 name,
                 item = this;
             if (options.template_class) {
-                template = this._search_template(options.template_class);
+                template = this._search_template(templates, options.template_class);
             }
             if (!template) {
                 if (item.item_type === "detail") {
-                    template = this._search_template(item.owner.item_name + "-" + item.item_name, suffix);
+                    template = this._search_template(templates, item.owner.item_name + "-" + item.item_name, suffix);
                     if (!template) {
-                        template = this._search_template(item.owner.owner.item_name + "-details", suffix);
+                        template = this._search_template(templates, item.owner.owner.item_name + "-details", suffix);
                     }
                     if (!template && options && options.buttons_on_top) {
-                        template = this._search_template("default-top", suffix);
+                        template = this._search_template(templates, "default-top", suffix);
                     }
                     if (!template) {
-                        template = this._search_template('default', suffix);
+                        template = this._search_template(templates, 'default', suffix);
                     }
                     if (!template) {
                         item = item.owner;
@@ -464,7 +479,7 @@
                 if (!template) {
                     while (true) {
                         name = item.item_name;
-                        template = this._search_template(item.item_name, suffix);
+                        template = this._search_template(templates, item.item_name, suffix);
                         if (template) {
                             break;
                         }
@@ -476,18 +491,12 @@
                 }
             }
             if (!template && options && options.buttons_on_top) {
-                template = this._search_template("default-top", suffix);
+                template = this._search_template(templates, "default-top", suffix);
             }
             if (!template) {
-                template = this._search_template('default', suffix);
+                template = this._search_template(templates, 'default', suffix);
             }
-            if (template) {
-                result = template.clone();
-            }
-            else {
-                this.warning(this.item_caption + ': ' +  suffix + ' form template not found.')
-            }
-            return result;
+            return template;
         }
 
         server(func_name, params) {
@@ -2440,10 +2449,7 @@
                     self.js_filename = 'js/' + info.task.js_filename;
                 }
                 self.task = self;
-                self.templates = $("<div></div>");
-                templates = $(".templates");
-                self.templates = templates.clone();
-                templates.remove();
+                self.init_templates(info);
                 self.init(info.task);
                 self.bind_items();
                 if (self.ID === 0) {
@@ -2468,6 +2474,16 @@
                     }
                 }
             });
+        }
+
+        init_templates(info) {
+            let templates = $(".templates");
+            this.index_templates = templates.clone();
+            templates.remove();
+            let div = $('<div class="templates">'),
+                temp = $('<output>').append(div);
+            div.append($.parseHTML(info.templates));
+            this.templates = temp.find('.templates');
         }
 
         init_modules(callback) {
@@ -2816,24 +2832,18 @@
         }
 
         view_form_created(item) {
-            if (item.master_field) {
-                item.view_options.open_item = false;
-            }
         }
 
         edit_form_created(item) {
             let new_details = false;
-            if (item.details.length) {
-                new_details = true;
-            }
             item.each_detail(function(d) {
-                if (!d.master_field) {
-                    new_details = false;
+                if (d.master_field) {
+                    new_details = true;
                     return false;
                 }
             })
             if (new_details) {
-                item.edit_form.find('.form-footer').hide();
+                item.edit_form.find('#cancel-btn').hide();
             }
         }
 
@@ -5514,14 +5524,15 @@
                 try {
                     res = data[0];
                     err = data[1];
-                    this._applying = false;
                     if (err) {
+                        this._applying = false;
                         if (callback) {
                             callback.call(this, err);
                         }
                         throw new Error(err);
                     } else {
                         this.change_log.update(res)
+                        this._applying = false;
                         if (this.on_after_apply) {
                             this.on_after_apply.call(this, this, err);
                         }

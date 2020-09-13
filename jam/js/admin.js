@@ -122,24 +122,25 @@ function Events0() { // app_builder
 				divider: {},
 				project_params: {handler: set_project_params, short_cut: 'F2', key_code: 113, editor: true},
 				db:			 {handler: edit_database, short_cut: 'F4', key_code: 115, editor: true},
-				'export':		 {handler: export_task, short_cut: 'Ctrl-E', key_code: 69, key_ctrl: true},
-				'import':		 {handler: import_task, short_cut: 'Ctrl-I', key_code: 73, key_ctrl: true},
-				find:			 {handler: find_in_task, short_cut: 'Alt-F', key_code: 70, key_alt: true},
-				print:		   {handler: print_code},
-				client_module:   {handler: task.sys_items.edit_client, item: task.sys_items, short_cut: 'F8', key_code: 119, editor: true},
-				server_module:   {handler: task.sys_items.edit_server, item: task.sys_items, short_cut: 'F9', key_code: 120, editor: true},
-				'index.html':	 {handler: task.sys_items.edit_index_html, item: task.sys_items, short_cut: 'F10', key_code: 121, editor: true},
-				'project.css':   {handler: task.sys_items.edit_project_css, item: task.sys_items, short_cut: 'F11', key_code: 122, editor: true},
+				'export':	   {handler: export_task, short_cut: 'Ctrl-E', key_code: 69, key_ctrl: true},
+				'import':	   {handler: import_task, short_cut: 'Ctrl-I', key_code: 73, key_ctrl: true},
+				find:		   {handler: find_in_task, short_cut: 'Alt-F', key_code: 70, key_alt: true},
+				print:		  {handler: print_code},
+				client_module:  {handler: task.sys_items.edit_client, item: task.sys_items, short_cut: 'F7', key_code: 118, editor: true},
+				server_module:  {handler: task.sys_items.edit_server, item: task.sys_items, short_cut: 'F8', key_code: 119, editor: true},
+				templates:	  {handler: task.sys_items.edit_templates, item: task.sys_items, short_cut: 'F9', key_code: 120, editor: true},
+				'index.html':   {handler: task.sys_items.edit_index_html, item: task.sys_items, short_cut: 'F10', key_code: 121, editor: true},
+				'project.css':  {handler: task.sys_items.edit_project_css, item: task.sys_items, short_cut: 'F11', key_code: 122, editor: true},
 				'Lookup lists': {handler: show_lookup_lists, editor: true},
-				viewing:		   {handler: task.sys_items.view_setup, item: task.sys_items, editor: true},
-				editing:		   {handler: task.sys_items.edit_setup, item: task.sys_items, editor: true},
-				filters:		   {handler: task.sys_items.filters_setup, item: task.sys_items, editor: true},
-				details:		   {handler: task.sys_items.details_setup, item: task.sys_items, editor: true},
-				order:		   {handler: task.sys_items.order_setup, item: task.sys_items, editor: true},
-				indices:		   {handler: task.sys_items.indices_setup, item: task.sys_items, editor: true},
-				foreign_keys:	 {handler: task.sys_items.foreign_keys_setup, item: task.sys_items, editor: true},
-				reports:		   {handler: task.sys_items.reports_setup, item: task.sys_items, editor: true},
-				report_params:   {handler: task.sys_items.report_params_setup, item: task.sys_items, editor: true, short_cut: 'F7', key_code: 118, editor: true},
+				viewing:		{handler: task.sys_items.view_setup, item: task.sys_items, editor: true},
+				editing:		{handler: task.sys_items.edit_setup, item: task.sys_items, editor: true},
+				filters:		{handler: task.sys_items.filters_setup, item: task.sys_items, editor: true},
+				details:		{handler: task.sys_items.details_setup, item: task.sys_items, editor: true},
+				order:		  {handler: task.sys_items.order_setup, item: task.sys_items, editor: true},
+				indices:		{handler: task.sys_items.indices_setup, item: task.sys_items, editor: true},
+				foreign_keys:   {handler: task.sys_items.foreign_keys_setup, item: task.sys_items, editor: true},
+				reports:		{handler: task.sys_items.reports_setup, item: task.sys_items, editor: true},
+				report_params:  {handler: task.sys_items.report_params_setup, item: task.sys_items, editor: true, short_cut: 'F7', key_code: 118, editor: true},
 				privileges:	 {handler: task.sys_items.privileges_setup, item: task.sys_items, editor: true},
 				'Prepare files': {handler: task.prepare_files}
 			};
@@ -1100,6 +1101,7 @@ function Events3() { // sys_items
 			task.add_buttons(task, [
 				'client_module',
 				'server_module',
+				'templates',
 				'index.html',
 				'project.css',
 				'divider',
@@ -1844,7 +1846,7 @@ function Events3() { // sys_items
 			['title_line_count', 1],
 			['row_line_count', 1],
 			['expand_selected_row', 0],
-			['freeze_count', 0],
+			// ['freeze_count', 0],
 			['sort_fields', []],
 			['edit_fields', []],
 			['summary_fields', []],
@@ -1862,9 +1864,9 @@ function Events3() { // sys_items
 		let result;
 		if (item.table_id.value) {
 			result = [
-				['view_detail', []],
-				['detail_height', 0],
-				['buttons_on_top', false]
+				// ['view_detail', []],
+				// ['detail_height', 0],
+				// ['buttons_on_top', false]
 			];
 		}
 		else {
@@ -2013,8 +2015,10 @@ function Events3() { // sys_items
 	}
 	
 	function get_templates(doc) {
-		var temp = $('<output>').append($.parseHTML(doc)),
-			result = {}
+		var div = $('<div class="templates">'),
+			temp = $('<output>').append(div),
+			result = {};
+		div.append($.parseHTML(doc));
 		temp.find('.templates > div').each(function() {
 			result[this.className] = null;
 		});
@@ -2024,7 +2028,7 @@ function Events3() { // sys_items
 	function edit_file(item, file_name) {
 		item.task.server('server_file_info', [file_name], function(info) {
 			var temp;
-			if (file_name === 'index.html') {
+			if (file_name === 'templates.html') {
 				info.templates = get_templates(info.doc);
 			}
 			item.task.sys_code_editor.show_editor(item.task, info)
@@ -2037,6 +2041,10 @@ function Events3() { // sys_items
 	
 	function edit_server(item) {
 		edit_code(item, true);
+	}
+	
+	function edit_templates(item) {
+		edit_file(item, 'templates.html');
 	}
 	
 	function edit_index_html(item) {
@@ -2717,6 +2725,7 @@ function Events3() { // sys_items
 	this.edit_file = edit_file;
 	this.edit_client = edit_client;
 	this.edit_server = edit_server;
+	this.edit_templates = edit_templates;
 	this.edit_index_html = edit_index_html;
 	this.edit_project_css = edit_project_css;
 	this.valid_detail = valid_detail;
