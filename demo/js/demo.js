@@ -459,14 +459,13 @@ function Events16() { // demo.journals.invoices
 		scroll_timeout = setTimeout(
 			function() {
 				if (item.view_form && item.rec_count) {
-					item.view_form.find("#delete-btn").prop("disabled", item.paid.value);
+					item.view_form.find("#delete-btn, #paid-btn").prop("disabled", item.paid.value);
 				}
 			}, 100
 		);
 	}
 	
 	function on_edit_form_created(item) {
-		item.edit_form.find('.form-footer').show();
 		item.read_only = item.paid.value;
 	}
 	
@@ -495,11 +494,13 @@ task.events.events16 = new Events16();
 function Events17() { // demo.details.invoice_table 
 
 	function on_view_form_created(item) {
-		var btn = item.add_view_button('Select', {type: 'primary', btn_id: 'select-btn'});
+		let btn = item.add_view_button('Select', {type: 'primary', btn_id: 'select-btn'});
 		btn.click(function() {
 			item.alert('Select the records to add to the invoice and close the from');
 			item.select_records('track');
 		});
+		item.view_form.find("#delete-btn, #select-btn, #new-btn")
+			.prop("disabled", item.owner.paid.value);		
 	}
 	
 	function on_field_changed(field, lookup_item) {

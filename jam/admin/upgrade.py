@@ -1,4 +1,5 @@
 import os
+from xml.dom.minidom import parse
 
 def version6_upgrade(task):
 
@@ -230,4 +231,3 @@ def on_request(task, request):
             sys_items.apply(connection=con)
 
     con.commit()
-

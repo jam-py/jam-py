@@ -425,52 +425,37 @@
             return this.task.has_privilege(this, 'can_view');
         }
 
-        _search_template(templates, name, suffix) {
+        _search_template(name, suffix) {
             var template,
                 search = "." + name;
             if (suffix) {
                 search = "." + name + "-" + suffix
             }
-            template = templates.find(search);
+            template = task.templates.find(search);
             if (template.length) {
                 return template;
             }
         }
 
         find_template(suffix, options) {
-            let result,
-                template = this._find_template(suffix, options, task.templates);
-            if (!template) {
-                template = this._find_template(suffix, options, task.index_templates);
-            }
-            if (template) {
-                result = template.clone();
-            }
-            else {
-                this.warning(this.item_caption + ': ' +  suffix + ' form template not found.')
-            }
-            return result
-        }
-
-        _find_template(suffix, options, templates) {
             var result,
                 template,
                 name,
                 item = this;
             if (options.template_class) {
-                template = this._search_template(templates, options.template_class);
+                template = this._search_template(options.template_class);
             }
             if (!template) {
                 if (item.item_type === "detail") {
-                    template = this._search_template(templates, item.owner.item_name + "-" + item.item_name, suffix);
+                    template = this._search_template(item.owner.item_name + "-" + item.item_name, suffix);
                     if (!template) {
-                        template = this._search_template(templates, item.owner.owner.item_name + "-details", suffix);
+                        template = this._search_template(item.owner.owner.item_name + "-details", suffix);
                     }
                     if (!template && options && options.buttons_on_top) {
-                        template = this._search_template(templates, "default-top", suffix);
+                        template = this._search_template("default-top", suffix);
                     }
                     if (!template) {
-                        template = this._search_template(templates, 'default', suffix);
+                        template = this._search_template('default', suffix);
                     }
                     if (!template) {
                         item = item.owner;
@@ -479,7 +464,7 @@
                 if (!template) {
                     while (true) {
                         name = item.item_name;
-                        template = this._search_template(templates, item.item_name, suffix);
+                        template = this._search_template(item.item_name, suffix);
                         if (template) {
                             break;
                         }
@@ -491,12 +476,18 @@
                 }
             }
             if (!template && options && options.buttons_on_top) {
-                template = this._search_template(templates, "default-top", suffix);
+                template = this._search_template("default-top", suffix);
             }
             if (!template) {
-                template = this._search_template(templates, 'default', suffix);
+                template = this._search_template('default', suffix);
             }
-            return template;
+            if (template) {
+                result = template.clone();
+            }
+            else {
+                this.warning(this.item_caption + ': ' +  suffix + ' form template not found.')
+            }
+            return result;
         }
 
         server(func_name, params) {
@@ -2477,13 +2468,29 @@
         }
 
         init_templates(info) {
-            let templates = $(".templates");
-            this.index_templates = templates.clone();
-            templates.remove();
-            let div = $('<div class="templates">'),
+            let self = this,
+                class_list = {},
+                div = $('<div class="templates">'),
                 temp = $('<output>').append(div);
             div.append($.parseHTML(info.templates));
             this.templates = temp.find('.templates');
+            temp.find('.templates > div').each(function() {
+                for (let i=0; i < this.classList.length; i++) {
+                    class_list[this.classList[i]] = true;
+                }
+            })
+            $(".templates > div").each(function() {
+                let not_found = false;
+                for (let i=0; i < this.classList.length; i++) {
+                    if (!class_list[this.classList[i]]) {
+                        not_found = true;
+                        break;
+                    }
+                }
+                if (not_found) {
+                    self.templates.append($(this));
+                }
+            })
         }
 
         init_modules(callback) {
@@ -5225,6 +5232,9 @@
                 throw new Error(language.append_not_active.replace('%s', this.item_name));
             }
             if (this._applying) {
+                if (this.edit_form || this.view_form) {
+                    this.alert_error('The data is saved in the database', {duration: 2, show_header: false})
+                }
                 throw new Error('Can not perform this operation. Item is applying data to the database');
             }
             if (this.master_field && !this.owner._primary_key_field.value) {
@@ -5287,6 +5297,9 @@
                 throw new Error(language.edit_not_active.replace('%s', this.item_name));
             }
             if (this._applying) {
+                if (this.edit_form || this.view_form) {
+                    this.alert_error('The data is saved in the database', {duration: 2, show_header: false})
+                }
                 throw new Error('Can not perform this operation. Item is applying data to the database');
             }
             if (this.record_count() === 0) {
@@ -5476,6 +5489,16 @@
             }
         }
 
+        _set_wait_cursor() {
+            if (this.edit_form || this.view_form) {
+                $("html").addClass("wait");
+            }
+        }
+
+        _remove_wait_cursor() {
+            $("html").removeClass("wait");
+        }
+
         apply() {
             var args = this._check_args(arguments),
                 callback = args['function'],
@@ -5500,6 +5523,7 @@
                     this.on_before_apply.call(this, this, params);
                 }
                 this._applying = true;
+                this._set_wait_cursor();
                 if (callback || async) {
                     this.send_request('apply', [changes, params], function(data) {
                         self._process_apply(data, callback);
@@ -5543,6 +5567,7 @@
                     }
                 }
                 finally {
+                    this._remove_wait_cursor();
                     this._applying = false;
                 }
                 if (res) {
