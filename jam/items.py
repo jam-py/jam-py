@@ -204,6 +204,7 @@ class ServerDataset(Dataset):
             dataset.log_changes = False
             dataset.open(expanded = query_data.expanded, fields=query_data.fields, open_empty=True)
             dataset._dataset = result
+            dataset.first();
         return dataset
 
     def select_records(self, params, connection=None, client_request=False):
@@ -722,17 +723,14 @@ class Task(AbstractServerTask):
     def login(self, request):
         return self.app.login(request, self, request.form)
 
-    def save_cookie(self, request, response):
-        request.save_client_cookie(response, self)
-
     def logged_in(self, request):
         return self.app.check_session(request, self)
 
     def redirect(self, location, code=302, Response=None):
         return redirect(location, code, Response)
 
-    def serve_page(self, file_path, **kwargs):
-        return self.app.serve_page(file_path, **kwargs)
+    def serve_page(self, file_path, dic=None):
+        return self.app.serve_page(file_path, dic)
 
     def copy_database(self, dbtype, connection, limit = 1000):
         copy_database(self, dbtype, connection, limit)

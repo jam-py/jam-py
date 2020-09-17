@@ -193,6 +193,10 @@ class App(object):
         else:
             self.__is_locked -= 1
 
+    @property
+    def production(self):
+        return os.path.exists(os.path.join(self.work_dir, 'builder.html'))
+
     def __call__(self, environ, start_response):
         jam.context.environ = environ
         jam.context.session = None
@@ -216,11 +220,13 @@ class App(object):
             elif prefix in ['builder.html', 'builder_login.html']:
                 return self.on_builder(request, prefix)(environ, start_response)
             elif prefix == 'ext':
-                return self.on_ext(request)(environ, start_response) #depricated
-            elif prefix in ['favicon.ico', 'dummy.html']:
+                return self.on_ext(request)(environ, start_response)
+            elif prefix in ['static', 'favicon.ico', 'dummy.html']:
                 return Response('')(environ, start_response)
             if not self.under_maintenance:
                 if self.task.on_request:
+                    if not self.production:
+                        self.check_project_modified()
                     response = self.task.on_request(self.task, request)
                     if response:
                         return response(environ, start_response)
@@ -238,12 +244,12 @@ class App(object):
             self.log.exception(error_message(e))
             return e
 
-    def serve_page(self, file_name, **kwargs):
+    def serve_page(self, file_name, dic=None):
         path = os.path.join(self.work_dir, file_name)
         if os.path.exists(path):
             page = file_read(path)
-            if kwargs:
-                page = page % kwargs
+            if dic:
+                page = page % dic
             return Response(page, mimetype="text/html")
         else:
             raise NotFound()
@@ -257,8 +263,11 @@ class App(object):
         if not error_type:
             error_type = 'Error'
         path = os.path.join(self.jam_dir, 'html', 'error.html')
-        return self.serve_page(path, error_class=error_class, \
-            error_type=error_type, message=message)
+        return self.serve_page(path, {
+            'error_class': error_class,
+            'error_type': error_type,
+            'message': message
+        })
 
     def on_index(self, request, file_name):
         if file_name == 'login.html':
@@ -273,15 +282,14 @@ class App(object):
             if not os.path.exists(login_path):
                 login_path = os.path.join(self.jam_dir, 'html', 'login.html')
             if request.method == 'POST':
-                if self.login(request, self.task, request.form):
-                    response = redirect('/')
-                    request.save_client_cookie(response, self.task)
+                response = self.login(request, self.task, request.form)
+                if response:
                     return response
                 else:
                     login_params['error'] = 'error-modal-border'
-                    return self.serve_page(login_path, **login_params)
+                    return self.serve_page(login_path, login_params)
             else:
-                return self.serve_page(login_path, **login_params)
+                return self.serve_page(login_path, login_params)
         else:
             if self.check_session(request, self.task):
                 file_name = 'index.html'
@@ -312,15 +320,14 @@ class App(object):
             }
             login_path = os.path.join(self.jam_dir, 'html', 'login.html')
             if request.method == 'POST':
-                if self.login(request, self.admin, request.form):
-                    response = redirect('/builder.html')
-                    request.save_client_cookie(response, self.admin)
+                response = self.login(request, self.admin, request.form)
+                if response:
                     return response
                 else:
                     login_params['error'] = 'error-modal-border'
-                    return self.serve_page(login_path, **login_params)
+                    return self.serve_page(login_path, login_params)
             else:
-                return self.serve_page(login_path, **login_params)
+                return self.serve_page(login_path, login_params)
 
     def serve_prog_file(self, request, file_name):
         base, ext = os.path.splitext(file_name)
@@ -440,7 +447,13 @@ class App(object):
                 traceback.print_exc()
         if user_info:
             self.create_session(request, task, user_info, session_uuid)
-            return True
+            if self.admin == task:
+                response = redirect('/builder.html')
+            else:
+                response = redirect('/')
+            request.save_client_cookie(response, task)
+            return response
+
 
     def logout(self, request, task):
         del request.client_cookie['info']

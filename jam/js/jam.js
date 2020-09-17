@@ -4277,11 +4277,9 @@
                     dest = this.clone(false);
                 source.open({expanded: data.expanded, fields: data.fields, open_empty:true});
                 source._dataset = data.dataset;
+                source.first();
                 dest.rec_no = this.rec_no;
-                if (source.rec_count === 1 && dest._primary_key_field.value === source._primary_key_field.value) {
-                    this._copy_record_fields(source, dest)
-                }
-                else {
+                if (detail) {
                     let pks = {};
                     source.each(function(c) {
                         pks[c._primary_key_field.value] = [c.rec_no]
@@ -4290,12 +4288,7 @@
                     while (!dest.eof()) {
                         let rec_no = pks[dest._primary_key_field.value]
                         if (rec_no === undefined) {
-                            if (detail) {
-                                dest.delete();
-                            }
-                            else {
-                                dest.next();
-                            }
+                            dest.delete();
                         }
                         else {
                             source.rec_no = rec_no;
@@ -4304,11 +4297,22 @@
                         }
                     }
                 }
+                else {
+                    if (source.rec_count === 1 &&
+                        dest._primary_key_field.value === source._primary_key_field.value) {
+                        this._copy_record_fields(source, dest)
+                    }
+                    else {
+                        throw new Error('Can not update the record.');
+                    }
+                }
                 this.update_controls();
                 if (data.details) {
                     data.details.forEach(function(detail_data) {
                         let detail = self.item_by_ID(detail_data.ID)
-                        detail.update_record(detail_data, true)
+                        if (detail.active) {
+                            detail.update_record(detail_data, true)
+                        }
                     })
                 }
             }
@@ -5232,9 +5236,6 @@
                 throw new Error(language.append_not_active.replace('%s', this.item_name));
             }
             if (this._applying) {
-                if (this.edit_form || this.view_form) {
-                    this.alert_error('The data is saved in the database', {duration: 2, show_header: false})
-                }
                 throw new Error('Can not perform this operation. Item is applying data to the database');
             }
             if (this.master_field && !this.owner._primary_key_field.value) {
@@ -5297,9 +5298,6 @@
                 throw new Error(language.edit_not_active.replace('%s', this.item_name));
             }
             if (this._applying) {
-                if (this.edit_form || this.view_form) {
-                    this.alert_error('The data is saved in the database', {duration: 2, show_header: false})
-                }
                 throw new Error('Can not perform this operation. Item is applying data to the database');
             }
             if (this.record_count() === 0) {
@@ -5489,14 +5487,15 @@
             }
         }
 
-        _set_wait_cursor() {
-            if (this.edit_form || this.view_form) {
-                $("html").addClass("wait");
+        _do_before_apply() {
+            if (this.edit_form || this.view_form ||
+                this.master_field && (this.owner.edit_form || this.owner.view_form)) {
+                $('html').addClass("wait");
             }
         }
 
-        _remove_wait_cursor() {
-            $("html").removeClass("wait");
+        _do_after_apply() {
+            $('html').removeClass("wait")
         }
 
         apply() {
@@ -5523,7 +5522,7 @@
                     this.on_before_apply.call(this, this, params);
                 }
                 this._applying = true;
-                this._set_wait_cursor();
+                this._do_before_apply();
                 if (callback || async) {
                     this.send_request('apply', [changes, params], function(data) {
                         self._process_apply(data, callback);
@@ -5567,7 +5566,7 @@
                     }
                 }
                 finally {
-                    this._remove_wait_cursor();
+                    this._do_after_apply();
                     this._applying = false;
                 }
                 if (res) {
@@ -10151,13 +10150,11 @@
             this.$table.on('keydown', function(e) {
                 clearTimeout(timeout);
                 timeout = setTimeout( function() { self.keydown(e) }, 10 );
-                //~ self.keydown(e);
             });
 
             this.$table.on('keyup', function(e) {
                 clearTimeout(timeout);
                 timeout = setTimeout( function() { self.keyup(e) }, 10 );
-                //~ self.keyup(e);
             });
 
             this.$table.on('keypress', function(e) {

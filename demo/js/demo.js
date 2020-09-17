@@ -461,7 +461,7 @@ function Events16() { // demo.journals.invoices
 				if (item.view_form && item.rec_count) {
 					item.view_form.find("#delete-btn, #paid-btn").prop("disabled", item.paid.value);
 				}
-			}, 100
+			}, 50
 		);
 	}
 	
