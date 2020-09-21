@@ -37,6 +37,35 @@ from .admin.task import create_task, reload_task
 class JamSecureCookie(SecureCookie):
     serialization_method = json
 
+    def save_cookie(
+        self,
+        response,
+        key="session",
+        expires=None,
+        session_expires=None,
+        max_age=None,
+        path="/",
+        domain=None,
+        secure=None,
+        httponly=False,
+        force=False,
+        samesite=None
+    ):
+        if force or self.should_save:
+            data = self.serialize(session_expires or expires)
+            response.set_cookie(
+                key,
+                data,
+                expires=expires,
+                max_age=max_age,
+                path=path,
+                domain=domain,
+                secure=secure,
+                httponly=httponly,
+                samesite=samesite
+            )
+
+
 class JamRequest(Request):
 
     @cached_property
@@ -57,7 +86,7 @@ class JamRequest(Request):
             if consts.SAFE_MODE and task.timeout:
                 expires = time.time() + task.timeout
                 cookie.modified = True
-            cookie.save_cookie(response, key=self.session_key, session_expires=expires)
+            cookie.save_cookie(response, key=self.session_key, session_expires=expires, samesite='Lax')
 
 def create_application(from_file=None, load_task=False, testing=False):
     if from_file:
