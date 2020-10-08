@@ -8614,6 +8614,9 @@
             if (value === undefined) {
                 value = this.data;
             }
+            if (typeof value === 'string') {
+                return value;
+            }
             for (; i < len; i++) {
                 if (this.lookup_values[i][0] === value) {
                     result = this.lookup_values[i][1];
