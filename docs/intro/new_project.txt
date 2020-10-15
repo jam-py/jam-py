@@ -63,6 +63,7 @@ In the New project dialog box fill in:
 * **Caption** - the project name that appears to users
 * **Name** - name of project (task) that will be used in programming code to 
   get access to the task object. Should be a short valid python identifier.
+  This name is used as a prefix when creating a table in the project database.
 * **DB type** — select database type. If database is not Sqlite, it must be 
   created in advance and its attributes should be entered in the 
   corresponding form fields. 

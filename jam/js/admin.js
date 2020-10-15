@@ -1538,7 +1538,7 @@ function Events3() { // sys_items
     }
 
     function on_edit_form_shown(item) {
-        var caption,
+        var caption = '',
             help_link,
             link = '';
 

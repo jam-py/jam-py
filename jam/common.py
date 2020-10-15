@@ -389,6 +389,8 @@ def json_defaul_handler(obj):
         result = obj.isoformat()
     elif isinstance(obj, decimal.Decimal):
         result = float(obj)
+    elif isinstance(obj, object):
+        result = 'Object'
     return result
 
 def compressBuf(buf):

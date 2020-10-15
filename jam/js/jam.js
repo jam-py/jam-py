@@ -6983,11 +6983,12 @@
         create_view_tables: function() {
             var table_container = this.view_form.find('.' + this.view_options.table_container_class),
                 height,
+                details = this.view_options.view_details,
                 detail,
                 detail_container,
                 self = this;
             if (table_container && table_container.length) {
-                if (this.view_options.view_details) {
+                if (details && details.length) {
                     detail_container = this.view_form.find('.' + this.view_options.detail_container_class);
                     if (detail_container) {
                         height = this.view_options.detail_height;
@@ -7034,7 +7035,7 @@
                     self._visible_detail.open(true);
                     detail_container.show();
                 };
-            if (details && container && container.length) {
+            if (details && details.length && container && container.length) {
                 detail_container = container;
                 if (details.length > 1) {
                     this.task.init_tabs(container)
