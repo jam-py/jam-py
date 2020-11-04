@@ -5756,6 +5756,10 @@
             if (this.master && modified) {
                 this.master._detail_changed(this, true);
             }
+            if (!this.master && this.view_form &&
+                this.table_options.editable_fields && this.table_options.editable_fields.length) {
+                this.apply()
+            }
         },
 
         apply: function() {
@@ -5937,45 +5941,19 @@
         _set_read_only: function(value) {
             var self = this;
             this._read_only = value;
-            if (task.old_forms) {
-                this.each_field(function(field) {
-                    field.update_controls();
-                });
-                this.each_detail(function(detail) {
-                    detail.update_controls();
-                });
-            }
-            else {
-                this.each_field(function(field) {
-                    if (!this.owner_read_only) {
-                        field._read_only = value;
-                    }
-                    field.update_controls();
-
-                });
-                this.each_detail(function(detail) {
-                    if (!this.owner_read_only) {
-                        details.read_only = value;
-                    }
-                    detail.update_controls();
-                });
-            }
+            this.each_field(function(field) {
+                field.update_controls();
+            });
+            this.each_detail(function(detail) {
+                detail.update_controls();
+            });
         },
 
         _get_read_only: function() {
-            if (task.old_forms) {
-                if (this.master && this.master.owner_read_only) {
-                    return this.master.read_only
-                } else {
-                    return this._read_only;
-                }
-            }
-            else {
-                if (this.master && this.master.owner_read_only && this.master.read_only) {
-                    return this.master.read_only
-                } else {
-                    return this._read_only;
-                }
+            if (this.master && this.master.owner_read_only) {
+                return this.master.read_only;
+            } else {
+                return this._read_only;
             }
         },
 
@@ -7294,6 +7272,7 @@
                     }
                 }
                 source.lookup_field = field;
+                field._do_select_value(source);
                 source.view();
             }
         },
@@ -8418,6 +8397,10 @@
                 if (this.field_kind === consts.ITEM_FIELD) {
                     switch (this.data_type) {
                         case consts.INTEGER:
+                            if (!this.lookup_item && !this.lookup_values) {
+                                value = 0;
+                            }
+                            break;
                         case consts.FLOAT:
                         case consts.CURRENCY:
                             value = 0;
@@ -8612,9 +8595,6 @@
             var i = 0,
                 len = this.lookup_values.length,
                 result = '';
-            if (value === undefined) {
-                value = this.data;
-            }
             if (typeof value === 'string') {
                 return value;
             }
@@ -8630,7 +8610,7 @@
             var value = null;
             if (this.lookup_values) {
                 try {
-                    value = this._get_value_in_list();
+                    value = this._get_value_in_list(this.data);
                 } catch (e) {}
             }
             else if (this.lookup_item) {
@@ -8690,7 +8670,7 @@
                     else if (this.value) {
                         lookup_field = this.lookup_item.field_by_name(this.lookup_field);
                         if (lookup_field.lookup_values) {
-                            result = lookup_field._get_value_in_list(this.lookup_value);
+                            result = lookup_field._get_value_in_list(this.lookup_data);
                         }
                         else {
                             result = this.lookup_value;

@@ -1511,7 +1511,7 @@ function Events3() { // sys_items
 				}
 			};
 		if (item.owner._import_info) {
-			if (!item.f_data_type.value) {
+			if (item.f_data_type.data && typeof item.f_data_type.value !== "number") {
 				field = get_field();
 				if (field) {
 					row.find('td.f_data_type div').text(field.data_type);
@@ -1538,7 +1538,7 @@ function Events3() { // sys_items
 	}
 	
 	function on_edit_form_shown(item) {
-		var caption,
+		var caption = '',
 			help_link,
 			link = '';
 	
@@ -2533,19 +2533,26 @@ function Events3() { // sys_items
 			types = item.task.item_types,
 			error = false;
 		if (item._import_info) {
+			let check_item = new item.task.constructors.item();
 			clone.each(function(c) {
-				if (!c.f_data_type.value) {
+				if (typeof c.f_data_type.value !== "number") {
 					error = c.f_field_name.value + ': the field type must be specified.';
 				}
 				else if (c.f_data_type.value === c.task.consts.TEXT && !c.f_size.value) {
 					error = c.f_field_name.value + ': the field size must be specified.';
+				}
+				else if (!item.valid_identifier(c.f_field_name.value)) {
+					error = c.f_field_name.value + ': ' + item.task.language.invalid_name
+				}
+				else if (check_item[c.f_field_name.value] !== undefined) {
+					error = c.f_field_name.value + ': ' + item.task.language.reserved_word;
 				}
 				if (error) {
 					return false;
 				}
 			});
 			if (error) {
-				item.warning(error);
+				// item.warning(error);
 				throw error;
 			}
 			if (!item.f_primary_key.value) {
@@ -5184,12 +5191,11 @@ task.events.events24 = new Events24();
 
 function Events25() { // app_builder.details.sys_field_lookups 
 
-	function on_field_validate(field) {
-		if (field.field_name === 'f_value' && field.value <= 0) {
-			return 'Value must be greater than zero';
-		}
-	}
-	this.on_field_validate = on_field_validate;
+	// function on_field_validate(field) {
+	//	 if (field.field_name === 'f_value' && field.value <= 0) {
+	//		 return 'Value must be greater than zero';
+	//	 }
+	// }
 }
 
 task.events.events25 = new Events25();
@@ -5551,7 +5557,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 					}
 				}
 				if ((field.field_name === 'f_field_name' || field.field_name === 'f_name') && (!item.task._manual_update || new_field(item))) {
-					if (item.f_field_name && item.f_field_name.value) {
+					if (item.f_field_name && item.f_field_name.value && !item.task._manual_update) {
 						item.f_db_field_name.value = item.task.server('server_set_literal_case', item.f_field_name.value);
 					}
 				}

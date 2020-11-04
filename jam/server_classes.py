@@ -643,7 +643,7 @@ class Report(AbstrReport, ParamReport):
             d = dic.copy()
             for key, value in iteritems(d):
                 if type(value) in string_types:
-                    d[key] = escape(value)
+                    d[key] = escape(value).replace('\n', '</text:p><text:p>')
             cell_start = 0
             cell_start_tag = to_bytes('<table:table-cell', 'utf-8')
             cell_type_tag = to_bytes('office:value-type="string"', 'utf-8')

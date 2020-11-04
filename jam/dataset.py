@@ -328,8 +328,8 @@ class DBField(object):
 
     def _get_value_in_list(self, value=None):
         result = '';
-        if value is None:
-            value = self.value
+        if type(value) in string_types:
+            return value
         for val, str_val in self.lookup_values:
             if val == value:
                 result = str_val
@@ -340,7 +340,7 @@ class DBField(object):
         value = None
         if self.lookup_values and self.value:
             try:
-                value = self._get_value_in_list()
+                value = self._get_value_in_list(self.data)
             except:
                 pass
         elif self.lookup_item:
