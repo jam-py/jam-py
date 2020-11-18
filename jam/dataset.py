@@ -448,7 +448,7 @@ class DBField(object):
 
     def check_reqired(self):
         if self.required and self.data is None:
-            raise FieldValueRequired('%s "%s" - %s' % (consts.language['field'], self.field_name, consts.language['value_required']))
+            raise FieldValueRequired('%s "%s" - %s' % (consts.language('field'), self.field_name, consts.language('value_required')))
         return True
 
     def check_valid(self):
