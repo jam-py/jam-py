@@ -13349,6 +13349,9 @@
             }
             if (code === 13 && !e.ctrlKey && !e.shiftKey) {
                 if (this.grid && this.grid.edit_mode) {
+                    if (this.dropdown && this.dropdown.shown) {
+                        return;
+                    }
                     e.stopPropagation();
                     e.preventDefault();
                     if (!this.grid.item.is_changing()) {
@@ -13524,6 +13527,9 @@
                 return;
             }
             if (this.grid && this.grid.edit_mode) {
+                if (this.dropdown && this.dropdown.shown) {
+                    return;
+                }
                 if (this.grid.item.is_changing()) {
                     this.grid.flush_editor();
                     this.grid.item.post();
