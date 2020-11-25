@@ -86,7 +86,7 @@ class JamRequest(Request):
             if consts.SAFE_MODE and task.timeout:
                 expires = time.time() + task.timeout
                 cookie.modified = True
-            cookie.save_cookie(response, key=self.session_key, session_expires=expires, samesite='Lax')
+            cookie.save_cookie(response, key=self.session_key, session_expires=expires, httponly=True, samesite='Lax')
 
 def create_application(from_file=None, load_task=False, testing=False):
     if from_file:
