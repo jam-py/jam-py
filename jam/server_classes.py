@@ -769,6 +769,7 @@ class AbstractServerTask(AbstrTask):
         self.on_open = None
         self.on_apply = None
         self.on_count = None
+        self.on_upload = None
         self.work_dir = app.work_dir
         self.con_pool_size = 0
         self.modules = []

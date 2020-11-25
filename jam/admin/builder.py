@@ -1156,6 +1156,15 @@ def restore_indexes_sql(task):
                 sqls.append(i.create_index_sql(db_type, table_name))
     return sqls
 
+def upload_file(task, path, file_name, f):
+    if path and path in ['static/internal', 'static/reports']:
+        dir_path = os.path.join(to_unicode(task.work_dir, 'utf-8'), path)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        f.save(os.path.join(dir_path, file_name))
+        return path, file_name
+    
+
 ###############################################################################
 #                                  sys_items                                  #
 ###############################################################################
@@ -2055,6 +2064,7 @@ def register_events(task):
     task.register(create_system_item)
     task.register(create_detail_index)
     task.register(prepare_files)
+    task.on_upload = upload_file
     task.sys_params.on_apply = do_on_apply_param_changes
     task.sys_tasks.on_apply = do_on_apply_param_changes
     task.sys_items.register(server_can_delete)

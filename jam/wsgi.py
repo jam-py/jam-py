@@ -727,21 +727,26 @@ class App(object):
                     file_name = request.form.get('file_name')
                     if f and file_name:
                         base, ext = os.path.splitext(file_name)
-                        if not path:
+                        upload_result = None
+                        if task.on_upload:
+                             upload_result = task.on_upload(task, path, file_name, f)
+                        if upload_result:
+                            path, file_name = upload_result
+                            r['result']['data'] = {'file_name': file_name, 'path': path}
+                        else:
+                            file_name = ('%s%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
+                            file_name = secure_filename(file_name)
+                            file_name = file_name.replace('?', '')
                             if task_id == 0:
                                 path = os.path.join('static', 'builder')
                             else:
                                 path = os.path.join('static', 'files')
-                            file_name = ('%s%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
-                            file_name = secure_filename(file_name)
-                            file_name = file_name.replace('?', '')
-                        if not r['error']:
-                            dir_path = os.path.join(to_unicode(self.work_dir, 'utf-8'), path)
-                            if not os.path.exists(dir_path):
-                                os.makedirs(dir_path)
-                            f.save(os.path.join(dir_path, file_name))
-                            r['result']['data'] = {'file_name': file_name, 'path': path}
-                            # ~ r['result'] = {'status': consts.RESPONSE, 'data': {'file_name': file_name, 'path': path}, 'modification': consts.MODIFICATION}
+                            if not r['error']:
+                                dir_path = os.path.join(to_unicode(self.work_dir, 'utf-8'), path)
+                                if not os.path.exists(dir_path):
+                                    os.makedirs(dir_path)
+                                f.save(os.path.join(dir_path, file_name))
+                                r['result']['data'] = {'file_name': file_name, 'path': path}
                     else:
                         r['error'] = 'File upload invalid parameters'
             else:
