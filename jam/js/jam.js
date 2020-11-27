@@ -1798,6 +1798,12 @@
                 message = message ? ' message: ' + message : '';
                 console.log(this.item_name + message);
             }
+        },
+
+        sanitize_html: function (text) {
+            let element = document.createElement('div');
+            element.innerText = text;
+            return element.innerHTML;
         }
     };
 
@@ -1989,6 +1995,8 @@
             formData.append("file_name", options.file_name);
             formData.append("path", options.path);
             formData.append("task_id", self.ID);
+            formData.append("item_id", options.item_id);
+            formData.append("field_id", options.field_id);
             xhr.open('POST', 'upload', true);
             if (options.callback) {
                 xhr.onload = function(e) {
@@ -2056,7 +2064,9 @@
                     show_progress: true,
                     accept: undefined,
                     blob: undefined,
-                    file_name: undefined
+                    file_name: undefined,
+                    item_id: -1,
+                    field_id: -1
                 },
                 accept = '',
                 form,
@@ -6888,6 +6898,7 @@
             if (result && task.old_forms) {
                 result = language.filter + ' -' + result;
             }
+            result = this.item.sanitize_html(result);
             return result;
         },
 
@@ -8895,6 +8906,8 @@
             this.owner.task.upload(
                 {
                     accept: 'image/*',
+                    item_id: self.owner.ID,
+                    field_id: self.ID,
                     callback: function(server_file_name, file_name) {
                         self.value = server_file_name;
                     }
@@ -8907,6 +8920,8 @@
             this.owner.task.upload(
                 {
                     accept: this.field_file.accept,
+                    item_id: self.owner.ID,
+                    field_id: self.ID,
                     callback: function(server_file_name, file_name) {
                         self.value = server_file_name + '?' +  file_name;
                     }
@@ -11913,6 +11928,7 @@
                         result = highlight(result, text);
                     }
                 }
+                result = this.item.sanitize_html(result);
             }
             return result;
         },

@@ -10,6 +10,7 @@ import zipfile
 import gzip
 from decimal import Decimal, ROUND_HALF_UP
 import io
+import imghdr
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -413,3 +414,11 @@ def cur_to_str(value):
 
 def float_to_str(value):
     consts.float_to_str(value)
+
+def validate_image(stream):
+    header = stream.read(512)
+    stream.seek(0)
+    format = imghdr.what(None, header)
+    if not format:
+        return None
+    return '.' + (format if format != 'jpeg' else 'jpg')

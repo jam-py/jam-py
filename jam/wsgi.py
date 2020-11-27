@@ -26,7 +26,7 @@ from .third_party.six import get_function_code
 
 from .common import consts, error_message, file_write
 from .common import consts, ProjectNotCompleted
-from .common import json_defaul_handler, compressBuf
+from .common import json_defaul_handler, compressBuf, validate_image
 from .admin.admin import create_admin, login_user, get_roles
 from .admin.admin import user_valid_ip, user_valid_uuid
 from .admin.builder import update_events_code
@@ -710,6 +710,8 @@ class App(object):
         if request.method == 'POST':
             r = {'result': None, 'error': None}
             task_id = int(request.form.get('task_id'))
+            item_id = int(request.form.get('item_id'))
+            field_id = int(request.form.get('field_id'))
             path = request.form.get('path')
             if task_id == 0:
                 task = self.admin
@@ -734,6 +736,11 @@ class App(object):
                             path, file_name = upload_result
                             r['result']['data'] = {'file_name': file_name, 'path': path}
                         else:
+                            item = task.item_by_ID(item_id)
+                            field = item.field_by_ID(field_id)
+                            if field.data_type == consts.IMAGE:
+                                if ext != validate_image(f):
+                                    r['error'] = 'Invalid image file'
                             file_name = ('%s%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
                             file_name = secure_filename(file_name)
                             file_name = file_name.replace('?', '')
