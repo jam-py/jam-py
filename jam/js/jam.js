@@ -11925,10 +11925,13 @@
                         if (this.item._open_params.__search.length === 4) {
                             text = this.item._open_params.__search[3];
                         }
+                        result = this.item.sanitize_html(result);
                         result = highlight(result, text);
                     }
                 }
-                result = this.item.sanitize_html(result);
+                else {
+                    result = this.item.sanitize_html(result);
+                }
             }
             return result;
         },
