@@ -45,6 +45,7 @@ class Consts(object):
         'FORMS_IN_TABS': True,
         'MAX_CONTENT_LENGTH': 0,
         'IMPORT_DELAY': 0,
+        'UPLOAD_FILE_EXT': '.txt, .csv',
         'MODIFICATION': 0,
         'MAINTENANCE': False,
         'CLIENT_MODIFIED': False,
@@ -231,6 +232,14 @@ class Consts(object):
 
     def language(self, key):
         return self.lang.get(key, key)
+
+    @cached_property
+    def upload_file_ext(self):
+        arr = self.UPLOAD_FILE_EXT.split(',')
+        result = []
+        for r in arr:
+            result.append(r.strip())
+        return result
 
     def round(self, value, dec):
         precision = Decimal(10) ** (-dec)

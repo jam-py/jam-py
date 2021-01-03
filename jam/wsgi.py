@@ -736,11 +736,15 @@ class App(object):
                             path, file_name = upload_result
                             r['result']['data'] = {'file_name': file_name, 'path': path}
                         else:
-                            item = task.item_by_ID(item_id)
-                            field = item.field_by_ID(field_id)
-                            if field.data_type == consts.IMAGE:
-                                if ext != validate_image(f):
-                                    r['error'] = 'Invalid image file'
+                            if item_id != -1 and field_id != -1:
+                                item = task.item_by_ID(item_id)
+                                field = item.field_by_ID(field_id)
+                                if field.data_type == consts.IMAGE:
+                                    if ext != validate_image(f):
+                                        r['error'] = 'Invalid image file'
+                            else:
+                                if not ext in consts.upload_file_ext:
+                                    r['error'] = 'Invalid file extension'
                             file_name = ('%s%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
                             file_name = secure_filename(file_name)
                             file_name = file_name.replace('?', '')

@@ -2674,7 +2674,7 @@ function Events8() { // app_builder.catalogs.sys_params
 				'f_con_pool_size', 'f_compressed_js',
 				'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_lock_item', 'f_timeout',
 				'f_ignore_change_ip', 'f_max_content_length', 'f_import_delay',
-				'f_delete_reports_after', 'f_version'
+				'f_delete_reports_after', 'f_upload_file_ext', 'f_version'
 				],
 				in_well: false,
 				label_width: 240
@@ -2749,6 +2749,22 @@ function Events8() { // app_builder.catalogs.sys_params
 			});
 		}
 	}
+	
+	function on_field_validate(field) {
+		if (field.field_name === 'f_upload_file_ext') {
+			let valid = true,
+				exts = field.value.split(',');
+			exts.forEach(function(ext) {
+				ext = ext.trim();
+				if (ext[0] !== '.') {
+					valid = false;
+				}
+			});
+			if (!valid) {
+				return 'Invalid upload file extensions';
+			}
+		}
+	}
 	this.on_after_apply = on_after_apply;
 	this.on_edit_form_created = on_edit_form_created;
 	this.on_edit_form_shown = on_edit_form_shown;
@@ -2756,6 +2772,7 @@ function Events8() { // app_builder.catalogs.sys_params
 	this.on_field_select_value = on_field_select_value;
 	this.init_lookup_form = init_lookup_form;
 	this.create_system_item = create_system_item;
+	this.on_field_validate = on_field_validate;
 }
 
 task.events.events8 = new Events8();
