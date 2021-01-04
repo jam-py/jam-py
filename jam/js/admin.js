@@ -2751,7 +2751,7 @@ function Events8() { // app_builder.catalogs.sys_params
 	}
 	
 	function on_field_validate(field) {
-		if (field.field_name === 'f_upload_file_ext') {
+		if (field.field_name === 'f_upload_file_ext' && field.value) {
 			let valid = true,
 				exts = field.value.split(',');
 			exts.forEach(function(ext) {
