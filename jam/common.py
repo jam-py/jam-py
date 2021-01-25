@@ -133,6 +133,29 @@ class Consts(object):
     ]
     LOCKS_INDEX_FIELDS = ['item_id', 'item_rec_id']
     SQL_KEYWORDS = ['DATE', 'DAY', 'MONTH']
+    VIDEO_EXT = ['.3g2', '.3gp', '.amv', '.asf', '.asx', '.avi', '.axv',
+        '.dif', '.dl', '.drc', '.dv', '.f4a', '.f4b', '.f4p', '.f4v',
+        '.fli', '.flv', '.gif', '.gifv', '.gl', '.lsf', '.lsx', '.m1v',
+        '.m2ts', '.m2v', '.m4p', '.m4v', '.mkv', '.mng', '.mov',
+        '.movie', '.mp2', '.mp4', '.mpa', '.mpe', '.mpeg', '.mpg',
+        '.mpv', '.mts', '.mxf', '.mxu', '.nsv', '.ogg', '.ogv', '.qt',
+        '.rm', '.rmvb', '.roq', '.svi', '.ts', '.viv', '.vob', '.webm',
+        '.wm', '.wmv', '.wmx', '.wvx', '.yuv']
+    AUDIO_EXT = ['.3gp', '.8svx', '.aa', '.aac', '.aax', '.act', '.aif',
+        '.aifc', '.aiff', '.alac', '.amr', '.ape', '.au', '.awb', '.axa',
+        '.cda', '.csd', '.dct', '.dss', '.dvf', '.flac', '.gsm',
+        '.iklax', '.ivs', '.kar', '.m3u', '.m4a', '.m4b', '.m4p',
+        '.mid', '.midi', '.mmf', '.mogg', '.mp2', '.mp3', '.mpc',
+        '.mpega', '.mpga', '.msv', '.nmf', '.oga', '.ogg', '.opus',
+        '.orc', '.pls', '.ra', '.ram', '.raw', '.rf64', '.rm', '.sco',
+        '.sd2', '.sid', '.sln', '.snd', '.spx', '.tta', '.voc', '.vox',
+        '.wav', '.wax', '.webm', '.wma', '.wv']
+    IMAGE_EXT = ['.art', '.bmp', '.cdr', '.cdt', '.cpt', '.cr2', '.crw',
+        '.djv', '.djvu', '.erf', '.gif', '.ico', '.ief', '.jng', '.jp2',
+        '.jpe', '.jpeg', '.jpf', '.jpg', '.jpg2', '.jpm', '.jpx', '.nef',
+        '.orf', '.pat', '.pbm', '.pcx', '.pgm', '.png', '.pnm', '.ppm',
+        '.psd', '.ras', '.rgb', '.svg', '.svgz', '.tif', '.tiff',
+        '.wbmp', '.xbm', '.xpm', '.xwd']
 
     def __init__(self):
         self.app = None
@@ -431,3 +454,27 @@ def validate_image(stream):
     if not format:
         return None
     return '.' + (format if format != 'jpeg' else 'jpg')
+
+def valid_uploaded_file(accept, ext):
+    if not accept:
+        return True
+    exts = get_ext_list(accept)
+    if ext in exts:
+        return True
+
+def get_ext_list(accept):
+    result = []
+    l = accept.split(',')
+    for t in l:
+        t = t.strip()
+        if t == 'image/*':
+            result += consts.IMAGE_EXT
+        elif t == 'audio/*':
+            result += consts.AUDIO_EXT
+        elif t == 'video/*':
+            result += consts.VIDEO_EXT
+        else:
+            if t[0] != '.':
+                raise Exception("File extension must start with '.'")
+            result.append(t)
+    return result

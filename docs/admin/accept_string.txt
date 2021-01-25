@@ -1,0 +1,25 @@
+=============
+Accept string
+=============
+
+An accept string can be a combination of the following values, 
+separated by comma.
+
+==============  ===========  
+Value	          Description
+==============  ===========  
+file_extension	Specify the file extension(s) (e.g: .gif, .jpg, .png, .doc)
+audio/*	        All sound files
+video/*	        All video files
+image/*	        Aall image files
+==============  ===========  
+
+For example::
+
+  .pdf,.xls
+  
+  image/*,.pdf,.xls
+  
+  audio/*
+  
+  audio/*,video/*

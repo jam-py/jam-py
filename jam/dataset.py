@@ -10,7 +10,7 @@ FIELD_DEF = FIELD_ID, FIELD_NAME, FIELD_CAPTION, FIELD_DATA_TYPE, FIELD_SIZE, RE
     LOOKUP_FIELD, LOOKUP_FIELD1, LOOKUP_FIELD2, FIELD_VISIBLE, \
     FIELD_READ_ONLY, FIELD_DEFAULT, FIELD_DEFAULT_VALUE, MASTER_FIELD, FIELD_ALIGNMENT, \
     FIELD_LOOKUP_VALUES, FIELD_MULTI_SELECT, FIELD_MULTI_SELECT_ALL, \
-    FIELD_ENABLE_TYPEAHEAD, FIELD_HELP, FIELD_PLACEHOLDER, FIELD_MASK, \
+    FIELD_ENABLE_TYPEAHEAD, FIELD_HELP, FIELD_PLACEHOLDER, FIELD_INTERFACE, \
     FIELD_IMAGE, FIELD_FILE, DB_FIELD_NAME = range(26)
 
 FILTER_DEF = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, FILTER_TYPE, \
@@ -70,8 +70,9 @@ class DBField(object):
         self.enable_typeahead = field_def[FIELD_ENABLE_TYPEAHEAD]
         self.field_help = field_def[FIELD_HELP]
         self.field_placeholder = field_def[FIELD_PLACEHOLDER]
-        self.field_mask = field_def[FIELD_MASK]
+        self.field_mask = field_def[FIELD_INTERFACE]
         self.field_image = field_def[FIELD_IMAGE]
+        self.field_file = field_def[FIELD_FILE]
         self.db_field_name = field_def[DB_FIELD_NAME]
         self.field_type = consts.FIELD_TYPE_NAMES[self.data_type]
         self.filter = None
@@ -946,7 +947,9 @@ class AbstractDataSet(object):
             master_field=None, alignment=None, lookup_values=None, enable_typeahead=False, field_help=None,
             field_placeholder=None, lookup_field1=None, lookup_field2=None, db_field_name=None, field_mask=None,
             image_edit_width=None, image_edit_height=None, image_view_width=None, image_view_height=None,
-            image_placeholder=None, image_camera=None, file_download_btn=None, file_open_btn=None, file_accept=None):
+            image_placeholder=None, image_camera=None, file_download_btn=None, file_open_btn=None, file_accept=None,
+            textarea=None, do_not_sanitize=None
+        ):
         if not db_field_name:
             db_field_name = field_name.upper()
         field_def = [None for i in range(len(FIELD_DEF))]
@@ -970,7 +973,8 @@ class AbstractDataSet(object):
         field_def[FIELD_ENABLE_TYPEAHEAD] = enable_typeahead
         field_def[FIELD_HELP] = field_help
         field_def[FIELD_PLACEHOLDER] = field_placeholder
-        field_def[FIELD_MASK] = field_mask
+        field_def[FIELD_INTERFACE] = {'field_mask': field_mask,
+            'textarea': textarea, 'do_not_sanitize': do_not_sanitize}
         if data_type == consts.IMAGE:
             field_def[FIELD_IMAGE] = {'edit_width': image_edit_width, 'edit_height': image_edit_height,
                 'view_width': image_view_width, 'view_height': image_view_height, 'placeholder': image_placeholder,

@@ -180,6 +180,7 @@ class ServerDataset(Dataset, SQL):
     def select_records(self, params, safe=False):
         if safe and not self.can_view():
             raise Exception(consts.language('cant_view') % self.item_caption)
+        params['__client_request'] = safe
         result = None
         if self.task.on_open:
             result = self.task.on_open(self, params)

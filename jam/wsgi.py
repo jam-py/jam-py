@@ -26,7 +26,8 @@ from .third_party.six import get_function_code
 
 from .common import consts, error_message, file_write
 from .common import consts, ProjectNotCompleted
-from .common import json_defaul_handler, compressBuf, validate_image
+from .common import json_defaul_handler, compressBuf
+from .common import validate_image, valid_uploaded_file
 from .admin.admin import create_admin, login_user, get_roles
 from .admin.admin import user_valid_ip, user_valid_uuid
 from .admin.builder import update_events_code
@@ -740,11 +741,16 @@ class App(object):
                                 item = task.item_by_ID(item_id)
                                 field = item.field_by_ID(field_id)
                                 if field.data_type == consts.IMAGE:
-                                    if ext != validate_image(f):
-                                        r['error'] = 'Invalid image file'
+                                    if not valid_uploaded_file('image/*', ext):
+                                        r['error'] = consts.lang['upload_not_allowed']
+                                elif field.data_type == consts.FILE:
+                                    if not valid_uploaded_file(field.field_file['accept'], ext):
+                                        r['error'] = consts.lang['upload_not_allowed']
+                                else:
+                                    r['error'] = 'Operation prohibited'
                             else:
                                 if not ext in consts.upload_file_ext:
-                                    r['error'] = 'Invalid file extension'
+                                    r['error'] = consts.lang['upload_not_allowed']
                             file_name = ('%s%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
                             file_name = secure_filename(file_name)
                             file_name = file_name.replace('?', '')

@@ -57,6 +57,8 @@ The ``on_open`` event handler has the following parameters:
   
   * ``__limit`` - corresponds to the limit parameter of the open method  
   
+  * ``__client_request`` - is true when request came from the client
+  
   ``params`` can also include user defined parameters passed to the open method.
   
 Below is an example of params that the client open methods of invoices items 

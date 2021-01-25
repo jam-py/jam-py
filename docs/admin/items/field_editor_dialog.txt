@@ -85,6 +85,14 @@ Interface tab
 	:align: center
 	:alt: fields_editr_interface.png
 
+* **Mask** - use this attribute to specify the 
+  :doc:`field_mask </refs/client/field/at_field_mask>`
+
+* **TextArea** - for text fields if this attribute is set the textarea element
+  will be created for these fields in the :doc:`Edit Form Dialog <edit_form_dialog>`
+
+* **Do not sanitize** - set this attributeto prevent default sanitizing of the 
+  field value, see :doc:`Sanitizing </admin/sanitizing>`
 
 * **Alignment** - determines the alignment of text in the controls that display 
   this field.
@@ -115,8 +123,13 @@ Interface tab for FILE field
 * **Open btn** - uncheck the box to hide the open button (right)
 
 * **Accept** - the attribute specifies the types of files that can be loaded. 
-  This is a string, the same as the html <input> accept attribute.
-  See https://www.w3schools.com/Tags/att_input_accept.asp
+  This is an :doc:`Accept string </admin/accept_string>`. 
+  
+
+.. note::
+
+  Please note that **Accept** attribute is required. 
+  Uploaded files are checked on the server against this attribute.  
 
 
 Interface tab for Image field

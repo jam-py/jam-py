@@ -1,0 +1,35 @@
+===============
+Version 5.4.109
+===============
+
+* The work on sanitizing of field values is completed. 
+  See :doc:`Sanitizing </admin/sanitizing>`
+
+* The **TextArea** attribute is added the **Interface Tab** of the
+  :doc:`Edit Form Dialog </admin/items/edit_form_dialog>` for TEXT fields
+  
+* The **Do not sanitize** attribute is added the **Interface Tab** of the
+  :doc:`Edit Form Dialog </admin/items/edit_form_dialog>`.
+  See :doc:`Sanitizing </admin/sanitizing>`
+
+* The **Accept** attribute of the **Interface Tab** of the
+  :doc:`Edit Form Dialog </admin/items/edit_form_dialog>` for FILE fields
+  is required now. Uploaded files are checked on the server 
+  against this attribute.  
+
+* The **Upload file extensions** attribute is added to the 
+  :doc:`Project parameters </admin/project/parameters>` that defines 
+  file types that are allowed to be uploaded by the task
+  :doc:`upload </refs/client/task/m_upload>` method.
+  
+* The ``expanded`` options is added to the 
+  :doc:`add_edit_button </refs/client/item/m_add_edit_button>` and
+  :doc:`add_view_button </refs/client/item/m_add_view_button>`
+  methods.
+  
+
+  
+
+  
+
+

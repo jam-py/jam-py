@@ -106,7 +106,7 @@
             "enable_typeahead",
             "field_help",
             "field_placeholder",
-            "field_mask",
+            "field_interface",
             "field_image",
             "field_file"
         ],
@@ -7113,7 +7113,7 @@
             var container;
             options = $.extend({}, options);
             if (!options.parent_class_name) {
-                if (this.edit_form.find('.default-topbtn-edit').length) {
+                if (this.edit_form.find('.default-top-edit').length) {
                     options.parent_class_name = 'form-header';
                 }
                 else {
@@ -7131,6 +7131,7 @@
                     image: undefined,
                     type: undefined,
                     secondary: false,
+                    expanded: true,
                     shortcut: undefined
                 },
                 right_aligned,
@@ -7147,7 +7148,10 @@
             if (!text) {
                 text = 'Button';
             }
-            result = $('<button class="btn expanded-btn" type="button"></button>')
+            result = $('<button class="btn" type="button"></button>')
+            if (options.expanded) {
+                result.addClass('expanded-btn')
+            }
             if (options.btn_id) {
                 result.attr('id', options.btn_id);
             }
@@ -7746,6 +7750,7 @@
                 },
             options = $.extend(true, {}, default_options, options);
             if (copy.record_count() === 1) {
+                this.edit_record_version = copy.edit_record_version;
                 if (options.params && options.params.__edit_record_id) {
                     this.edit_record_version = copy.edit_record_version;
                 }
@@ -8211,6 +8216,24 @@
             },
             set: function(new_value) {
                 this._set_read_only(new_value);
+            }
+        });
+        Object.defineProperty(this, "field_mask", {
+            get: function() {
+                return this.field_interface.field_mask;
+            },
+            set: function(new_value) {
+                this.field_interface.field_mask = new_value;
+            }
+        });
+        Object.defineProperty(this, "field_do_not_sanitize", {
+            get: function() {
+                return this.field_interface.do_not_sanitize;
+            }
+        });
+        Object.defineProperty(this, "field_textarea", {
+            get: function() {
+                return this.field_interface.textarea;
             }
         });
     }
@@ -8791,11 +8814,14 @@
         },
 
         get_html: function() {
-            var img_scr;
+            var result = '';
             if (this.owner && this.owner.on_field_get_html) {
-                return this.owner.on_field_get_html.call(this.owner, this);
+                result = this.owner.on_field_get_html.call(this.owner, this);
             }
-            return this._get_image();
+            if (!result && this.lookup_data_type === consts.IMAGE) {
+                result = this._get_image();
+            }
+            return result;
         },
 
         get_display_text: function() {
@@ -9528,6 +9554,7 @@
         this._value = null;
         this._lookup_value = null;
         this.field_kind = consts.PARAM_FIELD;
+        this.field_interface = {};
         if (this.owner[this.param_name] === undefined) {
             this.owner[this.param_name] = this;
         }
@@ -11925,12 +11952,16 @@
                         if (this.item._open_params.__search.length === 4) {
                             text = this.item._open_params.__search[3];
                         }
-                        result = this.item.sanitize_html(result);
+                        if (!field.field_do_not_sanitize) {
+                            result = this.item.sanitize_html(result);
+                        }
                         result = highlight(result, text);
                     }
                 }
                 else {
-                    result = this.item.sanitize_html(result);
+                    if (!field.field_do_not_sanitize) {
+                        result = this.item.sanitize_html(result);
+                    }
                 }
             }
             return result;
@@ -12809,9 +12840,9 @@
                     });
             } else if (field_type === consts.IMAGE) {
                 $input = $('<div>');
-            } else if (field.lookup_data_type === consts.LONGTEXT) {
+            } else if (field.lookup_data_type === consts.LONGTEXT || field.field_textarea) {
                 $input = $('<textarea>').innerHeight(70);
-            } else {
+            } else if (!field.field_textarea) {
                 $input = $('<input>').attr("type", "text")
             }
             if (tabIndex) {
@@ -12821,7 +12852,7 @@
             if (this.label_width && !this.label_on_top) {
                 $controls.css('margin-left', this.label_width + 20 + 'px');
             }
-            field_mask = this.field.field_mask;
+            field_mask = this.field.field_interface.field_mask;
             if (!field_mask) {
                 field_mask = this.field.get_mask()
             }
@@ -12968,8 +12999,14 @@
             } else {
                 switch (field_type) {
                     case consts.TEXT:
-                        $input.addClass("input-text");
-                        $controls.append($input);
+                        if (field.field_textarea) {
+                            $input.addClass("input-longtext");
+                            $controls.append($input);
+                        }
+                        else {
+                            $input.addClass("input-text");
+                            $controls.append($input);
+                        }
                         break;
                     case consts.INTEGER:
                         $input.addClass("input-integer");

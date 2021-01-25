@@ -22,6 +22,12 @@ side of the page may have buttons that allow you to modify the content.
 
 To see the changes made in Application builder go to the Project page and reload it. 
 
+.. toctree:: 
+    :hidden:
+
+    sanitizing
+    accept_string
+
 .. toctree::
    :maxdepth: 1
 

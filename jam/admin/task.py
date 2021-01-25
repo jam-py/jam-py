@@ -73,7 +73,9 @@ def create_fields(item, parent_id, item_dict):
                     image_camera=fields.f_image_camera.value,
                     file_download_btn=fields.f_file_download_btn.value,
                     file_open_btn=fields.f_file_open_btn.value,
-                    file_accept=fields.f_file_accept.value
+                    file_accept=fields.f_file_accept.value,
+                    textarea = fields.f_textarea.value,
+                    do_not_sanitize = fields.f_do_not_sanitize.value
                 )
 
 def create_filters(item, parent_id, item_dict):

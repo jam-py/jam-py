@@ -5269,7 +5269,9 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 			{fields: ['f_object', 'f_object_field', 'f_object_field1', 'f_object_field2', 'f_master_field',
 				'f_enable_typehead', 'f_lookup_values']});
 		item.create_inputs(item.edit_form.find("#interface"),
-			{fields: ['f_alignment', 'f_mask', 'f_placeholder', 'f_help']});
+			{fields: ['f_alignment', 'f_mask', 'f_do_not_sanitize', 'f_placeholder', 'f_help']});
+		item.create_inputs(item.edit_form.find("#text-interface"),
+			{fields: ['f_alignment', 'f_mask', 'f_textarea', 'f_do_not_sanitize', 'f_placeholder', 'f_help']});
 		item.create_inputs(item.edit_form.find("#file-interface"),
 			{fields: ['f_file_download_btn', 'f_file_open_btn', 'f_file_accept', 'f_help']});
 		item.create_inputs(item.edit_form.find("#image-interface1"),
@@ -5278,6 +5280,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 			{fields: ['f_image_camera'], col_count: 1, label_size: 2});
 		item.create_inputs(item.edit_form.find("#image-interface3"),
 			{fields: ['f_image_placeholder']});
+		item.create_inputs(item.edit_form.find("#calc"), {fields: ['f_calc_item', 'f_calc_field', 'f_calc_op', 'f_do_not_sanitize']});
 	
 		update_iterface_tab(item);
 	
@@ -5294,8 +5297,15 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	}
 	
 	function update_iterface_tab(item) {
-		if (item.f_data_type.value === item.task.consts.FILE) {
+		if (item.f_data_type.value === item.task.consts.TEXT) {
 			item.edit_form.find("#interface").hide();
+			item.edit_form.find("#text-interface").show();				
+			item.edit_form.find("#image-interface").hide();
+			item.edit_form.find("#file-interface").hide();
+		}
+		else if (item.f_data_type.value === item.task.consts.FILE) {
+			item.edit_form.find("#interface").hide();
+			item.edit_form.find("#text-interface").hide();		
 			item.edit_form.find("#image-interface").hide();
 			item.edit_form.find("#file-interface").show();
 			if (item.is_changing()) {
@@ -5307,6 +5317,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 		}
 		else if (item.f_data_type.value === item.task.consts.IMAGE) {
 			item.edit_form.find("#interface").hide();
+			item.edit_form.find("#text-interface").hide();				
 			item.edit_form.find("#image-interface").show();
 			item.edit_form.find("#file-interface").hide();
 			if (item.is_changing()) {
@@ -5320,6 +5331,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 		}
 		else {
 			item.edit_form.find("#interface").show();
+			item.edit_form.find("#text-interface").hide();				
 			item.edit_form.find("#image-interface").hide();
 			item.edit_form.find("#file-interface").hide();
 		}
@@ -5534,6 +5546,18 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 			else if (item.f_data_type.value === item.task.consts.FLOAT || item.f_data_type.value === item.task.consts.CURRENCY) {
 				if (!($.isNumeric(field.value))) {
 					return task.language.invalid_value.replace('%s', '');
+				}
+			}
+		}
+		else if (field.field_name === 'f_file_accept') {
+			if (item.f_data_type.value === task.consts.FILE) {
+				if (!field.value) {
+					return field.field_caption + ' - ' + task.language.value_required;   
+				}
+				else {
+					if (!task.server('server_valid_field_accept_value', [field.value])) {
+						return field.field_caption + ' - ' + task.language.invalid_value.replace('%s', '');
+					}
 				}
 			}
 		}

@@ -1,0 +1,45 @@
+==========
+Sanitizing
+==========
+
+To prevent Cross Site Scripting (XSS) attacks, Jam.py sanitizese field values 
+displayed in the table columns.
+
+For example, if field contains the following text:
+
+.. code-block:: html
+
+  "<span style='color: red'>USA</span>"
+
+when unsanitized it will be displayed in the table column as follows:
+
+.. image:: /admin/_images/unsanitized.png
+	:align: center
+	:alt: unsanitized.png
+
+When the field text sanitized, it is transformed to the following:
+
+.. code-block:: html
+
+  "&lt;span style='color: red'&gt;USA&lt;/span&gt;"
+
+as you can see symbols '<' and '>' are replaced with '&lt;' and '&gt;'
+and the table column will be displayed this way: 
+
+
+.. image:: /admin/_images/sanitized.png
+	:align: center
+	:alt: sanitized.png
+
+There are two ways to prevent sanitizing.
+
+First is to set **Do not sanitize** attribute in the Interface tab in the 
+:doc:`Field Editor Dialog </admin/items/field_editor_dialog>`
+
+.. image:: /admin/_images/fields_editr_interface.png
+	:align: center
+	:alt: do_not_sanitize.png
+
+Second is to write the 
+:doc:`on_field_get_html </refs/client/item/on_field_get_html>`
+event handler. If the this event handler returns a value it is not sanitized.

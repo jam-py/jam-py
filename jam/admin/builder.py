@@ -7,7 +7,7 @@ from esprima import parseScript, nodes
 
 from werkzeug._compat import iteritems, iterkeys, to_unicode, to_bytes, text_type, string_types
 
-from jam.common import consts
+from jam.common import consts, get_ext_list
 from jam.dataset import FIELD_NAME, FIELD_CAPTION, FIELD_LOOKUP_VALUES
 
 from jam.common import consts, error_message, file_read, file_write
@@ -26,8 +26,7 @@ LOOKUP_LISTS = {
         'f_alignment': consts.ALIGNMENT,
         'f_type': consts.FILTER_STRING,
         'label_size': ['xSmall', 'Small', 'Medium', 'Large', 'xLarge'],
-        'group_type': consts.GROUP_TYPES,
-
+        'group_type': consts.GROUP_TYPES
     }
     
 def get_value_list(str_list):
@@ -800,6 +799,13 @@ def server_can_delete_lookup_list(task, list_id):
         names = ',<br>'.join([task.language('field_mess') % use for use in used])
         mess = task.language('lookup_list_is_used_in') % names
         return mess
+
+def server_valid_field_accept_value(task, accept):
+    try:
+        get_ext_list(accept)    
+        return True
+    except:
+        return False
 
 def server_valid_item_name(task, item_id, parent_id, name, type_id):
     result = ''
@@ -2057,6 +2063,7 @@ def register_events(task):
     task.register(server_get_task_info)
     task.register(server_can_delete_lookup_list)
     task.register(server_valid_item_name)
+    task.register(server_valid_field_accept_value)
     task.register(server_get_primary_key_type)
     task.register(server_set_literal_case)
     task.register(server_lang_modified)
