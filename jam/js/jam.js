@@ -2882,7 +2882,7 @@
                 result = $.trim(val);
                 result = result.replace(' ', '')
                 if (locale.MON_THOUSANDS_SEP.length) {
-                    result = result.replace(new RegExp(locale.MON_THOUSANDS_SEP, 'g'), '');
+                    result = result.replace(new RegExp('\\' + locale.MON_THOUSANDS_SEP, 'g'), '');
                 }
                 if (locale.CURRENCY_SYMBOL) {
                     result = $.trim(result.replace(locale.CURRENCY_SYMBOL, ''));
