@@ -1,5 +1,6 @@
 import  os
 import json
+import shutil
 from werkzeug._compat import iterkeys
 
 from ..common import consts, ProjectError, ProjectNotCompleted
@@ -66,7 +67,9 @@ def create_fields(item, parent_id, item_dict):
                     file_accept=fields.f_file_accept.value,
                     calc_item =fields.f_calc_item.value,
                     calc_field =fields.f_calc_field.value,
-                    calc_op =fields.f_calc_op.display_text
+                    calc_op =fields.f_calc_op.display_text,
+                    textarea = fields.f_textarea.value,
+                    do_not_sanitize = fields.f_do_not_sanitize.value
                 )
 
 def create_filters(item, parent_id, item_dict):
@@ -149,12 +152,10 @@ def create_items(group, item_dict):
                     item._deleted_flag = items.f_deleted_flag.value
                     item._master_id = items.f_master_id.value
                     item._master_rec_id = items.f_master_rec_id.value
-                    item._record_version = items.f_record_version.value
                     item._sys_id = items.sys_id.value
                     items.load_interface()
                     item._view_list = items._view_list
                     item._edit_list = items._edit_list
-                    # ~ create_fields(item, group.ID, item_dict)
                     create_fields(item, items.id.value, item_dict)
                     item._order_by = items._order_list
                     item.rep_ids = items._reports_list
@@ -344,12 +345,14 @@ def load_task(task, app, first_build=True, after_import=False):
         task.create_pool(admin.task_con_pool_size, admin.task_persist_con)
 
         params = admin.sys_params.copy()
-        params.open(fields=['f_history_item'])
+        params.open(fields=['f_history_item', 'f_lock_item'])
         task.history_item = None
         if params.f_history_item.value:
             task.history_item = task.item_by_ID(params.f_history_item.value)
             task.history_item.on_apply = history_on_apply
             task.history_sql = history_sql(task)
+        if params.f_lock_item.value:
+            task.lock_item = task.item_by_ID(params.f_lock_item.value)
 
         task.first_build = first_build
         task.after_import = after_import

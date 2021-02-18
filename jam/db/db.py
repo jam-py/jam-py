@@ -1,9 +1,33 @@
+
 import json
 import datetime
 
 from werkzeug._compat import iteritems, text_type, integer_types, string_types, to_bytes, to_unicode
 
 from ..common import consts, error_message, json_defaul_handler
+
+class WhereCondition(object):
+    def __init__(self, db):
+        self.db = db
+        self.queries = []
+        self.params = []
+
+    @property
+    def next_literal(self):
+        return self.db.value_literal(len(self.params) + 1)
+
+    def add(self, query, param=None):
+        self.queries.append(query)
+        if not param is None:
+            self.params.append(param)
+
+    @property
+    def where_query(self):
+        result = ' AND '.join(self.queries)
+        if result:
+            result = ' WHERE ' + result
+        return result, self.params
+
 
 class AbstractDB(object):
     def __init__(self):
@@ -172,7 +196,7 @@ class AbstractDB(object):
         pk = delta._primary_key_field
         command = 'UPDATE "%s" SET ' % delta.table_name
         for field in delta.fields:
-            valid = field.field_name != delta._record_version and field != pk
+            valid = field != pk
             if delta.lock_active and field.data == field.old_data:
                 valid = False
             if valid:
@@ -183,9 +207,6 @@ class AbstractDB(object):
                     value = (0, field.data_type)
                 row.append(value)
         fields = ', '.join(fields)
-        if delta.lock_active:
-            fields = ' %s, "%s"=COALESCE("%s", 0)+1' % \
-            (fields, delta._record_version_db_field_name, delta._record_version_db_field_name)
         if delta._primary_key_field.data_type == consts.TEXT:
             id_literal = "'%s'" % delta._primary_key_field.value
         else:
@@ -194,15 +215,6 @@ class AbstractDB(object):
         sql = ''.join([command, fields, where])
         row = self.process_query_params(row, cursor)
         delta.execute_query(cursor, sql, row, arg_params=self.arg_params)
-        if delta.lock_active:
-            delta.execute_query(cursor, 'SELECT "%s" FROM "%s" WHERE "%s"=%s' % \
-                (delta._record_version_db_field_name, delta.table_name, \
-                delta._primary_key_db_field_name, pk.data))
-            r = cursor.fetchone()
-            record_version = r[0]
-            if record_version != delta._record_version_field.value + 1:
-                raise Exception(consts.language('edit_record_modified'))
-            delta._record_version_field.data = record_version
         changes.append([delta.get_rec_info()[consts.REC_LOG_REC], delta._dataset[delta.rec_no], details_changes])
 
     def delete_record(self, delta, cursor, changes, details_changes):
@@ -510,49 +522,23 @@ class AbstractDB(object):
                 result = 'IS NOT NULL'
         return result
 
-    def convert_field_value(self, item, field, value, filter_type):
+    def convert_field_value(self, field, value):
         data_type = field.data_type
-        if filter_type and filter_type in [consts.FILTER_CONTAINS, consts.FILTER_STARTWITH, consts.FILTER_ENDWITH]:
-            if data_type == consts.FLOAT:
-                value = field.str_to_float(value)
-            elif data_type == consts.CURRENCY:
-                value = field.str_to_cur(value)
-            if type(value) == float:
-                if int(value) == value:
-                    value = str(int(value)) + '.'
-                else:
-                    value = str(value)
-            return value
-        else:
-            if data_type == consts.DATE:
-                if type(value) in string_types:
-                    result = value
-                else:
-                    result = value.strftime('%Y-%m-%d')
-                return self.cast_date(result)
-            elif data_type == consts.DATETIME:
-                if type(value) in string_types:
-                    result = value
-                else:
-                    result = value.strftime('%Y-%m-%d %H:%M:%S')
-                result = self.cast_datetime(result)
-                return result
-            elif data_type == consts.INTEGER:
-                if type(value) in integer_types or type(value) in string_types and value.isdigit():
-                    return str(value)
-                else:
-                    return "'" + value + "'"
-            elif data_type == consts.BOOLEAN:
-                if value:
-                    return '1'
-                else:
-                    return '0'
-            elif data_type == consts.TEXT:
-                return "'" + to_unicode(value) + "'"
-            elif data_type in (consts.FLOAT, consts.CURRENCY):
-                return str(float(value))
+        if type(value) in string_types:
+            value = to_unicode(value)
+        if data_type == consts.DATE:
+            if type(value) in string_types:
+                return datetime.datetime.strptime(value, '%Y-%m-%d')
+        if data_type == consts.DATETIME:
+            if type(value) in string_types:
+                return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+        if data_type == consts.BOOLEAN:
+            if value:
+                return '1'
             else:
-                return value
+                return '0'
+        else:
+            return value
 
     def escape_search(self, value, esc_char):
         result = ''
@@ -569,20 +555,25 @@ class AbstractDB(object):
     def get_condition(self, item, field, filter_type, value):
         esc_char = '/'
         cond_field_name = '%s."%s"' % (self.table_alias(item), field.db_field_name)
-        if type(value) == str:
-            value = to_unicode(value, 'utf-8')
+        sql_literal = self.conditions.next_literal
         filter_sign = self.get_filter_sign(item, filter_type, value)
         cond_string = '%s %s %s'
         if filter_type in (consts.FILTER_IN, consts.FILTER_NOT_IN):
-            values = [self.convert_field_value(item, field, v, filter_type) for v in value if v is not None]
-            value = '(%s)' % ', '.join(values)
+            values = [to_unicode(v) for v in value if v is not None]
+            sql_literal = '(%s)' % ', '.join(values)
+            value = None
         elif filter_type == consts.FILTER_RANGE:
-            value = self.convert_field_value(item, field, value[0], filter_type) + \
-                ' AND ' + self.convert_field_value(item, field, value[1], filter_type)
+            param1 = self.convert_field_value(field, value[0])
+            self.conditions.params.append(param1)
+            sql_literal2 = self.conditions.next_literal
+            param2 = self.convert_field_value(field, value[1])
+            sql_literal = ' %s AND %s ' % (sql_literal, sql_literal2)
+            value = param2
         elif filter_type == consts.FILTER_ISNULL:
-            value = ''
+            sql_literal = ''
+            value = None
         else:
-            value = self.convert_field_value(item, field, value, filter_type)
+            value = self.convert_field_value(field, value)
             if filter_type in [consts.FILTER_CONTAINS, consts.FILTER_STARTWITH, consts.FILTER_ENDWITH]:
                 value, esc_found = self.escape_search(value, esc_char)
                 if field.lookup_item:
@@ -602,33 +593,34 @@ class AbstractDB(object):
                     value = '%' + value
                 cond_field_name, value = self.convert_like(cond_field_name, value, field.data_type)
                 if esc_found:
-                    value = "'" + value + "' ESCAPE '" + esc_char + "'"
-                else:
-                    value = "'" + value + "'"
-        sql = cond_string % (cond_field_name, filter_sign, value)
+                    value = value + "' ESCAPE '" + esc_char
+        sql = cond_string % (cond_field_name, filter_sign, sql_literal)
         if field.data_type == consts.BOOLEAN and not field.not_null and value == '0':
             if filter_sign == '=':
                 sql = '(' + sql + ' OR %s IS NULL)' % cond_field_name
         if filter_sign == '<>' and not field.not_null:
             sql = '(' + sql + ' AND %s IS NOT NULL)' % cond_field_name
-        return sql
+        return sql, value
 
-    def add_master_conditions(self, item, query, conditions):
+    def add_master_conditions(self, item, query):
         if query.master_field:
-            conditions.append('%s."%s"=%s' % \
-                (self.table_alias(item), item._master_field_db_field_name, str(query.master_field)))
+            self.conditions.add('%s."%s" = %s' % \
+                (self.table_alias(item), item._master_field_db_field_name,
+                self.conditions.next_literal), query.master_field)
         else:
             if query.master_id:
-                conditions.append('%s."%s"=%s' % \
-                    (self.table_alias(item), item._master_id_db_field_name, str(query.master_id)))
+                self.conditions.add('%s."%s" = %s' % \
+                    (self.table_alias(item), item._master_id_db_field_name,
+                    self.conditions.next_literal), query.master_id)
             if query.master_rec_id:
-                conditions.append('%s."%s"=%s' % \
-                    (self.table_alias(item), item._master_rec_id_db_field_name, str(query.master_rec_id)))
+                self.conditions.add('%s."%s" = %s' % \
+                    (self.table_alias(item), item._master_rec_id_db_field_name,
+                    self.conditions.next_literal), query.master_rec_id)
 
     def where_clause(self, item, query):
-        conditions = []
+        self.conditions = WhereCondition(self)
         if item.master or item.master_field:
-            self.add_master_conditions(item,query, conditions)
+            self.add_master_conditions(item, query)
         filters = query.filters
         deleted_in_filters = False
         if filters:
@@ -640,18 +632,17 @@ class AbstractDB(object):
                     if filter_type == consts.FILTER_CONTAINS_ALL:
                         values = value.split()
                         for val in values:
-                            conditions.append(self.get_condition(item, field, consts.FILTER_CONTAINS, val))
+                            query, param = self.get_condition(item, field, consts.FILTER_CONTAINS, val)
+                            self.conditions.add(query, param)
                     elif filter_type in [consts.FILTER_IN, consts.FILTER_NOT_IN] and \
                         type(value) in [tuple, list] and len(value) == 0:
-                        conditions.append('%s."%s" IN (NULL)' % (self.table_alias(item), item._primary_key_db_field_name))
+                        self.conditions.add('%s."%s" IN (NULL)' % (self.table_alias(item), item._primary_key_db_field_name))
                     else:
-                        conditions.append(self.get_condition(item, field, filter_type, value))
+                        query, param = self.get_condition(item, field, filter_type, value)
+                        self.conditions.add(query, param)
         if not deleted_in_filters and item._deleted_flag:
-            conditions.append('%s."%s"=0' % (self.table_alias(item), item._deleted_flag_db_field_name))
-        result = ' AND '.join(conditions)
-        if result:
-            result = ' WHERE ' + result
-        return result
+            self.conditions.add('%s."%s" = 0' % (self.table_alias(item), item._deleted_flag_db_field_name))
+        return self.conditions.where_query
 
     def group_clause(self, item, query, fields):
         group_fields = query.group_by
@@ -782,11 +773,11 @@ class AbstractDB(object):
                 fields = item._fields
             fields_clause = self.fields_clause(item, query, fields)
             from_clause = self.from_clause(item, query, fields)
-            where_clause = self.where_clause(item, query)
+            where_clause, params = self.where_clause(item, query)
             group_clause = self.group_clause(item, query, fields)
             order_clause = self.order_clause(item, query)
             sql = self.get_select(query, fields_clause, from_clause, where_clause, group_clause, order_clause, fields)
-            return sql
+            return sql, params
         except Exception as e:
             item.log.exception(error_message(e))
             raise
@@ -815,3 +806,4 @@ class AbstractDB(object):
 
     def empty_table_query(self, item):
         return 'DELETE FROM %s' % item.table_name
+

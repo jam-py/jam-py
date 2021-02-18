@@ -2,6 +2,40 @@
 How to change style and attributes of form elements
 ===================================================
 
+To change how locale data is displayed throughout the project, such as dates, 
+currency values, and so on, you must go to the 
+:doc:`Project parameters </admin/project/parameters>`
+, click the button to the right of the Language attribute, select the language 
+and click the **Edit**, and then change the 
+:doc:`Language locale </admin/language_support>`
+
+If you need to change the way some specific field is displayed you can write the
+:doc:`on_field_get_text </refs/client/item/on_field_get_text>` 
+event handler in the client module of the item 
+(see :doc:`Working with modules </programming/modules>`):
+
+.. code-block:: js
+
+  function on_field_get_text(field) {
+    if (field.field_name === 'total') {
+        return '$' + field.value.toFixed(2);
+    }
+  }
+
+To change the html of a field cell in a table you can write the
+:doc:`on_field_get_html </refs/client/item/on_field_get_html>`
+event handler. For example, if you have title and url fields and 
+instead of seeing title and url as different columns in the table, you can have 
+only one column of clickable titles you can write the following event handler:
+
+.. code-block:: js
+
+  function on_field_get_html(field) {
+    if (field.field_name === 'title') {
+        return '<a href="' + field.owner.url.value + '" target="_blank">' + field.value + '</a>';
+    }
+  }
+
 You can access any DOM element on forms using jQuery.
 
 In the following example, in the ``on_edit_form_created`` event handler defined 
@@ -11,12 +45,11 @@ text of the **Cancel** button to “Close” in the edit form:
 .. code-block:: js
 
   function on_edit_form_created(item) {
-      item.edit_form.find("#ok-btn").hide();
-      item.edit_form.find("#cancel-btn").text('Close');
+    item.edit_form.find("#ok-btn").hide();
+    item.edit_form.find("#cancel-btn").text('Close');
   }
 
-When an application creates input controls, it adds a class with a 
-name that is the 
+When an application creates input controls, it adds a class with a name that is the 
 :doc:`field_name </refs/client/field/at_field_name>`
 attribute of the corresponding field to each input.
 

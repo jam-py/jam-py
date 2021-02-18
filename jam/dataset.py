@@ -11,7 +11,7 @@ FIELD_DEF = FIELD_ID, FIELD_NAME, FIELD_CAPTION, FIELD_DATA_TYPE, FIELD_SIZE, RE
     LOOKUP_FIELD, LOOKUP_FIELD1, LOOKUP_FIELD2, FIELD_VISIBLE, \
     FIELD_READ_ONLY, FIELD_DEFAULT, FIELD_DEFAULT_VALUE, MASTER_FIELD, FIELD_ALIGNMENT, \
     FIELD_LOOKUP_VALUES, FIELD_MULTI_SELECT, FIELD_MULTI_SELECT_ALL, \
-    FIELD_ENABLE_TYPEAHEAD, FIELD_HELP, FIELD_PLACEHOLDER, FIELD_MASK, \
+    FIELD_ENABLE_TYPEAHEAD, FIELD_HELP, FIELD_PLACEHOLDER, FIELD_INTERFACE, \
     FIELD_IMAGE, FIELD_FILE, DB_FIELD_NAME, FIELD_CALC, FIELD_NOT_NULL = range(28)
 
 FILTER_DEF = FILTER_OBJ_NAME, FILTER_NAME, FILTER_FIELD_NAME, FILTER_TYPE, \
@@ -71,8 +71,9 @@ class DBField(object):
         self.enable_typeahead = field_def[FIELD_ENABLE_TYPEAHEAD]
         self.field_help = field_def[FIELD_HELP]
         self.field_placeholder = field_def[FIELD_PLACEHOLDER]
-        self.field_mask = field_def[FIELD_MASK]
+        self.field_mask = field_def[FIELD_INTERFACE]
         self.field_image = field_def[FIELD_IMAGE]
+        self.field_file = field_def[FIELD_FILE]
         self.db_field_name = field_def[DB_FIELD_NAME]
         self.field_type = consts.FIELD_TYPE_NAMES[self.data_type]
         self.filter = None
@@ -346,6 +347,8 @@ class DBField(object):
 
     def _get_value_in_list(self, value):
         result = '';
+        if type(value) in string_types:
+            return value
         try:
             for val, str_val in self.lookup_values:
                 if val == value:
@@ -411,14 +414,14 @@ class DBField(object):
     def lookup_text(self):
         if self.data_type == consts.KEYS:
             return self.text
-        elif self.lookup_item and self.owner.expanded:
+        elif self.lookup_item and (self.field_kind != consts.ITEM_FIELD or self.owner.expanded):
             return self._value_to_text(self.lookup_data, self.lookup_value, self.lookup_data_type)
         else:
             return self.text
 
     @property
     def display_text(self):
-        if self.lookup_item and self.owner.expanded and self.lookup_data:
+        if self.lookup_item and (self.field_kind != consts.ITEM_FIELD or self.owner.expanded):
             lookup_field = self._lookup_field
             data_type = lookup_field.data_type
             if lookup_field.lookup_values:
@@ -494,12 +497,12 @@ class DBField(object):
     def check_type(self):
         if (self.data_type == consts.TEXT) and (self.field_size != 0) and \
             (len(self.text) > self.field_size):
-            raise FieldInvalidLength(self.field_name + ' - ' + consts.language('invalid_length') % self.field_size)
+            raise FieldInvalidLength('%s: %s' % (self.field_caption, consts.language('invalid_length') % self.field_size))
         return True
 
     def check_reqired(self):
         if self.required and self.data is None:
-            raise FieldValueRequired('%s "%s" - %s' % (consts.language['field'], self.field_name, consts.language['value_required']))
+            raise FieldValueRequired('%s: %s' % (self.field_caption, consts.language('value_required')))
         return True
 
     def check_valid(self):
@@ -775,7 +778,6 @@ class ChangeLog(object):
         data = []
         counter = 0
         result['fields'] = self.db_fields
-        result['edit_lock'] = self.item.edit_lock;
         result['data'] = data
         for log in self.logs:
             if log:
@@ -811,7 +813,6 @@ class ChangeLog(object):
         self.fields = changes['fields']
         self.db_fields = self.fields
         self.expanded = False
-        self.item.edit_lock = changes['edit_lock']
         data = changes['data']
         for record_log in data:
             if record_log:
@@ -967,7 +968,6 @@ class AbstractDataSet(object):
         self._dataset = []
         self._primary_key = None
         self._deleted_flag = None
-        self._record_version = None
         self.master_field = None
         self._master_field = None
         self._master_field_db_field_name = None
@@ -975,7 +975,6 @@ class AbstractDataSet(object):
         self._master_rec_id = None
         self._primary_key_db_field_name = None
         self._deleted_flag_db_field_name = None
-        self._record_version_db_field_name = None
         self._master_id_db_field_name = None
         self._master_rec_id_db_field_name = None
         self.__eof = False
@@ -1019,7 +1018,7 @@ class AbstractDataSet(object):
             field_placeholder=None, lookup_field1=None, lookup_field2=None, db_field_name=None, field_mask=None,
             image_edit_width=None, image_edit_height=None, image_view_width=None, image_view_height=None,
             image_placeholder=None, image_camera=None, file_download_btn=None, file_open_btn=None, file_accept=None,
-            calc_item=None, calc_field=None, calc_op=None
+            calc_item=None, calc_field=None, calc_op=None, textarea=None, do_not_sanitize=None
             ):
         if not db_field_name:
             db_field_name = field_name.upper()
@@ -1044,10 +1043,12 @@ class AbstractDataSet(object):
         field_def[FIELD_ENABLE_TYPEAHEAD] = enable_typeahead
         field_def[FIELD_HELP] = field_help
         field_def[FIELD_PLACEHOLDER] = field_placeholder
-        field_def[FIELD_MASK] = field_mask
+        field_def[FIELD_INTERFACE] = {'field_mask': field_mask,
+            'textarea': textarea, 'do_not_sanitize': do_not_sanitize}
         if data_type == consts.IMAGE:
-            field_def[FIELD_IMAGE] = {'edit_width': image_edit_width, 'edit_height': image_edit_height,
-                'view_width': image_view_width, 'view_height': image_view_height, 'placeholder': image_placeholder,
+            field_def[FIELD_IMAGE] = {'edit_width': image_edit_width,
+                'edit_height': image_edit_height, 'view_width': image_view_width,
+                'view_height': image_view_height, 'placeholder': image_placeholder,
                 'camera': image_camera}
         if data_type == consts.FILE:
             field_def[FIELD_FILE] = {'download_btn': file_download_btn, 'open_btn': file_open_btn, 'accept': file_accept}
@@ -1128,16 +1129,9 @@ class AbstractDataSet(object):
     def dataset(self, value):
         self._dataset = value
 
-    # ~ @property
-    # ~ def keep_history(self):
-        # ~ if self.master or self.master_field:
-            # ~ return self.prototype._keep_history
-        # ~ else:
-            # ~ return self._keep_history
-
     @property
     def lock_active(self):
-        return self.edit_lock and self._record_version
+        return self.edit_lock
 
     def _copy(self, filters=True, details=True, handlers=True):
         result = self.__class__(self.task, None, self.item_name, self.item_caption)
@@ -1246,7 +1240,7 @@ class AbstractDataSet(object):
                 setattr(self, field.field_name, field)
         self._master_field = self.master_field
         for sys_field_name in ['_primary_key', '_deleted_flag', '_master_id',
-            '_master_rec_id', '_record_version', '_master_field']:
+            '_master_rec_id', '_master_field']:
             sys_field = getattr(self, sys_field_name)
             if sys_field and type(sys_field) == int:
                 field = self.field_by_ID(sys_field)
@@ -1468,10 +1462,10 @@ class AbstractDataSet(object):
             if filter_type != -1:
                 filter_type += 1
             else:
-                raise RuntimeError('%s: set_where method arument error %s' % (self.item_name, field_arg))
+                raise RuntimeError('%s: set_where method argument error %s' % (self.item_name, field_arg))
             field = self._field_by_name(field_name)
             if not field:
-                raise RuntimeError('%s: set_where method arument error %s: ' % (self.item_name, field_arg))
+                raise RuntimeError('%s: set_where method argument error %s: ' % (self.item_name, field_arg))
             value = field_dict[field_arg]
             if not value is None:
                 result.append([field_name, filter_type, value])
@@ -1538,7 +1532,7 @@ class AbstractDataSet(object):
         for field in self.fields:
             if not hasattr(self, field.field_name):
                 setattr(self, field.field_name, field)
-        for sys_field_name in ['_primary_key', '_deleted_flag', '_master_id', '_master_rec_id', '_record_version']:
+        for sys_field_name in ['_primary_key', '_deleted_flag', '_master_id', '_master_rec_id']:
             sys_field = getattr(self, sys_field_name)
             if sys_field:
                 field = self.field_by_name(sys_field)

@@ -17,7 +17,7 @@ Write an ``on_field_get_html`` event handler to specify the html that will be
 inserted in the table cell for the field.
 
 If the event handler does not return a value, the application checks if 
-the :doc:`on_field_get_text <on_get_field_text>` event handler is defined and it
+the :doc:`on_field_get_text <on_field_get_text>` event handler is defined and it
 returns a value, otherwise the :doc:`display_text </refs/client/field/at_display_text>`
 property value will be used to display the field value in the cell.
 
@@ -44,6 +44,6 @@ See also
 
 :doc:`Fields </programming/data/fields>`
 
-:doc:`on_field_get_text <on_get_field_text>`
+:doc:`on_field_get_text <on_field_get_text>`
 
 :doc:`on_field_get_summary <on_field_get_summary>`

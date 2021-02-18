@@ -299,7 +299,7 @@ class Report(object):
                     image = None
                     if not value is None:
                         if type(value) in string_types:
-                            text = tobytes(escape(value))
+                            text = tobytes(escape(value).replace('\n', '</text:p><text:p>'))
                         elif type(value) in integer_types or type(value) == float:
                             text = tobytes(str(value))
                         elif type(value) == dict and cell.image:

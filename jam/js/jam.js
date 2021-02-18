@@ -103,7 +103,7 @@
             "enable_typeahead",
             "field_help",
             "field_placeholder",
-            "field_mask",
+            "field_interface",
             "field_image",
             "field_file",
             "reserved",
@@ -146,6 +146,9 @@
             ];
             if (visible === undefined) {
                 visible = true;
+            }
+            if (owner === undefined) {
+                owner = null;
             }
             this.owner = owner;
             this.item_name = item_name || '';
@@ -993,7 +996,7 @@
                 if (this[event]) {
                     can_close = this[event].call(this, this);
                 }
-                if (!this.master && can_close === undefined && this.owner[event]) {
+                if (!(this.master || this.master_field) && can_close === undefined && this.owner[event]) {
                     can_close = this.owner[event].call(this, this);
                 }
                 if (can_close === undefined && this.task[event]) {
@@ -1005,7 +1008,7 @@
                 if (this[event]) {
                     if (this[event].call(this, this, e)) return;
                 }
-                if (!this.master && this.owner[event]) {
+                if (!(this.master || this.master_field) && this.owner[event]) {
                     if (this.owner[event].call(this, this, e)) return;
                 }
                 if (this.task[event]) {
@@ -1016,7 +1019,7 @@
                 if (this.task[event]) {
                     if (this.task[event].call(this, this)) return;
                 }
-                if (!this.master && this.owner[event]) {
+                if (!(this.master || this.master_field) && this.owner[event]) {
                     if (this.owner[event].call(this, this)) return;
                 }
                 if (this[event]) {
@@ -1844,7 +1847,8 @@
                 result = $.trim(val);
                 result = result.replace(' ', '')
                 if (locale.MON_THOUSANDS_SEP.length) {
-                    result = result.replace(new RegExp(locale.MON_THOUSANDS_SEP, 'g'), '');
+                    //~ result = result.replace(new RegExp(locale.MON_THOUSANDS_SEP, 'g'), '');
+                    result = result.replace(new RegExp('\\' + locale.MON_THOUSANDS_SEP, 'g'), '');
                 }
                 if (locale.CURRENCY_SYMBOL) {
                     result = $.trim(result.replace(locale.CURRENCY_SYMBOL, ''));
@@ -2113,6 +2117,12 @@
             }
             return result;
         }
+
+        sanitize_html(text) {
+            let element = document.createElement('div');
+            element.innerText = text;
+            return element.innerHTML;
+        }
     }
 
 
@@ -2281,6 +2291,8 @@
             formData.append("file_name", options.file_name);
             formData.append("path", options.path);
             formData.append("task_id", self.ID);
+            formData.append("item_id", options.item_id);
+            formData.append("field_id", options.field_id);
             xhr.open('POST', 'upload', true);
             if (options.callback) {
                 xhr.onload = function(e) {
@@ -2348,7 +2360,9 @@
                     show_progress: true,
                     accept: undefined,
                     blob: undefined,
-                    file_name: undefined
+                    file_name: undefined,
+                    item_id: -1,
+                    field_id: -1
                 },
                 accept = '',
                 form,
@@ -3261,7 +3275,6 @@
                 data = [],
                 counter = 0;
             result.fields = this.db_fields;
-            result.edit_lock = this.item.edit_lock;
             result.data = data;
             this.logs.forEach(function(log) {
                 if (log) {
@@ -4464,7 +4477,7 @@
                     fld = this.field_by_name(field_name);
                 } catch (e) {
                     console.error(e);
-                    throw new Error(this.item_name + ': set_order_by method arument error - ' + field + ' ' + e);
+                    throw new Error(this.item_name + ': set_order_by method argument error - ' + field + ' ' + e);
                 }
                 result.push([fld.field_name, desc]);
             }
@@ -4499,12 +4512,12 @@
                     if (filter_type !== -1) {
                         filter_type += 1
                     } else {
-                        throw new Error(this.item_name + ': set_where method arument error - ' + field_arg);
+                        throw new Error(this.item_name + ': set_where method argument error - ' + field_arg);
                     }
                     field = this._field_by_name(field_name);
                     if (!field) {
                         console.trace();
-                        throw new Error(this.item_name + ': set_where method arument error - ' + field_arg);
+                        throw new Error(this.item_name + ': set_where method argument error - ' + field_arg);
                     }
                     if (value !== null) {
                         if (value instanceof Date) {
@@ -5130,6 +5143,7 @@
             }
 
             this._dataset.sort(compare_records);
+            this._do_after_scroll();
             this.update_controls();
         }
 
@@ -5487,17 +5501,6 @@
             }
         }
 
-        _do_before_apply() {
-            if (this.edit_form || this.view_form ||
-                this.master_field && (this.owner.edit_form || this.owner.view_form)) {
-                $('html').addClass("wait");
-            }
-        }
-
-        _do_after_apply() {
-            $('html').removeClass("wait")
-        }
-
         apply() {
             var args = this._check_args(arguments),
                 callback = args['function'],
@@ -5522,14 +5525,16 @@
                     this.on_before_apply.call(this, this, params);
                 }
                 this._applying = true;
-                this._do_before_apply();
+                if (params.wait_cursor) {
+                    $('html').addClass("wait");
+                }
                 if (callback || async) {
                     this.send_request('apply', [changes, params], function(data) {
-                        self._process_apply(data, callback);
+                        self._process_apply(data, params, callback);
                     });
                 } else {
                     data = this.send_request('apply', [changes, params]);
-                    result = this._process_apply(data);
+                    result = this._process_apply(data, params);
                 }
             }
             else if (callback) {
@@ -5540,7 +5545,7 @@
             return result;
         }
 
-        _process_apply(data, callback) {
+        _process_apply(data, params, callback) {
             var res,
                 err;
             if (data) {
@@ -5566,7 +5571,9 @@
                     }
                 }
                 finally {
-                    this._do_after_apply();
+                    if (params.wait_cursor) {
+                        $('html').removeClass("wait");
+                    }
                     this._applying = false;
                 }
                 if (res) {
@@ -5662,45 +5669,19 @@
         set read_only(value) {
             var self = this;
             this._read_only = value;
-            if (task.old_forms) {
-                this.each_field(function(field) {
-                    field.update_controls();
-                });
-                this.each_detail(function(detail) {
-                    detail.update_controls();
-                });
-            }
-            else {
-                this.each_field(function(field) {
-                    if (!this.owner_read_only) {
-                        field._read_only = value;
-                    }
-                    field.update_controls();
-
-                });
-                this.each_detail(function(detail) {
-                    if (!this.owner_read_only) {
-                        details.read_only = value;
-                    }
-                    detail.update_controls();
-                });
-            }
+            this.each_field(function(field) {
+                field.update_controls();
+            });
+            this.each_detail(function(detail) {
+                detail.update_controls();
+            });
         }
 
         get read_only() {
-            if (task.old_forms) {
-                if ((this.master || this.master_field) && this.owner.owner_read_only) {
-                    return this.owner.read_only
-                } else {
-                    return this._read_only;
-                }
-            }
-            else {
-                if ((this.master || this.master_field) && this.owner.owner_read_only && this.owner.read_only) {
-                    return this.owner.read_only
-                } else {
-                    return this._read_only;
-                }
+            if ((this.master || this.master_field) && this.owner.owner_read_only) {
+                return this.owner.read_only;
+            } else {
+                return this._read_only;
             }
         }
 
@@ -6278,7 +6259,7 @@
                     }
                     self.create_edit_form(container);
                 };
-            if (this.master && !this.edit_options.edit_details.length) {
+            if (this.master) {
                 create_form();
             }
             else {
@@ -6286,16 +6267,9 @@
                 options.default_order = true;
                 if (!in_tab) {
                     if (this.log_changes) {
-                        if (this.master) {
-                            this.open_details(function() {
-                                create_form();
-                            });
-                        }
-                        else {
-                            this.refresh_record(options, function(error) {
-                                create_form()
-                            });
-                        }
+                        this.refresh_record(options, function(error) {
+                            create_form()
+                        });
                     }
                     else (
                         create_form()
@@ -6694,6 +6668,7 @@
             if (result && task.old_forms) {
                 result = language.filter + ' -' + result;
             }
+            result = this.item.sanitize_html(result);
             return result;
         }
 
@@ -6761,11 +6736,12 @@
         create_view_tables() {
             var table_container = this.view_form.find('.' + this.view_options.table_container_class),
                 height,
+                details = this.view_options.view_details,
                 detail,
                 detail_container,
                 self = this;
             if (table_container && table_container.length) {
-                if (!this.lookup_field && this.view_options.view_details && this.view_options.view_details.length) {
+                if (!this.lookup_field && details && details.length) {
                     detail_container = this.view_form.find('.' + this.view_options.detail_container_class);
                     if (detail_container) {
                         height = this.view_options.detail_height;
@@ -6800,7 +6776,7 @@
                 scroll_timeout,
                 tab_changed = function(index) {
                     var table_options = {
-                        editable: false,
+                        editable_fields: [],
                         multiselect: false,
                         height: options.height
                     }
@@ -6815,7 +6791,7 @@
                     self._visible_detail.open(true);
                     detail_container.show();
                 };
-            if (details && container && container.length) {
+            if (details && details.length && container && container.length) {
                 detail_container = container;
                 if (details.length > 1) {
                     this.task.init_tabs(container)
@@ -6904,7 +6880,7 @@
             var container;
             options = $.extend({}, options);
             if (!options.parent_class_name) {
-                if (this.edit_form.find('.default-topbtn-edit').length) {
+                if (this.edit_form.find('.default-top-edit').length) {
                     options.parent_class_name = 'form-header';
                 }
                 else {
@@ -6922,6 +6898,7 @@
                     image: undefined,
                     type: undefined,
                     secondary: false,
+                    expanded: true,
                     shortcut: undefined
                 },
                 right_aligned,
@@ -6938,7 +6915,10 @@
             if (!text) {
                 text = 'Button';
             }
-            result = $('<button class="btn expanded-btn" type="button"></button>')
+            result = $('<button class="btn" type="button"></button>')
+            if (options.expanded) {
+                result.addClass('expanded-btn')
+            }
             if (options.btn_id) {
                 result.attr('id', options.btn_id);
             }
@@ -7096,6 +7076,7 @@
                     }
                 }
                 source.lookup_field = field;
+                field._do_select_value(source);
                 source.view();
             }
         }
@@ -7440,7 +7421,7 @@
         }
 
         _find_lookup_value(field, lookup_field) {
-            if (lookup_field.field_kind === consts.ITEM_FIELD) {
+            if (lookup_field._owner_is_item()) {
                 if (field.lookup_field && field.lookup_field1 &&
                     lookup_field.lookup_item1 && lookup_field.lookup_item2) {
                     if (field.owner.ID === lookup_field.lookup_item.ID &&
@@ -7956,6 +7937,22 @@
             }
         }
 
+        get field_mask() {
+            return this.field_interface.field_mask;
+        }
+
+        set field_mask(value) {
+            this.field_interface.field_mask = value;
+        }
+
+        get field_textarea() {
+            return this.field_interface.textarea;
+        }
+
+        get field_do_not_sanitize() {
+            return this.field_interface.do_not_sanitize;
+        }
+
         get_row() {
             if (this.owner._dataset && this.owner._dataset.length) {
                 return this.owner._dataset[this.owner.rec_no];
@@ -7971,7 +7968,7 @@
         get data() {
             var row,
                 result;
-            if (this.field_kind === consts.ITEM_FIELD) {
+            if (this._owner_is_item()) {
                 row = this.get_row();
                 if (row && this.bind_index >= 0) {
                     result = row[this.bind_index];
@@ -7988,7 +7985,7 @@
 
         set data(value) {
             var row;
-            if (this.field_kind === consts.ITEM_FIELD) {
+            if (this._owner_is_item()) {
                 row = this.get_row();
                 if (row && this.bind_index >= 0) {
                     row[this.bind_index] = value;
@@ -8009,7 +8006,7 @@
         get lookup_data() {
             var row,
                 result;
-            if (this.field_kind === consts.ITEM_FIELD) {
+            if (this._owner_is_item()) {
                 row = this.get_row();
                 if (row && this.lookup_index >= 0) {
                     result = row[this.lookup_index];
@@ -8025,7 +8022,7 @@
 
         set lookup_data(value) {
             var row;
-            if (this.field_kind === consts.ITEM_FIELD) {
+            if (this._owner_is_item()) {
                 row = this.get_row();
                 if (row && this.lookup_index >= 0) {
                     row[this.lookup_index] = value;
@@ -8132,9 +8129,13 @@
         get value() {
             var value = this.data;
             if (value === null) {
-                if (this.field_kind === consts.ITEM_FIELD) {
+                if (this._owner_is_item()) {
                     switch (this.data_type) {
                         case consts.INTEGER:
+                            if (!this.lookup_item && !this.lookup_values) {
+                                value = 0;
+                            }
+                            break;
                         case consts.FLOAT:
                         case consts.CURRENCY:
                             value = 0;
@@ -8220,7 +8221,7 @@
         }
 
         _do_before_changed() {
-            if (this.field_kind === consts.ITEM_FIELD) {
+            if (this._owner_is_item()) {
                 if (!this.owner.is_changing()) {
                     throw new Error(language.not_edit_insert_state.replace('%s', this.owner.item_name));
                 }
@@ -8243,7 +8244,7 @@
         }
 
         _check_system_field_value(value) {
-            if (this.field_kind === consts.ITEM_FIELD) {
+            if (this._owner_is_item()) {
                 if (this.field_name === this.owner._primary_key && this.value && this.value !== value) {
                     throw new Error(language.no_primary_field_changing.replace('%s', this.owner.item_name));
                 }
@@ -8302,8 +8303,12 @@
             this.update_controls();
         }
 
+        _owner_is_item() {
+            return this.field_kind === consts.ITEM_FIELD;
+        }
+
         _set_modified(value) {
-            if (this.field_kind === consts.ITEM_FIELD) {
+            if (this._owner_is_item()) {
                 if (this.owner._set_modified) {
                     this.owner._set_modified(value);
                 }
@@ -8340,6 +8345,9 @@
             let i = 0,
                 len = this.lookup_values.length,
                 result = '';
+            if (typeof value === 'string') {
+                return value;
+            }
             try {
                 for (; i < len; i++) {
                     if (this.lookup_values[i][0] === value) {
@@ -8383,7 +8391,7 @@
             if (this.data_type === consts.KEYS) {
                 result = this.value
             }
-            else if (this.lookup_item && (this.field_kind !== consts.ITEM_FIELD || this.owner.expanded)) {
+            else if (this.lookup_item && (!this._owner_is_item() || this.owner.expanded)) {
                 let lookup_field = this._lookup_field,
                     data_type = this.lookup_data_type;
                 result = this.lookup_data;
@@ -8426,7 +8434,7 @@
             if (this.data_type === consts.KEYS) {
                 return this.text;
             }
-            else if (this.lookup_item && this.owner.expanded) {
+            else if (this.lookup_item && (!this._owner_is_item() || this.owner.expanded)) {
                 return this._value_to_text(this.lookup_data, this.lookup_value, this.lookup_data_type);
             }
             else {
@@ -8507,11 +8515,14 @@
         }
 
         get_html() {
-            var img_scr;
+            let result = '';
             if (this.owner && this.owner.on_field_get_html) {
-                return this.owner.on_field_get_html.call(this.owner, this);
+                result = this.owner.on_field_get_html.call(this.owner, this);
             }
-            return this._get_image();
+            if (!result && this.lookup_data_type === consts.IMAGE) {
+                result = this._get_image();
+            }
+            return result;
         }
 
         get display_text() {
@@ -8533,7 +8544,7 @@
                     }
                 }
             }
-            else if (this.lookup_item && this.owner.expanded && this.lookup_data) {
+            else if (this.lookup_item && (!this._owner_is_item() || this.owner.expanded)) {
                 let lookup_field = this._lookup_field,
                     data_type = lookup_field.data_type;
                 if (lookup_field.lookup_values) {
@@ -8633,6 +8644,8 @@
             this.owner.task.upload(
                 {
                     accept: 'image/*',
+                    item_id: self.owner.ID,
+                    field_id: self.ID,
                     callback: function(server_file_name, file_name) {
                         self.value = server_file_name;
                     }
@@ -8645,6 +8658,8 @@
             this.owner.task.upload(
                 {
                     accept: this.field_file.accept,
+                    item_id: self.owner.ID,
+                    field_id: self.ID,
                     callback: function(server_file_name, file_name) {
                         if (file_name.length > 255) {
                             let ext = file_name.split('.').pop();
@@ -8729,7 +8744,7 @@
         get read_only() {
             var result = this._read_only;
             if (this.owner && this.owner.owner_read_only && this.owner.read_only) {
-                result = this.owner.read_only;
+                result = true;
             }
             if (this.calculated) {
                 result = true;
@@ -9220,6 +9235,7 @@
             this.report = owner;
             this._value = null;
             this._lookup_value = null;
+            this.field_interface = {};
             this.field_kind = consts.PARAM_FIELD;
             if (this.owner[this.param_name] === undefined) {
                 this.owner[this.param_name] = this;
@@ -10880,6 +10896,17 @@
                 $row = this.row_by_record(),
                 freezed_table = this.freezed_table;
             if ($row && this.can_edit() && !this.editing && this.selected_field && this.item.rec_count) {
+                if (this.item._applying) {
+                    let cell = $row.find('td.' + this.selected_field.field_name);
+                    cell.addClass('alert-error')
+                    setTimeout(
+                        function() {
+                            cell.removeClass('alert-error');
+                        },
+                        1000
+                    );
+                    return;
+                }
                 if (!this.item.is_changing()) {
                     this.item.edit();
                 }
@@ -11624,13 +11651,21 @@
             result = field.get_html();
             if (!result) {
                 result = this.get_field_text(field);
-                if (field.field_kind === consts.ITEM_FIELD && this.item._open_params.__search) {
+                if (field._owner_is_item() && this.item._open_params.__search) {
                     if (field.field_name === this.item._open_params.__search[0]) {
                         var text = this.item._open_params.__search[1];
                         if (this.item._open_params.__search.length === 4) {
                             text = this.item._open_params.__search[3];
                         }
+                        if (!field.field_do_not_sanitize) {
+                            result = this.item.sanitize_html(result);
+                        }
                         result = highlight(result, text);
+                    }
+                }
+                else {
+                    if (!field.field_do_not_sanitize) {
+                        result = this.item.sanitize_html(result);
                     }
                 }
             }
@@ -12514,9 +12549,9 @@
                     });
             } else if (field_type === consts.IMAGE) {
                 $input = $('<div>');
-            } else if (field.lookup_data_type === consts.LONGTEXT) {
+            } else if (field.lookup_data_type === consts.LONGTEXT || field.field_textarea) {
                 $input = $('<textarea>').height('4.5em');
-            } else {
+            } else if (!field.field_textarea) {
                 $input = $('<input>').attr("type", "text")
             }
             if (tabIndex) {
@@ -12661,8 +12696,14 @@
             } else {
                 switch (field_type) {
                     case consts.TEXT:
-                        $input.addClass("input-text");
-                        $controls.append($input);
+                        if (field.field_textarea) {
+                            $input.addClass("input-longtext");
+                            $controls.append($input);
+                        }
+                        else {
+                            $input.addClass("input-text");
+                            $controls.append($input);
+                        }
                         break;
                     case consts.INTEGER:
                         $input.addClass("input-integer");
@@ -12952,7 +12993,7 @@
                 focused,
                 self = this,
                 is_changing = this.is_changing;
-            if (this.field.field_kind === consts.ITEM_FIELD) {
+            if (this.field._owner_is_item()) {
                 if (this.field.owner._canceling) {
                     return;
                 }
@@ -13022,7 +13063,7 @@
 
         keydown(e) {
             var code = (e.keyCode ? e.keyCode : e.which);
-            if (code === 13) {
+            if (code === 13 && !(this.$input.get(0).tagName === 'TEXTAREA')) {
                 e.preventDefault();
             }
             if (this.field.lookup_item && !this.field.enable_typeahead && !(code === 229 || code === 9 || code == 8)) {
@@ -13078,10 +13119,13 @@
             }
             if (code === 13 && !e.ctrlKey && !e.shiftKey) {
                 if (this.table && this.table.edit_mode) {
+                    if (this.dropdown && this.dropdown.shown) {
+                        return;
+                    }
                     e.stopPropagation();
                     e.preventDefault();
                     this.table.close_editor();
-                } else {
+                } else if (!(this.$input.get(0).tagName === 'TEXTAREA')){
                     this.focus_out();
                     this.$input.select();
                     this.enter_pressed(e);
@@ -13184,14 +13228,14 @@
                 try {
                     text = this.$input.val();
                     if (text !== this.field.text) {
-                        if (this.field.field_kind === consts.ITEM_FIELD && !this.field.owner.is_changing()) {
+                        if (this.field._owner_is_item() && !this.field.owner.is_changing()) {
                             this.field.owner.edit();
                         }
                         if (text === '') {
                             this.field.value = null;
                         } else {
                             this.field.text = text;
-                            if (!(this.field.field_kind === consts.ITEM_FIELD && !this.field.owner.rec_count)) {
+                            if (!(this.field._owner_is_item() && !this.field.owner.rec_count)) {
                                 let err = this.field.check_valid();
                                 if (err) {
                                     throw new Error(err);
@@ -13252,6 +13296,9 @@
                 return;
             }
             if (this.table && this.table.edit_mode) {
+                if (this.dropdown && this.dropdown.shown) {
+                    return;
+                }
                 this.table.close_editor();
                 result = true;
             }

@@ -28,6 +28,7 @@ from .third_party.six import get_function_code
 from .common import consts, error_message, file_read, file_write
 from .common import consts, ProjectError, ProjectNotCompleted
 from .common import json_defaul_handler, compressBuf
+from .common import validate_image, valid_uploaded_file
 from .admin.admin import create_admin, login_user, get_privileges, get_field_restrictions
 from .admin.admin import user_valid_ip, user_valid_uuid
 from .admin.builder import update_events_code
@@ -37,6 +38,35 @@ from .admin.task import create_task, reload_task
 
 class JamSecureCookie(SecureCookie):
     serialization_method = json
+
+    def save_cookie(
+        self,
+        response,
+        key="session",
+        expires=None,
+        session_expires=None,
+        max_age=None,
+        path="/",
+        domain=None,
+        secure=None,
+        httponly=False,
+        force=False,
+        samesite=None
+    ):
+        if force or self.should_save:
+            data = self.serialize(session_expires or expires)
+            response.set_cookie(
+                key,
+                data,
+                expires=expires,
+                max_age=max_age,
+                path=path,
+                domain=domain,
+                secure=secure,
+                httponly=httponly,
+                samesite=samesite
+            )
+
 
 class JamRequest(Request):
 
@@ -58,7 +88,7 @@ class JamRequest(Request):
             if consts.SAFE_MODE and task.timeout:
                 expires = time.time() + task.timeout
                 cookie.modified = True
-            cookie.save_cookie(response, key=self.session_key, session_expires=expires)
+            cookie.save_cookie(response, key=self.session_key, session_expires=expires, httponly=True, samesite='Lax')
 
 def create_application(from_file=None, load_task=False, testing=False):
     if from_file:
@@ -242,7 +272,8 @@ class App(object):
             return self.show_error(consts.lang['project_error'])(environ, start_response)
         except HTTPException as e:
             self.log.exception(error_message(e))
-            return e
+            return self.show_error(error_message(e))(environ, start_response)
+            # ~ return e
 
     def serve_page(self, file_name, dic=None):
         path = os.path.join(self.work_dir, file_name)
@@ -456,6 +487,8 @@ class App(object):
 
 
     def logout(self, request, task):
+        if self.admin != task and task.on_logout:
+            task.on_logout(task, request)
         del request.client_cookie['info']
         jam.context.session = None
 
@@ -742,6 +775,8 @@ class App(object):
         if request.method == 'POST':
             r = {'result': None, 'error': None}
             task_id = int(request.form.get('task_id'))
+            item_id = int(request.form.get('item_id'))
+            field_id = int(request.form.get('field_id'))
             path = request.form.get('path')
             if task_id == 0:
                 task = self.admin
@@ -758,7 +793,28 @@ class App(object):
                     f = request.files.get('file')
                     file_name = request.form.get('file_name')
                     if f and file_name:
-                        if not path:
+                        base, ext = os.path.splitext(file_name)
+                        upload_result = None
+                        if task.on_upload:
+                             upload_result = task.on_upload(task, path, file_name, f)
+                        if upload_result:
+                            path, file_name = upload_result
+                            r['result']['data'] = {'file_name': file_name, 'path': path}
+                        else:
+                            if item_id != -1 and field_id != -1:
+                                item = task.item_by_ID(item_id)
+                                field = item.field_by_ID(field_id)
+                                if field.data_type == consts.IMAGE:
+                                    if not valid_uploaded_file('image/*', ext):
+                                        r['error'] = consts.lang['upload_not_allowed']
+                                elif field.data_type == consts.FILE:
+                                    if not valid_uploaded_file(field.field_file['accept'], ext):
+                                        r['error'] = consts.lang['upload_not_allowed']
+                                else:
+                                    r['error'] = 'Operation prohibited'
+                            else:
+                                if not ext in consts.upload_file_ext:
+                                    r['error'] = 'Invalid file extension'
                             file_name = secure_filename(file_name)
                             file_name = file_name.replace('?', '')
                             base, ext = os.path.splitext(file_name)
@@ -771,12 +827,12 @@ class App(object):
                                 path = os.path.join('static', 'builder')
                             else:
                                 path = os.path.join('static', 'files')
-                        if not r['error']:
-                            dir_path = os.path.join(to_unicode(self.work_dir, 'utf-8'), path)
-                            if not os.path.exists(dir_path):
-                                os.makedirs(dir_path)
-                            f.save(os.path.join(dir_path, file_name))
-                            r['result']['data'] = {'file_name': file_name, 'path': path}
+                            if not r['error']:
+                                dir_path = os.path.join(to_unicode(self.work_dir, 'utf-8'), path)
+                                if not os.path.exists(dir_path):
+                                    os.makedirs(dir_path)
+                                f.save(os.path.join(dir_path, file_name))
+                                r['result']['data'] = {'file_name': file_name, 'path': path}
                     else:
                         r['error'] = 'File upload invalid parameters'
             else:

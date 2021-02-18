@@ -17,7 +17,7 @@ Represents the field's value as a string.
 
 ``Display_text`` property is a read-only string representation of a field's value 
 to display it to users. If an 
-:doc:`on_get_field_text </refs/client/item/on_get_field_text>` 
+:doc:`on_field_get_text </refs/client/item/on_field_get_text>` 
 event handler is assigned, **display_text** is the value returned by this event 
 handler. Otherwise, display_text is the value of the 
 :doc:`lookup_text <at_lookup_text>` 
@@ -63,7 +63,7 @@ See also
 
 :doc:`Lookup fields </programming/data/lookup_fields>`
 
-:doc:`on_get_field_text </refs/client/item/on_get_field_text>`
+:doc:`on_field_get_text </refs/client/item/on_field_get_text>`
 
 :doc:`text <at_text>`
 

@@ -83,7 +83,6 @@ class ServerDataset(Dataset):
         result.soft_delete = self.soft_delete
         result._primary_key = self._primary_key
         result._deleted_flag = self._deleted_flag
-        result._record_version = self._record_version
         result._master_id = self._master_id
         result._master_rec_id = self._master_rec_id
         result._master_field = self._master_field
@@ -92,7 +91,6 @@ class ServerDataset(Dataset):
         result._deleted_flag_db_field_name = self._deleted_flag_db_field_name
         result._master_id_db_field_name = self._master_id_db_field_name
         result._master_rec_id_db_field_name = self._master_rec_id_db_field_name
-        result._record_version_db_field_name = self._record_version_db_field_name
         return result
 
     def get_event(self, caption):
@@ -149,12 +147,17 @@ class ServerDataset(Dataset):
             if table.item_name == caption:
                 return table
 
-    def __execute_select(self, cursor, sql, db):
+    def __execute_select(self, cursor, sql, params, db):
         try:
-            cursor.execute(sql)
+            if params:
+                params = db.process_query_params(params, cursor)
+                cursor.execute(sql, params)
+            else:
+                cursor.execute(sql)
             return db.process_query_result(cursor.fetchall())
         except Exception as x:
             self.log.exception('%s:\n%s' % (error_message(x), sql))
+            print(params)
 
     def execute_open(self, params, connection=None, db=None, query_data=None, ):
         rows = None
@@ -173,12 +176,12 @@ class ServerDataset(Dataset):
         cursor = con.cursor()
         try:
             if len(sqls) == 1:
-                rows = self.__execute_select(cursor, sqls[0], db)
+                rows = self.__execute_select(cursor, sqls[0][0], sqls[0][1], db)
             else:
                 rows = []
                 cut = False
                 for sql in sqls:
-                    rows += self.__execute_select(cursor, sql, db)
+                    rows += self.__execute_select(cursor, sql[0], sql[1], db)
                     if limit or offset:
                         if len(rows) >= offset + limit:
                             rows = rows[offset:offset + limit]
@@ -221,6 +224,7 @@ class ServerDataset(Dataset):
 
         exec_query = True
         query_data = QueryData(params)
+        query_data.client_request = client_request
         if self.task.on_before_open:
             exec_query = self.task.on_before_open(self, query_data, params)
         if self.on_before_open:
@@ -243,6 +247,9 @@ class ServerDataset(Dataset):
     def apply_delta(self, delta, params, connection, db=None):
         if not db:
             db = self.task.db
+        for d in delta:
+            if not d.rec_deleted():
+                d.check_record_valid()
         return db.process_changes(delta, connection, params)
 
     def apply_changes(self, data, safe, connection=None):
@@ -557,6 +564,7 @@ class AbstractServerTask(AbstrTask):
         self.on_after_apply = None
         self.on_count = None
         self.on_request = None
+        self.on_upload = None
         self.work_dir = app.work_dir
         self.modules = []
         self.log = app.log
@@ -711,6 +719,7 @@ class Task(AbstractServerTask):
         AbstractServerTask.__init__(self, app, name, caption)
         self.on_created = None
         self.on_login = None
+        self.on_logout = None
         self.on_ext_request = None
         self.init_dict = {}
         for key, value in iteritems(self.__dict__):
@@ -720,8 +729,11 @@ class Task(AbstractServerTask):
     def timeout(self):
         return consts.TIMEOUT
 
-    def login(self, request):
-        return self.app.login(request, self, request.form)
+    def login(self, request, dic=None):
+        if dic:
+            return self.app.login(request, self, dic)
+        else:
+            return self.app.login(request, self, request.form)
 
     def logged_in(self, request):
         return self.app.check_session(request, self)
@@ -765,7 +777,6 @@ class Detail(AbstrDetail, ServerDataset):
         self.edit_lock = self.prototype.edit_lock
         self._primary_key = self.prototype._primary_key
         self._deleted_flag = self.prototype._deleted_flag
-        self._record_version = self.prototype._record_version
         self._master_id = self.prototype._master_id
         self._master_rec_id = self.prototype._master_rec_id
 

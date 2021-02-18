@@ -11,7 +11,7 @@ from jam.admin.admin import connect_task_db
 from jam.admin.admin import delete_item_query, update_item_query, insert_item_query
 from jam.admin.admin import indices_insert_query, indices_delete_query
 
-from jam.common import consts
+from jam.common import consts, get_ext_list
 from jam.dataset import FIELD_NAME, FIELD_CAPTION, FIELD_LOOKUP_VALUES
 
 from jam.common import FieldInfo, consts, error_message, file_read, file_write
@@ -51,7 +51,6 @@ def init_items(item):
         item.soft_delete = True
         item._primary_key_db_field_name = item._primary_key.upper()
         item._deleted_flag_db_field_name = item._deleted_flag.upper()
-        # item._record_version_db_field_name = item._record_version.upper()
         if item.master:
             item._master_id_db_field_name = item._master_id.upper()
             item._master_rec_id_db_field_name = item._master_rec_id.upper()
@@ -739,6 +738,13 @@ def server_valid_field_name(task, name):
     result = ''
     if name.upper() in consts.KEYWORDS:
         return task.language('reserved_word')
+        
+def server_valid_field_accept_value(task, accept):
+    try:
+        get_ext_list(accept)    
+        return True
+    except:
+        return False
 
 def server_valid_item_name(task, item_id, parent_id, name, type_id):
     result = ''
@@ -955,7 +961,7 @@ def create_system_item(task, field_name):
 
         sys_group = None
         params = task.sys_params.copy()
-        params.open(fields=['id', 'f_sys_group', 'f_history_item'])
+        params.open(fields=['id', 'f_sys_group', 'f_history_item', 'f_lock_item'])
 
         sys_group = params.f_sys_group.value
         if sys_group:
@@ -990,6 +996,14 @@ def create_system_item(task, field_name):
             table_name, gen_name = get_new_table_name(task, item_name)
             gen_name = None
             sys_id = 1
+        elif field_name == 'f_lock_item':
+            name = 'Locks'
+            item_name = check_item_name('locks')
+            fields = consts.LOCKS_FIELDS
+            index_fields = consts.LOCKS_INDEX_FIELDS
+            param_field = 'f_lock_item'
+            table_name, gen_name = get_new_table_name(task, item_name)
+            sys_id = 2
         items.open(open_empty=True)
         items.append()
         items.parent.value = sys_group
@@ -1062,6 +1076,14 @@ def indexes_get_table_names(indexes):
         table_names[i.id.value] = i.f_table_name.value
     return table_names
 
+def upload_file(task, path, file_name, f):
+    if path and path in ['static/internal', 'static/reports']:
+        dir_path = os.path.join(to_unicode(task.work_dir, 'utf-8'), path)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        f.save(os.path.join(dir_path, file_name))
+        return path, file_name
+
 
 ###############################################################################
 #                                  sys_items                                  #
@@ -1075,7 +1097,7 @@ def item_children(task, item_id):
 
 def get_system_fields(item):
     result = []
-    atts = ['f_primary_key', 'f_deleted_flag', 'f_record_version', 'f_master_id', 'f_master_rec_id']
+    atts = ['f_primary_key', 'f_deleted_flag', 'f_master_id', 'f_master_rec_id']
     for at in atts:
         field = item.field_by_name(at)
         if field.value:
@@ -1202,6 +1224,8 @@ def sys_item_deleted_sql(delta):
     sys_params.open()
     if delta.id.value == sys_params.f_history_item.value:
         result.append('UPDATE SYS_PARAMS SET F_HISTORY_ITEM=NULL')
+    if delta.id.value == sys_params.f_lock_item.value:
+        result.append('UPDATE SYS_PARAMS SET F_LOCK_ITEM=NULL')
     if delta.id.value == sys_params.f_sys_group.value:
         result.append('UPDATE SYS_PARAMS SET F_SYS_GROUP=NULL')
     return result
@@ -1951,6 +1975,7 @@ def register_events(task):
     task.register(server_can_delete_lookup_list)
     task.register(server_valid_item_name)
     task.register(server_valid_field_name)
+    task.register(server_valid_field_accept_value)
     task.register(server_get_primary_key_type)
     task.register(server_set_literal_case)
     task.register(server_lang_modified)
@@ -1961,6 +1986,7 @@ def register_events(task):
     task.register(create_calc_field_index)
     task.register(server_change_field_privilege)
     task.register(server_move_to_group)
+    task.on_upload = upload_file
     task.sys_params.on_apply = do_on_apply_param_changes
     task.sys_tasks.on_apply = do_on_apply_param_changes
     task.sys_items.register(server_can_delete)

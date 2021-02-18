@@ -87,13 +87,13 @@ class OracleDB(AbstractDB):
         return "TO_DATE('" + date_str + "', 'YYYY-MM-DD')"
 
     def cast_datetime(self, datetime_str):
-        return "TO_DATE('" + date_str + "', 'YYYY-MM-DD  HH24:MI')"
+        return "TO_DATE('" + datetime_str + "', 'YYYY-MM-DD  HH24:MI')"
 
     def value_literal(self, index):
-        return ':f%d' % index
+        return ':%d' % index
 
     def convert_like(self, field_name, val, data_type):
-        if data_type in [INTEGER, FLOAT, CURRENCY]:
+        if data_type in [consts.INTEGER, consts.FLOAT, consts.CURRENCY]:
             return 'TO_CHAR(%s, 99999999999990.999999999999)' % field_name, val
         else:
             return field_name, val
