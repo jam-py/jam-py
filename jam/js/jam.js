@@ -139,6 +139,9 @@
         if (visible === undefined) {
             visible = true;
         }
+        if (owner === undefined) {
+            owner = null;
+        }
         this.owner = owner;
         this.item_name = item_name || '';
         this.item_caption = caption || '';
@@ -1674,7 +1677,7 @@
                                 }
                                 else {
                                     field.data = field_arr[i][val_index];
-                                    new_value = field.display_text;
+                                    new_value = field.sanitized_text();
                                     if (field.data === null) {
                                         new_value = ' '
                                     }
@@ -1750,7 +1753,7 @@
                             lookup_item.each(function(l) {
                                 l.each_field(function(f) {
                                     if (!f.system_field()) {
-                                        acc_div.find("." + f.field_name + '_' + l._primary_key_field.value).text(f.value);
+                                        acc_div.find("." + f.field_name + '_' + l._primary_key_field.value).text(f.sanitized_text());
                                     }
                                 });
                             });
@@ -8886,6 +8889,14 @@
             return result;
         },
 
+        sanitized_text: function() {
+            let result = this.display_text;
+            if (this.field_kind === consts.ITEM_FIELD && !this.field_do_not_sanitize) {
+                result = this.owner.sanitize_html(result);
+            }
+            return result;
+        },
+
         assign_default_value: function() {
             if (this.default_value) {
                 try {
@@ -11929,16 +11940,20 @@
 
         get_field_text: function(field) {
             if (field.lookup_data_type === consts.BOOLEAN) {
-                if (this.owner && (this.owner.on_field_get_text || this.owner.on_get_field_text)) {
-                    return field.display_text;
+                let res;
+                if (field.owner && (field.owner.on_field_get_text || field.owner.on_get_field_text)) {
+                    if (field.owner.on_field_get_text) {
+                        res = field.owner.on_field_get_text.call(field.owner, field);
+                    }
+                    else if (field.owner.on_get_field_text) {
+                        res = field.owner.on_get_field_text.call(field.owner, field);
+                    }
                 }
-                else {
+                if (!res) {
                     return field.lookup_value ? '×' : ''
                 }
             }
-            else {
-                return field.display_text;
-            }
+            return field.sanitized_text();
         },
 
         get_field_html: function(field) {
@@ -11952,15 +11967,7 @@
                         if (this.item._open_params.__search.length === 4) {
                             text = this.item._open_params.__search[3];
                         }
-                        if (!field.field_do_not_sanitize) {
-                            result = this.item.sanitize_html(result);
-                        }
                         result = highlight(result, text);
-                    }
-                }
-                else {
-                    if (!field.field_do_not_sanitize) {
-                        result = this.item.sanitize_html(result);
                     }
                 }
             }
