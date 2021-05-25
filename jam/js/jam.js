@@ -14017,8 +14017,17 @@
                 this.$element.focus();
             }
             this.process(this.field.lookup_values);
-        }
+        },
 
+        source: function(query, process) {
+            let data = [];
+            this.field.lookup_values.forEach(function(item) {
+                if (item[1].toLowerCase().indexOf(query.toLowerCase()) !== -1) {
+                    data.push(item);
+                }
+                return process(data);
+            });
+        }
     });
 
     /**********************************************************************/
