@@ -334,54 +334,9 @@ function Events10() { // demo.catalogs.customers
 		task.customers_report.customers.value = item.selections;
 		task.customers_report.print(false);
 	}
-	
-	function on_edit_form_created(item) {
-		let new_btn = item.add_edit_button('Insert', {type: 'primary', shortcut: 'F2'});	
-		new_btn.click(function() {	
-			item.post();
-			item.apply();
-			item.insert();
-		});
-		let prior_btn = item.add_edit_button('<', {expanded: false});	
-		prior_btn.click(function() {	
-			item.post();
-			item.apply();
-			item.prior();
-			item.refresh_record();
-			item.edit();
-		});
-		let next_btn = item.add_edit_button('>', {expanded: false});	
-		next_btn.click(function() {	
-			item.post();
-			item.apply();
-			item.next();
-			item.refresh_record();
-			item.edit();
-		});
-	}
-	
-	function on_edit_form_keyup(item, event) {
-		if (event.keyCode === 113) { // Is executed when F2 pressed
-			item.post();
-			item.apply();
-			item.insert();
-		}
-	}
-	
-	// function on_before_open(item, params) {
-	//	 let field_names = [];
-	//	 item.fields.forEach(function(field) {
-	//		 if (field.field_name !== 'email') {
-	//			 field_names.push(field.field_name);
-	//		 }
-	//	 });
-	//	 item.set_fields(field_names);  
-	// }
 	this.on_view_form_created = on_view_form_created;
 	this.send_email = send_email;
 	this.print = print;
-	this.on_edit_form_created = on_edit_form_created;
-	this.on_edit_form_keyup = on_edit_form_keyup;
 }
 
 task.events.events10 = new Events10();

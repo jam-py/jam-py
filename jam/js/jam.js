@@ -1045,14 +1045,18 @@
                 form = this[form_name],
                 item_options = this[form_type + '_options'],
                 parent_width,
+                width = item_options.width,
                 container_width;
             parent_width = container.parent().parent().innerWidth();
             container.width(parent_width);
             container_width = container.innerWidth() -
                 parseInt(form.css('border-left-width'), 10) -
                 parseInt(form.css('border-right-width'), 10);
-            if (item_options.width < container_width) {
-                form.width(item_options.width);
+            if (!width) {
+                width = form.width()
+            }
+            if (width < container_width) {
+                form.width(width);
             }
             else {
                 form.width(container_width);
@@ -1147,7 +1151,7 @@
                     this._process_event(form_type, 'created');
                     this._set_form_options(form, item_options, form_type);
                     this._focus_form(form);
-                    if (item_options.width && form_type !== 'view') {
+                    if (form_type === 'edit') {
                         this._resize_form(form_type, container);
                         $(window).on("resize." + key_suffix, function(e) {
                             clearTimeout(resize_timeout);
@@ -1172,6 +1176,9 @@
                         form.on("shown", function(e) {
                             if (e.target === self[form_name].get(0)) {
                                 self._focus_form(self[form_name]);
+                                if (form_type === 'edit') {
+                                    self.resize_controls();
+                                }
                                 e.stopPropagation();
                                 self._process_event(form_type, 'shown');
                             }
