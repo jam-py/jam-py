@@ -57,14 +57,6 @@ class SQLiteDB(AbstractDB):
     def cast_datetime(self, datetime_str):
         return "'%s'" % datetime_str
 
-    def default_date_text(self, field_info):
-        if field_info.data_type == consts.DATE:
-            if field_info.default_value == 'current date':
-                return "(date('now', 'localtime'))"
-        elif field_info.data_type == consts.DATETIME:
-            if field_info.default_value == 'current datetime':
-                return "(datetime('now', 'localtime'))"
-
     def create_table(self, table_name, fields, gen_name=None, foreign_fields=None):
         primary_key = ''
         sql = 'CREATE TABLE "%s"\n(\n' % table_name

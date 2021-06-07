@@ -416,6 +416,14 @@ function Events16() { // demo.journals.invoices
 		if (field.field_name === 'customer' && field.value) {
 			return field.owner.firstname.lookup_text + ' ' + field.lookup_text;
 		}
+		// if (field.field_name === 'paid') {
+		//	 if (field.value) {
+		//		 return 'XXX';
+		//	 }
+		//	 else {
+		//		 return '';
+		//	 }
+		// }
 	}
 	
 	function on_field_get_html(field) {

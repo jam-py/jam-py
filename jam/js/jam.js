@@ -1044,14 +1044,18 @@
                 form = this[form_name],
                 item_options = this[form_type + '_options'],
                 parent_width,
+                width = item_options.width,
                 container_width;
             parent_width = container.parent().parent().innerWidth();
             container.width(parent_width);
             container_width = container.innerWidth() -
                 parseInt(form.css('border-left-width'), 10) -
                 parseInt(form.css('border-right-width'), 10);
-            if (item_options.width < container_width) {
-                form.width(item_options.width);
+            if (!width) {
+                width = form.width()
+            }
+            if (width < container_width) {
+                form.width(width);
             }
             else {
                 form.width(container_width);
@@ -1146,7 +1150,7 @@
                     this._process_event(form_type, 'created');
                     this._set_form_options(form, item_options, form_type);
                     this._focus_form(form);
-                    if (item_options.width && form_type !== 'view') {
+                    if (form_type === 'edit') {
                         this._resize_form(form_type, container);
                         $(window).on("resize." + key_suffix, function(e) {
                             clearTimeout(resize_timeout);
@@ -1171,6 +1175,9 @@
                         form.on("shown", function(e) {
                             if (e.target === self[form_name].get(0)) {
                                 self._focus_form(self[form_name]);
+                                if (form_type === 'edit') {
+                                    self.resize_controls();
+                                }
                                 e.stopPropagation();
                                 self._process_event(form_type, 'shown');
                             }
@@ -1686,7 +1693,7 @@
                                 }
                                 else {
                                     field.data = field_arr[i][val_index];
-                                    new_value = field.display_text;
+                                    new_value = field.sanitized_text;
                                     if (field.data === null) {
                                         new_value = ' '
                                     }
@@ -1762,7 +1769,7 @@
                             lookup_item.each(function(l) {
                                 l.each_field(function(f) {
                                     if (!f.system_field()) {
-                                        acc_div.find("." + f.field_name + '_' + l._primary_key_field.value).text(f.value);
+                                        acc_div.find("." + f.field_name + '_' + l._primary_key_field.value).text(f.sanitized_text);
                                     }
                                 });
                             });
@@ -8595,6 +8602,14 @@
             return result;
         }
 
+        get sanitized_text() {
+            let result = this.display_text;
+            if (this._owner_is_item() && !this.field_do_not_sanitize) {
+                result = this.owner.sanitize_html(result);
+            }
+            return result;
+        }
+
         assign_default_value() {
             if (this.default_value !== null) {
                 try {
@@ -11634,16 +11649,20 @@
 
         get_field_text(field) {
             if (field.lookup_data_type === consts.BOOLEAN) {
-                if (this.owner && (this.owner.on_field_get_text || this.owner.on_get_field_text)) {
-                    return field.display_text;
+                let res;
+                if (field.owner && (field.owner.on_field_get_text || field.owner.on_get_field_text)) {
+                    if (field.owner.on_field_get_text) {
+                        res = field.owner.on_field_get_text.call(field.owner, field);
+                    }
+                    else if (field.owner.on_get_field_text) {
+                        res = field.owner.on_get_field_text.call(field.owner, field);
+                    }
                 }
-                else {
+                if (!res) {
                     return field.lookup_value ? '×' : ''
                 }
             }
-            else {
-                return field.display_text;
-            }
+            return field.sanitized_text;
         }
 
         get_field_html(field) {
@@ -11657,15 +11676,7 @@
                         if (this.item._open_params.__search.length === 4) {
                             text = this.item._open_params.__search[3];
                         }
-                        if (!field.field_do_not_sanitize) {
-                            result = this.item.sanitize_html(result);
-                        }
                         result = highlight(result, text);
-                    }
-                }
-                else {
-                    if (!field.field_do_not_sanitize) {
-                        result = this.item.sanitize_html(result);
                     }
                 }
             }
@@ -12641,7 +12652,7 @@
                 else if (field.lookup_item && field_type !== consts.FILE){
                     $btnCtrls.addClass("lookupfield-input-container");
                     $input.addClass("input-lookupitem");
-                    this.$lastBtn.find('i').addClass("icon-folder-open");
+                    this.$lastBtn.find('i').addClass("icon-list");
                     if (this.field.enable_typeahead) {
                         this.dropdown = new DropdownTypeahead(this.field,
                             $input, this.field.typeahead_options());
@@ -13713,6 +13724,16 @@
                 this.$element.focus();
             }
             this.process(this.field.lookup_values);
+        }
+
+        source(query, process) {
+            let data = [];
+            this.field.lookup_values.forEach(function(item) {
+                if (item[1].toLowerCase().indexOf(query.toLowerCase()) !== -1) {
+                    data.push(item);
+                }
+                return process(data);
+            });
         }
     }
 

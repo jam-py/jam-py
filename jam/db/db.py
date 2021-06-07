@@ -104,8 +104,11 @@ class AbstractDB(object):
     def default_value(self, field_info):
         result = field_info.default_value
         if not result is None:
-            if field_info.data_type == consts.TEXT:
-                result =  "'%s'" % result
+            if field_info.data_type in [consts.TEXT, consts.LONGTEXT, consts.FILE, consts.IMAGE]:
+                if field_info.default_value:
+                    result =  "'%s'" % result
+                else:
+                    result = None
             elif field_info.data_type == consts.BOOLEAN:
                 if result == 'true':
                     result = '1'
