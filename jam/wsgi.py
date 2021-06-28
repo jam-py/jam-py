@@ -730,6 +730,7 @@ class App(object):
                     file_name = request.form.get('file_name')
                     if f and file_name:
                         base, ext = os.path.splitext(file_name)
+                        ext = ext.lower()
                         upload_result = None
                         if task.on_upload:
                              upload_result = task.on_upload(task, path, file_name, f)
@@ -750,8 +751,9 @@ class App(object):
                                     r['error'] = 'Operation prohibited'
                             else:
                                 if not ext in consts.upload_file_ext:
-                                    r['error'] = consts.lang['upload_not_allowed']
-                            file_name = ('%s%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
+                                    r['error'] = '%s - %s' % (request.form.get('file_name'), consts.lang['upload_not_allowed'])
+                                    self.log.error(r['error'])
+                            file_name = ('%s_%s%s') % (base, datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f'), ext)
                             file_name = secure_filename(file_name)
                             file_name = file_name.replace('?', '')
                             if task_id == 0:

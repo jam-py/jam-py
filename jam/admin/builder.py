@@ -28,7 +28,7 @@ LOOKUP_LISTS = {
         'label_size': ['xSmall', 'Small', 'Medium', 'Large', 'xLarge'],
         'group_type': consts.GROUP_TYPES
     }
-    
+
 def get_value_list(str_list):
     result = []
     for i, s in enumerate(str_list):
@@ -65,17 +65,17 @@ def restore_caption_keys(task):
     def restore_keys(item):
         if hasattr(item, 'field_defs'):
             for field_def in item.field_defs:
-                field_def[FIELD_CAPTION] = item.__caption_keys[field_def[FIELD_NAME]] 
+                field_def[FIELD_CAPTION] = item.__caption_keys[field_def[FIELD_NAME]]
 
     task.all(restore_keys)
 
 def change_language(task):
-    
+
     def change_fields_lang(item):
         if hasattr(item, 'field_defs'):
             for field_def in item.field_defs:
                 field_def[FIELD_CAPTION] = item.task.language(field_def[FIELD_CAPTION])
-    
+
     restore_caption_keys(task)
     consts.read_language()
     task.all(change_fields_lang)
@@ -717,11 +717,11 @@ def server_save_edit(task, item_id, text, is_server):
 def set_server_modified(task):
     if task.item_name == 'admin':
         task.app.server_modified = True
-    
+
 def set_client_modified(task):
     if task.item_name == 'admin':
         task.app.client_modified = True
-    
+
 def server_file_info(task, file_name):
     result = {}
     file_path = file_name
@@ -802,7 +802,7 @@ def server_can_delete_lookup_list(task, list_id):
 
 def server_valid_field_accept_value(task, accept):
     try:
-        get_ext_list(accept)    
+        get_ext_list(accept)
         return True
     except:
         return False
@@ -1169,7 +1169,7 @@ def upload_file(task, path, file_name, f):
             os.makedirs(dir_path)
         f.save(os.path.join(dir_path, file_name))
         return path, file_name
-    
+
 
 ###############################################################################
 #                                  sys_items                                  #
@@ -1505,7 +1505,7 @@ def server_store_interface(item, id_value, info):
     item.open(fields=['id', 'f_info'])
     item._view_list = info['view_list']
     item._edit_list = info['edit_list']
-    item._order_list = info['order_list'] 
+    item._order_list = info['order_list']
     item._reports_list = info['reports_list']
     item.store_interface()
     set_server_modified(item.task)

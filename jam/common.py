@@ -221,6 +221,8 @@ class Consts(object):
         params = self.read_params(keys)
         for key, value in iteritems(params):
             self.__dict__[key] = value
+        if self.__dict__.get('upload_file_ext'):
+            del self.__dict__['upload_file_ext']
 
     def write_params(self, params):
         sql = 'UPDATE SYS_PARAMS SET '
