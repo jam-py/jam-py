@@ -116,13 +116,16 @@ Documentation
 All documentation is in the "docs" directory and online at
 http://jam-py.com/docs/.
 
-Go to http://jam-py.com/docs/intro/install.html to learn how to install Python and
-the framework.
-
-Go to http://jam-py.com/docs/intro/new_project.html to learn how to create a
+Please visit http://jam-py.com/docs/intro/install.html for Python and
+framework installation or http://jam-py.com/docs/intro/new_project.html how to create a
 new project.
 
-The framework has a demo application: http://jam-py.com/docs/intro/demo_project.html.
+For general discussion, ideas or similar, please visit mailgroup https://groups.google.com/g/jam-py or
+FB page https://www.facebook.com/groups/jam.py/
+
+Demo application: http://demo.jam-py.com/
+
+
 
 License
 =======
