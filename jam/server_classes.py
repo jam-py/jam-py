@@ -254,8 +254,8 @@ class ServerDataset(Dataset, SQL):
                         raise
             if result is None:
                 result = self.apply_delta(delta, params, connection)
-                if autocommit:
-                    connection.commit()
+            if autocommit:
+                connection.commit()
             try:
                 result[0]['__edit_record_version'] = rec_version
             except:
