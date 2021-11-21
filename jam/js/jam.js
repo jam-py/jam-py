@@ -5364,7 +5364,7 @@
                     } else if (data_type === consts.INTEGER || data_type === consts.FLOAT || data_type === consts.CURRENCY) {
                         value = 0;
                     } else if (data_type === consts.DATE || data_type === consts.DATETIME) {
-                        value = new Date(0);
+                        value = '';
                     } else if (data_type === consts.BOOLEAN) {
                         value = false;
                     }
@@ -9416,6 +9416,14 @@
                 this.set_value(new_value);
             }
         });
+        Object.defineProperty(this, "lookup_value", {
+            get: function() {
+                return this.get_lookup_value();
+            },
+            set: function(new_value) {
+                this.set_lookup_value(new_value);
+            }
+        });
         Object.defineProperty(this, "text", {
             get: function() {
                 return this.get_text();
@@ -9489,9 +9497,20 @@
                     this.field1.value = value[1];
                 }
             }
+            else if (this.field.bool_filter) {
+                this.field.set_value(value ? 1 : 0);
+            }
             else {
                 this.field.set_value(value, lookup_value);
             }
+        },
+
+        get_lookup_value: function() {
+            return this.field.lookup_value;
+        },
+
+        set_lookup_value: function(value) {
+            this.field.lookup_value = value
         },
 
         update: function(field) {
@@ -10089,7 +10108,8 @@
                 freeze_count: 0,
                 exact_height: false,
                 show_hints: true,
-                hint_fields: undefined
+                hint_fields: undefined,
+                auto_page_scroll: true
             };
 
             this.options = $.extend(true, {}, default_options, this.item.table_options);
@@ -11041,27 +11061,27 @@
 
                     this.$fistPageBtn = $pagination.find('[href="first"]');
                     this.$fistPageBtn.on("click", function(e) {
-                        self.first_page();
+                        self.first_page(true);
                         e.preventDefault();
                     });
                     this.$fistPageBtn.addClass("disabled");
 
                     this.$priorPageBtn = $pagination.find('[href="prior"]');
                     this.$priorPageBtn.on("click", function(e) {
-                        self.prior_page();
+                        self.prior_page(true);
                         e.preventDefault();
                     });
                     this.$priorPageBtn.addClass("disabled");
 
                     this.$nextPageBtn = $pagination.find('[href="next"]');
                     this.$nextPageBtn.on("click", function(e) {
-                        self.next_page();
+                        self.next_page(true);
                         e.preventDefault();
                     });
 
                     this.$lastPageBtn = $pagination.find('[href="last"]');
                     this.$lastPageBtn.on("click", function(e) {
-                        self.last_page();
+                        self.last_page(true);
                         e.preventDefault();
                     });
                     this.$pageInput = $pagination.find('input');
@@ -12306,7 +12326,7 @@
 
         },
 
-        next_record: function(noscroll) {
+        next_record: function(btn_click) {
             this.cancel_sync();
             try {
                 this.item.next();
@@ -12314,7 +12334,10 @@
                     if (this.can_edit() && this.options.append_on_lastrow_keydown) {
                         this.item.append();
                     } else if (this.item.paginate) {
-                        this.next_page();
+                        let page_scroll = btn_click || this.options.auto_page_scroll;
+                        if (page_scroll) {
+                            this.next_page();
+                        }
                     }
                 }
                 else if (!this.item.paginate) {
@@ -12330,12 +12353,12 @@
             finally {
                 this.resume_sync();
             }
-            this.syncronize(noscroll);
+            this.syncronize();
             if (this.master_table) {
-                this.master_table.syncronize(noscroll);
+                this.master_table.syncronize();
             }
             if (this.freezed_table) {
-                this.freezed_table.syncronize(noscroll);
+                this.freezed_table.syncronize();
             }
         },
 
@@ -12358,16 +12381,19 @@
             }
         },
 
-        prior_record: function(noscroll) {
+        prior_record: function(btn_click) {
             var self = this;
             this.cancel_sync();
             try {
                 this.item.prior();
                 if (this.item.bof()) {
                     if (this.item.paginate) {
-                        this.prior_page(function() {
-                            self.item.last();
-                        });
+                        let page_scroll = btn_click || this.options.auto_page_scroll;
+                        if (page_scroll) {
+                            this.prior_page(function() {
+                                self.item.last();
+                            });
+                        }
                     }
                 }
                 else if (!this.item.paginate) {
@@ -12383,32 +12409,38 @@
             finally {
                 this.resume_sync();
             }
-            this.syncronize(noscroll);
+            this.syncronize();
             if (this.master_table) {
-                this.master_table.syncronize(noscroll);
+                this.master_table.syncronize();
             }
             if (this.freezed_table) {
-                this.freezed_table.syncronize(noscroll);
+                this.freezed_table.syncronize();
             }
         },
 
-        first_page: function(callback) {
-            if (this.item._paginate) {
+        first_page: function() {
+            let args = this.item._check_args(arguments),
+                callback = args['function'],
+                btn_click = args['boolean'],
+                page_scroll = btn_click || this.options.auto_page_scroll;
+            if (this.item._paginate && page_scroll) {
                 this.set_page_number(0, callback);
             } else {
                 this.item.first();
             }
         },
 
-        next_page: function(callback) {
-            var lines,
-                clone;
+        next_page: function() {
+            let args = this.item._check_args(arguments),
+                callback = args['function'],
+                btn_click = args['boolean'];
             if (this.item._paginate) {
-                if (!this.item.is_loaded) {
+                let page_scroll = btn_click || this.options.auto_page_scroll
+                if (!this.item.is_loaded && page_scroll) {
                     this.set_page_number(this.page + 1, callback);
                 }
             } else {
-                clone = this.item.clone();
+                let clone = this.item.clone();
                 clone.rec_no = this.item.rec_no;
                 for (var i = 0; i < this.row_count; i++) {
                     if (!clone.eof()) {
@@ -12421,17 +12453,21 @@
             }
         },
 
-        prior_page: function(callback) {
-            var lines,
-                clone;
+        prior_page: function() {
+            let args = this.item._check_args(arguments),
+                callback = args['function'],
+                btn_click = args['boolean'];
             if (this.item._paginate) {
                 if (this.page > 0) {
-                    this.set_page_number(this.page - 1, callback);
+                    let page_scroll = btn_click || this.options.auto_page_scroll
+                    if (page_scroll) {
+                        this.set_page_number(this.page - 1, callback);
+                    }
                 } else {
                     this.syncronize();
                 }
             } else {
-                clone = this.item.clone();
+                let clone = this.item.clone();
                 clone.rec_no = this.item.rec_no;
                 for (var i = 0; i < this.row_count; i++) {
                     if (!clone.eof()) {
@@ -12444,9 +12480,13 @@
             }
         },
 
-        last_page: function(callback) {
+        last_page: function() {
+            let args = this.item._check_args(arguments),
+                callback = args['function'],
+                btn_click = args['boolean'],
+                page_scroll = btn_click || this.options.auto_page_scroll;
             var self = this;
-            if (this.item._paginate) {
+            if (this.item._paginate && page_scroll) {
                 this.set_page_number(this.page_count - 1, callback);
             } else {
                 this.item.last();
