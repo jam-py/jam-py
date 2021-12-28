@@ -9498,7 +9498,10 @@
                 }
             }
             else if (this.field.bool_filter) {
-                this.field.set_value(value ? 1 : 0);
+                if (value !== null) {
+                    value = value ? 1 : 0;
+                }
+                this.field.set_value(value, lookup_value);
             }
             else {
                 this.field.set_value(value, lookup_value);
