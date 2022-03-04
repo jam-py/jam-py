@@ -11801,22 +11801,24 @@
                 field = this.item.field_by_name(td.data('field_name')),
                 $row = td.parent();
             rec = this.record_by_row($row);
-            if (this.edit_mode && rec !== this.item.rec_no) {
-                if (!this.item.is_edited()) {
-                    this.item.edit();
+            if (rec !== undefined) {
+                if (this.edit_mode && rec !== this.item.rec_no) {
+                    if (!this.item.is_edited()) {
+                        this.item.edit();
+                    }
+                    this.flush_editor();
+                    this.item.post();
                 }
-                this.flush_editor();
-                this.item.post();
-            }
-            this.item.rec_no = rec;
-            if (!this.editing && !this.is_focused()) {
-                this.focus();
-            }
-            if (field) {
-                this.set_selected_field(field);
-            }
-            if (e.type === "dblclick") {
-                this.do_on_edit(field);
+                this.item.rec_no = rec;
+                if (!this.editing && !this.is_focused()) {
+                    this.focus();
+                }
+                if (field) {
+                    this.set_selected_field(field);
+                }
+                if (e.type === "dblclick") {
+                    this.do_on_edit(field);
+                }
             }
         },
 
