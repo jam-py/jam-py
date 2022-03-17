@@ -1694,7 +1694,7 @@ function Events3() { // sys_items
 			item = field.owner
 		if (item.is_new() && item.type_id.value != item.task.item_types.DETAIL_TYPE) {
 			if (field.field_name == 'f_item_name' && !item.f_virtual_table.value &&
-				item.type_id.value !== item.task.item_types.ITEMS_TYPE) {
+				!task._manual_update && item.type_id.value !== item.task.item_types.ITEMS_TYPE) {
 				names = item.task.server('get_new_table_name', field.value);
 				item.f_table_name.value = names[0];
 				if (item.task.db_options.NEED_GENERATOR) {
@@ -5338,13 +5338,14 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	}
 	
 	function on_edit_form_shown(item) {
-		var caption = 'Field Editor';
-	
+		let caption = 'Field Editor',
+			link = task.help_badge('http://jam-py.com/docs/admin/items/field_editor_dialog.html');
 		if (item.f_field_name.value) {
-			item.edit_form.find('h4.modal-title').html(caption + ' <span class="editor-title">' + item.f_field_name.value + '</span>');
+			item.edit_form.find('h4.modal-title')
+				.html(caption + ' <span class="editor-title">' + item.f_field_name.value + '</span>' + link);
 		}
 		else {
-			item.edit_form.find('h4.modal-title').html(caption);
+			item.edit_form.find('h4.modal-title').html(caption + link);
 		}
 	}
 	
