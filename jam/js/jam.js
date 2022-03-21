@@ -10706,6 +10706,28 @@
                 self.clicked(e, $this.closest('td'));
                 self.selections_set_selected(!checked);
                 $this.prop('checked', self.selections_get_selected());
+                if (e.shiftKey && self.prev_selected_rec_no !== undefined) {
+                    let sels = [],
+                        clone = self.item.clone(),
+                        min = self.prev_selected_rec_no,
+                        max = self.item.rec_no;
+                    if (self.prev_selected_rec_no > self.item.rec_no) {
+                        min = self.item.rec_no;
+                        max = self.prev_selected_rec_no;
+                    }
+                    while (min < max) {
+                        min += 1;
+                        clone.rec_no = min;
+                        if ($this.is(':checked')) {
+                            self.item.selections.add(clone._primary_key_field.value);
+                        }
+                        else {
+                            self.item.selections.remove(clone._primary_key_field.value);
+                        }
+                    }
+                    self.refresh();
+                }
+                self.prev_selected_rec_no = self.item.rec_no;
             });
 
             this.$table.on('click', 'td input.multi-select', function(e) {
@@ -11561,6 +11583,7 @@
 
         do_after_open: function() {
             var self = this;
+            this.prev_selected_rec_no = undefined;
             if (this.$table.is(':visible')) {
                 this.init_table();
                 this.sync_freezed();
