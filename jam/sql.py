@@ -156,7 +156,6 @@ class SQL(object):
                 else:
                     sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
                         (detail.table_name, detail._master_rec_id_db_field_name, id_literal)
-                h_sql, h_params, h_del_details = get_history_sql(detail, db_module)
             return sql, None, None, h_sql, h_params, h_del_details
 
         def get_history_sql(item, db_module):

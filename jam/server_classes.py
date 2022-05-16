@@ -98,8 +98,8 @@ class ServerDataset(Dataset, SQL):
         for filter_def in info:
             self.add_filter(*filter_def)
 
-    def do_internal_open(self, params):
-        return self.select_records(params)
+    def do_internal_open(self, params, connection):
+        return self.select_records(params, connection)
 
     def do_apply(self, params=None, safe=False, connection=None):
         if not self.master and self.log_changes:
@@ -157,17 +157,20 @@ class ServerDataset(Dataset, SQL):
             return 1
 
     def execute_open(self, params, connection=None, db_module=None):
+        autocommit = True
+        if connection:
+            autocommit = False
         error_mes = ''
         limit = params['__limit']
         offset = params['__offset']
         sqls = self.get_select_queries(params, db_module)
         if len(sqls) == 1:
-            rows = self.task.select(sqls[0], connection, db_module)
+            rows = self.task.select(sqls[0], connection, db_module, autocommit)
         else:
             rows = []
             cut = False
             for sql in sqls:
-                rows += self.task.select(sql, connection, db_module)
+                rows += self.task.select(sql, connection, db_module, autocommit)
                 if limit or offset:
                     if len(rows) >= offset + limit:
                         rows = rows[offset:offset + limit]
@@ -177,7 +180,7 @@ class ServerDataset(Dataset, SQL):
                 rows = rows[offset:offset + limit]
         return rows, error_mes
 
-    def select_records(self, params, safe=False):
+    def select_records(self, params, connection=None, safe=False):
         if safe and not self.can_view():
             raise Exception(consts.language('cant_view') % self.item_caption)
         params['__client_request'] = safe
@@ -187,7 +190,7 @@ class ServerDataset(Dataset, SQL):
         if result is None and self.on_open:
             result = self.on_open(self, params)
         if result is None:
-            result = self.execute_open(params)
+            result = self.execute_open(params, connection)
         result = list(result)
         result.append(self.find_rec_version(params))
         return result
@@ -213,11 +216,33 @@ class ServerDataset(Dataset, SQL):
             locks.apply(connection)
             return locks.version.value
 
+    def update_delta(self, delta, update):
+        changes = update['changes']
+        indexes = {}
+        for i, change in enumerate(changes):
+            indexes[str(change['log_id'])] = i
+        for d in delta:
+            log_id = d.get_rec_info()[consts.REC_CHANGE_ID]
+            index = indexes.get(str(log_id))
+            change = changes[index]
+            rec_id = change['rec_id']
+            d.edit()
+            d.id.value = rec_id
+            details = change['details']
+            for detail in d.details:
+                for detail_update in details:
+                    if detail.ID == int(detail_update['ID']):
+                        self.update_delta(detail, detail_update)
+            d.post()
+
     def apply_delta(self, delta, params=None, connection=None, db_module=None):
         if not db_module:
             db_module = self.task.db_module
         sql = delta.apply_sql(params)
-        return self.task.execute(sql, None, connection=connection, db_module=db_module, autocommit=False)
+        updates, error = self.task.execute(sql, None, connection=connection, db_module=db_module, autocommit=False)
+        if not error:
+            self.update_delta(delta, updates)
+        return updates, error
 
     def apply_changes(self, data, safe, connection=None):
         result = None
@@ -818,27 +843,25 @@ class AbstractServerTask(AbstrTask):
                 self.app.create_connection_pool()
                 return self.pool.connect()
 
-    def pool_execute(self, command, params=None, select=False):
-        con = self.connect()
-        try:
-            connection, result = execute_sql_connection(con, command, params, select, self.db_module)
-        finally:
-            con.close()
-        return result
-
     def execute(self, command, params=None, connection=None, db_module=None, \
         select=False, autocommit=True):
         if connection:
-            connection, result = execute_sql_connection(connection, command, \
-                params, select, db_module, autocommit=autocommit)
-        elif self.persist_con:
-            result = self.pool_execute(command, params, select)
+            con = connection
         else:
-            result = self.pool_execute(command, params, select)
+            con = self.connect()
+        if not db_module:
+            db_module = self.db_module
+        try:
+            c, result = execute_sql_connection(con, command, params, select, \
+                db_module, autocommit=autocommit)
+        finally:
+            if not connection:
+                con.close()
         return result
 
-    def select(self, command, connection=None, db_module=None):
-        result, error = self.execute(command, None, connection, db_module, select=True)
+    def select(self, command, connection=None, db_module=None, autocommit=True):
+        result, error = self.execute(command, None, connection, db_module, \
+            select=True, autocommit=autocommit)
         if error:
             raise Exception(error)
         else:

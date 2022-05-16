@@ -1262,7 +1262,7 @@ class AbstractDataSet(object):
     def record_count(self):
         return self.rec_count
 
-    def do_internal_open(self):
+    def do_internal_open(self, params, connection):
         pass
 
     def find_rec_info(self, rec_no=None, record=None):
@@ -1467,7 +1467,7 @@ class AbstractDataSet(object):
             self._open_params = params
 
     def open(self, expanded, fields, where, order_by, open_empty, params,
-        offset, limit, funcs, group_by):
+        offset, limit, funcs, group_by, connection):
         if not params:
             params = {}
         self._do_before_open(expanded, fields, where, order_by, open_empty,
@@ -1476,16 +1476,16 @@ class AbstractDataSet(object):
         self._bind_fields(expanded)
         self._dataset = []
         if not open_empty:
-            self.do_open(params)
+            self.do_open(params, connection)
         self._active = True
         # ~ self.__cur_row = None
         self.item_state = consts.STATE_BROWSE
         self.first()
 
-    def do_open(self, params=None):
+    def do_open(self, params=None, connection=None):
         if not params:
             params = self._open_params
-        rows, error_mes, info = self.do_internal_open(params)
+        rows, error_mes, info = self.do_internal_open(params, connection)
         if error_mes:
             raise RuntimeError(error_mes)
         else:
@@ -1786,7 +1786,7 @@ class MasterDetailDataset(MasterDataSet):
 
     def open(self, options=None, expanded=None, fields=None, where=None, order_by=None,
         open_empty=False, params=None, offset=None, limit=None, funcs=None,
-        group_by=None, safe=False):
+        group_by=None, safe=False, connection=None):
         if safe and not self.can_view():
             raise Exception(consts.language('cant_view') % self.item_caption)
         if options and type(options) == dict:
@@ -1843,13 +1843,13 @@ class MasterDetailDataset(MasterDataSet):
                     params['__master_rec_id'] = self.master.field_by_name(self.master._primary_key).value
                     return super(MasterDetailDataset, self).open(expanded,
                         fields, where, order_by, open_empty, params, offset,
-                        limit, funcs, group_by)
+                        limit, funcs, group_by, connection)
             else:
                 return
         else:
             return super(MasterDetailDataset, self).open(expanded,
                 fields, where, order_by, open_empty, params, offset, limit,
-                funcs, group_by)
+                funcs, group_by, connection)
 
     def open__in(self, ids, expanded=None, fields=None, where=None, order_by=None, open_empty=False, params=None, offset=None, limit=None): #depricated
 
