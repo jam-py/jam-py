@@ -30,7 +30,7 @@ You can use Jam.py with existing database, that is supported by the framework.
   You can import a subset of fields in the table.
   
   Before saving, specify the primary key field for the item and generator name, 
-  if nessesary.
+  if necessary.
 
 * After saving the imported item, go to the project page and check how it is 
   displayed.

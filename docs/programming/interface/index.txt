@@ -11,5 +11,5 @@ Client side programming
     form_templates
     form_events
     form_options
-    form_exapmles
+    form_examples
     data_controls

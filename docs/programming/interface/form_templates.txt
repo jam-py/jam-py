@@ -90,5 +90,5 @@ Below is an example of default edit form template from index.html file:
   </div>
 
 There are more template examples in the
-:doc:`Form exapmles <form_exapmles>`
+:doc:`Form examples <form_examples>`
 section.

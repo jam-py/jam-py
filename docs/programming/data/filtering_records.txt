@@ -15,7 +15,7 @@ when the ``open`` method is called:
 When ``where`` parameter is specified, it is always used even if the ``set_where`` 
 method was called or item has filters whose values have been set.
 
-When ``where`` parameter is omitted the pateremer passed to the ``set_where`` 
+When ``where`` parameter is omitted the parameter passed to the ``set_where`` 
 method are used.
 
 For example on the client in the following code in the first call of the ``open``
@@ -62,7 +62,7 @@ The same code on the server looks the following way:
         
         invoices.open()
 
-In the framework, the following symbols and corresponing constants are defined 
+In the framework, the following symbols and corresponding constants are defined 
 to filter records:
 
 .. csv-table:: 

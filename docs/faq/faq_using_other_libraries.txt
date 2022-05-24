@@ -4,7 +4,7 @@ Can I use other libraries in my application
 
 You can add javascript libraries to use them for programming on the client side.
 
-It is better to place them in the *js* folders of the *static* dicrectory of the 
+It is better to place them in the *js* folders of the *static* directory of the 
 project. And refer to them using the src attribute in the <script> tag of the
 :doc:`Index.html </programming/interface/index_html>`
 file.
