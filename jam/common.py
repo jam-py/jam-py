@@ -50,7 +50,6 @@ class Consts(object):
         'MAX_CONTENT_LENGTH': 0,
         'IMPORT_DELAY': 0,
         'UPLOAD_FILE_EXT': '.txt, .csv',
-        'SHOW_NOT_NULL': False,
         'MODIFICATION': 0,
         'MAINTENANCE': False,
         'CLIENT_MODIFIED': False,
@@ -105,10 +104,17 @@ class Consts(object):
     FILTER_EQ, FILTER_NE, FILTER_LT, FILTER_LE, FILTER_GT, FILTER_GE, \
         FILTER_IN, FILTER_NOT_IN, FILTER_RANGE, FILTER_ISNULL, \
         FILTER_EXACT, FILTER_CONTAINS, FILTER_STARTWITH, FILTER_ENDWITH, \
-        FILTER_CONTAINS_ALL = range(1, 16)
+        FILTER_CONTAINS_ALL, \
+        FILTER_EQ_L, FILTER_NE_L, FILTER_LT_L, FILTER_LE_L, FILTER_GT_L, FILTER_GE_L, \
+        FILTER_IN_L, FILTER_NOT_IN_L, FILTER_RANGE_L, FILTER_ISNULL_L, \
+        FILTER_EXACT_L, FILTER_CONTAINS_L, FILTER_STARTWITH_L, FILTER_ENDWITH_L, \
+        FILTER_CONTAINS_ALL_L, \
+         = range(1, 31)
     FILTER_STR = ('eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in',
         'range', 'isnull', 'exact', 'contains', 'startwith', 'endwith',
-        'contains_all')
+        'contains_all', 'eq_l', 'ne_l', 'lt_l', 'le_l', 'gt_l', 'ge_l', 'in_l', 'not_in_l',
+        'range_l', 'isnull_l', 'exact_l', 'contains_l', 'startwith_l', 'endwith_l',
+        'contains_all_l')
     FILTER_SIGN = ('', '=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN',
         'BETWEEN', 'ISNULL', '=', 'LIKE', 'LIKE', 'LIKE', 'CONTAINS_ALL')
     FILTER_STRING = ('EQ', 'NE', 'LT', 'LE', 'GT', 'GE', 'IN', 'NOT IN',
@@ -237,6 +243,8 @@ class Consts(object):
         params = self.read_params(keys)
         for key, value in iteritems(params):
             self.__dict__[key] = value
+        if self.__dict__.get('upload_file_ext'):
+            del self.__dict__['upload_file_ext']
 
     def write_params(self, params):
         sql = 'UPDATE SYS_PARAMS SET '
@@ -408,7 +416,6 @@ class Consts(object):
     def convert_date_time(self, value):
         if type(value) in string_types:
             value = value.replace('T', ' ')
-            # ~ value = value.replace('Z', '')
             value = value[:26]
             try:
                 return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
@@ -417,8 +424,22 @@ class Consts(object):
         else:
             return value
 
-
 consts = Consts()
+
+class QueryData(object):
+    def __init__(self, params):
+        self.fields = params.get('__fields', [])
+        self.filters = params.get('__filters', [])
+        self.order = params.get('__order', [])
+        self.group_by = params.get('__group_by', [])
+        self.expanded = params.get('__expanded')
+        self.offset = params.get('__offset')
+        self.limit = params.get('__limit')
+        self.summary = params.get('__summary')
+        self.funcs = params.get('__funcs')
+        self.master_field = params.get('__master_field')
+        self.master_id = params.get('__master_id')
+        self.master_rec_id = params.get('__master_rec_id')
 
 class FieldInfo(object):
     def __init__(self, field, item):

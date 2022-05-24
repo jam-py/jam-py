@@ -13,7 +13,7 @@ fields
 Description
 ===========
 
-Lists all ``1111111111``
+Lists all 
 :doc:`field </refs/client/field_api>`
 objects of the item.
 

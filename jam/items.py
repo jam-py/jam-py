@@ -1,7 +1,5 @@
 import sys, os
 import zipfile
-from xml.dom.minidom import parseString
-from xml.sax.saxutils import escape
 import datetime, time
 import inspect
 import pickle
@@ -16,30 +14,12 @@ from .third_party.filelock import FileLock
 from .third_party.sqlalchemy.pool import NullPool, QueuePool
 from .third_party.six import exec_, print_, get_function_code
 
-from .common import consts, error_message, json_defaul_handler
+from .common import consts, error_message, json_defaul_handler, QueryData
 from .db.databases import get_database
 from .tree import AbstrTask, AbstrGroup, AbstrItem, AbstrDetail, AbstrReport
 from .dataset import Dataset, DBField, DBFilter, ParamReport, Param, DatasetException
 from .admin.copy_db import copy_database
 from .report import Report
-
-
-class QueryData(object):
-    def __init__(self, params):
-        self.fields = params.get('__fields', [])
-        self.filters = params.get('__filters', [])
-        self.order = params.get('__order', [])
-        self.group_by = params.get('__group_by', [])
-        self.expanded = params.get('__expanded')
-        self.offset = params.get('__offset')
-        self.limit = params.get('__limit')
-        self.summary = params.get('__summary')
-        self.funcs = params.get('__funcs')
-        self.master_field = params.get('__master_field')
-        self.master_id = params.get('__master_id')
-        self.master_rec_id = params.get('__master_rec_id')
-        # ~ self.replace = params.get('__replace')
-
 
 class ServerDataset(Dataset):
     def __init__(self):
@@ -83,6 +63,7 @@ class ServerDataset(Dataset):
         result.soft_delete = self.soft_delete
         result._primary_key = self._primary_key
         result._deleted_flag = self._deleted_flag
+        result._record_version = self._record_version
         result._master_id = self._master_id
         result._master_rec_id = self._master_rec_id
         result._master_field = self._master_field
@@ -91,6 +72,7 @@ class ServerDataset(Dataset):
         result._deleted_flag_db_field_name = self._deleted_flag_db_field_name
         result._master_id_db_field_name = self._master_id_db_field_name
         result._master_rec_id_db_field_name = self._master_rec_id_db_field_name
+        result._record_version_db_field_name = self._record_version_db_field_name
         return result
 
     def get_event(self, caption):
@@ -126,11 +108,11 @@ class ServerDataset(Dataset):
             changes = {}
             if not params:
                 params = {}
-            if self.change_log.get_changes(changes):
+            if self.change_log and self.change_log.get_changes(changes):
                 data, error = self.apply_changes((changes, params), safe, connection)
                 if error:
                     raise Exception(error)
-                elif data:
+                else:
                     self.change_log.update(data)
 
     def add_detail(self, master, master_field):
@@ -222,24 +204,26 @@ class ServerDataset(Dataset):
         if result:
             return result
 
+        error = None
+        result = None
         exec_query = True
         query_data = QueryData(params)
         query_data.client_request = client_request
         if self.task.on_before_open:
-            exec_query = self.task.on_before_open(self, query_data, params)
-        if self.on_before_open:
-            exec_query = self.on_before_open(self, query_data, params)
+            exec_query = self.task.on_before_open(self, query_data, params, connection)
+        if exec_query != False and self.on_before_open:
+            exec_query = self.on_before_open(self, query_data, params, connection)
 
-        if exec_query:
+        if exec_query != False:
             result, error = self.execute_open(params, connection)
 
         dataset = None
-        if self.task.on_after_open:
-            self = init_open_dataset(query_data, dataset, result)
-            self.task.on_after_open(self, query_data, params, dataset)
         if self.on_after_open:
             self = init_open_dataset(query_data, dataset, result)
-            exec_query = self.on_after_open(self, query_data, params, dataset)
+            self.on_after_open(self, query_data, params, connection, dataset)
+        if self.task.on_after_open:
+            self = init_open_dataset(query_data, dataset, result)
+            self.task.on_after_open(self, query_data, params, connection, dataset)
         if dataset:
             result = dataset._dataset, ''
         return result, error
@@ -250,47 +234,43 @@ class ServerDataset(Dataset):
         for d in delta:
             if not d.rec_deleted():
                 d.check_record_valid()
-        return db.process_changes(delta, connection, params)
+        db.process_changes(delta, connection, params)
+        return delta.change_log.prepare_updates()
+
+    def set_apply_connection(self, delta, con):
+        delta._apply_connection = con
+        for d in delta.details:
+            self.set_apply_connection(d, con)
 
     def apply_changes(self, data, safe, connection=None):
         result = None
         result_data = None
-        error = None
         changes, params = data
         if not params:
             params = {}
         params['__safe'] = safe
-        delta = self.delta(changes)
-        delta.client_changes = safe
+        delta = self.delta(changes, safe)
         if connection:
             con = connection
         else:
             con = self.task.connect()
+        self.set_apply_connection(delta, con)
         try:
             if self.task.on_apply:
                 result = self.task.on_apply(self, delta, params, con)
             if result is None and self.on_apply:
                 result = self.on_apply(self, delta, params, con)
             if result is None:
-                if self.task.on_before_apply:
-                    self.task.on_before_apply(self, delta, params, con)
-                if self.on_before_apply:
-                    self.on_before_apply(self, delta, params, con)
                 result = self.apply_delta(delta, params, con)
-                if self.task.on_after_apply:
-                    result_data = self.task.on_after_apply(self, delta, params, con)
-                if result_data is None and self.on_after_apply:
-                    result_data = self.on_after_apply(self, delta, params, con)
-                if not result_data is None:
-                    result[0]['result'] = result_data
             if not connection and con:
                 con.commit()
         finally:
+            self.set_apply_connection(delta, None)
             if not connection and con:
                 con.close()
-        return result
+        return result, ''
 
-    def update_deleted(self, details=None, connection=None):
+    def update_deleted(self, details=None, connection=None): #depricated
         if self._is_delta:
             if details is None:
                 details = self.details
@@ -763,8 +743,7 @@ class Detail(AbstrDetail, ServerDataset):
         ServerDataset.__init__(self)
         self.item_type_id = consts.DETAIL_TYPE
         self.master_field = master_field
-        if not master_field:
-            self.master = owner
+        self.master = owner
         self.soft_delete = None
 
     def init_fields(self):
@@ -777,6 +756,7 @@ class Detail(AbstrDetail, ServerDataset):
         self.edit_lock = self.prototype.edit_lock
         self._primary_key = self.prototype._primary_key
         self._deleted_flag = self.prototype._deleted_flag
+        self._record_version = self.prototype._record_version
         self._master_id = self.prototype._master_id
         self._master_rec_id = self.prototype._master_rec_id
 

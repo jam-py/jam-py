@@ -10,19 +10,27 @@ server module of the item will do the job:
 .. code-block:: py
 
   def on_open(item, params):
-      user_id = item.session['user_info']['user_id']
-      if user_id:
-          params['__filters'].append(['user_id', item.task.consts.FILTER_EQ, user_id])
+      if item.session:
+          user_id = item.session['user_info']['user_id']
+          if user_id:
+              params['__filters'].append(['user_id', item.task.consts.FILTER_EQ, user_id])
   
   def on_apply(item, delta, params, connection):
-      user_id = item.session['user_info']['user_id']
-      if user_id:
-        for d in delta:
-            if d.rec_inseted():          
-                d.edit()
-                d.user_id.value = user_id
-                d.post()
-            
+      if item.session:    
+          user_id = item.session['user_info']['user_id']
+          if user_id:
+              for d in delta:
+                  if d.rec_inserted():
+                      d.edit()
+                      d.user_id.value = user_id
+                      d.post()
+                  elif d.rec_modified():
+                      if d.user_id.old_value != user_id:
+                          raise Exception('You are not allowed to change record.')
+                  elif d.rec_deleted():
+                      if d.user_id.old_value != user_id:
+                          raise Exception('You are not allowed to delete record.')                  
+
 It uses a 
 :doc:`session </refs/server/abstr_item/at_session>`
 attribute of the item to get a unique user id
@@ -33,13 +41,14 @@ event handlers.
 
 The 
 :doc:`on_open </refs/server/item/on_open>`
-event handler ensures that the sql select query that applications generates 
+event handler ensures that the sql select statement that applications generates 
 will return only records where the user_id field will be the same as the ID of 
 the user that sends the request.
 
 And the 
 :doc:`on_apply </refs/server/item/on_apply>`
-event handler sets the user_id to the ID of the user that appended the records.
+event handler sets the user_id to the ID of the user that appended or modified 
+the records.
 
 You can use a more general approach and add the following code to the server
 module of the task. Then a multi-tenancy will be applied to every item that have 
@@ -48,17 +57,25 @@ a user_id field:
 .. code-block:: py
   
   def on_open(item, params):
-      if item.field_by_name('user_id'):
-          user_id = item.session['user_info']['user_id']
-          if user_id:
-              params['__filters'].append(['user_id', item.task.consts.FILTER_EQ, user_id])
+      if item.field_by_name('user_id'):    
+          if item.session:
+              user_id = item.session['user_info']['user_id']
+              if user_id:
+                  params['__filters'].append(['user_id', item.task.consts.FILTER_EQ, user_id])
   
   def on_apply(item, delta, params, connection):
       if item.field_by_name('user_id'):    
-          user_id = item.session['user_info']['user_id']
-          if user_id:
-              for d in delta:
-                  if d.rec_inseted():
-                      d.edit()
-                      d.user_id.value = user_id
-                      d.post()
+          if item.session:    
+              user_id = item.session['user_info']['user_id']
+              if user_id:
+                  for d in delta:
+                      if d.rec_inserted():
+                          d.edit()
+                          d.user_id.value = user_id
+                          d.post()
+                      elif d.rec_modified():
+                          if d.user_id.old_value != user_id:
+                              raise Exception('You are not allowed to change record.')
+                      elif d.rec_deleted():
+                          if d.user_id.old_value != user_id:
+                              raise Exception('You are not allowed to delete record.')                  

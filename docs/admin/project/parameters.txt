@@ -77,7 +77,12 @@ On the General tab, you can specify general parameters of the project:
 * **Delete reports after (hours)** - if a value is specified the generated 
   reports that are located in the static/reports folder will be deleted after
   specified number of hours have passed.
-
+  
+* **Upload file extensions** - is an :doc:`Accept string </admin/accept_string>`
+  that defines the types of files that could be uploaded to the server by the
+  task :doc:`upload </refs/client/task/m_upload>` method. Uploading files that 
+  do not match these types is prohibited.
+  
 * **Version** — specify the version of the project here.
 
 .. note::

@@ -416,14 +416,6 @@ function Events16() { // demo.journals.invoices
 		if (field.field_name === 'customer' && field.value) {
 			return field.owner.firstname.lookup_text + ' ' + field.lookup_text;
 		}
-		// if (field.field_name === 'paid') {
-		//	 if (field.value) {
-		//		 return 'XXX';
-		//	 }
-		//	 else {
-		//		 return '';
-		//	 }
-		// }
 	}
 	
 	function on_field_get_html(field) {
@@ -440,24 +432,12 @@ function Events16() { // demo.journals.invoices
 				if (error) {
 					item.alert_error(error);   
 				}
-				else {
-					field.owner.update_record(dataset);
-				}
+				// else {
+				//	 field.owner.invoice_table.reopen();
+				// }
 				field.owner.edit();
 			});
 		}
-	}
-	
-	function on_detail_changed(item, detail) {
-		detail.apply(function(error, dataset) {
-			if (error) {
-				item.alert_error(error);   
-			}
-			else {
-				item.update_record(dataset);
-			}
-			detail.edit();
-		});
 	}
 	
 	var scroll_timeout;
@@ -473,6 +453,10 @@ function Events16() { // demo.journals.invoices
 		);
 	}
 	
+	function on_edit_form_created(item) {
+		item.read_only = item.paid.value;
+	}
+	
 	function on_view_form_created(item) {
 		var btn = item.add_view_button('Set invoice paid', {type: 'primary', btn_id: 'paid-btn'});
 		btn.click(function() {
@@ -484,23 +468,12 @@ function Events16() { // demo.journals.invoices
 			});
 		});
 	}
-	
-	function on_edit_form_created(item) {
-		let prior_btn = item.add_edit_button('<');	
-		prior_btn.css('min-width', 0);
-		prior_btn.click(function() {	
-			item.apply();
-			item.prior();
-			item.edit();
-		});
-	}
 	this.on_field_get_text = on_field_get_text;
 	this.on_field_get_html = on_field_get_html;
 	this.on_field_changed = on_field_changed;
-	this.on_detail_changed = on_detail_changed;
 	this.on_after_scroll = on_after_scroll;
-	this.on_view_form_created = on_view_form_created;
 	this.on_edit_form_created = on_edit_form_created;
+	this.on_view_form_created = on_view_form_created;
 }
 
 task.events.events16 = new Events16();
@@ -524,9 +497,9 @@ function Events17() { // demo.details.invoice_table
 			item.unitprice.value = lookup_item.unitprice.value;
 		}
 		if (field.field_name === 'quantity' || field.field_name === 'unitprice') {
-			item.amount.value = item.quantity.value * item.unitprice.value;
-			item.tax.value = item.amount.value * invoice.taxrate.value / 100;
-			item.total.value = item.amount.value + item.tax.value;
+			item.apply(function() {
+				item.edit();
+			});
 		}
 	}
 	this.on_view_form_created = on_view_form_created;

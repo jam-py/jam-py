@@ -16,6 +16,7 @@ class AbstractItem(object):
         self.owner = owner
         self.item_name = name
         self.items = []
+        self.table_name = None
         self.ID = None
         self.js_filename = None
         self._events = []
@@ -77,9 +78,13 @@ class AbstractItem(object):
                 return result
 
     def all(self, func):
-        func(self);
+        result = func(self);
+        if not result is None:
+            return result
         for item in self.items:
-            item.all(func)
+            result = item.all(func)
+            if not result is None:
+                return result
 
     def write_info(self, info, server):
         info['id'] = self.ID
@@ -358,6 +363,7 @@ class AbstrDetail(AbstrItem):
     def write_info(self, info, server):
         super(AbstrDetail, self).write_info(info, server)
         info['prototype_ID'] = self.prototype.ID
+        info['master_applies'] = self.master_applies
 
     def read_info(self, info):
         super(AbstrDetail, self).read_info(info)
@@ -365,6 +371,7 @@ class AbstrDetail(AbstrItem):
         if not hasattr(self.owner.details, self.item_name):
             setattr(self.owner.details, self.item_name, self)
         self._prototype_id = info['prototype_ID']
+        self.master_applies = info['master_applies']
 
     def bind_item(self):
         super(AbstrDetail, self).bind_item();

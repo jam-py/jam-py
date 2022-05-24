@@ -9,6 +9,7 @@ class MSSqlDB(AbstractDB):
         AbstractDB.__init__(self)
         self.db_type = consts.MSSQL
         self.DDL_ROLLBACK = True
+        self.IS_DISTINCT_FROM = 'NOT EXISTS(SELECT %s INTERSECT SELECT %s)'
         self.FIELD_TYPES = {
             consts.INTEGER: 'INT',
             consts.TEXT: 'NVARCHAR',
@@ -78,12 +79,6 @@ class MSSqlDB(AbstractDB):
             result.append(value)
         return tuple(result)
 
-    def cast_date(self, date_str):
-        return "CAST('" + date_str + "' AS DATE)"
-
-    def cast_datetime(self, datetime_str):
-        return "CAST('" + datetime_str + "' AS DATETIME)"
-
     def convert_like(self, field_name, val, data_type):
         if data_type in [consts.INTEGER, consts.FLOAT, consts.CURRENCY]:
             return 'CAST(CAST(%s AS DECIMAL(20, 10)) AS VARCHAR(20))' % field_name, val
@@ -109,8 +104,6 @@ class MSSqlDB(AbstractDB):
                 line += '(%d)' % field.size
             if not default_text is None:
                 line += ' CONSTRAINT "%s" DEFAULT %s' % (field.field_name + '_DEFAULT_CONSTRAINT', default_text)
-            if field.not_null:
-                line += ' NOT NULL'
             if field.primary_key:
                 line += ' IDENTITY(1, 1)'
                 primary_key = field.field_name
@@ -132,8 +125,6 @@ class MSSqlDB(AbstractDB):
             line += '(%d)' % field.size
         if not default_text is None:
             line += ' CONSTRAINT "%s" DEFAULT %s' % (field.field_name + '_DEFAULT_CONSTRAINT', default_value)
-        if field.not_null:
-            line += ' NOT NULL'
         return line
 
     def del_field(self, table_name, field):
@@ -146,13 +137,8 @@ class MSSqlDB(AbstractDB):
         default_value = self.default_value(new_field)
         default_text = self.default_text(new_field)
         old_default_text = self.default_text(old_field)
-        if old_field.not_null != new_field.not_null:
-            if not default_text is None and default_value and new_field.not_null:
-                line = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
-                    (table_name, old_field.field_name, default_value, old_field.field_name)
-                result.append(line)
         field_info = self.get_field_info(old_field.field_name, table_name)
-        if old_field.not_null != new_field.not_null or old_field.size != new_field.size:
+        if old_field.size != new_field.size:
             line = 'ALTER TABLE "%s" ALTER COLUMN "%s" %s' % \
                  (table_name, new_field.field_name, field_info['data_type'])
             size = field_info['size']
@@ -160,10 +146,6 @@ class MSSqlDB(AbstractDB):
                 if new_field.size > size:
                     size = new_field.size
                 line += '(%d)' % size
-            if new_field.not_null:
-                line += ' NOT NULL'
-            else:
-                line += ' NULL'
             result.append(line)
         if old_field.default_value != new_field.default_value:
             if not old_default_text is None:
@@ -214,22 +196,21 @@ class MSSqlDB(AbstractDB):
     def get_table_info(self, connection, table_name, db_name):
         cursor = connection.cursor()
         sql = '''
-                SELECT
-                    COLUMN_NAME,
-                    DATA_TYPE,
-                    CHARACTER_MAXIMUM_LENGTH,
-                    COLUMN_DEFAULT,
-                    IS_NULLABLE,
-                    COLUMNPROPERTY(object_id(TABLE_SCHEMA+'.'+TABLE_NAME), COLUMN_NAME, 'IsIdentity')
-                FROM
-                    INFORMATION_SCHEMA.COLUMNS
-                WHERE
-                  TABLE_NAME = '%s'
-              '''
+            SELECT
+                COLUMN_NAME,
+                DATA_TYPE,
+                CHARACTER_MAXIMUM_LENGTH,
+                COLUMN_DEFAULT,
+                COLUMNPROPERTY(object_id(TABLE_SCHEMA+'.'+TABLE_NAME), COLUMN_NAME, 'IsIdentity')
+            FROM
+                INFORMATION_SCHEMA.COLUMNS
+            WHERE
+              TABLE_NAME = '%s'
+        '''
         cursor.execute(sql % (table_name))
         result = cursor.fetchall()
         fields = []
-        for column_name, data_type, character_maximum_length, column_default, is_nullable, itent in result:
+        for column_name, data_type, character_maximum_length, column_default, itent in result:
             size = 0
             if character_maximum_length:
                 size = character_maximum_length
@@ -244,8 +225,7 @@ class MSSqlDB(AbstractDB):
                 'data_type': data_type.upper(),
                 'size': size,
                 'default_value': default_value,
-                'pk': pk,
-                'not_null': is_nullable == 'NO'
+                'pk': pk
             })
         return {'fields': fields, 'self.FIELD_TYPES': self.FIELD_TYPES}
 

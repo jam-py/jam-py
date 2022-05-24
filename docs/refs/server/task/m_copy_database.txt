@@ -2,7 +2,7 @@
 copy_database
 =============
 
-.. py:method:: copy_database((self, dbtype, connection, limit = 1000)
+.. py:method:: copy_database(self, dbtype, database=None, user=None, password=None, host=None, port=None, encoding=None, server=None)
 
 **domain**: server
 
@@ -15,19 +15,6 @@ Description
 
 Use ``copy_database`` to copy database data when migrating to another database.
 
-``dbtype`` parameter is the type of the source database
-the database type are defined as the attributes the ``consts`` attribute of 
-the task and can take one of the following values.
-
-* SQLITE 
-* FIREBIRD 
-* POSTGRESQL 
-* MYSQL 
-* ORACLE 
-* MSSQL
-  
-``connection`` parameter is a Python connection to the source database
-
 See :doc:`How to migrate to another database </how_to/how_to_migrate_to_another_database>`
 
 
@@ -39,11 +26,10 @@ copies the data from the demo.sqlite database to the project database:
 
 .. code-block:: py
 
-  import sqlite3
+  from jam.db.db_modules import SQLITE
   
   def on_created(task):
-      connection = sqlite3.connect('/home/demo_project/demo.sqlite')
-      task.copy_database(task.consts.SQLITE, connection)
+      task.copy_database(SQLITE, '/home/work/demo/demo.sqlite')
 
 
 

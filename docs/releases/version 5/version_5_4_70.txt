@@ -1,9 +1,0 @@
-==============
-Version 5.4.70
-==============
-
-Library:
-
-* Werkzeug library upgraded to the version 0.15.5
-
-* editing record in modeless mode bug fixed 

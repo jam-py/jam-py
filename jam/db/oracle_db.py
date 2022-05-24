@@ -13,6 +13,7 @@ class OracleDB(AbstractDB):
         self.FROM = '"%s" %s '
         self.LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" %s'
         self.DESC = 'DESC NULLS LAST'
+        self.IS_DISTINCT_FROM = 'DECODE(%s, %s, 0, 1) <> 0'
         self.FIELD_TYPES = {
             consts.INTEGER: 'NUMBER',
             consts.TEXT: 'VARCHAR2',
@@ -83,12 +84,6 @@ class OracleDB(AbstractDB):
             result.append(fields)
         return result
 
-    def cast_date(self, date_str):
-        return "TO_DATE('" + date_str + "', 'YYYY-MM-DD')"
-
-    def cast_datetime(self, datetime_str):
-        return "TO_DATE('" + datetime_str + "', 'YYYY-MM-DD  HH24:MI')"
-
     def value_literal(self, index):
         return ':%d' % index
 
@@ -109,8 +104,6 @@ class OracleDB(AbstractDB):
                 line += '(%d)' % field.size
             if field.primary_key:
                 primary_key = field.field_name
-            elif field.not_null:
-                line += ' NOT NULL'
             lines.append(line)
         if primary_key:
             lines.append('CONSTRAINT %s_PR_INDEX PRIMARY KEY ("%s")\n' % \
@@ -137,8 +130,6 @@ class OracleDB(AbstractDB):
             line += '(%d)' % field.size
         if not default_text is None:
             line += ' DEFAULT %s' % default_text
-        if field.not_null:
-            line += ' NOT NULL'
         return line
 
     def del_field(self, table_name, field):
@@ -146,13 +137,7 @@ class OracleDB(AbstractDB):
 
     def change_field(self, table_name, old_field, new_field):
         result = []
-        default_value = self.default_value(new_field)
         default_text = self.default_text(new_field)
-        if old_field.not_null != new_field.not_null:
-            if default_value and new_field.not_null:
-                line = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
-                    (table_name, old_field.field_name, default_value, old_field.field_name)
-                result.append(line)
         field_info = self.get_field_info(old_field.field_name, table_name)
         if old_field.field_name != new_field.field_name:
             line = 'ALTER TABLE "%s" RENAME COLUMN "%s" TO "%s"' % \
@@ -171,10 +156,6 @@ class OracleDB(AbstractDB):
                     line += ' DEFAULT %s' % default_text
                 else:
                     line += ' DEFAULT NULL'
-            if new_field.not_null:
-                line += ' NOT NULL'
-            else:
-                line += ' NULL'
             result.append(line)
         return result
 
@@ -223,7 +204,6 @@ class OracleDB(AbstractDB):
         result = cursor.fetchall()
         fields = []
         for (field_name, data_type, size, default_value, nullable) in result:
-            print(77777, field_name, data_type, size, default_value, nullable)
             fields.append({
                 'field_name': field_name,
                 'data_type': data_type,

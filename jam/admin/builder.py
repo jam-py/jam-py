@@ -874,7 +874,7 @@ def get_fields_next_id(task, length=1):
         params.f_field_id_gen.value = cur_id + length
         params.post()
         params.apply()
-        return cur_id + 1
+        return params.f_field_id_gen.value
 
 def server_get_table_names(task):
     connection = connect_task_db(task)
@@ -1128,7 +1128,7 @@ def update_interface(delta, type_id, item_id):
         fields.set_where(owner_rec_id__in=[item_id, item.parent.value])
         fields.open()
         item.load_interface()
-        if delta.record_status == consts.RECORD_INSERTED:
+        if delta.change_log.record_status == consts.RECORD_INSERTED:
             for field in fields:
                 if field.owner_rec_id.value == item.parent.value:
                     if not field.f_field_name.value in system_fields:
@@ -1138,16 +1138,16 @@ def update_interface(delta, type_id, item_id):
                             item._edit_list.append([field.id.value])
 
         for d in delta.sys_fields:
-            if d.record_status in [consts.RECORD_INSERTED, consts.RECORD_DELETED]:
+            if d.change_log.record_status in [consts.RECORD_INSERTED, consts.RECORD_DELETED]:
                 field_name = d.f_field_name.value
                 if fields.locate('f_field_name', field_name):
-                    if d.record_status == consts.RECORD_INSERTED:
+                    if d.change_log.record_status == consts.RECORD_INSERTED:
                         if not field_name in system_fields:
                             if type(item._view_list) is list:
                                 item._view_list.append([fields.id.value, False, False, False])
                             if type(item._edit_list) is list:
                                 item._edit_list.append([fields.id.value])
-                    elif d.record_status == consts.RECORD_DELETED:
+                    elif d.change_log.record_status == consts.RECORD_DELETED:
                         if type(item._view_list) is list:
                             item._view_list = delete_id_from_list(item._view_list, fields.id.value)
                         if type(item._edit_list) is list:
@@ -1247,7 +1247,7 @@ def items_execute_delete(item, delta, connection, params, manual_update):
     return result
 
 def items_apply_changes(item, delta, params, connection):
-    manual_update = params['manual_update']
+    manual_update = params['manual_update'] or delta.f_copy_of.value
     for f in delta.sys_fields:
         if not f.id.value:
             raise Exception(item.task.language('field_no_id') % (f.field_name))
@@ -1274,9 +1274,19 @@ def server_group_is_empty(item, id_value):
     return item.record_count() == 0
 
 def server_can_delete(item, id_value):
-    item = item.copy()
+    item = item.copy(handlers=False)
     item.set_where(id=id_value)
     item.open()
+    if not item.f_copy_of.value:
+        items = item.copy(handlers=False)
+        items.set_where(f_copy_of=id_value)
+        items.open()
+        copies = []
+        for i in items:
+            copies.append(i.f_item_name.value)
+        if len(copies):
+            names = ',<br>'.join(['<b>%s</b>' % name for name in copies])
+            return 'There are copies of the item: %s' % names
     details = item.task.sys_items.copy()
     details.set_where(table_id=id_value)
     details.open()
@@ -1345,13 +1355,13 @@ def create_calc_field_index(task, item_id, calc_item_id):
     fields.set_where(owner_rec_id=calc_item_id, f_object=item_id, f_master_field__isnull=True)
     fields.open()
     if fields.rec_count == 1:
-        create_index(task, calc_item_id, [fields.id.value], '_CALC_IDX')
+        create_index(task, calc_item_id, [fields.id.value], '_IDX')
 
 def create_detail_index(task, table_id, master_field):
     if master_field:
-        create_index(task, table_id, [master_field], '_DETAIL_IDX')
+        create_index(task, table_id, [master_field], '_IDX')
     else:
-        create_index(task, table_id, ['f_master_id', 'f_master_rec_id'], '_DETAIL_IDX')
+        create_index(task, table_id, ['f_master_id', 'f_master_rec_id'], '_IDX')
 
 def create_index(task, table_id, fields, suffix):
     items = task.sys_items.copy()
@@ -1387,16 +1397,16 @@ def create_index(task, table_id, fields, suffix):
         for f in fields:
             dest_list.append([f, False])
         indexes.append()
-        index_name = task_name + '_' + tables.f_item_name.value
-        if len(index_name) > 20:
-            index_name = index_name[0:20]
-        indexes.f_index_name.value = index_name + suffix;
+        index_name = task_name + '_' + tables.f_item_name.value 
+        # index_name = tables.f_item_name.value
         if len(fields) == 1:
             f = task.sys_fields.copy(handlers=False)
             f.set_where(id=fields[0])
             f.open()
-            indexes.f_index_name.value = \
-                task.task_db_module.identifier_case(index_name + '_' + f.f_field_name.value + suffix)
+            index_name = index_name + '_' + f.f_field_name.value
+        if len(index_name + suffix) > 30:
+            index_name = index_name[0: 30 - len(suffix)]
+        indexes.f_index_name.value = task.task_db_module.identifier_case(index_name + suffix)
         indexes.task_id.value = task_id
         indexes.owner_rec_id.value = table_id
         indexes.f_foreign_index.value = False
@@ -1535,13 +1545,9 @@ def server_can_delete_field(item, id_value):
     item.set_where(id=id_value)
     item.open()
 
-    # item_type_id = item.task.sys_items.field_by_id(item.owner_rec_id.value, 'type_id')
-    # if item_type_id in (consts.ITEMS_TYPE, consts.TABLES_TYPE):
-    #     if not server_group_is_empty(item, item.owner_rec_id.value):
-    #         mess = "Can't delete the field: the group contains items."
-    #         return mess
-
+    field_db_field_name = item.f_db_field_name.value
     field_id = item.id.value
+    field_owner_id = item.owner_rec_id.value
     fields = item.task.sys_fields.copy()
     fields.set_where(task_id=item.task_id.value)
     fields.open()
@@ -1589,6 +1595,26 @@ def server_can_delete_field(item, id_value):
         mess = item.task.language('field_used_in_filters') % \
             {'field': item.f_field_name.value, 'filters': names}
         return mess
+    items = item.task.sys_items.copy(handlers=False)
+    items.set_where(f_copy_of=field_owner_id)
+    items.open()
+    ids = []
+    for i in items:
+        ids.append(i.id.value)
+        if len(ids):
+            fields.set_where(owner_rec_id__in=ids, f_db_field_name=field_db_field_name)
+            fields.open()
+            if fields.rec_count:
+                used = []
+                for f in fields:
+                    used.append((item.task.sys_items.field_by_id(f.owner_rec_id.value, 'f_item_name'),
+                        f.f_field_name.value))
+                names = ',<br>'.join(['<p><b>%s</b> - <b>%s</b></p>' % use for use in used])
+                # mess = item.task.language('field_used_in_fields') % \
+                mess = "Can't delete the field %(field)s. It's used in copy definitions:%(fields)s" % \
+                    {'field': item.f_field_name.value, 'fields': names}
+                return mess
+        
 
 ###############################################################################
 #                                 sys_indices                                 #

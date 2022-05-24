@@ -7,6 +7,7 @@ class SQLiteDB(AbstractDB):
     def __init__(self):
         AbstractDB.__init__(self)
         self.db_type = consts.SQLITE
+        self.IS_DISTINCT_FROM = 'NOT %s IS %s'
         self.FIELD_TYPES = {
             consts.INTEGER: 'INTEGER',
             consts.TEXT: 'TEXT',
@@ -51,12 +52,6 @@ class SQLiteDB(AbstractDB):
             result += ' LIMIT %d, %d' % (offset, limit)
         return result
 
-    def cast_date(self, date_str):
-        return "'%s'" % date_str
-
-    def cast_datetime(self, datetime_str):
-        return "'%s'" % datetime_str
-
     def create_table(self, table_name, fields, gen_name=None, foreign_fields=None):
         primary_key = ''
         sql = 'CREATE TABLE "%s"\n(\n' % table_name
@@ -67,8 +62,6 @@ class SQLiteDB(AbstractDB):
             if field.primary_key:
                 primary_key = field.field_name
                 line += ' PRIMARY KEY'
-            if field.not_null:
-                line += ' NOT NULL'
             if not default_text is None:
                 line += ' DEFAULT %s' % default_text
             lines.append(line)
@@ -84,8 +77,6 @@ class SQLiteDB(AbstractDB):
         default_text = self.default_text(field)
         result = 'ALTER TABLE "%s" ADD COLUMN "%s" %s' % \
             (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
-        if field.not_null:
-            result += ' NOT NULL'
         if not default_text is None:
             result += ' DEFAULT %s' % default_text
         return result
@@ -131,7 +122,6 @@ class SQLiteDB(AbstractDB):
                 'field_name': r[1],
                 'data_type': r[2],
                 'size': 0,
-                'not_null': r[3],
                 'default_value': r[4],
                 'pk': r[5]==1
             })

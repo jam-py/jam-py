@@ -2,7 +2,7 @@ import datetime
 
 from werkzeug._compat import text_type, to_bytes, to_unicode
 
-from ..common import consts, error_message
+from ..common import consts, error_message, QueryData
 from ..db.databases import get_database
 
 def copy_database(task, dbtype, connection, limit = 1000):
@@ -56,9 +56,9 @@ def copy_database(task, dbtype, connection, limit = 1000):
             order_by = [item.item_id.db_field_name, item.item_rec_id.db_field_name]
         params = {'__expanded': False, '__offset': loaded, '__limit': limit,
             '__fields': [], '__filters': [], '__order': order_by}
-        sql = db.get_select_statement(item, params)
+        sql, params = db.get_select_statement(item, QueryData(params))
         sql = convert_sql(item, sql, db)
-        cursor.execute(sql)
+        cursor.execute(sql, params)
         rows = cursor.fetchall()
         return [list(row) for row in rows]
 
@@ -127,12 +127,12 @@ def copy_database(task, dbtype, connection, limit = 1000):
         return error
 
     def count_records(item, db, con):
-        params = {'__expanded': False, '__offset': 0, '__limit': 0, '__filters': []}
-        sql = db.get_record_count_query(item, params)
+        params = {'__expanded': False, '__offset': 0, '__limit': 0, '__filters': [], '__fields': []}
+        sql, params = db.get_record_count_query(item, QueryData(params))
         if db != item.task.db:
             sql = convert_sql(item, sql, db)
         cursor = con.cursor()
-        cursor.execute(sql)
+        cursor.execute(sql, params)
         result = cursor.fetchall()
         return result[0][0]
 

@@ -53,7 +53,7 @@ and appends the html template to it, otherwise, it creates an empty modal form
 and appends the template to the form. 
 
 After this it assigns item's ``prefix_form`` 
-attibute to the template, triggers an ``on_prefix_form_created`` events, 
+attribute to the template, triggers an ``on_prefix_form_created`` events, 
 shows the form and triggers ``on_prefix_form_shown`` events, where prefix is a 
 type of the form (view, edit, filter, param). 
 See :doc:`Form events <form_events>` for details.

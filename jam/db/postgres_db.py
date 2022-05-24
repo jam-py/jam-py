@@ -73,8 +73,6 @@ class PostgresDB(AbstractDB):
             else:
                 field_type = self.FIELD_TYPES[field.data_type]
             line = '"%s" %s' % (field.field_name, field_type)
-            if field.not_null:
-                line += ' NOT NULL'
             if not default_text is None:
                 line += ' DEFAULT %s' % default_text
             lines.append(line)
@@ -93,8 +91,6 @@ class PostgresDB(AbstractDB):
         default_text = self.default_text(field)
         line = 'ALTER TABLE "%s" ADD COLUMN "%s" %s' % \
             (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
-        if field.not_null:
-            line += ' NOT NULL'
         if not default_text is None:
             line += ' DEFAULT %s' % default_text
         return line
@@ -104,13 +100,7 @@ class PostgresDB(AbstractDB):
 
     def change_field(self, table_name, old_field, new_field):
         result = []
-        default_value = self.default_value(new_field)
         default_text = self.default_text(new_field)
-        if not default_text is None and old_field.not_null != new_field.not_null:
-            if default_value and new_field.not_null:
-                line = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
-                    (table_name, old_field.field_name, default_value, old_field.field_name)
-                result.append(line)
         field_info = self.get_field_info(old_field.field_name, table_name)
         if old_field.field_name != new_field.field_name:
             result.append('ALTER TABLE "%s" RENAME COLUMN  "%s" TO "%s"' % \
@@ -121,14 +111,6 @@ class PostgresDB(AbstractDB):
                 line = 'ALTER TABLE "%s" ALTER COLUMN "%s" TYPE %s(%d) ' % \
                     (table_name, new_field.field_name, field_info['data_type'], new_field.size)
                 result.append(line)
-        if old_field.not_null != new_field.not_null:
-            if new_field.not_null:
-                line = 'ALTER TABLE "%s" ALTER "%s" SET NOT NULL' % \
-                    (table_name, new_field.field_name)
-            else:
-                line = 'ALTER TABLE "%s" ALTER "%s" DROP NOT NULL' % \
-                    (table_name, new_field.field_name)
-            result.append(line)
         if old_field.default_value != new_field.default_value:
             if not default_text is None:
                 line = 'ALTER TABLE "%s" ALTER "%s" SET DEFAULT %s' % \
@@ -182,11 +164,11 @@ class PostgresDB(AbstractDB):
 
     def get_table_info(self, connection, table_name, db_name):
         cursor = connection.cursor()
-        sql = "select column_name, data_type, character_maximum_length, column_default, is_nullable from information_schema.columns where table_name='%s'" % table_name
+        sql = "select column_name, data_type, character_maximum_length, column_default from information_schema.columns where table_name='%s'" % table_name
         cursor.execute(sql)
         result = cursor.fetchall()
         fields = []
-        for column_name, data_type, character_maximum_length, column_default, is_nullable in result:
+        for column_name, data_type, character_maximum_length, column_default in result:
             try:
                 size = 0
                 if character_maximum_length:
@@ -204,8 +186,7 @@ class PostgresDB(AbstractDB):
                 'data_type': data_type.upper(),
                 'size': size,
                 'default_value': column_default,
-                'pk': pk,
-                'not_null': not is_nullable
+                'pk': pk
             })
         return {'fields': fields, 'field_types': self.FIELD_TYPES}
 

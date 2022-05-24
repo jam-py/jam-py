@@ -29,7 +29,7 @@ Library:
   
     task.init_tabs($("#content"));
     
-  at the begining on the on_page_loaded event handler of the task client module
+  at the beginning on the on_page_loaded event handler of the task client module
   to forms be desplayed in tabs and add a $("#content") container parameter to
   append_record, insert_record and edit_record methods.
   
@@ -39,7 +39,7 @@ Library:
   
     task.add_form_borders = false;
     
-  if you don't want to change html teplates of the forms. Otherwise remove 
+  if you don't want to change html templates of the forms. Otherwise remove 
   elements for search input and filter text (in the div with form-header class, 
   remove it) from the form templates and add the div with modal-header class 
   to templates.

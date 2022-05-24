@@ -1,0 +1,31 @@
+===========
+log_changes
+===========
+
+.. js:attribute:: log_changes
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Indicates whether to log data changes.
+
+Use ``log_changes`` to control whether or not changes made to the data in an 
+item dataset are recorded. When ``log_changes`` is ``true`` (the default), all 
+changes are recorded. They can later be applied to an application server by 
+calling the 
+:doc:`apply <m_apply>`
+method. When ``log_changes`` is false, data changes are not recorded and cannot 
+be applied to an application server.
+
+See also
+========
+
+:doc:`Modifying datasets </programming/data/modifying_datasets>`
+
+:doc:`apply <m_apply>`

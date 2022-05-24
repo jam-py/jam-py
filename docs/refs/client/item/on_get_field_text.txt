@@ -45,7 +45,3 @@ See also
 
 :doc:`Fields </programming/data/fields>`
 
-:doc:`on_field_get_html <on_field_get_html>`
-
-:doc:`on_field_get_summary <on_field_get_summary>`
-

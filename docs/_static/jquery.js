@@ -3169,7 +3169,7 @@ jQuery.Callbacks = function( options ) {
 				return this;
 			},
 			// Check if a given callback is in the list.
-			// If no argument is given, return whether or not list has callbacks attached.
+			// If no argument is given, return whether or not list has callbacks attachd.
 			has: function( fn ) {
 				return fn ? jQuery.inArray( fn, list ) > -1 : !!( list && list.length );
 			},
@@ -4783,23 +4783,23 @@ if ( !support.focusinBubbles ) {
 		jQuery.event.special[ fix ] = {
 			setup: function() {
 				var doc = this.ownerDocument || this,
-					attaches = data_priv.access( doc, fix );
+					attachs = data_priv.access( doc, fix );
 
-				if ( !attaches ) {
+				if ( !attachs ) {
 					doc.addEventListener( orig, handler, true );
 				}
-				data_priv.access( doc, fix, ( attaches || 0 ) + 1 );
+				data_priv.access( doc, fix, ( attachs || 0 ) + 1 );
 			},
 			teardown: function() {
 				var doc = this.ownerDocument || this,
-					attaches = data_priv.access( doc, fix ) - 1;
+					attachs = data_priv.access( doc, fix ) - 1;
 
-				if ( !attaches ) {
+				if ( !attachs ) {
 					doc.removeEventListener( orig, handler, true );
 					data_priv.remove( doc, fix );
 
 				} else {
-					data_priv.access( doc, fix, attaches );
+					data_priv.access( doc, fix, attachs );
 				}
 			}
 		};
@@ -5485,7 +5485,7 @@ function actualDisplay( name, doc ) {
 	var style,
 		elem = jQuery( doc.createElement( name ) ).appendTo( doc.body ),
 
-		// getDefaultComputedStyle might be reliably used only on attached element
+		// getDefaultComputedStyle might be reliably used only on attachd element
 		display = window.getDefaultComputedStyle && ( style = window.getDefaultComputedStyle( elem[ 0 ] ) ) ?
 
 			// Use of this method is a temporary fix (more like optimization) until something better comes along,

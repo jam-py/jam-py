@@ -29,14 +29,14 @@ The the Jam.py workflow is the following:
   any request. If not, then the 
   application on the client creates a login form, and after the user inputs its 
   login and password, the client task sends the server a request to login.
-* After successfull login or if the project
+* After successful login or if the project
   :doc:`safe mode </admin/project/parameters>`
   parameter is not set, the server sends the client information about the 
   requested task. The task on the client builds its tree, based on this 
   information, assigns event handlers to its objects and executes 
   :doc:`on_page_loaded </refs/client/task/on_page_loaded>`
   event handler. 
-* In this event handler a developer should attache JQuery event handler 
+* In this event handler a developer should attach JQuery event handler 
   functions to HTML elements of the DOM, defined in the ``index.html`` file. 
   In these functions a developer can use methods of items of the 
   :doc:`task tree <task_tree>`
@@ -48,7 +48,7 @@ The the Jam.py workflow is the following:
   to read and write data in the server database. See 
   :doc:`Data programming <data/index>`.
 * The report items generate the reports on the server, based on the LibrOffice
-  teplates. See
+  templates. See
   :doc:`Programming reports <reports/index>`.
 * All the items, whose methods generate a request to the server, do it the 
   following way: they call the method of the task that sends to the server the 
@@ -58,7 +58,7 @@ The the Jam.py workflow is the following:
   the item, the type of the request and its parameters.
   The server on receiving the request, based on passed IDs, finds the task 
   (it can be Project task or Application builder task) and the item on the server, 
-  executes the corresponing method with passed parameters and returns the result 
+  executes the corresponding method with passed parameters and returns the result 
   of the execution to the client. These server methods could trigger their own 
   events that can override the default behavior. See
   :doc:`Server side programming <server/index>`

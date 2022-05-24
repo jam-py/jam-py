@@ -1,3 +1,28 @@
+<div class="default-top-view">
+    <div class="form-header">
+        <button id="new-btn" class="btn expanded-btn" type="button">
+            <i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small>
+        </button>
+        <button id="edit-btn" class="btn expanded-btn" type="button">
+            <i class="icon-edit"></i> Edit
+        </button>
+        <div id="report-btn" class="btn-group dropdown">
+            <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
+                <i class="icon-print"></i> Reports
+                <span class="caret"></span>
+            </a>
+            <ul class="dropdown-menu bottom-up">
+            </ul>
+        </div>
+        <button id="delete-btn" class="btn expanded-btn pull-right" type="button">
+            <i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small>
+        </button>
+    </div>
+    <div class="form-body">
+        <div class="view-table"></div>
+        <div class="view-detail"></div>
+    </div>
+</div>
 
 <div class="default-view">
     <div class="form-body">
@@ -25,29 +50,18 @@
     </div>
 </div>
 
-<div class="default-top-view">
-    <div class="form-header">
-        <button id="new-btn" class="btn expanded-btn" type="button">
-            <i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small>
+<div class="default-top-edit">
+    <div class="form-header">            
+        <button type="button" id="ok-btn" class="btn expanded-btn">
+            <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
         </button>
-        <button id="edit-btn" class="btn expanded-btn" type="button">
-            <i class="icon-edit"></i> Edit
-        </button>
-        <div id="report-btn" class="btn-group dropdown">
-            <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
-                <i class="icon-print"></i> Reports
-                <span class="caret"></span>
-            </a>
-            <ul class="dropdown-menu bottom-up">
-            </ul>
-        </div>
-        <button id="delete-btn" class="btn expanded-btn pull-right" type="button">
-            <i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small>
+        <button type="button" id="cancel-btn" class="btn expanded-btn">
+            <i class="icon-remove"></i> Cancel
         </button>
     </div>
     <div class="form-body">
-        <div class="view-table"></div>
-        <div class="view-detail"></div>
+        <div class="edit-body"></div>
+        <div class="edit-detail"></div>
     </div>
 </div>
 
@@ -63,21 +77,6 @@
         <button type="button" id="cancel-btn" class="btn expanded-btn">
             <i class="icon-remove"></i> Cancel
         </button>
-    </div>
-</div>
-
-<div class="default-top-edit">
-    <div class="form-header">            
-        <button type="button" id="ok-btn" class="btn expanded-btn">
-            <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
-        </button>
-        <button type="button" id="cancel-btn" class="btn expanded-btn">
-            <i class="icon-remove"></i> Cancel
-        </button>
-    </div>
-    <div class="form-body">
-        <div class="edit-body"></div>
-        <div class="edit-detail"></div>
     </div>
 </div>
 
@@ -138,3 +137,20 @@
     <p>2015-2017</p>
 </div>
 
+<form id="login-form" target="dummy" class="form-horizontal" data-caption="Log in" style="margin: 10px 0 0; padding: 0px">
+    <div class="control-group">
+        <label class="control-label" for="input-login">Login</label>
+        <div class="controls">
+            <input type="text" id="input-login" name="login" tabindex="1" placeholder="login">
+        </div>
+    </div>
+    <div class="control-group">
+        <label class="control-label" for="input-password">Password</label>
+        <div class="controls">
+            <input type="password" id="input-password" name="password" tabindex="2" placeholder="password" autocomplete="on">
+        </div>
+    </div>
+    <div class="form-footer">
+        <input type="submit" class="btn expanded-btn pull-right" id="login-btn" value="OK" tabindex="3">
+    </div>
+</form>

@@ -1,0 +1,30 @@
+===============
+update_controls
+===============
+
+.. js:function:: update_controls()
+
+**domain**: client 
+
+**language**: javascript
+
+**class** :doc:`Item class </refs/client/item_api>`
+
+Description
+===========
+
+Call
+:doc:`update_controls <m_update_controls>` to tell associated controls to redraw
+to reflect current data.
+
+See also
+========
+
+:doc:`Data-aware controls </programming/interface/data_controls>`
+
+:doc:`disable_controls <m_disable_controls>`
+
+:doc:`enable_controls <m_enable_controls>` 
+
+
+

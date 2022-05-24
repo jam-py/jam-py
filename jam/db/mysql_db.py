@@ -6,6 +6,7 @@ class MySQLDB(AbstractDB):
     def __init__(self):
         AbstractDB.__init__(self)
         self.db_type = consts.MYSQL
+        self.IS_DISTINCT_FROM = 'NOT %s <=> %s'
         self.FIELD_TYPES = {
             consts.INTEGER: 'INT',
             consts.TEXT: 'VARCHAR',
@@ -44,12 +45,6 @@ class MySQLDB(AbstractDB):
             result += ' LIMIT %d, %d' % (offset, limit)
         return result
 
-    def cast_date(self, date_str):
-        return "'" + date_str + "'"
-
-    def cast_datetime(self, datetime_str):
-        return "'" + datetime_str + "'"
-
     def value_literal(self, index):
         return '%s'
 
@@ -69,8 +64,6 @@ class MySQLDB(AbstractDB):
             if field.primary_key:
                 line += ' NOT NULL AUTO_INCREMENT'
                 primary_key = field.field_name
-            elif field.not_null:
-                line += ' NOT NULL'
             if not default_text is None:
                 line += ' DEFAULT %s' % default_text
             lines.append(line)
@@ -88,8 +81,6 @@ class MySQLDB(AbstractDB):
             (table_name, field.field_name, self.FIELD_TYPES[field.data_type])
         if field.size:
             line += '(%d)' % field.size
-        if field.not_null:
-            line += ' NOT NULL'
         default_text = self.default_text(field)
         if not default_text is None:
             line += ' DEFAULT %s' % default_text
@@ -100,28 +91,18 @@ class MySQLDB(AbstractDB):
 
     def change_field(self, table_name, old_field, new_field):
         result = []
-        if old_field.not_null != new_field.not_null:
-            if new_field.not_null:
-                default_value = self.default_value(new_field)
-                sql = 'UPDATE "%s" SET "%s" = %s WHERE "%s" IS NULL' % \
-                    (table_name, old_field.field_name, default_value, old_field.field_name)
-                result.append(sql)
         field_info = self.get_field_info(old_field.field_name, table_name, self.app.admin.task_db_info.database)
-        sql = 'ALTER TABLE "%s" CHANGE  "%s" "%s" %s' % (table_name, old_field.field_name,
+        line = 'ALTER TABLE "%s" CHANGE  "%s" "%s" %s' % (table_name, old_field.field_name,
             new_field.field_name, field_info['data_type'])
         size = field_info['size']
         if size and field_info['data_type'].upper() in ['VARCHAR', 'CHAR', 'BINARY', 'VARBINARY']:
             if new_field.size > size:
                 size = new_field.size
-            sql += '(%d)' % size
-        if new_field.not_null:
-            sql += ' NOT NULL'
+            line += '(%d)' % size
         default_text = self.default_text(new_field)
         if not default_text is None:
             line += ' DEFAULT %s' % default_text
-        elif not field_info['default_value'] is None:
-            line += ' DEFAULT %s' % field_info['default_value']
-        result.append(sql)
+        result.append(line)
         return result
 
     def create_index(self, index_name, table_name, unique, fields, desc):
@@ -175,8 +156,7 @@ class MySQLDB(AbstractDB):
                 'data_type': data_type,
                 'size': size,
                 'default_value': default_value,
-                'pk': pk,
-                'not_null': null == 'NO'
+                'pk': pk
             })
         return {'fields': fields, 'field_types': self.FIELD_TYPES}
 

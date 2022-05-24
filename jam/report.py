@@ -243,6 +243,19 @@ class Report(object):
             band.text = band.text.replace(self.START_TEXT + tobytes(band.tag) + self.END_TEXT, tobytes(''), 1)
         self.footer.text = content[end:]
 
+    def find_vars(self, text):
+        result = []
+        while True:
+            p1 = text.find('%(')
+            if p1 != -1:
+                p2 = text.find(')s', p1)
+                if p2 != -1:
+                    result.append(Var(text[p1:p2+2]))
+                text = text[p1+2:]
+            else:
+                break
+        return result
+
     def process_rows(self, node):
         if node.nodeName == 'table:table-row':
             repeated = node.getAttribute('table:number-rows-repeated')
@@ -257,15 +270,14 @@ class Report(object):
                             cell_text = child_node.nodeValue
                             if cell_text:
                                 trimed = cell_text.strip()
-                                p1 = trimed.find('%(')
-                                if p1 != -1:
-                                    p2 = trimed.find(')s', p1)
-                                    if p2 != -1:
-                                        default = t == text[0] and child_node == t.childNodes[0]
-                                        if not cell:
-                                            cell = Cell(col_count, default)
-                                            row.cells.append(cell)
-                                        cell.vars.append(Var(trimed[p1:p2+2]))
+                                cell_vars = self.find_vars(trimed)
+                                if cell_vars:
+                                    default = t == text[0] and child_node == t.childNodes[0]
+                                    if not cell:
+                                        cell = Cell(col_count, default)
+                                        row.cells.append(cell)
+                                    for v in cell_vars:
+                                        cell.vars.append(v)
                     draw_frame = child.getElementsByTagName('draw:frame')
                     if draw_frame.length and cell:
                         draw_image = child.getElementsByTagName('draw:image')

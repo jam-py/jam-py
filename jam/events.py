@@ -127,8 +127,8 @@ task_server_events = \
         'on_created': 'task',
         'on_login': 'task, form_data, info',
         'on_logout': 'task, request',
-        'on_before_open': 'item, query_data, params',
-        'on_after_open': 'item, query_data, params, ds',
+        'on_before_open': 'item, query_data, params, connection',
+        'on_after_open': 'item, query_data, params, connection, ds',
         'on_before_apply': 'item, delta, params, connection',
         'on_after_apply': 'item, delta, params, connection',
         'on_request': 'task, request'

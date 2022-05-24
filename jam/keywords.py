@@ -1,6 +1,8 @@
 keywords = [
     "BADGE",
-    "LABEL"
+    "LABEL",
+    "HIDDEN",
+    "PROGRESS"
 ]
 
 # ~ keywords = [

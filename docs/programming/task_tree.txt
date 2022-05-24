@@ -82,7 +82,7 @@ of tracks in an customer's invoice. So there are two items with the same name
 "invoice_table" (detail_item and detail). They share the same database table. 
 
 Every item is an attribute of its owner and all items, tables and reports are 
-attibutes the task as well (they all have a unique ``item_name``). 
+attributes the task as well (they all have a unique ``item_name``). 
 
 A task is a global object on the client. To access it, just type ``task`` 
 anywhere in the code.
@@ -119,7 +119,7 @@ events for the task, group and the item.
 
 This way we can define a basic behavior for all items in the event handler of 
 the task, that can be expanded in the event handler of the group, and finally, 
-if nessesary, can be specified in the event handler of the item itself. For more 
+if necessary, can be specified in the event handler of the item itself. For more 
 details see
 :doc:`Form events <interface/form_events>`
 

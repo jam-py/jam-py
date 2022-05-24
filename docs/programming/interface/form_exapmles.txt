@@ -215,7 +215,7 @@ The elements with id "selected-div" and "search-form" are used in the
 :doc:`on_view_form_created </refs/client/group/on_view_form_created>` of the
 catalogs group to display current value of a lookup field when the right button
 is clicked to select a value and to implement search functionality of catalogs
-correcpondingly
+correspondingly
 
 The div with class "view-table" is used in the 
 :doc:`on_view_form_created </refs/client/task/on_view_form_created>`
@@ -362,7 +362,7 @@ In this example the div with class "view-table" is removed and added two
 divs "view-master" and "view-detail" tables for master and detail items
 are created in the 
 :doc:`on_view_form_created </refs/client/item/on_view_form_created>`
-event handler decleared in the client module of **Invoices** journal:
+event handler declared in the client module of **Invoices** journal:
 
 .. code-block:: js
 

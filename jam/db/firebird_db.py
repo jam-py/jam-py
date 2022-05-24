@@ -90,8 +90,6 @@ class FirebirdDB(AbstractDB):
                 line += '(%d)' % field.size
             if not default_text is None:
                 line += ' DEFAULT %s' % default_text
-            if field.not_null:
-                line += ' NOT NULL'
             lines.append(line)
             if field.primary_key:
                 primary_key = field.field_name
@@ -113,8 +111,6 @@ class FirebirdDB(AbstractDB):
             line += '(%d)' % field.size
         if not default_text is None:
             line += ' DEFAULT %s' % default_text
-        if field.not_null:
-            line += ' NOT NULL'
         return line
 
     def del_field(self, table_name, field):
@@ -133,25 +129,12 @@ class FirebirdDB(AbstractDB):
                 line = 'ALTER TABLE "%s" ALTER "%s" TYPE %s(%d) ' % \
                     (table_name, new_field.field_name, field_info['data_type'], new_field.size)
                 result.append(line)
-        if old_field.not_null != new_field.not_null:
-            default_value = self.default_value(new_field)
-            if default_value and new_field.not_null:
-                line = 'UPDATE "%s" SET "%s"=%s WHERE "%s" IS NULL' % \
-                    (table_name, new_field.field_name, default_value, new_field.field_name)
-                result.append(line)
-            if new_field.not_null:
-                line = "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = 1 WHERE RDB$FIELD_NAME = '%s' AND RDB$RELATION_NAME = '%s'" % \
-                    (new_field.field_name, table_name)
-            else:
-                line = "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = NULL WHERE RDB$FIELD_NAME = '%s' AND RDB$RELATION_NAME = '%s'" % \
-                    (new_field.field_name, table_name)
-            result.append(line)
         if old_field.default_value != new_field.default_value:
             default_text = self.default_text(new_field)
-            if not default_text is None:
-                line = 'SET DEFAULT %s' % default_text
+            if default_text is None:
+                line = 'DROP DEFAULT'
             else:
-                line = 'SET DEFAULT NULL'
+                line = 'SET DEFAULT %s' % default_text
             result.append(line)
         return result
 
@@ -200,7 +183,7 @@ class FirebirdDB(AbstractDB):
     def get_table_info(self, connection, table_name, db_name):
         cursor = connection.cursor()
         sql = '''
-           SELECT RF.RDB$FIELD_NAME AS COLUMN_NAME,
+            SELECT RF.RDB$FIELD_NAME AS COLUMN_NAME,
                 CASE F.RDB$FIELD_TYPE
                     WHEN 7 THEN 'SMALLINT'
                     WHEN 8 THEN 'INTEGER'
@@ -215,8 +198,7 @@ class FirebirdDB(AbstractDB):
                     WHEN 261 THEN 'BLOB'
                 END AS DATA_TYPE,
                 F.RDB$FIELD_LENGTH,
-                F.RDB$DEFAULT_VALUE,
-                IIF(COALESCE(RF.RDB$NULL_FLAG, 0) = 0, 0, 1)
+                F.RDB$DEFAULT_VALUE
             FROM RDB$FIELDS F
                 JOIN RDB$RELATION_FIELDS RF ON RF.RDB$FIELD_SOURCE = F.RDB$FIELD_NAME
             WHERE RF.RDB$RELATION_NAME = '%s'
@@ -224,7 +206,7 @@ class FirebirdDB(AbstractDB):
         cursor.execute(sql % table_name)
         result = cursor.fetchall()
         fields = []
-        for (field_name, data_type, size, default_value, not_null) in result:
+        for (field_name, data_type, size, default_value) in result:
             data_type = data_type.strip()
             if not data_type in ['VARCHAR', 'CHAR']:
                 size = 0
@@ -234,7 +216,6 @@ class FirebirdDB(AbstractDB):
                 'size': size,
                 'default_value': default_value,
                 'pk': False,
-                'not_null': bool(not_null)
             })
         return {'fields': fields, 'FIELD_TYPES': self.FIELD_TYPES}
 

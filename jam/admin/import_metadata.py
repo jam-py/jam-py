@@ -39,7 +39,7 @@ class MetaDataImport(object):
         self.db_sql = None
         self.adm_sql = None
         self.db = task.task_db_module
-        self.items_hidden_fields = []
+        self.items_hidden_fields = ['f_gen_name']
         self.params_hidden_fields = [
                 'f_safe_mode', 'f_debugging', 'f_modification',
                 'f_client_modified', 'f_server_modified',
@@ -64,10 +64,6 @@ class MetaDataImport(object):
             self.success = False
             self.error = 'Metadata can not be imported into an existing SQLITE project'
             self.show_error(self.error)
-
-    def update_gen_names(self):
-        if not get_database(self.task.app, self.db_type, self.task.task_db_info.lib).NEED_GENERATOR:
-            self.items_hidden_fields.append('f_gen_name')
 
     def update_indexes(self):
         if self.new_db_type == consts.FIREBIRD or self.db_type == consts.FIREBIRD:
@@ -133,7 +129,6 @@ class MetaDataImport(object):
                     os.remove(file_name)
                     self.new_db_type = data_lists.get('db_type')
                     if self.new_db_type != self.db_type:
-                        self.update_gen_names()
                         self.update_idents()
             except Exception as e:
                 self.task.log.exception(e)
@@ -322,11 +317,10 @@ class MetaDataImport(object):
     def get_new_fields(self, item_id):
         result = []
         items = self.new_items['sys_items']
-        if items.locate('id', item_id):
-            parent_id = items.parent.value
+        items.locate('id', item_id)
         new_fields = self.new_items['sys_fields']
         for field in new_fields:
-            if field.owner_rec_id.value in [item_id, parent_id]:
+            if field.owner_rec_id.value == item_id:
                 if not field.f_master_field.value:
                     result.append(FieldInfo(field, items))
         return result
@@ -410,10 +404,13 @@ class MetaDataImport(object):
 
     def check_generator(self, item, delta):
         for d in delta:
-            if d.rec_inserted() and item.task.task_db_module.NEED_GENERATOR and \
-                d.f_primary_key.value and not d.f_gen_name.value:
+            module = get_db_module(self.db_type)
+            if d.rec_inserted() and module.NEED_GENERATOR and \
+                d.f_primary_key.value and not d.f_gen_name.value and \
+                not d.f_virtual_table.value:
+                case = module.identifier_case
                 d.edit()
-                d.f_gen_name.value = '%s_SEQ' % d.f_table_name.value
+                d.f_gen_name.value = case('%s_SEQ' % d.f_table_name.value)
                 d.post()
 
     def refresh_old_item(self, item_name):

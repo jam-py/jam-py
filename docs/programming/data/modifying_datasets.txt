@@ -40,7 +40,7 @@ You can use the following item methods to insert, update, and delete data in dat
    
    :doc:`edit </refs/client/item/m_edit>`, :doc:`edit </refs/server/item/m_edit>`, "Puts the item dataset into edit state."
    :doc:`append </refs/client/item/m_append>`, :doc:`append </refs/server/item/m_append>`, "Appends a record to the end of the dataset, and puts the dataset in *insert* state."
-   :doc:`insert </refs/client/item/m_insert>`, :doc:`insert </refs/server/item/m_insert>`, "Inserts a record at the begining of the dataset, and puts the dataset in *insert* state."
+   :doc:`insert </refs/client/item/m_insert>`, :doc:`insert </refs/server/item/m_insert>`, "Inserts a record at the beginning of the dataset, and puts the dataset in *insert* state."
    :doc:`post </refs/client/item/m_post>`, :doc:`post </refs/server/item/m_post>`, "Saves the new or altered record, and puts the dataset in *browse* state."   
    :doc:`cancel </refs/client/item/m_cancel>`, :doc:`cancel </refs/server/item/m_cancel>`, "Cancels the current operation and puts the dataset in *browse* state."
    :doc:`delete </refs/client/item/m_delete>`, :doc:`delete </refs/server/item/m_delete>`, "Deletes the current record and puts the dataset in *browse* state."         
@@ -54,6 +54,7 @@ method generates and executes SQL query to save changes to the database.
    :header: Client, Server, Description
    :widths: 20, 20, 100
    
+   :doc:`log_changes </refs/client/item/at_log_changes>`, :doc:`log_changes </refs/server/item/at_log_changes>`, "Indicates whether to log data changes."
    :doc:`apply </refs/client/item/m_apply>`, :doc:`apply </refs/server/item/m_apply>`, "Sends all updated, inserted, and deleted records from the item dataset to the server for writing to the database."
 
 

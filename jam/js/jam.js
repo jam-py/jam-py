@@ -44,6 +44,21 @@
             "FILTER_STARTWITH": 13,
             "FILTER_ENDWITH": 14,
             "FILTER_CONTAINS_ALL": 15,
+            "FILTER_EQ_L": 16,
+            "FILTER_NE_L": 17,
+            "FILTER_LT_L": 18,
+            "FILTER_LE_L": 19,
+            "FILTER_GT_L": 20,
+            "FILTER_GE_L": 21,
+            "FILTER_IN_L": 22,
+            "FILTER_NOT_IN_L": 23,
+            "FILTER_RANGE_L": 24,
+            "FILTER_ISNULL_L": 25,
+            "FILTER_EXACT_L": 26,
+            "FILTER_CONTAINS_L": 27,
+            "FILTER_STARTWITH_L": 28,
+            "FILTER_ENDWITH_L": 29,
+            "FILTER_CONTAINS_ALL_L": 30,
 
             "ALIGN_LEFT": 1,
             "ALIGN_CENTER": 2,
@@ -76,17 +91,21 @@
             "UPDATE_SUMMARY": 9
         },
         align_value = ['', 'left', 'center', 'right'],
-        filter_value = ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in',
+        filter_value = [
+            'eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'not_in',
             'range', 'isnull', 'exact', 'contains', 'startwith', 'endwith',
-            'contains_all'
-        ],
+            'contains_all',
+            'eq_l', 'ne_l', 'lt_l', 'le_l', 'gt_l', 'ge_l', 'in_l', 'not_in_l',
+            'range_l', 'isnull_l', 'exact_l', 'contains_l', 'startwith_l', 'endwith_l',
+            'contains_all_l'
+       ],
         field_attr = [
             "ID",
             "field_name",
             "field_caption",
             "data_type",
             "field_size",
-            "_required",
+            "required",
             "lookup_item",
             "lookup_field",
             "lookup_field1",
@@ -107,8 +126,7 @@
             "field_image",
             "field_file",
             "reserved",
-            "calculated",
-            "not_null"
+            "calculated"
         ],
         filter_attr = [
             "filter_name",
@@ -267,8 +285,8 @@
                 child._view_params = item_info.view_params;
                 child._edit_params = item_info.edit_params;
                 child._virtual_table = item_info.virtual_table;
-
                 child.prototype_ID = item_info.prototype_ID
+                child.master_applies = item_info.master_applies
                 if (child.initAttr) {
                     child.initAttr(item_info);
                 }
@@ -291,7 +309,12 @@
             var i,
                 result = {};
             for (i = 0; i < args.length; i++) {
-                result[typeof args[i]] = args[i];
+                if (args[i] instanceof jQuery) {
+                    result['jquery'] = args[i]
+                }
+                else {
+                    result[typeof args[i]] = args[i];
+                }
             }
             return result;
         }
@@ -399,7 +422,6 @@
             if (this.master_field) {
                 events = task.events['events' + this.prototype_ID];
             }
-
             this._events = [];
             for (var event in events) {
                 if (events.hasOwnProperty(event)) {
@@ -2148,7 +2170,7 @@
                 title: '',
                 fields: [],
                 form_header: true,
-                form_border: true,
+                form_border: false,
                 close_button: true,
                 close_on_escape: true,
                 close_focusout: false,
@@ -2164,7 +2186,6 @@
                 modeless: false
             });
             this.view_options = $.extend({}, this.form_options, {
-                //~ form_border: false,
                 history_button: true,
                 refresh_button: true,
                 enable_search: true,
@@ -2225,19 +2246,17 @@
                 statusCode: statusCode,
                 success: function(data) {
                     var mess;
-                    if (data.error) {
-                        console.log(data);
+                    if (data.result.status === consts.RESPONSE || data.error) {
+                        if (data.error) {
+                            console.error(data);
+                        }
                         if (callback) {
                             callback.call(item, data.result.data);
+                        } else {
+                            reply = data.result.data;
                         }
                     } else {
-                        if (data.result.status === consts.RESPONSE) {
-                            if (callback) {
-                                callback.call(item, data.result.data);
-                            } else {
-                                reply = data.result.data;
-                            }
-                        } else if (data.result.status === consts.PROJECT_NOT_LOGGED) {
+                        if (data.result.status === consts.PROJECT_NOT_LOGGED) {
                             location.reload();
                         } else if (self.ID && data.result.status === consts.PROJECT_MODIFIED) {
                             if (!self.task._version_changed) {
@@ -2863,16 +2882,16 @@
         }
 
         edit_form_created(item) {
-            let new_details = false;
-            item.each_detail(function(d) {
-                if (d.master_field) {
-                    new_details = true;
-                    return false;
-                }
-            })
-            if (new_details) {
-                item.edit_form.find('#cancel-btn').hide();
-            }
+            //~ let new_details = false;
+            //~ item.each_detail(function(d) {
+                //~ if (d.master_field) {
+                    //~ new_details = true;
+                    //~ return false;
+                //~ }
+            //~ })
+            //~ if (new_details) {
+                //~ item.edit_form.find('.form-footer').hide();
+            //~ }
         }
 
         _tab_content(tab) {
@@ -3088,155 +3107,132 @@
         }
     }
 
-    class ChangeLog {
+    class RecInfo {
         constructor(item) {
             this.item = item;
+            this.expanded = item.expanded;
+            this.record_status = consts.RECORD_UNCHANGED;
+            this.log_index = null;
+            this.details = {};
+        }
+
+        add_detail(detail_change_log) {
+            this.details[detail_change_log.item.ID] = detail_change_log;
+        }
+
+        get_changes() {
+            let result = {};
+            for (let ID in this.details) {
+                let detail = this.details[ID],
+                    detail_changes = {};
+                detail.get_changes(detail_changes);
+                result[ID] = detail_changes;
+            }
+            return result;
+        }
+
+        update(details) {
+            this.log_index = null;
+            for (let ID in details) {
+                this.details[ID].update(details[ID]);
+            }
+        }
+
+        copy() {
+            let result = new RecInfo(this.item);
+            result.record_status  = this.record_status;
+            result.log_index = this.log_index;
+            result.details = {};
+            for (let ID in this.details) {
+                result.details[ID] = this.details[ID].copy();
+            }
+            return result;
+        }
+
+        restore() {
+            for (let ID in this.details) {
+                this.details[ID].restore();
+            }
+        }
+    }
+
+    class ChangeLog {
+        constructor(item, copy) {
+            let self = this;
+            this.item = item;
+            this.expanded = item.expanded
             this.logs = [];
+            this.dataset = item._dataset;
             this.fields = [];
-            this.db_fields = [];
-            this.records = [];
-        }
-
-        init_fields(log) {
-            if (!log) {
-                log = this;
-            }
-            log.fields = [];
-            log.db_fields = [];
-            this.item.fields.forEach(function(field) {
-                log.fields.push(field.field_name);
-                if (!field.master_field && !field.calculated) {
-                    log.db_fields.push(field.field_name);
-                }
-            })
-        }
-
-        refresh() {
-            if (this.item.master) {
-                let record_log;
-                record_log = this.item.master.change_log.get_record_log();
-                let details = record_log.details,
-                    detail = details[this.item.ID];
-                if (!detail) {
-                    detail = {
-                        logs: [],
-                        records: this.item._dataset
-                    };
-                    this.init_fields(detail);
-                    details[this.item.ID] = detail;
-                }
-                this.logs = detail.logs;
-                this.fields = detail.fields;
-                this.db_fields = detail.db_fields;
-                this.records = detail.records
+            this.item.each_field(function(field) {
+                self.fields.push(field.field_name);
+            });
+            if (this.item.master && !copy) {
+                this.item.master.change_log.record_info.add_detail(this);
             }
         }
 
-        get_record_log() {
-            this.refresh();
-            if (this.item.rec_count) {
-                let result,
-                    rec_no = this.item.record_log_rec;
-                if (rec_no !== null) {
-                    result = this.logs[rec_no]
+        detail_change_log(detail) {
+            return this.record_info[detail.ID];
+        }
+
+        get cur_record() {
+            return this.item._dataset[this.item.rec_no];
+        }
+
+        set cur_record(value) {
+            this.item._dataset[this.item.rec_no] = value;
+        }
+
+        get record_info() {
+            return this.get_record_info();
+        }
+
+        get_record_info(record) {
+            if (!record) {
+                record = this.cur_record;
+            }
+            if (record.length < this.item._record_info_index + 1) {
+                record.push(new RecInfo(this.item));
+            }
+            return record[this.item._record_info_index];
+        }
+
+        get record_status() {
+            return this.record_info.record_status;
+        }
+
+        set record_status(value) {
+            if (this.record_info.log_index === null) {
+                if (value !== consts.RECORD_UNCHANGED) {
+                    this.logs.push(this.cur_record);
+                    this.record_info.log_index = this.logs.length - 1;
+                }
+            }
+            else {
+                if (value === consts.RECORD_UNCHANGED) {
+                    this.logs[this.record_info.log_index] = null;
+                    this.cur_record[this.item._record_info_index] = new RecInfo(this.item);
                 }
                 else {
-                    result = {
-                        record: this.cur_record(),
-                        old_record: null,
-                        details: {}
-                    };
-                    this.logs.push(result)
-                    this.item.record_log_rec = this.logs.length - 1;
-                }
-                return result;
-            }
-            else {
-                throw new Error('Can not find record log for empty dataset.');
-            }
-        }
-
-        find_logs() {
-            if (this.item.master) {
-                let rec_no = this.item.master.record_log_rec;
-                if (rec_no !== null) {
-                    let record_log = this.item.master.change_log.get_record_log(),
-                        detail = record_log.details[this.item.ID];
-                    if (detail) {
-                        return detail.logs;
-                    }
+                    this.logs[this.record_info.log_index] = this.cur_record;
                 }
             }
-            else {
-                return this.logs;
-            }
+            this.record_info.record_status = value;
         }
 
         get empty() {
-            let logs = this.find_logs();
-            if (logs) {
-                for (let log of logs) {
-                    if (log) {
-                        return false;
-                    }
+            for (let i = 0; i < this.logs.length; i++) {
+                if (this.logs[i]) {
+                    return false;
                 }
             }
             return true;
         }
 
-        remove_record_log() {
-            if (this.item.record_log_rec !== null) {
-                this.refresh();
-                this.logs[this.item.record_log_rec] = undefined;
-                this.item.record_log_rec = null;
-                this.item.record_status = consts.RECORD_UNCHANGED;
-            }
-        }
-
-        cur_record() {
-            return this.item._dataset[this.item.rec_no];
-        }
-
-        copy_record(expanded, record, item) {
-            let result = null,
-                info;
-            if (!record) {
-                record = this.cur_record();
-            }
-            if (!item) {
-                item = this.item;
-            }
-            info = item.get_record_info(record).slice();
-            if (expanded) {
-                result = record.slice(0, item._record_info_index);
-            } else {
-                result = record.slice(0, item._record_lookup_index);
-            }
-            result.push(info);
-            return result;
-        }
-
-        record_refreshed() {
-            if (this.item.record_log_rec !== null) {
-                let record_log = this.get_record_log();
-                record_log.old_record = this.copy_record();
-                record_log.details = {};
-            }
-        }
-
-        record_modified(record_log) {
-            let old_rec = record_log.old_record,
-                cur_rec = record_log.record;
-            for (let i = 0; i < this.item._record_lookup_index; i++) {
-                if (old_rec[i] !== cur_rec[i]) {
-                    return true;
-                }
-            }
-        }
-
         detail_modified() {
-            if (this.item.record_status === consts.RECORD_UNCHANGED) {
-                this.item.record_status = consts.RECORD_DETAILS_MODIFIED;
+            if (this.record_status === consts.RECORD_UNCHANGED) {
+                this.record_status = consts.RECORD_DETAILS_MODIFIED;
             }
             if (this.item.master) {
                 this.item.master.change_log.detail_modified();
@@ -3244,24 +3240,21 @@
         }
 
         log_change() {
-            let record_log = this.get_record_log(),
-                state = this.item.item_state;
+            let state = this.item.item_state;
             if (this.item.log_changes) {
                 if (state === consts.STATE_INSERT) {
-                    this.item.record_status = consts.RECORD_INSERTED;
+                    this.record_status = consts.RECORD_INSERTED;
                 } else if (state === consts.STATE_EDIT) {
-                    if (this.item.record_status === consts.RECORD_UNCHANGED) {
-                        this.item.record_status = consts.RECORD_MODIFIED;
-                    } else if (this.item.record_status === consts.RECORD_DETAILS_MODIFIED) {
-                        if (this.record_modified(record_log)) {
-                            this.item.record_status = consts.RECORD_MODIFIED;
-                        }
+                    if (this.record_status === consts.RECORD_UNCHANGED) {
+                        this.record_status = consts.RECORD_MODIFIED;
+                    } else if (this.record_status === consts.RECORD_DETAILS_MODIFIED) {
+                        this.record_status = consts.RECORD_MODIFIED;
                     }
                 } else if (state === consts.STATE_DELETE) {
-                    if (this.item.record_status === consts.RECORD_INSERTED) {
-                        this.remove_record_log();
+                    if (this.record_status === consts.RECORD_INSERTED) {
+                        this.record_status = consts.RECORD_UNCHANGED;
                     } else {
-                        this.item.record_status = consts.RECORD_DELETED;
+                        this.record_status = consts.RECORD_DELETED;
                     }
                 } else {
                     throw new Error(this.item.item_name + ': change log invalid records state');
@@ -3270,209 +3263,101 @@
                     this.item.master.change_log.detail_modified();
                 }
             }
-            else {
-                if (state === consts.STATE_DELETE) {
-                    this.remove_record_log();
-                }
-            }
+        }
+
+        copy_record(record) {
+            return record.slice(0, this.item._record_info_index);
         }
 
         get_changes(result) {
-            let self = this,
-                data = [],
+            let logs = [],
                 counter = 0;
-            result.fields = this.db_fields;
-            result.data = data;
-            this.logs.forEach(function(log) {
-                if (log) {
-                    let record = log.record,
-                        info = self.item.get_record_info(record);
-                    if (info[consts.REC_STATUS] !== consts.RECORD_UNCHANGED) {
-                        let old_record = log.old_record,
-                            new_record = self.copy_record(false, record),
-                            details = log.details,
-                            new_details = {};
-                        for (var detail_id in details) {
-                            let detail = details[detail_id],
-                                new_detail = {},
-                                detail_item = self.item.item_by_ID(parseInt(detail_id, 10));
-                            detail_item.change_log.logs = detail.logs;
-                            detail_item.change_log.get_changes(new_detail);
-                            new_details[detail_id] = new_detail;
-                        }
-                        data.push({
+            result.fields = this.fields;
+            result.expanded = this.expanded;
+            result.logs = logs;
+            for (let i = 0; i < this.logs.length; i++) {
+                let record = this.logs[i];
+                if (record) {
+                    let record_info = this.get_record_info(record);
+                    if (record_info.record_status !== consts.RECORD_UNCHANGED) {
+                        let new_record = this.copy_record(record);
+                        logs.push({
+                            record_status: record_info.record_status,
+                            log_index: record_info.log_index,
                             record: new_record,
-                            old_record: old_record,
-                            details: new_details
+                            details: record_info.get_changes()
                         });
                         counter += 1;
                     }
-                    else {
-                        data.push(null);
-                    }
                 }
-                else {
-                    data.push(null);
-                }
-            });
+            };
             return counter;
         }
 
-        store_change_log() {
-            let self = this,
-                result = {},
-                new_records = [],
-                new_logs = [];
-            result.logs = new_logs;
-            result.records = new_records;
-            result.fields = this.fields;
-            result.db_fields = this.db_fields;
-
-            this.records.forEach(function(record, rec_no) {
-                let log_rec = self.item.get_record_info(record)[consts.REC_LOG_REC];
-                new_records.push(self.copy_record(true, record, self.item));
-                if (log_rec !== null) {
-                    self.logs[log_rec].rec_no = rec_no;
-                }
-            });
-
-            this.logs.forEach(function(log) {
-                let new_log;
-                if (log) {
-                    let new_details = {},
-                        record = log.record,
-                        rec_no = log.rec_no;
-                    delete log.rec_no;
-                    if (rec_no !== undefined) {
-                        record = new_records[rec_no];
-                    }
-                    new_log = {
-                        old_record: log.old_record,
-                        record: record,
-                        details: new_details
-                    }
-                    self.item.each_detail(function(detail) {
-                        if (detail.master) {
-                            detail.change_log.refresh();
-                            new_details[detail.ID] = detail.change_log.store_change_log();
-                        }
-                    })
-                }
-                new_logs.push(new_log);
-            })
-            return result;
-        }
-
-        store_record() {
-            let result = {},
-                details = {},
-                record = this.cur_record(),
-                record_log = this.get_record_log();
-
-            result.record = this.copy_record(true, record);
-            result.record_log =
-                {
-                    old_record: record_log.old_record,
-                    record: result.record,
-                    details: details
-                };
-                this.item.each_detail(function(detail) {
-                    if (detail.active && detail.master) {
-                        detail.change_log.refresh();
-                        details[detail.ID] = detail.change_log.store_change_log();
-                    }
-                })
-            if (this.item.log_changes && this.item.record_status === consts.RECORD_UNCHANGED) {
-                let record_log = this.get_record_log();
-                record_log.old_record = this.copy_record();
-            }
-            return result;
-        }
-
-        restore_details(details) {
-            let self = this;
-            for (var detail_id in details) {
-                let detail = details[detail_id];
-                task.item_by_ID(parseInt(detail_id, 10))._dataset = detail.records;
-                detail.logs.forEach(function(log) {
-                    if (log) {
-                        self.restore_details(log.details);
-                    }
-                });
-            }
-        }
-
-        restore_record(data) {
-            let record_log = this.get_record_log();
-            this.item._dataset[this.item.rec_no] = data.record;
-            record_log.old_record = data.record_log.old_record;
-            record_log.record = data.record_log.record;
-            record_log.details = data.record_log.details;
-            this.restore_details(record_log.details);
-        }
-
-        update(updates, master_rec_id) {
+        update(updates) {
             if (updates) {
                 let self = this,
-                    changes = updates.changes;
-                changes.forEach(function(change) {
-                    let log_id = change[0],
-                        rec = change[1],
-                        details = change[2],
-                        record_log = self.logs[log_id],
-                        rec_id;
-                    if (record_log) {
-                        let record = record_log.record,
-                            record_details = record_log.details;
-                        if (self.item._primary_key_field && rec !== null) {
-                            if (rec instanceof Array) {
-                                rec = rec.slice(0, self.item._record_lookup_index),
-                                Array.prototype.splice.apply(record, [0, rec.length].concat(rec));
-                                rec_id = record[self.item._primary_key_field.bind_index];
-                            }
-                            else {
-                                rec_id = rec;
-                                if (rec_id && !record[self.item._primary_key_field.bind_index]) {
-                                    record[self.item._primary_key_field.bind_index] = rec_id;
-                                }
-                                if (master_rec_id && !record[self.item._master_rec_id_field.bind_index]) {
-                                    record[self.item._master_rec_id_field.bind_index] = master_rec_id;
-                                }
-                            }
-                            if (details) {
-                                details.forEach(function(detail) {
-                                    let detail_item = self.item.detail_by_ID(parseInt(detail.ID, 10)),
-                                        item_detail = record_details[detail.ID];
-                                    if (item_detail) {
-                                        detail_item.change_log.logs = item_detail.logs;
-                                        detail_item.change_log.update(detail, rec_id);
-                                    }
-                                });
-                            }
-                        }
+                    logs = updates.logs;
+                for (let i = 0; i < logs.length; i++) {
+                    let log_index = logs[i].log_index,
+                        record = logs[i].record,
+                        log_record = this.logs[log_index],
+                        rec_info = this.get_record_info(log_record);
+                    if (logs[i].record_status !== consts.RECORD_DELETED) {
+                        Array.prototype.splice.apply(log_record, [0, record.length].concat(record));
                     }
-                });
-                this.logs.forEach(function(log) {
-                    if (log) {
-                        let info = self.item.get_record_info(log.record);
-                        info[consts.REC_STATUS] = consts.RECORD_UNCHANGED;
-                        info[consts.REC_LOG_REC] = null;
-                    }
-                });
+                    rec_info.record_status = consts.RECORD_UNCHANGED;
+                    rec_info.update(logs[i].details);
+                }
                 this.logs = [];
                 this.item.update_controls();
             }
         }
 
-        prepare() {
-            if (!this.item.master) {
-                this.refresh();
-                this.logs = [];
-                this.records = [];
-                this.init_fields();
+        copy() {
+            let self = this,
+                result = new ChangeLog(this.item, true);
+            result.logs = [];
+            result.fields = this.fields.slice();
+            result.dataset = [];
+            result.rec_no = null;
+            if (this.dataset) {
+                result.rec_no = this.item.rec_no;
+                this.dataset.forEach(function(record) {
+                    let rec_info_copy = self.get_record_info(record).copy(),
+                        rec_copy = record.slice();
+                    rec_copy[self.item._record_info_index] = rec_info_copy;
+                    if (rec_info_copy.log_index !== null) {
+                        result.logs.push(rec_copy);
+                        rec_info_copy.log_index = result.logs.length - 1;
+                    }
+                    result.dataset.push(rec_copy);
+                });
             }
+            return result;
         }
 
+        restore() {
+            this.item._dataset = this.dataset;
+            if (this.rec_no !== null) {
+                this.item.rec_no = this.rec_no;
+            }
+            this.record_info.restore();
+        }
+
+        store_record() {
+            let result = this.cur_record.slice();
+            result[this.item._record_info_index] = this.record_info.copy();
+            return result;
+        }
+
+        restore_record(data) {
+            this.record_status = consts.RECORD_UNCHANGED
+            this.cur_record = data;
+            this.rec_no = null;
+            this.restore();
+            this.record_status = this.record_status;
+        }
     }
 
     class Item extends AbsrtactItem {
@@ -3488,7 +3373,6 @@
             this.filters = [];
             this.details = [];
             this.controls = [];
-            this.change_log = new ChangeLog(this);
             this._paginate = undefined;
             this.disabled = false;
             this.expanded = true;
@@ -4148,6 +4032,7 @@
             result.filter_defs = this.filter_defs;
             result.prototype_ID = this.prototype_ID;
             result.master_field = this.master_field
+            result.master_applies = this.master_applies
             result._primary_key = this._primary_key
             result._deleted_flag = this._deleted_flag
             result._master_id = this._master_id
@@ -4295,6 +4180,7 @@
             if (data && data.ID === this.ID) {
                 let source = this.copy({handlers: false, details: false}),
                     dest = this.clone(false);
+                dest.log_changes = false;
                 source.open({expanded: data.expanded, fields: data.fields, open_empty:true});
                 source._dataset = data.dataset;
                 source.first();
@@ -4302,18 +4188,35 @@
                 if (detail) {
                     let pks = {};
                     source.each(function(c) {
-                        pks[c._primary_key_field.value] = [c.rec_no]
+                        pks[c._primary_key_field.value] = [c.rec_no, null]
+                    });
+                    dest.each(function(d) {
+                        if (pks[d._primary_key_field.value] !== undefined) {
+                            pks[d._primary_key_field.value][1] = [d.rec_no];
+                        }
+                        else {
+                            pks[d._primary_key_field.value] = [null, d.rec_no];
+                        }
                     });
                     dest.first()
                     while (!dest.eof()) {
-                        let rec_no = pks[dest._primary_key_field.value]
-                        if (rec_no === undefined) {
+                        let rec_info = pks[dest._primary_key_field.value]
+                        if (rec_info[0] === null) {
                             dest.delete();
                         }
                         else {
-                            source.rec_no = rec_no;
+                            source.rec_no = rec_info[0];
                             self._copy_record_fields(source, dest)
                             dest.next();
+                        }
+                    }
+                    for (let rec_info in pks) {
+                        if (pks.hasOwnProperty(rec_info)) {
+                            if (rec_info[1] === null) {
+                                dest.append();
+                                self._copy_record_fields(source, dest)
+                                dest.post();
+                            }
                         }
                     }
                 }
@@ -4830,7 +4733,6 @@
                 limit,
                 offset,
                 field_name,
-                records,
                 self = this;
             this._check_open_options(options);
             if (options) {
@@ -4869,32 +4771,30 @@
             }
             if (this.master) {
                 if (!this.disabled && this.master.record_count() > 0) {
+                    let dataset;
                     params.__master_id = null
                     if (this._master_id) {
                         params.__master_id = this.master.ID;
                     }
                     params.__master_rec_id = this.master.field_by_name(this.master._primary_key).value;
                     if (this.master.is_new()) {
-                        records = [];
+                        dataset = [];
+                        this.change_log = new ChangeLog(this);
                     } else {
-                        if (!this.change_log.empty) {
-                            this.change_log.refresh();
-                            records = this.change_log.records;
+                        let change_log = this.master.change_log.detail_change_log(this);
+                        if (change_log && !change_log.empty) {
+                            this.change_log = change_log;
+                            dataset = this.change_log.dataset;
                             fields = this.change_log.fields;
                         }
-                        else if (this.master.record_status === consts.RECORD_INSERTED && !params.__master_rec_id) {
-                            records = [];
-                        }
                     }
-                    if (records !== undefined) {
+                    if (dataset !== undefined) {
                         this._do_before_open(expanded, fields,
                             where, order_by, open_empty, params, offset,
                             limit, funcs, group_by)
                         this._bind_fields(expanded);
-                        if (this.master.is_new()) {
-                            this.change_log.prepare();
-                        }
-                        this._dataset = records;
+                        this._dataset = dataset;
+                        this.change_log.dataset = dataset;
                         this._active = true;
                         this.item_state = consts.STATE_BROWSE;
                         this.first();
@@ -4930,7 +4830,6 @@
             if (this._paginate) {
                 params.__limit = this._limit;
             }
-            this.change_log.prepare();
             this._dataset = [];
             this._do_open(offset, async, params, open_empty, callback);
         }
@@ -4981,6 +4880,7 @@
                         rows = data[0];
                         len = rows.length;
                         this._dataset = rows;
+                        this.change_log = new ChangeLog(this);
                         if (this._limit && this._paginate && rows) {
                             this._offset = offset;
                             this.is_loaded = false;
@@ -5102,7 +5002,7 @@
                     } else if (data_type === consts.INTEGER || data_type === consts.FLOAT || data_type === consts.CURRENCY) {
                         value = 0;
                     } else if (data_type === consts.DATE || data_type === consts.DATETIME) {
-                        value = new Date(0);
+                        value = '';
                     } else if (data_type === consts.BOOLEAN) {
                         value = false;
                     }
@@ -5253,14 +5153,16 @@
         }
 
         append(index) {
+            this._edit_masters();
+            this._append(index);
+        }
+
+        _append(index) {
             if (!this._active) {
                 throw new Error(language.append_not_active.replace('%s', this.item_name));
             }
             if (this._applying) {
                 throw new Error('Can not perform this operation. Item is applying data to the database');
-            }
-            if (this.master_field && !this.owner._primary_key_field.value) {
-                throw new Error('Master primary key field value is not defined.');
             }
             if (this.master && !this.master.is_changing()) {
                 throw new Error(language.append_master_not_changing.replace('%s', this.item_name));
@@ -5314,7 +5216,24 @@
             }
         }
 
+        _edit_masters() {
+            if (this.master) {
+                this.master._edit_masters();
+                if (!this.master.is_changing()) {
+                    this.master._edit();
+                }
+            }
+        }
+
         edit() {
+            this._edit_masters();
+            this._edit();
+        }
+
+        _edit() {
+            if (this.item_state === consts.STATE_EDIT) {
+                return
+            }
             if (!this._active) {
                 throw new Error(language.edit_not_active.replace('%s', this.item_name));
             }
@@ -5323,9 +5242,6 @@
             }
             if (this.record_count() === 0) {
                 throw new Error(language.edit_no_records.replace('%s', this.item_name));
-            }
-            if (this.item_state === consts.STATE_EDIT) {
-                return
             }
             if (this.master && !this.master.is_changing()) {
                 throw new Error(language.edit_master_not_changing.replace('%s', this.item_name));
@@ -5358,7 +5274,7 @@
                         this.details[i].update_controls(consts.UPDATE_OPEN);
                     }
                 } else if (this.item_state === consts.STATE_INSERT) {
-                    this.change_log.remove_record_log();
+                    this.change_log.record_status = consts.RECORD_UNCHANGED;
                     this._dataset.splice(this.rec_no, 1);
                 } else {
                     throw new Error(language.cancel_invalid_state.replace('%s', this.item_name));
@@ -5476,13 +5392,13 @@
             if (!this.is_changing()) {
                 throw new Error(this.item_name + ' post method: dataset is not in edit or insert mode');
             }
+            this.check_record_valid();
             if (this.on_before_post) {
                 this.on_before_post.call(this, this);
             }
             if (this.master && this._master_id) {
                 this.field_by_name(this._master_id).data = this.master.ID;
             }
-            this.check_record_valid();
             len = this.details.length;
             for (i = 0; i < len; i++) {
                 if (this.details[i].is_changing()) {
@@ -5491,8 +5407,6 @@
             }
             if (this.is_modified() || this.is_new()) {
                 this.change_log.log_change();
-            } else if (this.record_status === consts.RECORD_UNCHANGED && this.log_changes) {
-                this.change_log.remove_record_log();
             }
             this._modified = false;
             this.item_state = consts.STATE_BROWSE;
@@ -5509,7 +5423,7 @@
         }
 
         apply() {
-            var args = this._check_args(arguments),
+            let args = this._check_args(arguments),
                 callback = args['function'],
                 params = args['object'],
                 async = args['boolean'],
@@ -5517,24 +5431,32 @@
                 changes = {},
                 result,
                 data;
-            if (this.master || this.virtual_table || this._applying) {
-                if (callback) {
-                    callback.call(this);
+            if (this.master) {
+                if(this.master_applies || this.virtual_table || this._applying) {
+                    if (callback) {
+                        callback.call(this);
+                    }
+                    return;
                 }
-                return;
+                let item = this;
+                while (item.master) {
+                    if (item.is_changing()) {
+                        item.post();
+                    }
+                    item = item.master;
+                }
+                item.apply();
+                //~ return;
             }
             if (this.is_changing()) {
                 this.post();
             }
-            if (this.change_log.get_changes(changes)) {
+            if (this.change_log && this.change_log.get_changes(changes)) {
                 params = $.extend({}, params);
                 if (this.on_before_apply) {
                     this.on_before_apply.call(this, this, params);
                 }
                 this._applying = true;
-                if (params.wait_cursor) {
-                    $('html').addClass("wait");
-                }
                 if (callback || async) {
                     this.send_request('apply', [changes, params], function(data) {
                         self._process_apply(data, params, callback);
@@ -5552,39 +5474,27 @@
             return result;
         }
 
-        _process_apply(data, params, callback) {
-            var res,
-                err;
-            if (data) {
-                try {
-                    res = data[0];
-                    err = data[1];
-                    if (err) {
-                        this._applying = false;
-                        if (callback) {
-                            callback.call(this, err);
-                        }
-                        throw new Error(err);
-                    } else {
-                        this.change_log.update(res)
-                        this._applying = false;
-                        if (this.on_after_apply) {
-                            this.on_after_apply.call(this, this, err);
-                        }
-                        if (callback) {
-                            callback.call(this, err, res['result']);
-                        }
-                        this.update_controls(consts.UPDATE_APPLIED);
+        _process_apply(response, params, callback) {
+            this._applying = false;
+            if (response) {
+                let data = response[0],
+                    error = response[1];
+                if (error) {
+                    if (callback) {
+                        callback.call(this, error);
                     }
+                    throw new Error(error);
                 }
-                finally {
-                    if (params.wait_cursor) {
-                        $('html').removeClass("wait");
+                else {
+                    this.change_log.update(data);
+                    if (this.on_after_apply) {
+                        this.on_after_apply.call(this, this);
                     }
-                    this._applying = false;
-                }
-                if (res) {
-                    return res['result']
+                    if (callback) {
+                        callback.call(this);
+                    }
+                    this.update_controls(consts.UPDATE_APPLIED);
+                    return data;
                 }
             }
         }
@@ -6012,56 +5922,56 @@
             }
         }
 
-        get record_info() {
-            return this.get_record_info()
-        }
+        //~ get record_info() {
+            //~ return this.get_record_info()
+        //~ }
 
-        get_record_info(record) {
-            if (this._record_info_index >= 0) {
-                if (!record) {
-                    record = this._dataset[this.rec_no];
-                }
-                if (record.length < this._record_info_index + 1) {
-                    record.push([null, null]);
-                }
-                return record[this._record_info_index];
-            }
-        }
+        //~ get_record_info(record) {
+            //~ if (this._record_info_index >= 0) {
+                //~ if (!record) {
+                    //~ record = this._dataset[this.rec_no];
+                //~ }
+                //~ if (record.length < this._record_info_index + 1) {
+                    //~ record.push([null, null]);
+                //~ }
+                //~ return record[this._record_info_index];
+            //~ }
+        //~ }
 
-        get record_status() {
-            return this.record_info[consts.REC_STATUS];
-        }
+        //~ get record_status() {
+            //~ return this.record_info[consts.REC_STATUS];
+        //~ }
 
-        set record_status(value) {
-            if (this.log_changes) {
-                this.record_info[consts.REC_STATUS] = value;
-            }
-        }
+        //~ set record_status(value) {
+            //~ if (this.log_changes) {
+                //~ this.record_info[consts.REC_STATUS] = value;
+            //~ }
+        //~ }
 
-        get record_log_rec() {
-            return this.record_info[consts.REC_LOG_REC];
-        }
+        //~ get record_log_rec() {
+            //~ return this.record_info[consts.REC_LOG_REC];
+        //~ }
 
-        set record_log_rec(value) {
-            this.record_info[consts.REC_LOG_REC] = value;
-        }
+        //~ set record_log_rec(value) {
+            //~ this.record_info[consts.REC_LOG_REC] = value;
+        //~ }
 
-        rec_unchanged() {
-            return this.record_status === consts.RECORD_UNCHANGED;
-        }
+        //~ rec_unchanged() {
+            //~ return this.record_status === consts.RECORD_UNCHANGED;
+        //~ }
 
-        rec_inserted() {
-            return this.record_status === consts.RECORD_INSERTED;
-        }
+        //~ rec_inserted() {
+            //~ return this.record_status === consts.RECORD_INSERTED;
+        //~ }
 
-        rec_deleted() {
-            return this.record_status === consts.RECORD_DELETED;
-        }
+        //~ rec_deleted() {
+            //~ return this.record_status === consts.RECORD_DELETED;
+        //~ }
 
-        rec_modified() {
-            return this.record_status === consts.RECORD_MODIFIED ||
-                this.record_status === consts.RECORD_DETAILS_MODIFIED;
-        }
+        //~ rec_modified() {
+            //~ return this.record_status === consts.RECORD_MODIFIED ||
+                //~ this.record_status === consts.RECORD_DETAILS_MODIFIED;
+        //~ }
 
         get _record_copy() {
             let self = this,
@@ -6124,14 +6034,18 @@
             }
         }
 
-        copy_record(container, options) {
-            let rec_copy = this._record_copy,
+        copy_record() {
+            let args = this._check_args(arguments),
+                options = args['object'],
+                container = args['jquery'],
                 on_detail_changed = this.on_detail_changed,
                 on_after_scroll_internal = this._on_after_scroll_internal;
+            options = $.extend({}, options);
+            options.rec_copy = this._record_copy;
             this.on_detail_changed = function() {};
             this._on_after_scroll_internal = undefined;
             try {
-                this.insert_record(container, options, rec_copy);
+                this.insert_record(container, options);
             }
             finally {
                 this._on_after_scroll_internal = on_after_scroll_internal;
@@ -6139,48 +6053,40 @@
             }
         }
 
-        insert_record(container, options, rec_copy) {
-            this._before_append_record(container, options, rec_copy, 0)
+        insert_record() {
+            let args = this._check_args(arguments),
+                options = args['object'],
+                container = args['jquery'];
+            this._do_append_record(container, options, 0);
         }
 
-        append_record(container, options, rec_copy) {
-            this._before_append_record(container, options, rec_copy)
+        append_record() {
+            let args = this._check_args(arguments),
+                options = args['object'],
+                container = args['jquery'];
+            this._do_append_record(container, options);
         }
 
 
-        _before_append_record(container, options, rec_copy, index) {
-            let self = this;
-            if (this.master_field && !this.owner._primary_key_field.value && this.owner.is_new()) {
-                try {
-                    this.owner.post();
-                    this.owner.apply(function() {
-                        self.owner.edit();
-                        self._do_append_record(container, options, rec_copy, index);
-                    });
-                }
-                catch (e) {
-                }
-            }
-            else {
-                this._do_append_record(container, options, rec_copy, index);
-            }
-        }
-
-        _do_append_record(container, options, rec_copy, index) {
+        _do_append_record(container, options, index) {
             container = this._check_container(container);
             if (container && this.task.can_add_tab(container) && $('.modal').length === 0) {
-                this._append_record_in_tab(container, options, rec_copy);
+                this._append_record_in_tab(container, options);
             }
             else {
-                this._append_record(container, rec_copy, index);
+                this._append_record(container, options, index);
             }
         }
 
-        _append_record(container, rec_copy, index) {
+        _append_record(container, options, index) {
             if (this.can_create()) {
+                options = $.extend({}, options);
                 this.append(index);
-                if (rec_copy) {
-                    this._record_copy = rec_copy;
+                if (options.rec_copy) {
+                    this._record_copy = options.rec_copy;
+                    if (options.after_record_copied) {
+                        options.after_record_copied.call(this, this);
+                    }
                 }
                 else {
                     this.open_details({details: this.edit_options.edit_details});
@@ -6189,7 +6095,7 @@
             }
         }
 
-        _append_record_in_tab(container, options, rec_copy) {
+        _append_record_in_tab(container, options) {
             var tab_id = this.item_name + 0,
                 tab,
                 tab_name,
@@ -6223,7 +6129,7 @@
                         let on_after_apply = copy.on_after_apply;
                         this.edit_options.edit_details
                         copy.edit_options.tab_id = tab_id;
-                        copy._append_record(content, rec_copy);
+                        copy._append_record(content, options);
                         copy.on_after_apply = function(item) {
                             if (on_after_apply) {
                                 on_after_apply(copy, copy);
@@ -6325,6 +6231,11 @@
             });
             if (content) {
                 copy._source_item = this;
+                copy._read_only = this._read_only;
+                copy.owner_read_only = this.owner_read_only;
+                copy.each_field(function(f) {
+                    f._read_only = self.field_by_name(f.field_name)._read_only;
+                });
                 copy._tab_info = {container: container, tab_id: tab_id}
                 copy.can_modify = this.can_modify;
                 where[pk] = pk_value;
@@ -6372,7 +6283,8 @@
         cancel_edit() {
             var self = this,
                 refresh = !this.master && this.log_changes &&
-                    this.item_state === consts.STATE_EDIT && this.record_status;
+                    this.item_state === consts.STATE_EDIT &&
+                    this.change_log.record_status;
             if (this.is_changing()) {
                 this.cancel();
             }
@@ -6407,36 +6319,41 @@
             }
             if (this.can_delete()) {
                 if (this.rec_count > 0) {
-                    let mess = this.question(language.delete_record, function() {
-                        self.delete();
-                        self.apply(function(e) {
-                            var error;
-                            self.hide_message(mess);
-                            if (e) {
-                                error = (e + '').toUpperCase();
-                                if (error && (error.indexOf('FOREIGN KEY') !== -1 ||
-                                    error.indexOf('INTEGRITY CONSTRAINT') !== -1 ||
-                                    error.indexOf('REFERENCE CONSTRAINT') !== -1
-                                    )
-                                ) {
-                                    self.alert_error(language.cant_delete_used_record);
-                                } else {
-                                    self.warning(e);
-                                }
-                                self.refresh_page(true);
-                            }
-                            else {
-                                if (callback) {
-                                    callback.call(this, this);
-                                }
-                                else if (refresh_page) {
+                    let mess = this.question(language.delete_record,
+                        function() {
+                            self.delete();
+                            self.apply(function(e) {
+                                var error;
+                                self.hide_message(mess);
+                                if (e) {
+                                    error = (e + '').toUpperCase();
+                                    if (error && (error.indexOf('FOREIGN KEY') !== -1 ||
+                                        error.indexOf('INTEGRITY CONSTRAINT') !== -1 ||
+                                        error.indexOf('REFERENCE CONSTRAINT') !== -1
+                                        )
+                                    ) {
+                                        self.alert_error(language.cant_delete_used_record);
+                                    } else {
+                                        self.warning(e);
+                                    }
                                     self.refresh_page(true);
                                 }
-                            }
-                        });
-                    },
-                    null,
-                    {hide: false});
+                                else {
+                                    if (callback) {
+                                        callback.call(this, this);
+                                    }
+                                    else if (refresh_page) {
+                                        self.refresh_page(true);
+                                    }
+                                }
+                            });
+                        },
+                        function() {
+                            self.hide_message(mess);
+                        },
+                        null,
+                        {hide: false}
+                    );
                 } else {
                     this.warning(language.no_record);
                 }
@@ -6509,6 +6426,9 @@
                                 callback.call(self, self);
                             }
                             if (options.close_form) {
+                                if (self.master) {
+                                    self.master.edit();
+                                }
                                 self.close_edit_form();
                             }
                             else {
@@ -6560,7 +6480,7 @@
                     self.set_order_by(self.view_options.default_order);
                 }
                 if (self.paginate === undefined) {
-                    if (self.master || self.master_field) {
+                    if (self.master) {
                         self.paginate = false;
                     }
                     else {
@@ -7074,7 +6994,7 @@
                                     self.rec_no = rec_no;
                                 }
                                 self._records_selected = false;
-                                if (self.master || self.master_field) {
+                                if (self.master) {
                                     self.owner._detail_changed(self, true);
                                 }
                                 self.enable_controls();
@@ -7549,7 +7469,7 @@
                         }
                     }
                 });
-                this.change_log.record_refreshed();
+                this.change_log.record_status = consts.RECORD_UNCHANGED;
                 this.update_controls(consts.UPDATE_RECORD);
                 if (options.details.length) {
                     options.master_refresh_record = true;
@@ -7560,7 +7480,7 @@
                 }
             }
             else {
-                this.change_log.remove_record_log();
+                this.change_log.record_status = consts.RECORD_UNCHANGED;
                 for (var i = 0; i < len; i++) {
                     this.details[i]._do_close();
                 }
@@ -7593,7 +7513,6 @@
                 self.each_field(function(field) {
                     fields.push(field.field_name)
                 })
-                //~ copy._where_list = this._open_params.__filters.slice();
                 copy._where_list = [[primary_key, consts.FILTER_EQ, this._primary_key_field.value, -2]];
                 if (callback || async) {
                     copy.open({expanded: this.expanded, fields: fields, params: options.params}, function() {
@@ -7889,9 +7808,7 @@
             super(owner, ID, item_name, caption, visible, type, js_filename);
             if (owner) {
                 this.master_field = master_field;
-                if (!this.master_field) {
-                    this.master = owner;
-                }
+                this.master = owner;
                 owner.details.push(this);
                 owner.details[item_name] = this;
             }
@@ -8266,6 +8183,9 @@
                 value = null;
             }
             this._check_system_field_value(value);
+            if (this.field_kind === consts.ITEM_FIELD && !this.owner.is_changing()) {
+                this.owner.edit();
+            }
             this.new_value = null;
             if (value !== null) {
                 if (this.multi_select) {
@@ -8736,21 +8656,6 @@
             }
         }
 
-        get required() {
-            if (this.not_null) {
-                return true;
-            }
-            else {
-                return this._required;
-            }
-        }
-
-        set required(value) {
-            if (!this.not_null) {
-                this._required = value;
-            }
-        }
-
         set read_only(value) {
             this._read_only = value;
             this.update_controls();
@@ -9177,6 +9082,14 @@
             else {
                 this.field.set_value(value, lookup_value);
             }
+        }
+
+        get lookup_value() {
+            return this.field.lookup_value;
+        }
+
+        set lookup_value(value) {
+            this.field.lookup_value = value
         }
 
         update(field) {
@@ -9741,7 +9654,8 @@
                 freeze_count: 0,
                 exact_height: false,
                 show_hints: true,
-                hint_fields: undefined
+                hint_fields: undefined,
+                auto_page_scroll: true
             };
 
             this.options = $.extend(true, {}, default_options, this.item.table_options);
@@ -10179,6 +10093,11 @@
             var self = this,
                 timeout;
             this.$table.on('keydown', function(e) {
+                let code = (e.keyCode ? e.keyCode : e.which);
+                if (self.selected_field && (code === 37 || code === 39)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
                 clearTimeout(timeout);
                 timeout = setTimeout( function() { self.keydown(e) }, 10 );
             });
@@ -10347,6 +10266,28 @@
                 self.clicked(e, $this.closest('td'));
                 self.selections_set_selected(!checked);
                 $this.prop('checked', self.selections_get_selected());
+                if (e.shiftKey && self.prev_selected_rec_no !== undefined) {
+                    let sels = [],
+                        clone = self.item.clone(),
+                        min = self.prev_selected_rec_no,
+                        max = self.item.rec_no;
+                    if (self.prev_selected_rec_no > self.item.rec_no) {
+                        min = self.item.rec_no;
+                        max = self.prev_selected_rec_no;
+                    }
+                    while (min < max) {
+                        min += 1;
+                        clone.rec_no = min;
+                        if ($this.is(':checked')) {
+                            self.item.selections.add(clone._primary_key_field.value);
+                        }
+                        else {
+                            self.item.selections.remove(clone._primary_key_field.value);
+                        }
+                    }
+                    self.refresh();
+                }
+                self.prev_selected_rec_no = self.item.rec_no;
             });
 
             this.$table.on('click', 'td input.multi-select', function(e) {
@@ -10709,27 +10650,27 @@
 
                     this.$fistPageBtn = $pagination.find('[href="first"]');
                     this.$fistPageBtn.on("click", function(e) {
-                        self.first_page();
+                        self.first_page(true);
                         e.preventDefault();
                     });
                     this.$fistPageBtn.addClass("disabled");
 
                     this.$priorPageBtn = $pagination.find('[href="prior"]');
                     this.$priorPageBtn.on("click", function(e) {
-                        self.prior_page();
+                        self.prior_page(true);
                         e.preventDefault();
                     });
                     this.$priorPageBtn.addClass("disabled");
 
                     this.$nextPageBtn = $pagination.find('[href="next"]');
                     this.$nextPageBtn.on("click", function(e) {
-                        self.next_page();
+                        self.next_page(true);
                         e.preventDefault();
                     });
 
                     this.$lastPageBtn = $pagination.find('[href="last"]');
                     this.$lastPageBtn.on("click", function(e) {
-                        self.last_page();
+                        self.last_page(true);
                         e.preventDefault();
                     });
                     this.$pageInput = $pagination.find('input');
@@ -10882,6 +10823,7 @@
 
         close_editor() {
             if (this.editor) {
+                let self = this;
                 if (!this.item.is_changing()) {
                     this.item.edit();
                 }
@@ -10890,7 +10832,11 @@
                 if (this.item.is_changing()) {
                     this.item.post();
                 }
-                this.item.apply(true);
+                this.item.apply(function() {
+                    if (self.item.master) {
+                        self.item.master.edit();
+                    }
+                });
             }
         }
 
@@ -11229,6 +11175,7 @@
 
         do_after_open() {
             var self = this;
+            this.prev_selected_rec_no = undefined;
             if (this.$table.is(':visible')) {
                 this.init_table();
                 this.sync_freezed();
@@ -11307,7 +11254,7 @@
                 sum_fields,
                 count_fields,
                 total_records = 0,
-                expanded = false,
+                //~ expanded = false,
                 search_field,
                 funcs,
                 params = {};
@@ -11345,9 +11292,9 @@
                 if (self.item._open_params.__search) {
                     search_field = this.item._open_params.__search[0];
                     field = this.item.field_by_name(search_field);
-                    if (field.lookup_item) {
-                        expanded = true;
-                    }
+                    //~ if (field.lookup_item) {
+                        //~ expanded = true;
+                    //~ }
                     if (sum_fields.indexOf(search_field) === -1) {
                         sum_fields.push(search_field);
                         funcs[search_field] = 'count';
@@ -11373,7 +11320,7 @@
                     params.__master_rec_id = this.item.master.field_by_name(this.item.master._primary_key).value;
                 }
                 this.item._fields_summary_info = {};
-                copy.open({expanded: expanded, fields: sum_fields, funcs: funcs, params: params},
+                copy.open({fields: sum_fields, funcs: funcs, params: params},
                     function() {
                         var i,
                             text;
@@ -11484,18 +11431,20 @@
                 field = this.item.field_by_name(td.data('field_name')),
                 $row = td.parent();
             rec = this.record_by_row($row);
-            if (this.edit_mode && rec !== this.item.rec_no) {
-                this.close_editor();
-            }
-            this.item.rec_no = rec;
-            if (!this.editing && !this.is_focused()) {
-                this.focus();
-            }
-            if (field) {
-                this.set_selected_field(field);
-            }
-            if (e.type === "dblclick") {
-                this.do_on_edit(field);
+            if (rec !== undefined) {
+                if (this.edit_mode && rec !== this.item.rec_no) {
+                    this.close_editor();
+                }
+                this.item.rec_no = rec;
+                if (!this.editing && !this.is_focused()) {
+                    this.focus();
+                }
+                if (field) {
+                    this.set_selected_field(field);
+                }
+                if (e.type === "dblclick") {
+                    this.do_on_edit(field);
+                }
             }
         }
 
@@ -11535,11 +11484,9 @@
                     if (this.selected_row) {
                         if (this.can_edit() && this.selected_field) {
                             this.selected_row.addClass(selClassName);
-                            if (this.is_focused()) {
-                                this.selected_row.find('td.' + this.selected_field.field_name)
-                                    .removeClass(selClassName)
-                                    .addClass(selFieldClassName);
-                            }
+                            this.selected_row.find('td.' + this.selected_field.field_name)
+                                .removeClass(selClassName)
+                                .addClass(selFieldClassName);
                         } else {
                             this.selected_row.addClass(selClassName);
                         }
@@ -12007,8 +11954,7 @@
 
         }
 
-        next_record(noscroll) {
-            let eof;
+        next_record(btn_click) {
             this.cancel_sync();
             try {
                 this.item.next();
@@ -12016,10 +11962,10 @@
                     if (this.can_edit() && this.options.append_on_lastrow_keydown) {
                         this.item.append();
                     } else if (this.item.paginate) {
-                        this.next_page();
-                    }
-                    else {
-                        eof = true;
+                        let page_scroll = btn_click || this.options.auto_page_scroll;
+                        if (page_scroll) {
+                            this.next_page();
+                        }
                     }
                 }
                 else if (!this.item.paginate) {
@@ -12035,14 +11981,12 @@
             finally {
                 this.resume_sync();
             }
-            if (!eof) {
-                this.syncronize(noscroll);
-                if (this.master_table) {
-                    this.master_table.syncronize(noscroll);
-                }
-                if (this.freezed_table) {
-                    this.freezed_table.syncronize(noscroll);
-                }
+            this.syncronize();
+            if (this.master_table) {
+                this.master_table.syncronize();
+            }
+            if (this.freezed_table) {
+                this.freezed_table.syncronize();
             }
         }
 
@@ -12065,16 +12009,19 @@
             }
         }
 
-        prior_record(noscroll) {
+        prior_record(btn_click) {
             var self = this;
             this.cancel_sync();
             try {
                 this.item.prior();
                 if (this.item.bof()) {
                     if (this.item.paginate) {
-                        this.prior_page(function() {
-                            self.item.last();
-                        });
+                        let page_scroll = btn_click || this.options.auto_page_scroll;
+                        if (page_scroll) {
+                            this.prior_page(function() {
+                                self.item.last();
+                            });
+                        }
                     }
                 }
                 else if (!this.item.paginate) {
@@ -12090,32 +12037,38 @@
             finally {
                 this.resume_sync();
             }
-            this.syncronize(noscroll);
+            this.syncronize();
             if (this.master_table) {
-                this.master_table.syncronize(noscroll);
+                this.master_table.syncronize();
             }
             if (this.freezed_table) {
-                this.freezed_table.syncronize(noscroll);
+                this.freezed_table.syncronize();
             }
         }
 
-        first_page(callback) {
-            if (this.item._paginate) {
+        first_page() {
+            let args = this.item._check_args(arguments),
+                callback = args['function'],
+                btn_click = args['boolean'],
+                page_scroll = btn_click || this.options.auto_page_scroll;
+            if (this.item._paginate && page_scroll) {
                 this.set_page_number(0, callback);
             } else {
                 this.item.first();
             }
         }
 
-        next_page(callback) {
-            var lines,
-                clone;
+        next_page() {
+            let args = this.item._check_args(arguments),
+                callback = args['function'],
+                btn_click = args['boolean'];
             if (this.item._paginate) {
-                if (!this.item.is_loaded) {
+                let page_scroll = btn_click || this.options.auto_page_scroll
+                if (!this.item.is_loaded && page_scroll) {
                     this.set_page_number(this.page + 1, callback);
                 }
             } else {
-                clone = this.item.clone();
+                let clone = this.item.clone();
                 clone.rec_no = this.item.rec_no;
                 for (var i = 0; i < this.row_count; i++) {
                     if (!clone.eof()) {
@@ -12128,17 +12081,21 @@
             }
         }
 
-        prior_page(callback) {
-            var lines,
-                clone;
+        prior_page() {
+            let args = this.item._check_args(arguments),
+                callback = args['function'],
+                btn_click = args['boolean'];
             if (this.item._paginate) {
                 if (this.page > 0) {
-                    this.set_page_number(this.page - 1, callback);
+                    let page_scroll = btn_click || this.options.auto_page_scroll
+                    if (page_scroll) {
+                        this.set_page_number(this.page - 1, callback);
+                    }
                 } else {
                     this.syncronize();
                 }
             } else {
-                clone = this.item.clone();
+                let clone = this.item.clone();
                 clone.rec_no = this.item.rec_no;
                 for (var i = 0; i < this.row_count; i++) {
                     if (!clone.eof()) {
@@ -12151,9 +12108,13 @@
             }
         }
 
-        last_page(callback) {
+        last_page() {
+            let args = this.item._check_args(arguments),
+                callback = args['function'],
+                btn_click = args['boolean'],
+                page_scroll = btn_click || this.options.auto_page_scroll;
             var self = this;
-            if (this.item._paginate) {
+            if (this.item._paginate && page_scroll) {
                 this.set_page_number(this.page_count - 1, callback);
             } else {
                 this.item.last();
@@ -12204,7 +12165,7 @@
                 if (this.selections_get_selected()) {
                     checked = 'checked';
                 }
-                rowStr += this.new_column('multi-select', 'center', '<input class="multi-select" type="checkbox" ' + checked + ' tabindex="-1">', -1);
+                rowStr += this.new_column('multi-select', 'center', '<input class="multi-select" type="checkbox" ' + checked + ' tabindex="-1" style="margin: 0">', -1);
             }
             for (i = 0; i < len; i++) {
                 field = this.fields[i];
@@ -13313,21 +13274,15 @@
                 this.table.close_editor();
                 result = true;
             }
-            if (this.field.field_kind !== consts.ITEM_FIELD && this.field.owner.is_changing()) {
+            if (this.field.data_type === consts.BOOLEAN) {
+                result = true;
+            } else if (!this.table && this.change_field_text()) {
+                if (this.$input.is(':visible')) {
+                    this.$input.val(this.field.display_text);
+                }
                 result = true;
             }
-            else {
-                if (this.field.data_type === consts.BOOLEAN) {
-                    result = true;
-                } else if (!this.table && this.change_field_text()) {
-                    if (this.$input.is(':visible')) {
-                        this.$input.val(this.field.display_text);
-                    }
-                    result = true;
-                }
-            }
             this.updateState(result);
-            return result;
         }
 
         update_form(update) {

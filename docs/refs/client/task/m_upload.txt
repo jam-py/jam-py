@@ -31,5 +31,15 @@ The ``options`` parameter is an object that may have the following attributes:
   will be displayed. the defaul value is true
 
 * ``accept`` - the attribute specifies the types of files that can be submitted 
-  through a file upload. It is the string the same as the html <input> accept 
-  attribute. See https://www.w3schools.com/Tags/att_input_accept.asp
+  through a file upload, see :doc:`Accept string </admin/accept_string>` 
+  
+
+.. note::
+
+  Please note that the ``accept`` attribute specifies only types of files that 
+  can be picked up by the user in the browser.
+  
+  The server checks all uploaded files for compliance with the **Upload file extensions** 
+  attribute of the :doc:`Project parameters </admin/project/parameters>`.	
+
+	

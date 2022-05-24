@@ -44,6 +44,9 @@ The ``options`` parameter is an object that may have following attributes:
 * ``secondary``: if this attribute is set to true, the button will be right aligned if
   **Buttons on top** attribute of the 
   :doc:`View Form Dialog </admin/items/view_form_dialog>` is set, otherwise left aligned.
+  
+* ``expanded`` - if set to true the button will have class 'expanded-btn' and
+  that defines its min-width to 120px, default true
 
 The method returns a JQuery object of the button. 
 

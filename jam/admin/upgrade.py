@@ -1,7 +1,7 @@
 import os
 from xml.dom.minidom import parse
 
-def version6_upgrade(task):
+def version7_upgrade(task):
 
     def field_by_id(id_value):
         sys_fields.rec_no = field_dict.get(id_value)
@@ -76,7 +76,7 @@ def version6_upgrade(task):
                     field_list = sys_indices.load_index_fields(field_str)
                     field_list = replace_fields_in_lists(field_list, field_dict)
                     sys_indices.edit()
-                    sys_indices.store_index_fields(field_list)
+                    sys_indices.f_fields_list.value = sys_indices.store_index_fields(field_list)
                     sys_indices.post()
 
     def upgrade_filters(item, field_dict):
@@ -90,7 +90,22 @@ def version6_upgrade(task):
                     sys_filters.f_field.value = new_field_id
                     sys_filters.post()
 
+    sys_params = task.sys_params.copy(handlers=False)
+    sys_params.open()
+    if sys_params.f_upgraded_to.value >= 7:
+        return
+
     con = task.connect()
+
+    lang = sys_params.f_language.value
+    sys_params.edit()
+    sys_params.f_upgraded_to.value = 7
+    if not lang:
+        sys_params.f_language.data = 1
+    sys_params.post()
+    sys_params.f_language.data = lang
+    sys_params.apply(connection=con)
+
     sys_fields = task.sys_fields.copy(handlers=False)
     sys_fields.open()
     field_dict = {}
@@ -213,13 +228,21 @@ def version6_upgrade(task):
     sys_items.post()
     sys_items.apply(connection=con)
 
+    sys_items = task.sys_items.copy(handlers=False, details=False)
+    sys_items.open(fields=['id', 'table_id', 'f_master_applies'])
+    for i in sys_items:
+        if i.table_id.value:
+            i.edit()
+            i.f_master_applies.value = True
+            i.post()
+    sys_items.apply(connection=con)
+
     if os.path.exists('register.html'):
         sys_items.set_where(type_id=5)
         sys_items.open(fields=['id', 'f_server_module'])
         code = sys_items.f_server_module.value
         if code.find('def on_request(task, request):') == -1:
             code = code + """
-
 def on_request(task, request):
     parts = request.path.strip('/').split('/')
     if parts[0] == 'register.html':

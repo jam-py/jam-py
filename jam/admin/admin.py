@@ -18,7 +18,6 @@ class FieldInfo(object):
         self.data_type = field.f_data_type.value
         self.size = field.f_size.value
         self.default_value = field.f_default_value.data
-        self.not_null = field.f_not_null.value
         self.master_field = field.f_master_field.value
         self.calc_item = field.f_calc_item.value
         self.primary_key = field.id.value == item.f_primary_key.value
@@ -58,8 +57,8 @@ def init_admin(task):
     consts.read_language()
     from .builder import on_created
     on_created(task)
-    from .upgrade import version6_upgrade
-    version6_upgrade(task)
+    from .upgrade import version7_upgrade
+    version7_upgrade(task)
 
 def create_admin(app):
     if os.path.exists(os.path.join(app.work_dir, '_admin.sqlite')):
@@ -104,15 +103,15 @@ def get_item_fields(item, fields, delta_fields=None):
     if delta_fields:
         for field in delta_fields:
             if not field.f_master_field.value and not field.f_calc_item.value:
-                if field.record_status == consts.RECORD_INSERTED:
+                if field.change_log.record_status == consts.RECORD_INSERTED:
                     info = field_info(field)
                     if info:
                         result.append(info)
-                if field.record_status == consts.RECORD_DELETED:
+                if field.change_log.record_status == consts.RECORD_DELETED:
                     info = find_field(result, field.id.value)
                     if info:
                         result.remove(info)
-                elif field.record_status == consts.RECORD_MODIFIED:
+                elif field.change_log.record_status == consts.RECORD_MODIFIED:
                     info = find_field(result, field.id.value)
                     if info:
                         info.id = field.id.value
@@ -120,12 +119,11 @@ def get_item_fields(item, fields, delta_fields=None):
                         info.data_type = field.f_data_type.value
                         info.size = field.f_size.value
                         info.default_value = field.f_default_value.data
-                        info.not_null = field.f_not_null.value
                     else:
                         info = field_info(field)
                         if info:
                             result.append(info)
-            elif field.record_status == consts.RECORD_MODIFIED:
+            elif field.change_log.record_status == consts.RECORD_MODIFIED:
                 info = find_field(result, field.id.value)
                 if info and not info.master_field and not info.calc_item:
                     result.remove(info)
@@ -189,30 +187,10 @@ def recreate_table(delta, old_fields, new_fields, comp=None, fk_delta=None):
             if not find_field(new_fields, f.id):
                 old_fields.remove(f)
 
-    def not_null_fields(db):
-        nn_field_names = []
-        nn_old_field_list = []
-        nn_new_field_list = []
-        for key, (old_field, new_field) in iteritems(comp):
-            if old_field and new_field:
-                if old_field.not_null != new_field.not_null and new_field.not_null:
-                    nn_field_names.append(old_field.field_name)
-                    field_name = '"%s"' % old_field.field_name
-                    nn_new_field_list.append(field_name)
-                    nn_old_field_list.append(
-                        'CASE WHEN %s ISNULL THEN %s ELSE %s END' % (field_name, db.default_value(new_field), field_name)
-                    )
-            elif not old_field and new_field and new_field.not_null:
-                    field_name = '"%s"' % new_field.field_name
-                    nn_new_field_list.append(field_name)
-                    nn_old_field_list.append(db.default_value(new_field))
-        return nn_field_names, nn_old_field_list, nn_new_field_list
-
     connection = connect_task_db(delta.task)
     cursor = connection.cursor()
     db = delta.task.task_db_module
     table_name = delta.f_table_name.value
-    nn_field_names, nn_old_field_list, nn_new_field_list = not_null_fields(db)
     result = []
     cursor.execute('PRAGMA foreign_keys=off')
     cursor.execute('ALTER TABLE "%s" RENAME TO Temp' % table_name)
@@ -221,11 +199,10 @@ def recreate_table(delta, old_fields, new_fields, comp=None, fk_delta=None):
         sql = db.create_table(table_name, new_fields, foreign_fields=foreign_fields)
         cursor.execute(sql)
         prepare_fields()
-        old_field_list = ['"%s"' % field.field_name for field in old_fields if not field.field_name in nn_field_names]
-        new_field_list = ['"%s"' % field.field_name for field in new_fields if not field.field_name in nn_field_names]
-        old_field_list += nn_old_field_list
-        new_field_list += nn_new_field_list
-        cursor.execute('INSERT INTO "%s" (%s) SELECT %s FROM Temp' % (table_name, ', '.join(new_field_list), ', '.join(old_field_list)))
+        old_field_list = ['"%s"' % field.field_name for field in old_fields]
+        new_field_list = ['"%s"' % field.field_name for field in new_fields]
+        cursor.execute('INSERT INTO "%s" (%s) SELECT %s FROM Temp' % \
+            (table_name, ', '.join(new_field_list), ', '.join(old_field_list)))
     except Exception as e:
         delta.log.exception(error_message(e))
         cursor.execute('DROP TABLE IF EXISTS "%s"' % table_name)
@@ -245,8 +222,6 @@ def change_item_query(delta, old_fields, new_fields):
         for key, (old_field, new_field) in iteritems(comp):
             if old_field and new_field:
                 if old_field.field_name != new_field.field_name:
-                    return True
-                elif old_field.not_null != new_field.not_null:
                     return True
                 elif db.default_text(old_field) != db.default_text(new_field):
                     return True
@@ -278,7 +253,6 @@ def change_item_query(delta, old_fields, new_fields):
             if old_field and new_field:
                 if (old_field.field_name != new_field.field_name) or \
                     (db.FIELD_TYPES[old_field.data_type] != db.FIELD_TYPES[new_field.data_type]) or \
-                    (old_field.not_null != new_field.not_null) or \
                     (old_field.default_value != new_field.default_value) or \
                     (old_field.size != new_field.size):
                     sql = db.change_field(table_name, old_field, new_field)

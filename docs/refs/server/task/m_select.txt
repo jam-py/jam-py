@@ -1,0 +1,35 @@
+======
+select
+======
+
+.. py:method:: select(self, sql) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Task class </refs/server/task_api>`
+
+Description
+===========
+
+Use ``select`` to execute select ``SELECT`` SQL query. To execute the query the 
+connection pool is used. 
+
+The ``sql`` parameter is a query to execute.
+
+The method returns a list of records.
+
+Example
+=======
+
+.. code-block:: py
+
+    recs = item.task.execute_select("SELECT * FROM DEMO_CUSTOMERS WHERE ID=41")
+    for r in rec:
+        print(r)
+
+See also
+========
+
+:doc:`execute <m_execute>`

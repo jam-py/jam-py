@@ -13,7 +13,7 @@ insert_record
 Description
 ===========
 
-Open a new, empty record at the begining of the dataset and creates an 
+Open a new, empty record at the beginning of the dataset and creates an 
 :doc:`edit_form <at_edit_form>`
 for visuall editing of the record.
 

@@ -21,51 +21,54 @@ To do this, follow these steps:
    database structures in the Postgress database.
   
 #. copy data from SQlite to Postgress database using the 
-    :doc:`copy_database </refs/server/task/m_copy_database>` method of the task:
+   :doc:`copy_database </refs/server/task/m_copy_database>` method of the task:
   
-    * create in the sever module of the task the following function:
+   * create in the sever module of the task the following function:
   
-      .. code-block:: py
+     .. code-block:: py
+    
+       from jam.db.db_modules import SQLITE
       
-        import sqlite3
+       def copy_db(task):
+           task.copy_database(SQLITE, '/home/work/demo/demo.sqlite')
+  
+   * then you can execute it one of the following ways:
+  
+     * call this function in the 
+       :doc:`on_created </refs/server/task/on_created>` event handler:
+
+       .. code-block:: py
+      
+         from jam.db.db_modules import SQLITE
         
-        def copy_db(task):
-          connection = sqlite3.connect('/home/andrew/Work/work/demo.sqlite')
-          task.copy_database(task.consts.SQLITE, connection)
-             
-    
-    * then you can execute it one of the following ways:
-    
-      * call this function in the 
-        :doc:`on_created </refs/server/task/on_created>` event handler:
-  
-        .. code-block:: py
-  
-          import sqlite3
+         def copy_db(task):
+             task.copy_database(SQLITE, '/home/work/demo/demo.sqlite')
+ 
+         def on_created(task):
+           copy_db(task)
           
-          def copy_db(task):
-            connection = sqlite3.connect('/home/andrew/Work/work/demo.sqlite')
-            task.copy_database(task.consts.SQLITE, connection)
-        
-          def on_created(task):
-            copy_db(task)
-            
-      * create a button in some form and use the task 
-        :doc:`server </refs/client/abstr_item/m_server>` method to execute it
-  
-        .. code-block:: js
-  
-          function on_view_form_created(item) {
-            item.add_view_button('Copy DB').click(function() { 
+     * create a button in some form and use the task 
+       :doc:`server </refs/client/abstr_item/m_server>` method to execute it
+
+       .. code-block:: js
+
+         function on_view_form_created(item) {
+           item.add_view_button('Copy DB').click(function() { 
              task.server('copy_db')
-            });
-          }
+           });
+         }
 
-      * or run from from debbuging console of the browser:
+     * or run from from debbuging console of the browser:
     
-        .. code-block:: js
+       .. code-block:: js
 
-          task.server('copy_db')
+         task.server('copy_db')
          
 #. Remove the code that was used.         
 
+.. note::
+	
+	You can not migrate to SQLite database of the current database has foreign
+	keys
+
+    

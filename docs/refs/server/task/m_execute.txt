@@ -1,0 +1,40 @@
+=======
+execute
+=======
+
+.. py:method:: execute(self, sql) 
+
+**domain**: server
+
+**language**: python
+
+**class** :doc:`Task class </refs/server/task_api>`
+
+Description
+===========
+
+Use ``execute`` to execute an SQL query (except SELECT queries) using 
+multiprocessing connection pool. For SELECT queries use the
+:doc:`select <m_select>`
+method.
+
+The ``sql`` parameter can be a query string, a list of query strings, a list of
+lists and so on.
+
+All queries are executed in one transaction and if execution succeeds the ``COMMIT``
+command is called, otherwise ``ROLLBACK`` command is executed.
+
+Example
+=======
+
+.. code-block:: py
+
+    sql = []
+    for i in ids:
+        sql.append('UPDATE DEMO_CUSTOMERS SET QUANTITY=2 WHERE ID=%s' % i) 
+    item.task.execute(sql)
+
+See also
+========
+
+:doc:`select <m_select>`

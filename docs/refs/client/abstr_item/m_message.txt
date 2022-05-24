@@ -18,7 +18,7 @@ Use **message** method to create a modal form.
 The **mess** parameter specifies the text or html content that will appear in the 
 body of the form. 
 
-The **options** parameter is an object with the following attributes:
+The **options** parameter is an object with the following attrubutes:
 
 * **title** - the title of the form,
 * **width** - the width of the form, the default width is 400px

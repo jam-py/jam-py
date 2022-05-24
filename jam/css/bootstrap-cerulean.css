@@ -6511,28 +6511,6 @@ jam.py css
     background-color: #ffffff;
 }
 
-/*
-.table tbody tr.selected > td:not(.field-selected) {
-    color: #ffffff;
-    background-color: #76c3ef;
-}
-
-.table tbody tr.selected-focused > td:not(.field-selected-focused) {
-  color: #ffffff;
-  background-color: #2fa4e7;
-}
-
-.table tbody td.field-selected {
-    color: #ffffff;
-    background-color: #2fa4e7;
-}
-
-.table tbody td.field-selected-focused {
-    color: #ffffff;
-    background-color: #3b83c7
-}
-*/
-
 .table tbody tr.selected > td:not(.field-selected) {
     color: #035d8a;
     background-color: #e6f7ff;

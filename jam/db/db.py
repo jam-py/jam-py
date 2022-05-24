@@ -35,9 +35,9 @@ class AbstractDB(object):
         self.db_info = None
         self.DDL_ROLLBACK = False
         self.NEED_GENERATOR = False
-        self.CAN_CHANGE_NOT_NULL = True
         self.FROM = '"%s" AS %s'
         self.LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" AS %s'
+        self.IS_DISTINCT_FROM = '%s IS DISTINCT FROM %s'
         self.FIELD_AS = 'AS'
         self.DESC_NULLS = None
         self.ASC_NULLS = None
@@ -57,7 +57,6 @@ class AbstractDB(object):
             'port': False,
             'ddl_rollback': self.DDL_ROLLBACK,
             'generator': self.NEED_GENERATOR,
-            'can_change_not_null': self.CAN_CHANGE_NOT_NULL,
             'import_support': True
         }
     @property
@@ -69,12 +68,6 @@ class AbstractDB(object):
 
     def identifier_case(self, name):
         return name.upper()
-
-    def cast_date(self, date_str):
-        return "CAST('" + date_str + "' AS DATE)"
-
-    def cast_datetime(self, datetime_str):
-        return "CAST('" + datetime_str + "' AS TIMESTAMP)"
 
     def convert_like(self, field_name, val, data_type):
         return 'UPPER(%s)' % field_name, val.upper()
@@ -101,7 +94,7 @@ class AbstractDB(object):
     def process_query_result(self, rows):
         return [list(row) for row in rows]
 
-    def default_value(self, field_info):
+    def default_text(self, field_info):
         result = field_info.default_value
         if not result is None:
             if field_info.data_type in [consts.TEXT, consts.LONGTEXT, consts.FILE, consts.IMAGE]:
@@ -115,24 +108,10 @@ class AbstractDB(object):
                 elif result == 'false':
                     result = '0'
                 else:
-                    result = ''
-            elif field_info.data_type == consts.DATE:
-                if field_info.default_value == 'current date':
-                    result = "'%s'" % datetime.date.today().strftime('%Y-%m-%d')
-            elif field_info.data_type == consts.DATETIME:
-                if field_info.default_value == 'current datetime':
-                    result = "'%s'" % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    result = None
+            elif field_info.data_type in [consts.DATE, consts.DATETIME]:
+                result = None
         return result
-
-    def default_date_text(self, field_info):
-        pass
-
-    def default_text(self, field_info):
-        if field_info.data_type in [consts.DATE, consts.DATETIME]:
-            if not field_info.default_value is None:
-                return self.default_date_text(field_info)
-        else:
-            return self.default_value(field_info)
 
     def get_field_info(self, field_name, table_name, db_name=None):
         connection = self.connect(self.app.admin.task_db_info)
@@ -156,7 +135,11 @@ class AbstractDB(object):
     def insert_query(self, pk_field):
         return 'INSERT INTO "%s" (%s) VALUES (%s)'
 
-    def insert_record(self, delta, cursor, changes, details_changes):
+    def db_field(self, field):
+        if not field.master_field and not field.calculated:
+            return True
+
+    def insert_record(self, delta, cursor):
         if delta._deleted_flag:
             delta._deleted_flag_field.data = 0
         pk = delta._primary_key_field
@@ -166,7 +149,7 @@ class AbstractDB(object):
         values = []
         index = 0
         for field in delta.fields:
-            if not (field == pk and not pk.data):
+            if self.db_field(field) and not (field == pk and not pk.data):
                 index += 1
                 fields.append('"%s"' % field.db_field_name)
                 values.append('%s' % self.value_literal(index))
@@ -174,15 +157,6 @@ class AbstractDB(object):
                     field.data = field.get_default_value()
                 value = (field.data, field.data_type)
                 row.append(value)
-        if len(delta.fields) != len(delta._fields):
-            dif_fields = list(set(delta._fields).difference(delta.fields))
-            for field in dif_fields:
-                if not field.default_value is None:
-                    index += 1
-                    fields.append('"%s"' % field.db_field_name)
-                    values.append('%s' % self.value_literal(index))
-                    value = (field.get_default_value(), field.data_type)
-                    row.append(value)
         fields = ', '.join(fields)
         values = ', '.join(values)
         sql = self.insert_query(pk) % (delta.table_name, fields, values)
@@ -190,19 +164,15 @@ class AbstractDB(object):
         delta.execute_query(cursor, sql, row, arg_params=self.arg_params)
         if pk:
             self.after_insert(cursor, pk)
-        changes.append([delta.get_rec_info()[consts.REC_LOG_REC], delta._dataset[delta.rec_no], details_changes])
 
-    def update_record(self, delta, cursor, changes, details_changes):
+    def update_record(self, delta, cursor):
         row = []
         fields = []
         index = 0
         pk = delta._primary_key_field
         command = 'UPDATE "%s" SET ' % delta.table_name
         for field in delta.fields:
-            valid = field != pk
-            if delta.lock_active and field.data == field.old_data:
-                valid = False
-            if valid:
+            if self.db_field(field) and field != pk:
                 index += 1
                 fields.append('"%s"=%s' % (field.db_field_name, self.value_literal(index)))
                 value = (field.data, field.data_type)
@@ -218,12 +188,10 @@ class AbstractDB(object):
         sql = ''.join([command, fields, where])
         row = self.process_query_params(row, cursor)
         delta.execute_query(cursor, sql, row, arg_params=self.arg_params)
-        changes.append([delta.get_rec_info()[consts.REC_LOG_REC], delta._dataset[delta.rec_no], details_changes])
 
-    def delete_record(self, delta, cursor, changes, details_changes):
-        log_rec = delta.get_rec_info()[consts.REC_LOG_REC]
+    def delete_record(self, delta, cursor):
         soft_delete = delta.soft_delete
-        if delta.master or delta.master_field:
+        if delta.master:
             soft_delete = delta.owner.soft_delete
         if delta._primary_key_field.data_type == consts.TEXT:
             id_literal = "'%s'" % delta._primary_key_field.value
@@ -237,7 +205,6 @@ class AbstractDB(object):
             sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
                 (delta.table_name, delta._primary_key_db_field_name, id_literal)
         delta.execute_query(cursor, sql)
-        changes.append([log_rec, None, None])
 
     def get_user(self, delta):
         user = None
@@ -248,29 +215,29 @@ class AbstractDB(object):
                 pass
         return user
 
+    def init_history(self, delta):
+        if delta.task.history_item and delta.keep_history and delta.change_log.record_status != consts.RECORD_DETAILS_MODIFIED:
+            delta.init_history()
+
     def save_history(self, delta, connection, cursor):
-        if delta.task.history_item and delta.keep_history and delta.record_status != consts.RECORD_DETAILS_MODIFIED:
+        if delta.task.history_item and delta.keep_history and delta.change_log.record_status != consts.RECORD_DETAILS_MODIFIED:
             changes = None
             user = self.get_user(delta)
             item_id = delta.ID
-            if delta.master or delta.master_field:
+            if delta.master:
                 item_id = delta.prototype.ID
-            if delta.record_status != consts.RECORD_DELETED:
-                old_rec = delta.get_rec_info()[consts.REC_OLD_REC]
-                new_rec = delta._dataset[delta.rec_no]
+            if delta.change_log.record_status != consts.RECORD_DELETED:
                 f_list = []
                 for f in delta.fields:
-                    new = new_rec[f.bind_index]
-                    old = None
-                    if old_rec:
-                        old = old_rec[f.bind_index]
-                    if old != new:
-                        f_list.append([f.ID, new])
-                changes_str = json.dumps(f_list, separators=(',',':'), default=json_defaul_handler)
-                changes = ('%s%s' % ('0', changes_str), consts.LONGTEXT)
-            params = [item_id, delta._primary_key_field.value, delta.record_status, changes, user, datetime.datetime.now()]
-            params = self.process_query_params(params, cursor)
-            delta.execute_query(cursor, delta.task.history_sql, params, arg_params=self.arg_params)
+                    if self.db_field(f) and f.cur_data != f.data:
+                        f_list.append([f.ID, f.data])
+                if f_list:
+                    changes_str = json.dumps(f_list, separators=(',',':'), default=json_defaul_handler)
+                    changes = ('%s%s' % ('0', changes_str), consts.LONGTEXT)
+            if changes or delta.change_log.record_status == consts.RECORD_DELETED:
+                params = [item_id, delta._primary_key_field.value, delta.change_log.record_status, changes, user, datetime.datetime.now()]
+                params = self.process_query_params(params, cursor)
+                delta.execute_query(cursor, delta.task.history_sql, params, arg_params=self.arg_params)
 
     def update_deleted_detail(self, delta, detail, cursor):
         fields = [detail._primary_key]
@@ -330,52 +297,72 @@ class AbstractDB(object):
                         self.delete_detail_records(detail, connection, cursor, d)
         delta.execute_query(cursor, sql)
 
-    def process_record(self, delta, connection, cursor, safe, changes, details_changes):
+    def process_record(self, delta, connection, cursor, safe):
+        self.init_history(delta)
         if delta.master:
-            if delta._master_id:
+            if delta._master_field:
+                delta._master_field_field.data = delta.master._primary_key_field.value
+            elif delta._master_id:
                 delta._master_id_field.data = delta.master.ID
-            delta._master_rec_id_field.data = delta.master._primary_key_field.value
-        if delta.record_status == consts.RECORD_INSERTED:
+                delta._master_rec_id_field.data = delta.master._primary_key_field.value
+        if delta.change_log.record_status == consts.RECORD_INSERTED:
             if safe and not delta.can_create():
                 raise Exception(consts.language('cant_create') % delta.item_caption)
-            self.insert_record(delta, cursor, changes, details_changes)
-        elif delta.record_status == consts.RECORD_MODIFIED:
+            self.insert_record(delta, cursor)
+        elif delta.change_log.record_status == consts.RECORD_MODIFIED:
             if safe and not delta.can_edit():
                 raise Exception(consts.language('cant_edit') % delta.item_caption)
-            self.update_record(delta, cursor, changes, details_changes)
-        elif delta.record_status == consts.RECORD_DETAILS_MODIFIED:
-            changes.append([delta.get_rec_info()[consts.REC_LOG_REC], \
-                delta._primary_key_field.value, details_changes])
-        elif delta.record_status == consts.RECORD_DELETED:
+            self.update_record(delta, cursor)
+        elif delta.change_log.record_status == consts.RECORD_DETAILS_MODIFIED:
+            pass
+        elif delta.change_log.record_status == consts.RECORD_DELETED:
             if safe and not delta.can_delete():
                 raise Exception(consts.language('cant_delete') % delta.item_caption)
-            self.delete_record(delta, cursor, changes, details_changes)
+            self.delete_record(delta, cursor)
         else:
             raise Exception('execute_delta - invalid %s record_status %s, record: %s' % \
-                (delta.item_name, delta.record_status, delta._dataset[delta.rec_no]))
+                (delta.item_name, delta.change_log.record_status, delta._dataset[delta.rec_no]))
         self.save_history(delta, connection, cursor)
 
-    def process_records(self, delta, connection, cursor, safe, changes):
-        for it in delta:
+    def do_before_apply(self, delta, connection, params):
+        item = delta._tree_item
+        if delta.task.on_before_apply:
+            error = delta.task.on_before_apply(item, delta, params, connection)
+            if error:
+                raise Exception(error)
+        if item.on_before_apply:
+            error = item.on_before_apply(item, delta, params, connection)
+            if error:
+                raise Exception(error)
+
+    def do_after_apply(self, delta, connection, params):
+        item = delta._tree_item
+        if delta.task.on_after_apply:
+            error = delta.task.on_after_apply(item, delta, params, connection)
+            if error:
+                raise Exception(error)
+        if item.on_after_apply:
+            error = item.on_after_apply(item, delta, params, connection)
+            if error:
+                raise Exception(error)
+
+    def process_records(self, delta, connection, cursor, params, safe):
+        for d in delta:
+            self.do_before_apply(delta, connection, params)
             details = []
-            self.process_record(it, connection, cursor, safe, changes, details)
-            for detail in delta.details:
-                if delta.record_status == consts.RECORD_DELETED:
-                    self.delete_detail_records(delta, connection, cursor, detail)
+            self.process_record(d, connection, cursor, safe)
+            for detail in d.details:
+                if d.change_log.record_status == consts.RECORD_DELETED:
+                    self.delete_detail_records(d, connection, cursor, detail)
                 elif detail.master:
-                    detail_changes = []
-                    detail_result = {'ID': str(detail.ID), 'changes': detail_changes}
-                    details.append(detail_result)
-                    self.process_records(detail, connection, cursor, safe, detail_changes)
+                    self.process_records(detail, connection, cursor, params, safe)
+            self.do_after_apply(delta, connection, params)
 
     def process_changes(self, delta, connection, params=None):
-        error = None
         safe = delta.client_changes
         changes = []
-        result = {'ID': str(delta.ID), 'changes': changes}
         cursor = connection.cursor()
-        self.process_records(delta, connection, cursor, safe, changes)
-        return result, error
+        self.process_records(delta, connection, cursor, params, safe)
 
     def table_alias(self, item):
         return '"%s"' % item.table_name
@@ -424,11 +411,6 @@ class AbstractDB(object):
             functions = {}
             for key, value in iteritems(funcs):
                 functions[key.upper()] = value
-        # ~ repls = query.replace
-        # ~ if repls:
-            # ~ replace = {}
-            # ~ for key, value in iteritems(repls):
-                # ~ replace[key.upper()] = value
         sql = []
         for i, field in enumerate(fields):
             if i == 0 and summary:
@@ -438,9 +420,6 @@ class AbstractDB(object):
             elif field.calculated:
                 pass
             else:
-                # ~ if repls and replace.get(field.field_name.upper()):
-                    # ~ field_sql = ('%s %s "%s"') % (replace[field.field_name.upper()], self.FIELD_AS, field.db_field_name)
-                # ~ else:
                 field_sql = '%s."%s"' % (self.table_alias(item), field.db_field_name)
                 func = None
                 if funcs:
@@ -469,51 +448,69 @@ class AbstractDB(object):
         sql = ', '.join(sql)
         return sql
 
+    def add_join(self, result, joins, item, field):
+        alias = self.lookup_table_alias(item, field)
+        cur_field = field
+        if field.master_field:
+            cur_field = field.master_field
+        if not joins.get(alias):
+            primary_key_field_name = field.lookup_item._primary_key_db_field_name
+            result.append('%s ON %s."%s" = %s."%s"' % (
+                self.LEFT_OUTER_JOIN % (field.lookup_item.table_name, self.lookup_table_alias(item, field)),
+                self.table_alias(item),
+                cur_field.db_field_name,
+                self.lookup_table_alias(item, field),
+                primary_key_field_name
+            ))
+            joins[alias] = True
+
+    def add_join1(self, result, joins, item, field):
+        alias = self.lookup_table_alias1(item, field)
+        if not joins.get(alias):
+            primary_key_field_name = field.lookup_item1._primary_key_db_field_name
+            result.append('%s ON %s."%s" = %s."%s"' % (
+                self.LEFT_OUTER_JOIN % (field.lookup_item1.table_name, self.lookup_table_alias1(item, field)),
+                self.lookup_table_alias(item, field),
+                field.lookup_db_field,
+                self.lookup_table_alias1(item, field),
+                primary_key_field_name
+            ))
+            joins[alias] = True
+
+    def add_join2(self, result, joins, item, field):
+        alias = self.lookup_table_alias2(item, field)
+        if not joins.get(alias):
+            primary_key_field_name = field.lookup_item2._primary_key_db_field_name
+            result.append('%s ON %s."%s" = %s."%s"' % (
+                self.LEFT_OUTER_JOIN % (field.lookup_item2.table_name, self.lookup_table_alias2(item, field)),
+                self.lookup_table_alias1(item, field),
+                field.lookup_db_field1,
+                self.lookup_table_alias2(item, field),
+                primary_key_field_name
+            ))
+            joins[alias] = True
+
     def from_clause(self, item, query, fields):
         result = []
         result.append(self.FROM % (item.table_name, self.table_alias(item)))
+        fields = list(fields)
+        filters = query.filters
+        if filters:
+            for field_name, filter_type, value in filters:
+                if not value is None:
+                    field = item._field_by_name(field_name)
+                    if not field in fields:
+                        fields.append(field)
         if query.expanded:
             joins = {}
             for field in fields:
                 if field.lookup_item and field.data_type != consts.KEYS:
-                    alias = self.lookup_table_alias(item, field)
-                    cur_field = field
-                    if field.master_field:
-                        cur_field = field.master_field
-                    if not joins.get(alias):
-                        primary_key_field_name = field.lookup_item._primary_key_db_field_name
-                        result.append('%s ON %s."%s" = %s."%s"' % (
-                            self.LEFT_OUTER_JOIN % (field.lookup_item.table_name, self.lookup_table_alias(item, field)),
-                            self.table_alias(item),
-                            cur_field.db_field_name,
-                            self.lookup_table_alias(item, field),
-                            primary_key_field_name
-                        ))
-                        joins[alias] = True
+                    self.add_join(result, joins, item, field)
                 if field.lookup_item1:
-                    alias = self.lookup_table_alias1(item, field)
-                    if not joins.get(alias):
-                        primary_key_field_name = field.lookup_item1._primary_key_db_field_name
-                        result.append('%s ON %s."%s" = %s."%s"' % (
-                            self.LEFT_OUTER_JOIN % (field.lookup_item1.table_name, self.lookup_table_alias1(item, field)),
-                            self.lookup_table_alias(item, field),
-                            field.lookup_db_field,
-                            self.lookup_table_alias1(item, field),
-                            primary_key_field_name
-                        ))
-                        joins[alias] = True
+                    self.add_join1(result, joins, item, field)
                 if field.lookup_item2:
-                    alias = self.lookup_table_alias2(item, field)
-                    if not joins.get(alias):
-                        primary_key_field_name = field.lookup_item2._primary_key_db_field_name
-                        result.append('%s ON %s."%s" = %s."%s"' % (
-                            self.LEFT_OUTER_JOIN % (field.lookup_item2.table_name, self.lookup_table_alias2(item, field)),
-                            self.lookup_table_alias1(item, field),
-                            field.lookup_db_field1,
-                            self.lookup_table_alias2(item, field),
-                            primary_key_field_name
-                        ))
-                        joins[alias] = True
+                    self.add_join2(result, joins, item, field)
+            filters = query.filters
         return ' '.join(result)
 
     def get_filter_sign(self, item, filter_type, value):
@@ -558,9 +555,19 @@ class AbstractDB(object):
     def get_condition(self, item, field, filter_type, value):
         esc_char = '/'
         cond_field_name = '%s."%s"' % (self.table_alias(item), field.db_field_name)
+        if filter_type > consts.FILTER_CONTAINS:
+            if field.lookup_item:
+                if field.lookup_item1:
+                    cond_field_name = '%s."%s"' % (self.lookup_table_alias1(item, field), field.lookup_db_field1)
+                else:
+                    if field.data_type == consts.KEYS:
+                        cond_field_name = '%s."%s"' % (self.table_alias(item), field.db_field_name)
+                    else:
+                        cond_field_name = '%s."%s"' % (self.lookup_table_alias(item, field), field.lookup_db_field)
+        if filter_type > consts.FILTER_CONTAINS_ALL:
+            filter_type -= consts.FILTER_CONTAINS_ALL
         sql_literal = self.conditions.next_literal
         filter_sign = self.get_filter_sign(item, filter_type, value)
-        cond_string = '%s %s %s'
         if filter_type in (consts.FILTER_IN, consts.FILTER_NOT_IN):
             values = [to_unicode(v) for v in value if v is not None]
             sql_literal = '(%s)' % ', '.join(values)
@@ -576,18 +583,9 @@ class AbstractDB(object):
             sql_literal = ''
             value = None
         else:
-            value = self.convert_field_value(field, value)
             if filter_type in [consts.FILTER_CONTAINS, consts.FILTER_STARTWITH, consts.FILTER_ENDWITH]:
+                value = self.convert_field_value(field, value)
                 value, esc_found = self.escape_search(value, esc_char)
-                if field.lookup_item:
-                    if field.lookup_item1:
-                        cond_field_name = '%s."%s"' % (self.lookup_table_alias1(item, field), field.lookup_db_field1)
-                    else:
-                        if field.data_type == consts.KEYS:
-                            cond_field_name = '%s."%s"' % (self.table_alias(item), field.db_field_name)
-                        else:
-                            cond_field_name = '%s."%s"' % (self.lookup_table_alias(item, field), field.lookup_db_field)
-
                 if filter_type == consts.FILTER_CONTAINS:
                     value = '%' + value + '%'
                 elif filter_type == consts.FILTER_STARTWITH:
@@ -597,12 +595,12 @@ class AbstractDB(object):
                 cond_field_name, value = self.convert_like(cond_field_name, value, field.data_type)
                 if esc_found:
                     value = value + "' ESCAPE '" + esc_char
-        sql = cond_string % (cond_field_name, filter_sign, sql_literal)
-        if field.data_type == consts.BOOLEAN and not field.not_null and value == '0':
-            if filter_sign == '=':
-                sql = '(' + sql + ' OR %s IS NULL)' % cond_field_name
-        if filter_sign == '<>' and not field.not_null:
-            sql = '(' + sql + ' AND %s IS NOT NULL)' % cond_field_name
+        sql = '%s %s %s' % (cond_field_name, filter_sign, sql_literal)
+        if field.data_type == consts.BOOLEAN and value == 0 and filter_sign == '=':
+            value = '1'
+            sql = self.IS_DISTINCT_FROM % (cond_field_name, sql_literal)
+        if filter_sign == '<>':
+            sql = self.IS_DISTINCT_FROM % (cond_field_name, sql_literal)
         return sql, value
 
     def add_master_conditions(self, item, query):
@@ -622,7 +620,7 @@ class AbstractDB(object):
 
     def where_clause(self, item, query):
         self.conditions = WhereCondition(self)
-        if item.master or item.master_field:
+        if item.master:
             self.add_master_conditions(item, query)
         filters = query.filters
         deleted_in_filters = False
@@ -785,27 +783,16 @@ class AbstractDB(object):
             item.log.exception(error_message(e))
             raise
 
-    def get_record_count_queries(self, item, query):
-        result = []
-        filter_in_info = self.split_query(query)
-        if filter_in_info:
-            filter_index, lists = filter_in_info
-            for lst in lists:
-                query.filters[filter_index][2] = lst
-                result.append(item.get_record_count_query(query))
-        else:
-            result.append(item.get_record_count_query(query))
-        return result
-
     def get_record_count_query(self, item, query):
         fields = []
         filters = query.filters
         if filters:
             for (field_name, filter_type, value) in filters:
                 fields.append(item._field_by_name(field_name))
+        where_sql, params = self.where_clause(item, query)
         sql = 'SELECT COUNT(*) FROM %s %s' % (self.from_clause(item, query, fields),
-            self.where_clause(item, query))
-        return sql
+            where_sql)
+        return sql, params
 
     def empty_table_query(self, item):
         return 'DELETE FROM %s' % item.table_name

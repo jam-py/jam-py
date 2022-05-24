@@ -72,10 +72,7 @@ class JamRequest(Request):
 
     @cached_property
     def session_key(self):
-        if self.task.app.admin == self.task:
-            return '%s_session_%s' % (self.task.item_name, self.environ['SERVER_PORT'])
-        else:
-            return '%s_session' % (self.task.item_name)
+        return '%s_session_%s' % (self.task.item_name, self.environ['SERVER_PORT'])
 
     @cached_property
     def client_cookie(self):
@@ -794,6 +791,7 @@ class App(object):
                     file_name = request.form.get('file_name')
                     if f and file_name:
                         base, ext = os.path.splitext(file_name)
+                        ext = ext.lower()
                         upload_result = None
                         if task.on_upload:
                              upload_result = task.on_upload(task, path, file_name, f)
@@ -814,7 +812,8 @@ class App(object):
                                     r['error'] = 'Operation prohibited'
                             else:
                                 if not ext in consts.upload_file_ext:
-                                    r['error'] = 'Invalid file extension'
+                                    r['error'] = '%s - %s' % (request.form.get('file_name'), consts.lang['upload_not_allowed'])
+                                    self.log.error(r['error'])
                             file_name = secure_filename(file_name)
                             file_name = file_name.replace('?', '')
                             base, ext = os.path.splitext(file_name)

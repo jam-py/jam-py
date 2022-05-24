@@ -27,14 +27,14 @@ def reload_task(app):
             app.task.create_pool()
         load_task(app.task, app, first_build=False)
 
-def create_fields(item, parent_id, item_dict):
+def create_fields(item, owner_id, item_dict):
     fields = item_dict['sys_fields']['item']
     fields_dict = item_dict['sys_fields']['rec_dict']
-    recs = fields_dict.get(parent_id)
+    recs = fields_dict.get(owner_id)
     if recs:
         for r in recs:
             fields.rec_no = r
-            if fields.owner_rec_id.value == parent_id:
+            if fields.owner_rec_id.value == owner_id:
                 field = item.add_field(fields.id.value,
                     fields.f_field_name.value,
                     fields.f_name.value,
@@ -72,14 +72,14 @@ def create_fields(item, parent_id, item_dict):
                     do_not_sanitize = fields.f_do_not_sanitize.value
                 )
 
-def create_filters(item, parent_id, item_dict):
+def create_filters(item, owner_id, item_dict):
     filters = item_dict['sys_filters']['item']
     filters_dict = item_dict['sys_filters']['rec_dict']
-    recs = filters_dict.get(parent_id)
+    recs = filters_dict.get(owner_id)
     if recs:
         for r in recs:
             filters.rec_no = r
-            if filters.owner_rec_id.value == parent_id:
+            if filters.owner_rec_id.value == owner_id:
                 item.add_filter(
                     filters.f_filter_name.value,
                     filters.f_name.value,
@@ -93,14 +93,14 @@ def create_filters(item, parent_id, item_dict):
                     filters.id.value,
                 )
 
-def create_params(item, parent_id, item_dict):
+def create_params(item, owner_id, item_dict):
     params = item_dict['sys_report_params']['item']
     params_dict = item_dict['sys_report_params']['rec_dict']
-    recs = params_dict.get(parent_id)
+    recs = params_dict.get(owner_id)
     if recs:
         for r in recs:
             params.rec_no = r
-            if params.owner_rec_id.value == parent_id:
+            if params.owner_rec_id.value == owner_id:
                 item.add_param(
                     params.f_name.value,
                     params.f_param_name.value,
@@ -153,6 +153,7 @@ def create_items(group, item_dict):
                     item._master_id = items.f_master_id.value
                     item._master_rec_id = items.f_master_rec_id.value
                     item._sys_id = items.sys_id.value
+                    item._copy_of = items.f_copy_of.value
                     items.load_interface()
                     item._view_list = items._view_list
                     item._edit_list = items._edit_list
@@ -197,14 +198,15 @@ def create_detail(master, prototype, it):
     detail.item_type_id = it.type_id.value
     detail.table_name = it.f_table_name.value
     detail.gen_name = prototype.gen_name
+    detail.master_applies = it.f_master_applies.value
     detail.visible = it.f_visible.value
     detail.keep_history = prototype.keep_history
     detail.js_filename = it.f_js_filename.value
-    if it.f_master_field.value:
+    detail.master_field = it.f_master_field.value
+    if detail.master_field:
         detail.server_code = prototype.server_code
     else:
         detail.server_code = it.f_server_module.value
-    detail.master_field = it.f_master_field.value
     it.load_interface()
     detail._view_list = it._view_list
     detail._edit_list = it._edit_list
