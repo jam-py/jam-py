@@ -152,6 +152,7 @@ def create_items(group, item_dict):
                     item._deleted_flag = items.f_deleted_flag.value
                     item._master_id = items.f_master_id.value
                     item._master_rec_id = items.f_master_rec_id.value
+                    item._record_version = items.f_record_version.value
                     item._sys_id = items.sys_id.value
                     item._copy_of = items.f_copy_of.value
                     items.load_interface()

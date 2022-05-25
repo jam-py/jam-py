@@ -2248,7 +2248,7 @@
                     var mess;
                     if (data.result.status === consts.RESPONSE || data.error) {
                         if (data.error) {
-                            console.error(data);
+                            console.error(data.error);
                         }
                         if (callback) {
                             callback.call(item, data.result.data);
@@ -6334,7 +6334,7 @@
                                     ) {
                                         self.alert_error(language.cant_delete_used_record);
                                     } else {
-                                        self.warning(e);
+                                        self.alert_error(e);
                                     }
                                     self.refresh_page(true);
                                 }

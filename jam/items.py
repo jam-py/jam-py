@@ -32,8 +32,8 @@ class ServerDataset(Dataset):
         self.on_before_open = None
         self.on_after_open = None
         self.on_apply = None
-        self.on_before_apply = None
-        self.on_after_apply = None
+        self.on_before_apply_record = None
+        self.on_after_apply_record = None
         self.on_count = None
         self.on_field_get_text = None
 
@@ -540,8 +540,8 @@ class AbstractServerTask(AbstrTask):
         self.on_before_open = None
         self.on_after_open = None
         self.on_apply = None
-        self.on_before_apply = None
-        self.on_after_apply = None
+        self.on_before_apply_record = None
+        self.on_after_apply_record = None
         self.on_count = None
         self.on_request = None
         self.on_upload = None

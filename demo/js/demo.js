@@ -496,10 +496,17 @@ function Events17() { // demo.details.invoice_table
 		if (lookup_item) {
 			item.unitprice.value = lookup_item.unitprice.value;
 		}
-		if (field.field_name === 'quantity' || field.field_name === 'unitprice') {
-			item.apply(function() {
-				item.edit();
-			});
+		if (item.edit_form)
+			if (field.field_name === 'quantity' || field.field_name === 'unitprice') {
+				item.server(
+					'calculate', 
+					[item.quantity.value, item.unitprice.value, item.master.taxrate.value], 
+					function(result) {
+						item.amount.value = result.amount;
+						item.tax.value = result.tax;
+						item.total.value = result.total;
+					}
+				);
 		}
 	}
 	this.on_view_form_created = on_view_form_created;

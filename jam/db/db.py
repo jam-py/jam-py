@@ -1,4 +1,3 @@
-
 import json
 import datetime
 
@@ -165,7 +164,19 @@ class AbstractDB(object):
         if pk:
             self.after_insert(cursor, pk)
 
+    def check_record_version(self, delta, cursor):
+        if delta.lock_active:
+            if delta._record_version_field.value != delta._record_version_field.cur_value:
+                raise Exception(consts.language('edit_record_modified'))
+            if delta.change_log.record_status == consts.RECORD_DETAILS_MODIFIED:
+                delta._record_version_field.value += 1
+                delta.execute_query('UPDATE "%s" SET "%s"=COALESCE("%s", 0)+1 WHERE "%s"=%s' % \
+                    (delta.table_name, delta._record_version_db_field_name,
+                        delta._record_version_db_field_name, delta._primary_key_db_field_name,
+                        delta._record_version_field.value))
+
     def update_record(self, delta, cursor):
+        self.check_record_version(delta, cursor)
         row = []
         fields = []
         index = 0
@@ -175,6 +186,8 @@ class AbstractDB(object):
             if self.db_field(field) and field != pk:
                 index += 1
                 fields.append('"%s"=%s' % (field.db_field_name, self.value_literal(index)))
+                if field.field_name == delta._record_version:
+                    field.value += 1
                 value = (field.data, field.data_type)
                 if field.field_name == delta._deleted_flag:
                     value = (0, field.data_type)
@@ -314,7 +327,7 @@ class AbstractDB(object):
                 raise Exception(consts.language('cant_edit') % delta.item_caption)
             self.update_record(delta, cursor)
         elif delta.change_log.record_status == consts.RECORD_DETAILS_MODIFIED:
-            pass
+            self.check_record_version(delta, cursor)
         elif delta.change_log.record_status == consts.RECORD_DELETED:
             if safe and not delta.can_delete():
                 raise Exception(consts.language('cant_delete') % delta.item_caption)
@@ -326,31 +339,28 @@ class AbstractDB(object):
 
     def do_before_apply(self, delta, connection, params):
         item = delta._tree_item
-        if delta.task.on_before_apply:
-            error = delta.task.on_before_apply(item, delta, params, connection)
-            if error:
-                raise Exception(error)
-        if item.on_before_apply:
-            error = item.on_before_apply(item, delta, params, connection)
-            if error:
-                raise Exception(error)
+        if delta.task.on_before_apply_record:
+            result = delta.task.on_before_apply_record(item, delta, params, connection)
+            if result ==False:
+                return result
+        if item.on_before_apply_record:
+            result = item.on_before_apply_record(item, delta, params, connection)
+            if result ==False:
+                return result
 
     def do_after_apply(self, delta, connection, params):
         item = delta._tree_item
-        if delta.task.on_after_apply:
-            error = delta.task.on_after_apply(item, delta, params, connection)
-            if error:
-                raise Exception(error)
-        if item.on_after_apply:
-            error = item.on_after_apply(item, delta, params, connection)
-            if error:
-                raise Exception(error)
+        if delta.task.on_after_apply_record:
+            delta.task.on_after_apply_record(item, delta, params, connection)
+        if item.on_after_apply_record:
+            item.on_after_apply_record(item, delta, params, connection)
 
     def process_records(self, delta, connection, cursor, params, safe):
         for d in delta:
-            self.do_before_apply(delta, connection, params)
+            res = self.do_before_apply(delta, connection, params)
             details = []
-            self.process_record(d, connection, cursor, safe)
+            if res != False:
+                self.process_record(d, connection, cursor, safe)
             for detail in d.details:
                 if d.change_log.record_status == consts.RECORD_DELETED:
                     self.delete_detail_records(d, connection, cursor, detail)

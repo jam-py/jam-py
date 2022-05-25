@@ -1783,6 +1783,10 @@ class MasterDataSet(AbstractDataSet):
             self.post()
         self.do_apply(params, safe, connection)
 
+    def copy_record(self, item):
+        for f in item.fields:
+            self.field_by_name(f.field_name).value = f.value
+
     def detail_by_ID(self, ID):
         ID = int(ID)
         for detail in self.details:
