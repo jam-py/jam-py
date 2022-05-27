@@ -57,7 +57,7 @@ def export_task(task, url):
             os.makedirs(result_path)
         result_file = '%s_%s_%s_%s.zip' % (items.f_item_name.value, consts.VERSION,
             task.app.jam_version, datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-        os.rename(to_unicode(file_name, 'utf-8'), os.path.join(to_unicode(result_path, 'utf-8'), to_unicode(result_file, 'utf-8')))
+        os.rename(to_unicode(zip_file_name, 'utf-8'), os.path.join(to_unicode(result_path, 'utf-8'), to_unicode(result_file, 'utf-8')))
         if url:
             result = '%s/static/internal/%s' % (url, result_file)
         else:
