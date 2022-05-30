@@ -316,7 +316,7 @@ class DBField(object):
             if self.row and self.bind_index >= 0:
                 result = None
                 self.owner.init_history()
-                cur_row = self.owner.change_log.db_record
+                cur_row = self.owner.change_log.record_info.cur_record
                 if cur_row:
                     result = cur_row[self.bind_index]
                 return result
@@ -640,6 +640,7 @@ class RecInfo(object):
         self.record_status = consts.RECORD_UNCHANGED;
         self.log_index = None;
         self.details = {};
+        self.cur_record = None
 
     def add_detail(self, detail_change_log):
         self.details[detail_change_log.item.ID] = detail_change_log;
@@ -895,6 +896,7 @@ class AbstractDataSet(object):
         self._deleted_flag = None
         self._record_version = None
         self.master_field = None
+        self._lookup_refs = {}
         self._master_field = None
         self._master_field_db_field_name = None
         self._master_id = None
@@ -930,6 +932,7 @@ class AbstractDataSet(object):
         self.edit_lock = False
         self.select_all = False
         self.on_field_get_text = None
+        self._apply_connection = None
 
     def __getitem__(self, key):
         if key == 0:
@@ -1080,12 +1083,13 @@ class AbstractDataSet(object):
         for field_def in result.field_defs:
             field = DBField(result, field_def)
             result._fields.append(field)
-        result.prepare_fields()
+        result.__prepare_fields()
 
-        for filter_def in result.filter_defs:
-            fltr = DBFilter(result, filter_def)
-            result.filters.append(fltr)
-        result.prepare_filters()
+        if filters:
+            for filter_def in result.filter_defs:
+                fltr = DBFilter(result, filter_def)
+                result.filters.append(fltr)
+            result.__prepare_filters()
 
         result._events = self._events
         if handlers:
@@ -1104,7 +1108,7 @@ class AbstractDataSet(object):
         for field_def in result.field_defs:
             field = DBField(result, field_def)
             result._fields.append(field)
-        result.prepare_fields()
+        result.__prepare_fields()
 
         for field in result.fields:
             if hasattr(result, field.field_name):
@@ -1122,10 +1126,25 @@ class AbstractDataSet(object):
         result.first()
         return result
 
-    def prepare_fields(self):
+    def _prepare_dataset(self):
+        self.__prepare_fields()
+        self.__prepare_filters()
+
+    def _lookup_item_is_master(self, lookup_item):
+        if self.task.ID != 0:
+            for detail in lookup_item.details:
+                if detail.prototype.ID == self.ID:
+                    return True
+
+    def __prepare_fields(self):
         for field in self._fields:
             if field.lookup_item and type(field.lookup_item) == int:
                 field.lookup_item = self.task.item_by_ID(field.lookup_item)
+                if not self.master and not field.master_field and \
+                    not self._lookup_item_is_master(field.lookup_item):
+                    if not field.lookup_item._lookup_refs.get(self.ID):
+                        field.lookup_item._lookup_refs[self.ID] = []
+                    field.lookup_item._lookup_refs[self.ID].append(field.ID)
             if field.master_field and type(field.master_field) == int:
                 field.master_field = self._field_by_ID(field.master_field)
             if field.lookup_field and type(field.lookup_field) == int:
@@ -1183,7 +1202,7 @@ class AbstractDataSet(object):
                     setattr(self, '%s_%s' % (sys_field_name, 'db_field_name'), field.db_field_name)
         self.master_field = self._master_field
 
-    def prepare_filters(self):
+    def __prepare_filters(self):
         for fltr in self.filters:
             setattr(self.filters, fltr.filter_name, fltr)
             if fltr.field.lookup_item and type(fltr.field.lookup_item) == int:
@@ -1759,15 +1778,7 @@ class MasterDataSet(AbstractDataSet):
     def do_apply(self, params, safe, connection):
         pass
 
-    @property
-    def _top_master(self):
-        result = self
-        while result.master:
-            result = result.master
-        return result;
-
-
-    def apply(self, connection=None, params=None, safe=False):
+    def apply(self, connection=None, params=None, safe=False, caller=None):
         result = None
         if self.master:
             if self.master_applies or self.master or self.virtual_table:
@@ -1777,15 +1788,18 @@ class MasterDataSet(AbstractDataSet):
                 if item.is_changing():
                     item.post()
                 item = item.master
-            master.apply(connection=None, params=None, safe=False)
+            master.apply(connection=None, params=None, safe=False, caller=self)
             return
+        if not caller:
+            caller = self
         if self.is_changing():
             self.post()
-        self.do_apply(params, safe, connection)
+        self.do_apply([params, caller.ID], safe, connection)
 
     def copy_record(self, item):
         for f in item.fields:
-            self.field_by_name(f.field_name).value = f.value
+            self.field_by_name(f.field_name).data = f.data
+        self._modified = True
 
     def detail_by_ID(self, ID):
         ID = int(ID)
@@ -1805,7 +1819,7 @@ class MasterDataSet(AbstractDataSet):
 
     def init_history(self):
         if self._is_delta:
-            cur_row = self.change_log.db_record
+            cur_row = self.change_log.record_info.cur_record
             if not cur_row and not self.rec_inserted():
                 if self.master:
                     copy = self.prototype.copy(handlers=False, details=False, filters=False)
@@ -1819,7 +1833,7 @@ class MasterDataSet(AbstractDataSet):
                     for f in copy.fields:
                         if not f.master_field and not f.calculated:
                             cur_row.append(f.data)
-                    self.change_log.db_record = cur_row
+                    self.change_log.record_info.cur_record = cur_row
 
     def init_delta_details(self, client_changes):
         for detail in self.details:
@@ -1832,6 +1846,7 @@ class MasterDataSet(AbstractDataSet):
     def delta(self, changes=None, client_changes=False):
         result = self.copy(filters=False, details=True, handlers=False)
         result.change_log = ChangeLog(result)
+        result._lookup_refs = self._lookup_refs
         result.log_changes = False
         result._is_delta = True
         result._tree_item = self
@@ -1892,9 +1907,9 @@ class MasterDetailDataset(MasterDataSet):
             params = {}
         if self.master_field:
             if self.owner.rec_count and not self.owner.is_new():
-                params['__master_field'] = self.owner.field_by_name(self.owner._primary_key).value;
+                params['__master_field'] = self.owner.field_by_name(self.owner._primary_key).value
             else:
-                open_empty = true;
+                open_empty = True
         if self.master:
             if not self.disabled and self.master.record_count() > 0:
                 params['__master_id'] = None
@@ -1970,26 +1985,6 @@ class MasterDetailDataset(MasterDataSet):
             records += self._dataset
         self._dataset = records
         self.first()
-
-    # ~ def insert(self):
-        # ~ if self.master and not self.master.is_changing():
-            # ~ raise DatasetException(consts.language('insert_master_not_changing') % self.item_name)
-        # ~ super(MasterDetailDataset, self).insert()
-
-    # ~ def append(self):
-        # ~ if self.master and not self.master.is_changing():
-            # ~ raise DatasetException(consts.language('append_master_not_changing') % self.item_name)
-        # ~ super(MasterDetailDataset, self).append()
-
-    # ~ def edit(self):
-        # ~ if self.master and not self.master.is_changing():
-            # ~ raise DatasetException(consts.language('edit_master_not_changing') % self.item_name)
-        # ~ super(MasterDetailDataset, self).edit()
-
-    # ~ def delete(self):
-        # ~ if self.master and not self.master.is_changing():
-            # ~ raise DatasetException(consts.language('delete_master_not_changing') % self.item_name)
-        # ~ super(MasterDetailDataset, self).delete()
 
     def _store_modified(self, result=None):
         if result is None:

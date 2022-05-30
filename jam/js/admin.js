@@ -1537,16 +1537,9 @@ function Events3() { // sys_items
 					else if (height > 520) {
 						height = 520;
 					}
-					// if (item.id.value && !item.server('server_group_is_empty', [item.id.value])) {
-					//	 item.edit_form.find("#new-btn").prop("disabled", true);
-					//	 item.edit_form.find("#delete-btn").prop("disabled", true);
-					//	 update_sys_fields_read_only(item, true);
-					// }
-					// else {
 					item.edit_form.find("#new-btn").prop("disabled", false);
 					item.edit_form.find("#delete-btn").prop("disabled", false);
 					update_sys_fields_read_only(item, false);
-					// }
 				}
 				else {
 					height = $(window).height() - 490;
@@ -1804,6 +1797,10 @@ function Events3() { // sys_items
 		}
 		if (item.f_master_rec_id) {
 			item.f_master_rec_id.read_only = value;
+		}
+		if (task._manual_update) {
+			item.f_deleted_flag.read_only = false;
+			item.f_record_version.read_only = false;
 		}
 	}
 	
@@ -2970,7 +2967,8 @@ function Events8() { // app_builder.catalogs.sys_params
 			item.create_inputs(general, {
 				fields: ['f_production', 'f_safe_mode', 'f_debugging', 'f_language', 'f_persist_con',
 				'f_con_pool_size', 'f_compressed_js',
-				'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_lock_item', 'f_timeout',
+				// 'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_lock_item', 'f_timeout',
+				'f_single_file_js', 'f_dynamic_js', 'f_history_item', 'f_timeout',
 				'f_ignore_change_ip', 'f_max_content_length', 'f_import_delay',
 				'f_delete_reports_after', 'f_upload_file_ext', 'f_version'
 				],
@@ -6390,8 +6388,12 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 					error = 'You can not delete primary field.';
 					return false;
 				}
-				if (c.id.value === item.owner.f_deleted_flag.value) {
+				else if (c.id.value === item.owner.f_deleted_flag.value) {
 					error = 'You can not delete deleted flag field.';
+					return false;
+				}
+				else if (c.id.value === item.owner.f_record_version.value) {
+					error = 'You can not delete record version field.';
 					return false;
 				}
 			}
@@ -6418,6 +6420,9 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 		}
 		else if (item.id.value === item.owner.f_master_rec_id.value) {
 			item.owner.f_master_rec_id.value = null;
+		}
+		else if (item.id.value === item.owner.f_record_version.value) {
+			item.owner.f_record_version.value = null;
 		}
 	}
 	

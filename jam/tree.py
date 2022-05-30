@@ -346,8 +346,7 @@ class AbstrItem(AbstractItem):
         self.table_name = info['table_name']
 
     def bind_item(self):
-        self.prepare_fields()
-        self.prepare_filters()
+        self._prepare_dataset()
 
     def can_create(self):
         return self.check_operation('can_create')

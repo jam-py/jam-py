@@ -219,6 +219,27 @@ class AbstractDB(object):
                 (delta.table_name, delta._primary_key_db_field_name, id_literal)
         delta.execute_query(cursor, sql)
 
+    def check_lookup_refs(self, delta, connection, cursor):
+        return
+        if delta._lookup_refs:
+            print delta.item_name, delta._lookup_refs
+            for item_id, field_ids in iteritems(delta._lookup_refs):
+                item = delta.task.item_by_ID(item_id)
+                print item.item_name
+                for field_id in field_ids:
+                    field = item.field_by_ID(field_id)
+                    print '    ', field.field_name
+                    import traceback
+                    copy = item.copy(filters=False, details=False, handlers=False)
+                    print traceback.print_stack()
+                    # ~ field_name = field.field_name
+                    # ~ copy.set_where({field_name: delta.id.value})
+                    # ~ copy.set_fields([field.field_name])
+                    # ~ copy.open(expanded=False, limit=1, connection=connection)
+                    # ~ print copy.rec_count
+                    # ~ if copy.rec_count:
+                        # ~ pass
+
     def get_user(self, delta):
         user = None
         if delta.session:
@@ -331,6 +352,7 @@ class AbstractDB(object):
         elif delta.change_log.record_status == consts.RECORD_DELETED:
             if safe and not delta.can_delete():
                 raise Exception(consts.language('cant_delete') % delta.item_caption)
+            self.check_lookup_refs(delta, connection, cursor)
             self.delete_record(delta, cursor)
         else:
             raise Exception('execute_delta - invalid %s record_status %s, record: %s' % \
@@ -339,21 +361,23 @@ class AbstractDB(object):
 
     def do_before_apply(self, delta, connection, params):
         item = delta._tree_item
+        delta_params = item._get_delta_params(delta, params)
         if delta.task.on_before_apply_record:
-            result = delta.task.on_before_apply_record(item, delta, params, connection)
+            result = delta.task.on_before_apply_record(item, delta, delta_params, connection)
             if result ==False:
                 return result
         if item.on_before_apply_record:
-            result = item.on_before_apply_record(item, delta, params, connection)
+            result = item.on_before_apply_record(item, delta, delta_params, connection)
             if result ==False:
                 return result
 
     def do_after_apply(self, delta, connection, params):
         item = delta._tree_item
+        delta_params = item._get_delta_params(delta, params)
         if delta.task.on_after_apply_record:
-            delta.task.on_after_apply_record(item, delta, params, connection)
+            delta.task.on_after_apply_record(item, delta, delta_params, connection)
         if item.on_after_apply_record:
-            item.on_after_apply_record(item, delta, params, connection)
+            item.on_after_apply_record(item, delta, delta_params, connection)
 
     def process_records(self, delta, connection, cursor, params, safe):
         for d in delta:

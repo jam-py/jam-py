@@ -428,7 +428,7 @@ function Events16() { // demo.journals.invoices
 	
 	function on_field_changed(field, lookup_item) {
 		if (field.field_name === 'taxrate') {
-			field.owner.apply(function(error, dataset) {
+			field.owner.apply(function(error) {
 				if (error) {
 					item.alert_error(error);   
 				}

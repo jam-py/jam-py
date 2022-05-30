@@ -312,6 +312,9 @@
                 if (args[i] instanceof jQuery) {
                     result['jquery'] = args[i]
                 }
+                else if (args[i] instanceof AbsrtactItem) {
+                    result['item'] = args[i]
+                }
                 else {
                     result[typeof args[i]] = args[i];
                 }
@@ -5422,8 +5425,35 @@
             }
         }
 
+        _do_before_apply(caller) {
+            let item = caller;
+            if (item.on_before_apply) {
+                item.on_before_apply.call(item, item, params);
+            }
+            while (item.master) {
+                item = item.master;
+                if (item.on_before_apply) {
+                    item.on_before_apply.call(item, item, params);
+                }
+            }
+        }
+
+        _do_after_apply(caller) {
+            let item = caller;
+            if (item.on_after_apply) {
+                item.on_after_apply.call(item, item, params);
+            }
+            while (item.master) {
+                item = item.master;
+                if (item.on_after_apply) {
+                    item.on_after_apply.call(item, item, params);
+                }
+            }
+        }
+
         apply() {
             let args = this._check_args(arguments),
+                caller = args['item'],
                 callback = args['function'],
                 params = args['object'],
                 async = args['boolean'],
@@ -5432,7 +5462,7 @@
                 result,
                 data;
             if (this.master) {
-                if(this.master_applies || this.virtual_table || this._applying) {
+                if(this.master_applies) {
                     if (callback) {
                         callback.call(this);
                     }
@@ -5445,53 +5475,64 @@
                     }
                     item = item.master;
                 }
-                item.apply();
-                //~ return;
+                result = item.apply(this, params, callback);
+                return
+            }
+            if (!caller) {
+                caller = this;
+            }
+            if(this.virtual_table) {
+                if (callback) {
+                    callback.call(caller);
+                }
+                return;
+            }
+            if(this._applying) {
+                if (callback) {
+                    callback.call(caller, 'The data is currently stored in the database.');
+                }
+                return;
             }
             if (this.is_changing()) {
                 this.post();
             }
             if (this.change_log && this.change_log.get_changes(changes)) {
                 params = $.extend({}, params);
-                if (this.on_before_apply) {
-                    this.on_before_apply.call(this, this, params);
-                }
+                this._do_before_apply(caller)
                 this._applying = true;
                 if (callback || async) {
-                    this.send_request('apply', [changes, params], function(data) {
-                        self._process_apply(data, params, callback);
+                    this.send_request('apply', [changes, [params, caller.ID]], function(data) {
+                        self._process_apply(caller, data, params, callback);
                     });
                 } else {
-                    data = this.send_request('apply', [changes, params]);
-                    result = this._process_apply(data, params);
+                    data = this.send_request('apply', [changes, [params, caller.ID]]);
+                    result = this._process_apply(caller, data, params);
                 }
             }
             else if (callback) {
                 if (callback) {
-                    callback.call(this);
+                    callback.call(caller);
                 }
             }
             return result;
         }
 
-        _process_apply(response, params, callback) {
+        _process_apply(caller, response, params, callback) {
             this._applying = false;
             if (response) {
                 let data = response[0],
                     error = response[1];
                 if (error) {
                     if (callback) {
-                        callback.call(this, error);
+                        callback.call(caller, error);
                     }
                     throw new Error(error);
                 }
                 else {
                     this.change_log.update(data);
-                    if (this.on_after_apply) {
-                        this.on_after_apply.call(this, this);
-                    }
+                    this._do_after_apply(caller);
                     if (callback) {
-                        callback.call(this);
+                        callback.call(caller);
                     }
                     this.update_controls(consts.UPDATE_APPLIED);
                     return data;
@@ -10823,7 +10864,8 @@
 
         close_editor() {
             if (this.editor) {
-                let self = this;
+                let self = this,
+                    old_data = this.editor.old_data;
                 if (!this.item.is_changing()) {
                     this.item.edit();
                 }
@@ -10832,10 +10874,16 @@
                 if (this.item.is_changing()) {
                     this.item.post();
                 }
-                this.item.apply(function() {
+                this.item.apply(function(error) {
+                    if (error) {
+                        self.selected_field.data = old_data
+                        self.update_field(self.selected_field)
+                        self.item.alert_error(error);
+                    }
                     if (self.item.master) {
                         self.item.master.edit();
                     }
+                    self.show_selection();
                 });
             }
         }
@@ -10873,6 +10921,7 @@
                 }
                 this.edit_mode = true;
                 this.editor = new DBTableInput(this, this.selected_field);
+                this.editor.old_data = this.selected_field.data
                 this.editor.$control_group.find('.controls, .input-prepend, .input-append, input').css('margin', 0);
                 this.editor.$control_group.css('margin', 0);
 

@@ -242,14 +242,18 @@ class ServerDataset(Dataset):
         for d in delta.details:
             self.set_apply_connection(d, con)
 
+    def _get_delta_params(self, delta, params):
+        if params:
+            cur_params, cur_ID = params
+            if cur_ID == delta.ID:
+                return cur_params
+
     def apply_changes(self, data, safe, connection=None):
         result = None
         result_data = None
         changes, params = data
-        if not params:
-            params = {}
-        params['__safe'] = safe
         delta = self.delta(changes, safe)
+        delta_params = self._get_delta_params(delta, params)
         if connection:
             con = connection
         else:
@@ -257,11 +261,12 @@ class ServerDataset(Dataset):
         self.set_apply_connection(delta, con)
         try:
             if self.task.on_apply:
-                result = self.task.on_apply(self, delta, params, con)
+                result = self.task.on_apply(self, delta, delta_params, con)
             if result is None and self.on_apply:
-                result = self.on_apply(self, delta, params, con)
+                result = self.on_apply(self, delta, delta_params, con)
             if result is None:
                 result = self.apply_delta(delta, params, con)
+            # ~ raise Exception('delta') #!!!!!!!!!!!!!!!!!
             if not connection and con:
                 con.commit()
         finally:
