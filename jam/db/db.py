@@ -220,25 +220,16 @@ class AbstractDB(object):
         delta.execute_query(cursor, sql)
 
     def check_lookup_refs(self, delta, connection, cursor):
-        return
         if delta._lookup_refs:
-            print delta.item_name, delta._lookup_refs
-            for item_id, field_ids in iteritems(delta._lookup_refs):
-                item = delta.task.item_by_ID(item_id)
-                print item.item_name
-                for field_id in field_ids:
-                    field = item.field_by_ID(field_id)
-                    print '    ', field.field_name
-                    import traceback
+            for item, fields in iteritems(delta._lookup_refs):
+                for field in fields:
                     copy = item.copy(filters=False, details=False, handlers=False)
-                    print traceback.print_stack()
-                    # ~ field_name = field.field_name
-                    # ~ copy.set_where({field_name: delta.id.value})
-                    # ~ copy.set_fields([field.field_name])
-                    # ~ copy.open(expanded=False, limit=1, connection=connection)
-                    # ~ print copy.rec_count
-                    # ~ if copy.rec_count:
-                        # ~ pass
+                    field_name = field.field_name
+                    copy.set_where({field_name: delta.id.value})
+                    copy.set_fields([field.field_name])
+                    copy.open(expanded=False, limit=1, connection=connection)
+                    if copy.rec_count:
+                        raise Exception(consts.language('cant_delete_used_record'))
 
     def get_user(self, delta):
         user = None

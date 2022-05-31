@@ -5425,28 +5425,37 @@
             }
         }
 
-        _do_before_apply(caller) {
-            let item = caller;
-            if (item.on_before_apply) {
-                item.on_before_apply.call(item, item, params);
+        _do_before_apply_handler(item, caller, params) {
+            let cur_params = {}
+            if (item == caller) {
+                cur_params = params;
             }
+            if (item.on_before_apply) {
+                item.on_before_apply.call(item, item, cur_params);
+            }
+            return cur_params;
+        }
+
+        _do_before_apply(caller, params) {
+            let item = caller,
+                result = {};
+            result[item.ID + ''] = this._do_before_apply_handler(item, caller, params);
             while (item.master) {
                 item = item.master;
-                if (item.on_before_apply) {
-                    item.on_before_apply.call(item, item, params);
-                }
+                result[item.ID + ''] = this._do_before_apply_handler(item, caller, params);
             }
+            return result;
         }
 
         _do_after_apply(caller) {
             let item = caller;
             if (item.on_after_apply) {
-                item.on_after_apply.call(item, item, params);
+                item.on_after_apply.call(item, item);
             }
             while (item.master) {
                 item = item.master;
                 if (item.on_after_apply) {
-                    item.on_after_apply.call(item, item, params);
+                    item.on_after_apply.call(item, item);
                 }
             }
         }
@@ -5487,7 +5496,7 @@
                 }
                 return;
             }
-            if(this._applying) {
+            if (this._applying) {
                 if (callback) {
                     callback.call(caller, 'The data is currently stored in the database.');
                 }
@@ -5498,15 +5507,15 @@
             }
             if (this.change_log && this.change_log.get_changes(changes)) {
                 params = $.extend({}, params);
-                this._do_before_apply(caller)
+                let params_dict = this._do_before_apply(caller, params);
                 this._applying = true;
                 if (callback || async) {
-                    this.send_request('apply', [changes, [params, caller.ID]], function(data) {
-                        self._process_apply(caller, data, params, callback);
+                    this.send_request('apply', [changes, params_dict], function(data) {
+                        self._process_apply(caller, data, callback);
                     });
                 } else {
-                    data = this.send_request('apply', [changes, [params, caller.ID]]);
-                    result = this._process_apply(caller, data, params);
+                    data = this.send_request('apply', [changes, params_dict]);
+                    result = this._process_apply(caller, data);
                 }
             }
             else if (callback) {
@@ -5517,7 +5526,7 @@
             return result;
         }
 
-        _process_apply(caller, response, params, callback) {
+        _process_apply(caller, response, callback) {
             this._applying = false;
             if (response) {
                 let data = response[0],

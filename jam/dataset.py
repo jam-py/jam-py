@@ -1142,9 +1142,10 @@ class AbstractDataSet(object):
                 field.lookup_item = self.task.item_by_ID(field.lookup_item)
                 if not self.master and not field.master_field and \
                     not self._lookup_item_is_master(field.lookup_item):
-                    if not field.lookup_item._lookup_refs.get(self.ID):
-                        field.lookup_item._lookup_refs[self.ID] = []
-                    field.lookup_item._lookup_refs[self.ID].append(field.ID)
+                    if self.task.item_by_ID(self.ID) == self:
+                        if not field.lookup_item._lookup_refs.get(self):
+                            field.lookup_item._lookup_refs[self] = []
+                        field.lookup_item._lookup_refs[self].append(field)
             if field.master_field and type(field.master_field) == int:
                 field.master_field = self._field_by_ID(field.master_field)
             if field.lookup_field and type(field.lookup_field) == int:
@@ -1794,7 +1795,8 @@ class MasterDataSet(AbstractDataSet):
             caller = self
         if self.is_changing():
             self.post()
-        self.do_apply([params, caller.ID], safe, connection)
+        id_str = str(caller.ID)
+        self.do_apply({id_str: params}, safe, connection)
 
     def copy_record(self, item):
         for f in item.fields:

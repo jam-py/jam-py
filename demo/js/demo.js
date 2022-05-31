@@ -4,7 +4,6 @@
 function Events1() { // demo 
 
 	function on_page_loaded(task) {
-		
 		$("title").text(task.item_caption);
 		$("#app-title").text(task.item_caption);
 		  

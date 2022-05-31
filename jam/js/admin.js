@@ -5699,7 +5699,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 		item.create_inputs(item.edit_form.find("#definition"), {fields: fields});
 		item.create_inputs(item.edit_form.find("#lookups"),
 			{fields: ['f_object', 'f_object_field', 'f_object_field1', 'f_object_field2', 'f_master_field',
-				'f_enable_typehead', 'f_lookup_values']});
+				'f_enable_typehead', 'f_lookup_values', 'f_check_before_deleting']});
 		item.create_inputs(item.edit_form.find("#interface"),
 			{fields: ['f_alignment', 'f_mask', 'f_do_not_sanitize', 'f_placeholder', 'f_help']});
 		item.create_inputs(item.edit_form.find("#text-interface"),
@@ -6406,6 +6406,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	
 	function on_after_append(item) {
 		item.f_data_type.read_only = false;
+		item.f_enable_typehead.value = true;
 	}
 	
 	function on_before_delete(item) {
