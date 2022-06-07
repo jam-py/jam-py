@@ -71,6 +71,7 @@ def create_fields(item, owner_id, item_dict):
                     textarea = fields.f_textarea.value,
                     do_not_sanitize = fields.f_do_not_sanitize.value
                 )
+                field.check_before_deleting = fields.f_check_before_deleting.value
 
 def create_filters(item, owner_id, item_dict):
     filters = item_dict['sys_filters']['item']

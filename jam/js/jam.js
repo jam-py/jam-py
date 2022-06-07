@@ -785,7 +785,7 @@
                     .tooltip({placement: 'bottom', title: language.refresh_page, trigger: 'hover'});
                 header.find(".refresh-btn").css('cursor', 'default').click(function(e) {
                     e.preventDefault();
-                    self.refresh_page(true);
+                    self.refresh(true);
                 });
             }
             else {
@@ -4916,7 +4916,7 @@
             }
         }
 
-        _do_on_refresh_page(rec_no, callback) {
+        _do_on_refresh(rec_no, callback) {
             if (rec_no !== null) {
                 this.rec_no = rec_no;
             }
@@ -4925,26 +4925,28 @@
             }
         }
 
-        refresh_page(call_back) {
+        refresh_page(call_back) { // depricated
+            this.refresh(call_back);
+        }
+
+        refresh(call_back) {
             var args = this._check_args(arguments),
                 callback = args['function'],
                 async = args['boolean'],
                 self = this,
                 rec_no = this.rec_no;
-            if (!this.master) {
-                if (callback || async) {
-                    this.reopen(this._open_params.__offset, {}, function() {
-                        self._do_on_refresh_page(rec_no, callback);
-                    });
-                }
-                else {
-                    this.reopen(this._open_params.__offset, {});
-                    this._do_on_refresh_page(rec_no, callback);
-                }
+            if (callback || async) {
+                this._reopen(this._open_params.__offset, {}, function() {
+                    self._do_on_refresh(rec_no, callback);
+                });
+            }
+            else {
+                this._reopen(this._open_params.__offset, {});
+                this._do_on_refresh(rec_no, callback);
             }
         }
 
-        reopen(offset, params, callback) {
+        _reopen(offset, params, callback) {
             var options = {};
             if (this.paginate) {
                 this.open({offset: offset, params: params}, callback);
@@ -5129,7 +5131,7 @@
                     params.__search = [field_name, text, filter_type, search_text];
                 }
                 if (paginating) {
-                    this.reopen(0, params, callback);
+                    this._reopen(0, params, callback);
                 }
                 else {
                     this.open({params: params}, callback);
@@ -6184,7 +6186,7 @@
                             if (on_after_apply) {
                                 on_after_apply(copy, copy);
                             }
-                            self.refresh_page(true);
+                            self.refresh(true);
                         }
                     });
                 }
@@ -6304,7 +6306,7 @@
                         if (on_after_apply) {
                             on_after_apply(copy, copy);
                         }
-                        self.refresh_page(true);
+                        self.refresh(true);
                         self.update_controls(consts.UPDATE_APPLIED);
                     }
                 });
@@ -6344,7 +6346,7 @@
             else {
                 if (refresh) {
                     this.disable_edit_form();
-                    this.refresh_page(function() {
+                    this.refresh(function() {
                         self.close_edit_form();
                     })
                 }
@@ -6386,14 +6388,14 @@
                                     } else {
                                         self.alert_error(e);
                                     }
-                                    self.refresh_page(true);
+                                    self.refresh(true);
                                 }
                                 else {
                                     if (callback) {
                                         callback.call(this, this);
                                     }
                                     else if (refresh_page) {
-                                        self.refresh_page(true);
+                                        self.refresh(true);
                                     }
                                 }
                             });
@@ -6627,7 +6629,7 @@
                 catch (e) {
                     params = {};
                 }
-                this.reopen(0, params, function() {
+                this._reopen(0, params, function() {
                     self.close_filter_form();
                 });
             }
@@ -11113,7 +11115,7 @@
                     bl.find("#mshow-selected").click(function(e) {
                         e.preventDefault();
                         self.item._show_selected = !self.item._show_selected;
-                        self.item.reopen(0, {__show_selected_changed: true}, function() {
+                        self.item._reopen(0, {__show_selected_changed: true}, function() {
                             self.selections_update_selected();
                             self.$table.focus();
                         });

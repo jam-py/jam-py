@@ -426,14 +426,14 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_field_changed(field, lookup_item) {
-		if (field.field_name === 'taxrate') {
+		if (field.field_name === 'taxrate' || field.field_name === 'customer') {
 			field.owner.apply(function(error) {
 				if (error) {
 					item.alert_error(error);   
 				}
-				// else {
-				//	 field.owner.invoice_table.reopen();
-				// }
+				else {
+					field.owner.invoice_table.refresh();
+				}
 				field.owner.edit();
 			});
 		}
@@ -501,9 +501,11 @@ function Events17() { // demo.details.invoice_table
 					'calculate', 
 					[item.quantity.value, item.unitprice.value, item.master.taxrate.value], 
 					function(result) {
-						item.amount.value = result.amount;
-						item.tax.value = result.tax;
-						item.total.value = result.total;
+						if (item.is_changing()) {
+							item.amount.value = result.amount;
+							item.tax.value = result.tax;
+							item.total.value = result.total;
+						}
 					}
 				);
 		}

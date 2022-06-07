@@ -745,7 +745,6 @@ class Detail(AbstrDetail, ServerDataset):
         self.item_type_id = consts.DETAIL_TYPE
         self.master_field = master_field
         self.master = owner
-        self.soft_delete = None
 
     def init_fields(self):
         self.field_defs = []

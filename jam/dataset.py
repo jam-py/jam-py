@@ -79,6 +79,7 @@ class DBField(object):
         self.filter = None
         self.calculated = field_def[FIELD_CALC]
         self.on_field_get_text_called = None
+        self.check_before_deleting = False
 
     def __setattr__(self, name, value):
         if name != 'owner' and self.owner and self.owner.task_locked():
@@ -928,6 +929,7 @@ class AbstractDataSet(object):
         self._open_params = {}
         self._disabled_count = 0
         self._is_delta = False
+        self.soft_delete = None
         self.keep_history = False
         self.edit_lock = False
         self.select_all = False
@@ -1140,7 +1142,8 @@ class AbstractDataSet(object):
         for field in self._fields:
             if field.lookup_item and type(field.lookup_item) == int:
                 field.lookup_item = self.task.item_by_ID(field.lookup_item)
-                if not self.master and not field.master_field and \
+                if field.lookup_item.soft_delete and field.check_before_deleting and \
+                    not self.master and not field.master_field and \
                     not self._lookup_item_is_master(field.lookup_item):
                     if self.task.item_by_ID(self.ID) == self:
                         if not field.lookup_item._lookup_refs.get(self):
