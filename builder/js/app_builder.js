@@ -1583,6 +1583,7 @@ function Events3() { // sys_items
 					item.edit_form.find("#add-fields-btn").click(function() {
 						add_fields_to_copy(item);
 					})
+					item.edit_form.find("#new-btn").hide();
 				}
 				item.edit_form.find("#new-btn").on('click.task', function() {
 					item.sys_fields.append_record()
@@ -1599,6 +1600,44 @@ function Events3() { // sys_items
 		}
 	}
 	
+	function update_field_selections(item, creating, added_id, deleted_id) {
+		let result = item.selections.slice(),
+			clone = item.clone();
+		if (deleted_id) {		
+			clone.each(function(c) {
+				let index = result.indexOf(c.id.value)
+				if (index !== -1) {
+					if (c.f_master_field.value === deleted_id) {
+						result.splice(index, 1);
+					}	   
+				}
+			});
+		}
+		if (added_id) {
+			if (clone.locate('id', added_id)) {
+				let index,
+					master_id = clone.f_master_field.value;
+				if (master_id) {
+					index = result.indexOf(master_id)
+					if (index === -1) {
+						if (!creating) {
+							return result;
+							let fields_clone = task.sys_items.sys_fields.clone();
+							if (fields_clone.locate('id', master_id)) {
+								return result;
+							}
+						}
+						let index = result.indexOf(added_id);
+						if (index !== -1) {
+							result.splice(index, 1);
+						}
+					}
+				}
+			}
+		}
+		return result;
+	}
+	
 	function add_fields_to_copy(item, creating) {
 		let copy_source = item.copy({handlers: false})
 			copy_source.set_where({id: item.f_copy_of.value});
@@ -1606,22 +1645,14 @@ function Events3() { // sys_items
 		if (copy_source.rec_count) {
 			let clone = item.sys_fields.clone(),
 				fields = task.sys_fields.copy({handlers: false});
-			if (creating) {
-				fields.set_where({owner_rec_id: copy_source.id.value})
-			}
-			else {
-				fields.set_where({owner_rec_id: copy_source.id.value, f_master_field__isnull: true})
-			}
+			fields.set_where({owner_rec_id: copy_source.id.value})
 			fields.set_order_by(['f_field_name']);
 			fields.open();
 			if (creating) {
 				fields.selections = []
 				fields.view_options.title = 'Select fields to copy';
 				fields.each(function(f) {
-					if (f.id.value === copy_source.f_primary_key.value || 
-						f.id.value === copy_source.f_deleted_flag.value) {
-						fields.selections.add(f.id.value)		
-					}
+					fields.selections.add(f.id.value);
 				})
 			}
 			else {
@@ -1635,11 +1666,31 @@ function Events3() { // sys_items
 					}
 				};
 			}
+			fields.first();
 			fields.table_options.fields = ['f_field_name'];
 			fields.table_options.multiselect = true;
 			fields.paginate = false;
 			fields.on_before_open = function(flds) {
 				flds.abort();
+			}
+			fields.on_selection_changed = function(it, added, deleted) {
+				if (!fields.sel_changing) {
+					fields.sel_changing = true;
+					try {
+						let added_id,
+							deleted_id;
+						if (added && added.length === 1) {
+							added_id = added[0];
+						}
+						if (deleted && deleted.length === 1) {
+							deleted_id = deleted[0];
+						}
+						it.selections = update_field_selections(it, creating, added_id, deleted_id);
+					}
+					finally {
+						fields.sel_changing = false;
+					}
+				}
 			}
 			fields.on_view_form_closed = function(flds) {
 				if (flds.selections.length) {
@@ -1654,10 +1705,10 @@ function Events3() { // sys_items
 									f.lookup_data = fld.field_by_name(f.field_name).lookup_data;
 								}
 							});
-							if (fld.f_master_field.value) {
+							if (fld.f_master_field.value && !creating) {
 								if (clone.locate('f_field_name', fld.f_master_field.lookup_value)) {
-									fld.f_master_field.data = clone.id.data
-									fld.f_master_field.lookup_value = clone.f_field_name.lookup_data;
+									item.sys_fields.f_master_field.data = clone.id.data
+									item.sys_fields.f_master_field.lookup_value = clone.f_field_name.lookup_data;
 								}
 							}
 							item.sys_fields.id.value = cur_id;
@@ -2862,6 +2913,7 @@ function Events3() { // sys_items
 	this.on_view_form_created = on_view_form_created;
 	this.create_common_fields = create_common_fields;
 	this.on_edit_form_created = on_edit_form_created;
+	this.update_field_selections = update_field_selections;
 	this.add_fields_to_copy = add_fields_to_copy;
 	this.delete_field = delete_field;
 	this.do_delete_field = do_delete_field;
@@ -5784,10 +5836,8 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	function on_after_open(item) {
 		let clone = item.clone();
 		item._old_fields = {};
-		item._old_fields_size = {};
 		clone.each(function(c) {
 			item._old_fields[c.id.value + ''] = true;
-			item._old_fields_size[c.id.value + ''] = c.f_size.value;
 		});
 	}
 	
@@ -5795,14 +5845,6 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 		let result = true;
 		if (item._old_fields) {
 			result = !item._old_fields[item.id.value + ''];
-		}
-		return result;
-	}
-	
-	function old_size(item) {
-		let result;
-		if (item._old_fields_size) {
-			result = item._old_fields_size[item.id.value + ''];
 		}
 		return result;
 	}
@@ -5971,6 +6013,9 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	function on_field_validate(field) {
 		var item = field.owner,
 			error = '';
+		if (item.owner.f_copy_of.value) {
+			return; 
+		}		
 		if (field.field_name === 'f_field_name') {
 			error = check_valid_field_name(item, field.value);
 			if (error) {
@@ -6040,16 +6085,6 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 				if (field.new_value === null) {
 					item.alert_error(task.language.value_required);
 					field.new_value = field.value;
-				}
-			}
-		}
-		if (!item.task._manual_update) {
-			if (field.field_name === 'f_size') {
-				if (!new_field(item) && item.f_data_type.value === task.consts.TEXT) {				
-					if (field.new_value < old_size(item)) {
-						item.alert_error(item.f_name.value + ' - ' + 'new field size value must be greater than the current one');								
-						field.new_value = field.value;				
-					}
 				}
 			}
 		}
@@ -6432,11 +6467,11 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 		if (!item.id.value) {
 			item.id.value = task.server('get_fields_next_id');
 		}
-		if (item.owner.f_copy_of.value && new_field(item) && item.owner.edit_form) {
-			if (!item.f_master_field.value && !item.f_calc_item.value) {
-				throw 'You are not allowed to add fields to the table for item copy';
-			}
-		}
+		// if (item.owner.f_copy_of.value && new_field(item) && item.owner.edit_form) {
+		//	 if (!item.f_master_field.value && !item.f_calc_item.value) {
+		//		 throw 'You are not allowed to add fields to the table for item copy';
+		//	 }
+		// }
 	}
 	
 	function on_field_get_text(field) {
@@ -6462,7 +6497,6 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	this.on_edit_form_shown = on_edit_form_shown;
 	this.on_after_open = on_after_open;
 	this.new_field = new_field;
-	this.old_size = old_size;
 	this.on_field_select_value = on_field_select_value;
 	this.check_valid_field_name = check_valid_field_name;
 	this.on_field_validate = on_field_validate;

@@ -1133,16 +1133,16 @@ class AbstractDataSet(object):
         self.__prepare_filters()
 
     def _lookup_item_is_master(self, lookup_item):
-        if self.task.ID != 0:
-            for detail in lookup_item.details:
-                if detail.prototype.ID == self.ID:
-                    return True
+        for detail in lookup_item.details:
+            if detail.prototype.ID == self.ID:
+                return True
 
     def __prepare_fields(self):
         for field in self._fields:
             if field.lookup_item and type(field.lookup_item) == int:
                 field.lookup_item = self.task.item_by_ID(field.lookup_item)
-                if field.lookup_item.soft_delete and field.check_before_deleting and \
+                if self.task.ID and field.lookup_item.soft_delete and \
+                    field.check_before_deleting and \
                     not self.master and not field.master_field and \
                     not self._lookup_item_is_master(field.lookup_item):
                     if self.task.item_by_ID(self.ID) == self:

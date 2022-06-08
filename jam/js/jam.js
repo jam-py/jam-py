@@ -4935,6 +4935,9 @@
                 async = args['boolean'],
                 self = this,
                 rec_no = this.rec_no;
+
+            //~ if (this.master || !this.paginate) {
+            //~ }
             if (callback || async) {
                 this._reopen(this._open_params.__offset, {}, function() {
                     self._do_on_refresh(rec_no, callback);
