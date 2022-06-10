@@ -2473,10 +2473,10 @@
             }
         },
 
-        create_menu_item: function(menu_item, parent, options) {
+        create_menu_item: function(menu_item, parent, options, caption) {
             if (menu_item.items.length) {
                 if (menu_item.items.length === 1 && !options.create_group_for_single_item) {
-                    this.create_menu_item(menu_item.items[0], parent, options);
+                    this.create_menu_item(menu_item.items[0], parent, options, menu_item.caption);
                 }
                 else {
                     let li,
@@ -2498,9 +2498,12 @@
                 }
             }
             else {
-                if (menu_item.caption) {
+                if (caption || menu_item.caption) {
+                    if (!caption) {
+                        caption = menu_item.caption
+                    }
                     parent.append($('<li>')
-                        .append($('<a class="item-menu" href="#">' + menu_item.caption + '</a>')
+                        .append($('<a class="item-menu" href="#">' + caption + '</a>')
                         .data('action', menu_item.action)));
                 }
                 else {
