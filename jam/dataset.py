@@ -523,7 +523,7 @@ class DBField(object):
 
     def system_field(self):
         if self.field_name and self.field_name in (self.owner._primary_key,  \
-            self.owner._deleted_flag, self.owner._master_id, self.owner._master_rec_id):
+            self.owner._deleted_flag, self.owner._master_id, self.owner._master_rec_id, self.owner._master_field):
             return True
 
     def float_to_str(self, value):
@@ -1801,10 +1801,17 @@ class MasterDataSet(AbstractDataSet):
         id_str = str(caller.ID)
         self.do_apply({id_str: params}, safe, connection)
 
-    def copy_record(self, item):
-        for f in item.fields:
-            self.field_by_name(f.field_name).data = f.data
-        self._modified = True
+    def copy_record_fields(self, source, copy_system_fields=True):
+        modified = False
+        for f in source.fields:
+            if not copy_system_fields and f.system_field():
+                continue
+            field = self.field_by_name(f.field_name)
+            if field and field.data != f.data:
+                modified = True
+                field.data = f.data
+        if modified:
+            self._modified = True
 
     def detail_by_ID(self, ID):
         ID = int(ID)

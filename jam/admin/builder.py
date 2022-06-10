@@ -1194,6 +1194,21 @@ def update_priviliges(item, item_id):
             p.next()
     p.apply()
 
+def update_copy_fields(delta, connection):
+    fields = delta.task.sys_fields.copy(handlers=False)
+    for f in delta.sys_fields:
+        if f.rec_modified():
+            fields.set_where(f_copy_of=f.id.value)
+            fields.open()
+            for fld in fields:
+                copy_of = fld.f_copy_of.value
+                fld.edit()
+                fld.copy_record_fields(f, False)
+                fld.f_copy_of.value = copy_of
+                fld.post()
+            fields.apply(connection)
+            
+
 def items_execute_insert(item, delta, connection, params, manual_update):
     sql = insert_item_query(delta, manual_update)
     if sql:
@@ -1213,6 +1228,7 @@ def items_execute_update(item, delta, connection, params, manual_update):
         if error:
             raise Exception(item.task.language('error_modifying_table') % error)
     result = item.apply_delta(delta, params, connection)
+    update_copy_fields(delta, connection)
     connection.commit()
     update_interface(delta, delta.type_id.value, delta.id.value)
     update_priviliges(item, delta.id.value)
