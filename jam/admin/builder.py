@@ -1194,20 +1194,12 @@ def update_priviliges(item, item_id):
             p.next()
     p.apply()
 
-def update_copy_fields(delta, connection):
-    fields = delta.task.sys_fields.copy(handlers=False)
-    for f in delta.sys_fields:
-        if f.rec_modified():
-            fields.set_where(f_copy_of=f.id.value)
-            fields.open()
-            for fld in fields:
-                copy_of = fld.f_copy_of.value
-                fld.edit()
-                fld.copy_record_fields(f, False)
-                fld.f_copy_of.value = copy_of
-                fld.post()
-            fields.apply(connection)
-            
+def create_indexes(item, delta, manual_update):
+    if not manual_update:
+        for f in delta.sys_fields:
+            if f.rec_inserted():
+                if f.f_calc_item.value:
+                    create_index(delta.task, f.f_calc_item.value, [f.f_calc_lookup_field.value], '_IDX')
 
 def items_execute_insert(item, delta, connection, params, manual_update):
     sql = insert_item_query(delta, manual_update)
@@ -1219,6 +1211,7 @@ def items_execute_insert(item, delta, connection, params, manual_update):
     connection.commit()
     init_priviliges(item, delta.id.value)
     update_interface(delta, delta.type_id.value, delta.id.value)
+    create_indexes(item, delta, manual_update)
     return result
 
 def items_execute_update(item, delta, connection, params, manual_update):
@@ -1228,10 +1221,10 @@ def items_execute_update(item, delta, connection, params, manual_update):
         if error:
             raise Exception(item.task.language('error_modifying_table') % error)
     result = item.apply_delta(delta, params, connection)
-    update_copy_fields(delta, connection)
     connection.commit()
     update_interface(delta, delta.type_id.value, delta.id.value)
     update_priviliges(item, delta.id.value)
+    create_indexes(item, delta, manual_update)
     return result
 
 def sys_item_deleted_sql(delta):
@@ -1366,12 +1359,8 @@ def server_store_interface(item, id_value, info):
     item.store_interface()
     set_server_modified(item.task)
 
-def create_calc_field_index(task, item_id, calc_item_id):
-    fields = task.sys_fields.copy()
-    fields.set_where(owner_rec_id=calc_item_id, f_object=item_id, f_master_field__isnull=True)
-    fields.open()
-    if fields.rec_count == 1:
-        create_index(task, calc_item_id, [fields.id.value], '_IDX')
+def create_calc_field_index(task, calc_item_id, calc_lookup_field_id):
+    create_index(task, calc_item_id, [calc_lookup_field_id], '_IDX')
 
 def create_detail_index(task, table_id, master_field):
     if master_field:
@@ -1392,7 +1381,6 @@ def create_index(task, table_id, fields, suffix):
     for i, f in enumerate(fields):
         if type(f) != int:
             fields[i] = tables.field_by_name(f).value
-
     found = False
     indexes = task.sys_indices.copy(handlers=False)
     indexes.set_where(owner_rec_id=table_id)

@@ -66,6 +66,7 @@ def create_fields(item, owner_id, item_dict):
                     file_open_btn=fields.f_file_open_btn.value,
                     file_accept=fields.f_file_accept.value,
                     calc_item =fields.f_calc_item.value,
+                    calc_lookup_field =fields.f_calc_lookup_field.value,
                     calc_field =fields.f_calc_field.value,
                     calc_op =fields.f_calc_op.display_text,
                     textarea = fields.f_textarea.value,

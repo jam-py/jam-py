@@ -951,7 +951,7 @@ class AbstractDataSet(object):
             field_placeholder=None, lookup_field1=None, lookup_field2=None, db_field_name=None, field_mask=None,
             image_edit_width=None, image_edit_height=None, image_view_width=None, image_view_height=None,
             image_placeholder=None, image_camera=None, file_download_btn=None, file_open_btn=None, file_accept=None,
-            calc_item=None, calc_field=None, calc_op=None, textarea=None, do_not_sanitize=None
+            calc_item=None, calc_lookup_field=None, calc_field=None, calc_op=None, textarea=None, do_not_sanitize=None
             ):
         if not db_field_name:
             db_field_name = field_name.upper()
@@ -986,7 +986,8 @@ class AbstractDataSet(object):
         if data_type == consts.FILE:
             field_def[FIELD_FILE] = {'download_btn': file_download_btn, 'open_btn': file_open_btn, 'accept': file_accept}
         if calc_item:
-            field_def[FIELD_CALC] = {'calc_item': calc_item, 'calc_field': calc_field, 'calc_op': calc_op}
+            field_def[FIELD_CALC] = {'calc_item': calc_item, 'calc_lookup_field': calc_lookup_field,
+                'calc_field': calc_field, 'calc_op': calc_op}
         field_def[DB_FIELD_NAME] = db_field_name
         self.field_defs.append(field_def)
         return field_def
@@ -1179,15 +1180,16 @@ class AbstractDataSet(object):
             elif field.calculated:
                 if type(field.calculated['calc_item']) == int:
                     field._calc_item = self.task.item_by_ID(field.calculated['calc_item'])
-                    for f in field._calc_item._fields:
-                        if f.lookup_item:
-                            ID = self.ID
-                            if self._copy_of:
-                                ID = self._copy_of
-                            if (type(f.lookup_item) == int and f.lookup_item == ID or \
-                                type(f.lookup_item) != int and f.lookup_item.ID == ID):
-                                 field._calc_on_field = f
-                                 break
+                    field._calc_on_field = field._calc_item._field_by_ID(field.calculated['calc_lookup_field'])
+                    # ~ for f in field._calc_item._fields:
+                        # ~ if f.lookup_item:
+                            # ~ ID = self.ID
+                            # ~ if self._copy_of:
+                                # ~ ID = self._copy_of
+                            # ~ if (type(f.lookup_item) == int and f.lookup_item == ID or \
+                                # ~ type(f.lookup_item) != int and f.lookup_item.ID == ID):
+                                 # ~ field._calc_on_field = f
+                                 # ~ break
                     field._calc_field = field._calc_item._field_by_ID(field.calculated['calc_field'])
                     field._calc_op = field.calculated['calc_op']
 

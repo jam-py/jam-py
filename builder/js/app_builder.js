@@ -2503,14 +2503,6 @@ function Events3() { // sys_items
 	}
 	
 	function on_after_apply(item) {
-		if (item._new_calc_fields && item._new_calc_fields.length) {
-			let clone = item.sys_fields.clone()
-			item._new_calc_fields.forEach(function(field_id) {
-				if (clone.locate('id', field_id)) {
-					task.server('create_calc_field_index', [item.id.value, clone.f_calc_item.value])
-				}
-			})
-		}
 		item.refresh_record();
 		on_after_scroll(item);
 		if (item.rec_count && item.cur_record_count && item.cur_record_count !== item.rec_count) {
@@ -2837,14 +2829,6 @@ function Events3() { // sys_items
 		else {
 			if (!item.f_primary_key.value) {
 				 item.f_gen_name.value = null;
-			}
-			else {
-				item._new_calc_fields = [];
-				clone.each(function(c) {			
-					if (c.f_calc_item.value && c.record_status === task.consts.RECORD_INSERTED) {
-						item._new_calc_fields.push(c.id.value)
-					}
-				});
 			}
 		}
 	}
@@ -5764,7 +5748,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 			{fields: ['f_image_camera'], col_count: 1, label_size: 2});
 		item.create_inputs(item.edit_form.find("#image-interface3"),
 			{fields: ['f_image_placeholder']});
-		item.create_inputs(item.edit_form.find("#calc"), {fields: ['f_calc_item', 'f_calc_field', 'f_calc_op', 'f_do_not_sanitize']});
+		item.create_inputs(item.edit_form.find("#calc"), {fields: ['f_calc_item', 'f_calc_lookup_field', 'f_calc_field', 'f_calc_op', 'f_do_not_sanitize']});
 	
 		update_read_only(item);
 		update_iterface_tab(item);
@@ -5967,11 +5951,32 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 			lookup_item.set_where(where);
 			lookup_item.set_order_by(['f_item_name']);
 		}
+		else if (field === item.f_calc_lookup_field) {
+			if (item.f_calc_item.value) {
+				let owner_id = item.owner.id.value;
+				if (item.owner.f_copy_of.value) {
+					owner_id = item.owner.f_copy_of.value;
+				}
+				lookup_item.set_where({
+					owner_rec_id: item.f_calc_item.value,
+					f_object: owner_id,
+					f_master_field__isnull: true
+				});
+				lookup_item.set_order_by(['f_field_name']);
+			}
+			else {
+				lookup_item.set_where({owner_rec_id: -1});
+			}
+		}
 		else if (field === item.f_calc_field) {
 			if (item.f_calc_item.value) {
-				id_value = item.f_calc_item.value;
+				let owner_id = item.owner.id.value;
+				if (item.owner.f_copy_of.value) {
+					owner_id = item.owner.f_copy_of.value;
+				}
 				lookup_item.set_where({
-					owner_rec_id: id_value,
+					f_object__ne: owner_id,
+					owner_rec_id: item.f_calc_item.value,
 					f_master_field__isnull: true
 				});
 				lookup_item.set_order_by(['f_field_name']);
@@ -6064,6 +6069,11 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 						return field.field_caption + ' - ' + task.language.invalid_value.replace('%s', '');
 					}
 				}
+			}
+		}
+		else if (field.field_name === 'f_calc_lookup_field') {
+			if (item.f_calc_item.value && !field.value) {
+				return field.field_caption + ' - ' + task.language.value_required;   
 			}
 		}
 		else if (field.field_name === 'f_calc_field') {
@@ -6202,6 +6212,24 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 					item.f_lookup_values.value = null;
 					item.f_calc_field.value = null;
 					item.f_calc_op.value = null;
+					item.f_calc_lookup_field.value = null;
+					if (field.value) {
+						let owner_id = item.owner.id.value;
+						if (item.owner.f_copy_of.value) {
+							owner_id = item.owner.f_copy_of.value;
+						}
+						let fields = task.sys_fields.copy({handlers: false});
+						fields.set_where({
+							owner_rec_id: item.f_calc_item.value,
+							f_object: owner_id,
+							f_master_field__isnull: true
+						});
+						fields.open()
+						if (fields.rec_count === 1) {
+							item.f_calc_lookup_field.value = fields.id.value;
+							item.f_calc_lookup_field.lookup_value = fields.f_field_name.value;
+						}
+					}
 				}
 				else if (field.field_name === 'f_calc_field') {
 					item.f_calc_op.value = null;
