@@ -22,19 +22,9 @@ function Events1() { // demo
 		}
 		$('#container').show();
 		
-		let menu = [
-				['First',  [task.invoices, task.customers]],
-				{'Second': [task.catalogs, '', task.reports]},
-				{Third: [task.tracks, {Params: function() {alert('params clicked')}}]},
-				{Fourth: [task.task.analytics, {'Artists list': [task.artists]}]},
-				task.reports
-			];
 		task.create_menu($("#menu"), $("#content"), {
-			custom_menu: menu,
 			splash_screen: '<h1 class="text-center">Jam.py Demo Application</h1>',
-			view_first: true,
-			create_single_group: false,
-			create_group_for_single_item: false
+			view_first: true
 		});
 	
 		$("#menu-right #admin a").click(function(e) {

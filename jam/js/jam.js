@@ -5980,57 +5980,6 @@
             }
         }
 
-        //~ get record_info() {
-            //~ return this.get_record_info()
-        //~ }
-
-        //~ get_record_info(record) {
-            //~ if (this._record_info_index >= 0) {
-                //~ if (!record) {
-                    //~ record = this._dataset[this.rec_no];
-                //~ }
-                //~ if (record.length < this._record_info_index + 1) {
-                    //~ record.push([null, null]);
-                //~ }
-                //~ return record[this._record_info_index];
-            //~ }
-        //~ }
-
-        //~ get record_status() {
-            //~ return this.record_info[consts.REC_STATUS];
-        //~ }
-
-        //~ set record_status(value) {
-            //~ if (this.log_changes) {
-                //~ this.record_info[consts.REC_STATUS] = value;
-            //~ }
-        //~ }
-
-        //~ get record_log_rec() {
-            //~ return this.record_info[consts.REC_LOG_REC];
-        //~ }
-
-        //~ set record_log_rec(value) {
-            //~ this.record_info[consts.REC_LOG_REC] = value;
-        //~ }
-
-        //~ rec_unchanged() {
-            //~ return this.record_status === consts.RECORD_UNCHANGED;
-        //~ }
-
-        //~ rec_inserted() {
-            //~ return this.record_status === consts.RECORD_INSERTED;
-        //~ }
-
-        //~ rec_deleted() {
-            //~ return this.record_status === consts.RECORD_DELETED;
-        //~ }
-
-        //~ rec_modified() {
-            //~ return this.record_status === consts.RECORD_MODIFIED ||
-                //~ this.record_status === consts.RECORD_DETAILS_MODIFIED;
-        //~ }
-
         get _record_copy() {
             let self = this,
                 fields = {},

@@ -1491,6 +1491,9 @@ function Events3() { // sys_items
 			else {
 				fields = ['f_name', 'f_item_name', 'f_table_name', 'f_primary_key', 'f_deleted_flag']
 			}
+			if (item.type_id.value === types.TABLE_TYPE) {
+				fields = fields.concat(['f_master_id', 'f_master_rec_id'])
+			}
 			fields = fields.concat(['f_record_version']);
 			fields = fields.concat(['f_visible', 'f_soft_delete', 'f_virtual_table', 'f_keep_history', 'f_edit_lock'])
 		}
@@ -2279,11 +2282,24 @@ function Events3() { // sys_items
 		return result;
 	}
 	
+	// function get_detail_names(item) {
+	//	 let result = {},
+	//		 details = item.copy({handlers: false}),
+	//		 fields = item.task.sys_fields.copy({handlers: false});
+	//	 details.set_where({parent: item.id.value});
+	//	 details.set_order_by(['f_index']);
+	//	 details.open();
+	//	 details.each(function(d) {
+	//		 result[d.f_item_name.value] = true;
+	//	 });
+	//	 return result;
+	// }
+	
 	function get_detail_source_list(item) {
 		let result = [],
 			ids = [],
 			tables = item.copy({handlers: false}),
-			fields = task.sys_fields.copy();
+			fields = task.sys_fields.copy();		
 		tables.set_where({type_id: task.item_types.TABLE_TYPE});
 		tables.open();
 		tables.each(function(t) {
