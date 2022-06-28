@@ -4849,25 +4849,16 @@
             for (i = 0; i < params.__filters.length; i++) {
                 params.__filters[i].length = 3;
             }
-            if (this.on_open && !open_empty) {
-                if (this.on_open) {
-                    this.on_open.call(this, this, params, function(data) {
-                        self._do_after_load(data, offset, params, callback);
-                    });
-                }
+            if (open_empty) {
+                data = [[], ''];
+                this._do_after_load(data, offset, params, callback);
             }
-            else if (async && !open_empty) {
+            else if (async) {
                 this.send_request('open', params, function(data) {
                     self._do_after_load(data, offset, params, callback);
                 });
             } else {
-                if (open_empty) {
-                    data = [
-                        [], ''
-                    ];
-                } else {
-                    data = this.send_request('open', params);
-                }
+                data = this.send_request('open', params);
                 this._do_after_load(data, offset, params, callback);
             }
         }

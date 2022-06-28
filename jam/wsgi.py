@@ -240,9 +240,7 @@ class App(object):
                 return self.on_upload(request)(environ, start_response)
             elif prefix == 'jam':
                 return self.on_jam_file(request, suffix)(environ, start_response)
-            elif prefix == 'js':
-                return self.on_project_file(request, suffix)(environ, start_response)
-            elif prefix == 'css':
+            elif prefix in ['js', 'css']:
                 return self.on_project_file(request, suffix)(environ, start_response)
             elif prefix in ['builder.html', 'builder_login.html']:
                 return self.on_builder(request, prefix)(environ, start_response)
@@ -500,6 +498,8 @@ class App(object):
             if self.field_restrictions is None:
                 self.field_restrictions = get_field_restrictions(self.admin)
             return self.field_restrictions[role_id]
+        else:
+            return {}
 
     def init_client(self, task):
         session = jam.context.session

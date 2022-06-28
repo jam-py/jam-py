@@ -2282,19 +2282,6 @@ function Events3() { // sys_items
 		return result;
 	}
 	
-	// function get_detail_names(item) {
-	//	 let result = {},
-	//		 details = item.copy({handlers: false}),
-	//		 fields = item.task.sys_fields.copy({handlers: false});
-	//	 details.set_where({parent: item.id.value});
-	//	 details.set_order_by(['f_index']);
-	//	 details.open();
-	//	 details.each(function(d) {
-	//		 result[d.f_item_name.value] = true;
-	//	 });
-	//	 return result;
-	// }
-	
 	function get_detail_source_list(item) {
 		let result = [],
 			ids = [],

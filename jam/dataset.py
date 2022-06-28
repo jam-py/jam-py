@@ -106,6 +106,14 @@ class DBField(object):
                     result = consts.convert_date_time(result)
             return result
 
+    @property
+    def restrictions(self):
+        result = False, False
+        if self.field_kind == consts.ITEM_FIELD:
+            if self.owner.user_info:
+                result = self.owner.field_def_restrictions(self.field_def, self.owner.user_info['role_id'])
+        return result
+
     @data.setter
     def data(self, value):
         if self.row and (self.bind_index >= 0):
@@ -995,7 +1003,7 @@ class AbstractDataSet(object):
     def field_def_restrictions(self, field_def, role_id):
         prohibited = False
         read_only = False
-        if not consts.SAFE_MODE or not role_id:
+        if not consts.SAFE_MODE or not role_id or not self.task.ID:
             return prohibited, read_only
         restrictions = self.task.app.get_role_field_restrictions(role_id)
         for index in [FIELD_ID, MASTER_FIELD, LOOKUP_FIELD, LOOKUP_FIELD1, LOOKUP_FIELD2]:
