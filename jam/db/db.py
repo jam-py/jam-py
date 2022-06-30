@@ -415,8 +415,8 @@ class AbstractDB(object):
             elif field.lookup_field1:
                 field_sql = '%s."%s"' % (self.lookup_table_alias1(item, field), field.lookup_db_field1)
             else:
-                if field.data_type == consts.KEYS:
-                    field_sql = 'NULL'
+                if field.lookup_field == field.lookup_item._primary_key:
+                    field_sql = '%s."%s"' % (self.table_alias(item), field.db_field_name)
                 else:
                     field_sql = '%s."%s"' % (self.lookup_table_alias(item, field), field.lookup_db_field)
             return field_sql

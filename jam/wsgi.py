@@ -257,6 +257,13 @@ class App(object):
                         return response(environ, start_response)
                 if not prefix or prefix in ['index.html', 'login.html']:
                     return self.on_index(request, prefix)(environ, start_response)
+                elif prefix == 'logout':
+                    if self.task.on_logout:
+                        response = self.task.on_logout(self.task, request)
+                        if response:
+                            return response
+                    response = self.logout(request)
+                    return response(environ, start_response)
                 else:
                     raise NotFound()
         except ProjectNotCompleted as e:
@@ -481,11 +488,19 @@ class App(object):
             return response
 
 
-    def logout(self, request, task):
-        if self.admin != task and task.on_logout:
-            task.on_logout(task, request)
-        del request.client_cookie['info']
+    def logout(self, request, task=None):
+        if task is None:
+            task = self.task
+        request.task = task
+        response = None
+        if self.admin == task:
+            del request.client_cookie['info']
+        else:
+            response = redirect('/')
+            del request.client_cookie['info']
+            request.save_client_cookie(response, self.task)
         jam.context.session = None
+        return response
 
     def get_role_privileges(self, role_id):
         if consts.SAFE_MODE:
