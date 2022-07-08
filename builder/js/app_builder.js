@@ -1167,7 +1167,8 @@ function Events3() { // sys_items
 				'client_module',
 				'server_module',
 				'divider',
-				'report_params'
+				'report_params',
+				'privileges'
 			]);
 		}
 	}
