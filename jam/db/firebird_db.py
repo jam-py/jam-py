@@ -217,6 +217,6 @@ class FirebirdDB(AbstractDB):
                 'default_value': default_value,
                 'pk': False,
             })
-        return {'fields': fields, 'FIELD_TYPES': self.FIELD_TYPES}
+        return {'fields': fields, 'field_types': self.FIELD_TYPES}
 
 db = FirebirdDB()

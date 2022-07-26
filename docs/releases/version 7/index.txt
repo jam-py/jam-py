@@ -1,8 +1,8 @@
 =========
-Version 5
+Version 7
 =========
 
 .. toctree::
    :maxdepth: 1
 
-   version_7_0_1
+   new_in_version_7

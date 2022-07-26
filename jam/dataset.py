@@ -79,7 +79,6 @@ class DBField(object):
         self.filter = None
         self.calculated = field_def[FIELD_CALC]
         self.on_field_get_text_called = None
-        self.check_before_deleting = False
 
     def __setattr__(self, name, value):
         if name != 'owner' and self.owner and self.owner.task_locked():
@@ -864,7 +863,8 @@ class ChangeLog(object):
         self.item._dataset = self.dataset
         if not self.rec_no is None:
             self.item.rec_no = self.rec_no
-        self.record_info.restore()
+        if self.dataset:
+            self.record_info.restore()
 
     def store_record(self):
         self.record_info
@@ -1150,8 +1150,7 @@ class AbstractDataSet(object):
         for field in self._fields:
             if field.lookup_item and type(field.lookup_item) == int:
                 field.lookup_item = self.task.item_by_ID(field.lookup_item)
-                if self.task.ID and field.lookup_item.soft_delete and \
-                    field.check_before_deleting and \
+                if self.task.ID and \
                     not self.master and not field.master_field and \
                     not self._lookup_item_is_master(field.lookup_item):
                     if self.task.item_by_ID(self.ID) == self:
@@ -1811,7 +1810,7 @@ class MasterDataSet(AbstractDataSet):
         id_str = str(caller.ID)
         self.do_apply({id_str: params}, safe, connection)
 
-    def copy_record_fields(self, source, copy_system_fields=True):
+    def copy_record_fields(self, source, copy_system_fields=False):
         modified = False
         for f in source.fields:
             if not copy_system_fields and f.system_field():
@@ -1820,6 +1819,7 @@ class MasterDataSet(AbstractDataSet):
             if field and field.data != f.data:
                 modified = True
                 field.data = f.data
+                field.lookup_data = f.lookup_data
         if modified:
             self._modified = True
 

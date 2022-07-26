@@ -227,6 +227,6 @@ class MSSqlDB(AbstractDB):
                 'default_value': default_value,
                 'pk': pk
             })
-        return {'fields': fields, 'self.FIELD_TYPES': self.FIELD_TYPES}
+        return {'fields': fields, 'field_types': self.FIELD_TYPES}
 
 db = MSSqlDB()

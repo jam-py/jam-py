@@ -650,7 +650,7 @@ class AbstractServerTask(AbstrTask):
         code = item.server_code
         item.module_name = item.get_module_name()
         item_module = type(sys)(item.module_name)
-        item_module.__dict__['this'] = item
+        item_module.__dict__['task'] = self
         sys.modules[item.module_name] = item_module
 
         item.task.modules.append(item.module_name)

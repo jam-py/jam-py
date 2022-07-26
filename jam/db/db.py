@@ -311,7 +311,7 @@ class AbstractDB(object):
                     (detail.table_name, detail._master_rec_id_db_field_name, id_literal)
         if len(detail.details) or detail.keep_history:
             self.update_deleted_detail(delta, detail, cursor)
-            if detail.keep_history:
+            if delta.task.history_item and detail.keep_history:
                 for d in detail:
                     params = [detail.prototype.ID, d._primary_key_field.data,
                         consts.RECORD_DELETED, None, self.get_user(delta), datetime.datetime.now()]
@@ -356,11 +356,11 @@ class AbstractDB(object):
         delta_params = item._get_delta_params(delta, params)
         if delta.task.on_before_apply_record:
             result = delta.task.on_before_apply_record(item, delta, delta_params, connection)
-            if result ==False:
+            if result == False:
                 return result
         if item.on_before_apply_record:
             result = item.on_before_apply_record(item, delta, delta_params, connection)
-            if result ==False:
+            if result == False:
                 return result
 
     def do_after_apply(self, delta, connection, params):

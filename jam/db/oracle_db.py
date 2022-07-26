@@ -199,19 +199,18 @@ class OracleDB(AbstractDB):
 
     def get_table_info(self, connection, table_name, db_name):
         cursor = connection.cursor()
-        sql = "SELECT COLUMN_NAME, DATA_TYPE, CHAR_LENGTH, DATA_DEFAULT, NULLABLE FROM USER_TAB_COLUMNS WHERE TABLE_NAME='%s'" % table_name
+        sql = "SELECT COLUMN_NAME, DATA_TYPE, CHAR_LENGTH, DATA_DEFAULT FROM USER_TAB_COLUMNS WHERE TABLE_NAME='%s'" % table_name
         cursor.execute(sql)
         result = cursor.fetchall()
         fields = []
-        for (field_name, data_type, size, default_value, nullable) in result:
+        for (field_name, data_type, size, default_value) in result:
             fields.append({
                 'field_name': field_name,
                 'data_type': data_type,
                 'size': size,
                 'default_value': default_value,
-                'pk': False,
-                'not_null': nullable == 'N'
+                'pk': False
             })
-        return {'fields': fields, 'self.FIELD_TYPES': self.FIELD_TYPES}
+        return {'fields': fields, 'field_types': self.FIELD_TYPES}
 
 db = OracleDB()

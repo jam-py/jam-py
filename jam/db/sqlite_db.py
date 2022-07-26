@@ -125,8 +125,7 @@ class SQLiteDB(AbstractDB):
                 'default_value': r[4],
                 'pk': r[5]==1
             })
-        return {'fields': fields, 'FIELD_TYPES': self.FIELD_TYPES}
-
+        return {'fields': fields, 'field_types': self.FIELD_TYPES}
 
 db = SQLiteDB()
 

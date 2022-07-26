@@ -88,7 +88,8 @@
             "UPDATE_CLOSE": 6,
             "UPDATE_STATE": 7,
             "UPDATE_APPLIED": 8,
-            "UPDATE_SUMMARY": 9
+            "UPDATE_SUMMARY": 9,
+            "UPDATE_REFRESH": 10
         },
         align_value = ['', 'left', 'center', 'right'],
         filter_value = [
@@ -2210,7 +2211,8 @@
                 freeze_count: 0,
                 sort_fields: [],
                 edit_fields: [],
-                summary_fields: []
+                summary_fields: [],
+                update_summary_after_apply: false
             };
             this.constructors = {
                 task: Task,
@@ -3353,7 +3355,9 @@
             if (this.rec_no !== null) {
                 this.item.rec_no = this.rec_no;
             }
-            this.record_info.restore();
+            if (this.dataset.length) {
+                this.record_info.restore();
+            }
         }
 
         store_record() {
@@ -3472,9 +3476,6 @@
         }
 
         _can_do(operation) {
-            if (this.master && !this.master.is_changing()) {
-                return false;
-            }
             return this.task.has_privilege(this, operation) &&
                 this.permissions[operation] && this.can_modify;
         }
@@ -4504,44 +4505,43 @@
             return fields
         }
 
-        _do_before_open(expanded, fields, where, order_by, open_empty, params,
-            offset, limit, funcs, group_by) {
+        _do_before_open(options) {
             var i,
                 j,
                 filters = [];
 
             if (this.on_before_open) {
-                this.on_before_open.call(this, this, params);
+                this.on_before_open.call(this, this, options.params);
             }
 
-            params.__expanded = expanded;
-            params.__fields = [];
+            options.params.__expanded = options.expanded;
+            options.params.__fields = [];
 
-            fields = this._update_fields(fields);
+            options.fields = this._update_fields(options.fields);
             this._select_field_list = [];
 
-            if (fields) {
-                params.__fields = fields;
+            if (options.fields) {
+                options.params.__fields = options.fields;
             }
 
-            params.__open_empty = open_empty;
-            if (!params.__order) {
-                params.__order = []
+            options.params.__open_empty = options.open_empty;
+            if (!options.params.__order) {
+                options.params.__order = []
             }
-            if (!params.__filters) {
-                params.__filters = []
+            if (!options.params.__filters) {
+                options.params.__filters = []
             }
-            if (!open_empty) {
-                params.__limit = 0;
-                params.__offset = 0;
-                if (limit) {
-                    params.__limit = limit;
-                    if (offset) {
-                        params.__offset = offset;
+            if (!options.open_empty) {
+                options.params.__limit = 0;
+                options.params.__offset = 0;
+                if (options.limit) {
+                    options.params.__limit = options.limit;
+                    if (options.offset) {
+                        options.params.__offset = options.offset;
                     }
                 }
-                if (where) {
-                    filters = this.get_where_list(where);
+                if (options.where) {
+                    filters = this.get_where_list(options.where);
                 } else if (this._where_list.length) {
                     filters = this._where_list.slice(0);
                 } else {
@@ -4551,29 +4551,29 @@
                         }
                     });
                 }
-                if (params.__search !== undefined) {
-                    var s = params.__search;
+                if (options.params.__search !== undefined) {
+                    var s = options.params.__search;
                     filters.push([s[0], s[2], s[1], -2]);
                 }
                 if (this._show_selected) {
                     filters.push([this._primary_key, consts.FILTER_IN, this.selections, -3]);
                 }
-                params.__filters = filters;
-                if (order_by) {
-                    params.__order = this.get_order_by_list(order_by);
+                options.params.__filters = filters;
+                if (options.order_by) {
+                    options.params.__order = this.get_order_by_list(options.order_by);
                 } else if (this._order_by_list.length) {
-                    params.__order = this._order_by_list.slice(0);
+                    options.params.__order = this._order_by_list.slice(0);
                 }
                 this._where_list = [];
                 this._order_by_list = [];
-                if (funcs) {
-                    params.__funcs = funcs;
+                if (options.funcs) {
+                    options.params.__funcs = options.funcs;
                 }
-                if (group_by) {
-                    params.__group_by = group_by;
+                if (options.group_by) {
+                    options.params.__group_by = options.group_by;
                 }
             }
-            this._open_params = params;
+            this._open_params = options.params;
         }
 
         _do_after_open(err) {
@@ -4727,67 +4727,54 @@
         }
 
         open() {
-            var args = this._check_args(arguments),
+            let args = this._check_args(arguments),
                 callback = args['function'],
                 options = args['object'],
-                async = args['boolean'],
-                expanded,
-                fields,
-                where,
-                order_by,
-                open_empty,
-                funcs,
-                group_by,
-                params,
-                callback,
-                log,
-                limit,
-                offset,
-                field_name,
-                self = this;
-            this._check_open_options(options);
-            if (options) {
-                expanded = options.expanded;
-                fields = options.fields;
-                where = options.where;
-                order_by = options.order_by;
-                open_empty = options.open_empty;
-                params = options.params;
-                offset = options.offset;
-                limit = options.limit;
-                funcs = options.funcs;
-                group_by = options.group_by;
+                async = args['boolean'];
+            options = this._process_open_options(options);
+            if (options !== undefined) {
+                if (!async) {
+                    async = callback ? true : false;
+                }
+                this._do_open(options.offset, async, options.params, options.open_empty, callback);
             }
-            if (!params) {
-                params = {};
+            else if (callback) {
+                callback.call(this, this);
+            }
+        }
+
+        _process_open_options(options) {
+            if (!options) {
+                options = {};
+            }
+            this._check_open_options(options);
+            if (!options.params) {
+                options.params = {};
             }
             if (this.virtual_table) {
-                open_empty = true;
+                options.open_empty = true;
             }
-            if (expanded === undefined) {
-                expanded = this.expanded;
+            if (options.expanded === undefined) {
+                options.expanded = this.expanded;
             } else {
-                this.expanded = expanded;
-            }
-            if (!async) {
-                async = callback ? true : false;
+                this.expanded = options.expanded;
             }
             if (this.master_field) {
                 if (this.owner.rec_count && !this.owner.is_new()) {
-                    params.__master_field = this.owner._primary_key_field.value;
+                    options.params.__master_field = this.owner._primary_key_field.value;
                 }
                 else {
-                    open_empty = true;
+                    options.open_empty = true;
                 }
             }
             if (this.master) {
-                if (!this.disabled && this.master.record_count() > 0) {
+                if (this.master.rec_count > 0) {
                     let dataset;
-                    params.__master_id = null
+                    options.params.__master_id = null
                     if (this._master_id) {
-                        params.__master_id = this.master.ID;
+                        options.params.__master_id = this.master.ID;
                     }
-                    params.__master_rec_id = this.master.field_by_name(this.master._primary_key).value;
+                    options.params.__master_rec_id = this.master.field_by_name(this.master._primary_key).value;
                     if (this.master.is_new()) {
                         dataset = [];
                         this.change_log = new ChangeLog(this);
@@ -4800,10 +4787,8 @@
                         }
                     }
                     if (dataset !== undefined) {
-                        this._do_before_open(expanded, fields,
-                            where, order_by, open_empty, params, offset,
-                            limit, funcs, group_by)
-                        this._bind_fields(expanded);
+                        this._do_before_open(options)
+                        this._bind_fields(options.expanded);
                         this._dataset = dataset;
                         this.change_log.dataset = dataset;
                         this._active = true;
@@ -4811,9 +4796,6 @@
                         this.first();
                         this._do_after_open();
                         this.update_controls(consts.UPDATE_OPEN);
-                        if (callback) {
-                            callback.call(this, this);
-                        }
                         return;
                     }
                 } else {
@@ -4823,26 +4805,24 @@
                 }
             }
 
-            if (this._paginate && offset !== undefined) {
-                params = this._update_params(this._open_params, params);
-                params.__offset = offset;
+            if (this._paginate && options.offset !== undefined) {
+                options.params = this._update_params(this._open_params, options.params);
+                options.params.__offset = options.offset;
                 if (this.on_before_open) {
-                    this.on_before_open.call(this, this, params);
+                    this.on_before_open.call(this, this, options.params);
                 }
-                this._open_params = params;
+                this._open_params = options.params;
             } else {
-                if (offset === undefined) {
-                    offset = 0;
+                if (options.offset === undefined) {
+                    options.offset = 0;
                 }
-                this._do_before_open(expanded, fields,
-                    where, order_by, open_empty, params, offset, limit, funcs, group_by);
-                this._bind_fields(expanded);
+                this._do_before_open(options);
+                this._bind_fields(options.expanded);
             }
             if (this._paginate) {
-                params.__limit = this._limit;
+                options.params.__limit = this._limit;
             }
-            this._dataset = [];
-            this._do_open(offset, async, params, open_empty, callback);
+            return options;
         }
 
         _do_open(offset, async, params, open_empty, callback) {
@@ -4873,6 +4853,7 @@
                 error_mes,
                 i,
                 len;
+            this._dataset = [];
             if (data) {
                 error_mes = data[1];
                 if (error_mes) {
@@ -4922,10 +4903,7 @@
             if (callback) {
                 callback.call(this);
             }
-        }
-
-        refresh_page(call_back) { // depricated
-            this.refresh(call_back);
+            this.update_controls(consts.UPDATE_REFRESH)
         }
 
         refresh(call_back) {
@@ -4934,7 +4912,6 @@
                 async = args['boolean'],
                 self = this,
                 rec_no = this.rec_no;
-
             if (callback || async) {
                 this._reopen(this._open_params.__offset, {}, function() {
                     self._do_on_refresh(rec_no, callback);
@@ -4944,6 +4921,10 @@
                 this._reopen(this._open_params.__offset, {});
                 this._do_on_refresh(rec_no, callback);
             }
+        }
+
+        refresh_page(call_back) { // depricated
+            this.refresh(call_back);
         }
 
         _reopen(offset, params, callback) {
@@ -5169,12 +5150,6 @@
             if (this._applying) {
                 throw new Error('Can not perform this operation. Item is applying data to the database');
             }
-            if (this.master && !this.master.is_changing()) {
-                throw new Error(language.append_master_not_changing.replace('%s', this.item_name));
-            }
-            if (this.item_state !== consts.STATE_BROWSE) {
-                throw new Error(language.append_not_browse.replace('%s', this.item_name));
-            }
             if (this.on_before_append) {
                 this.on_before_append.call(this, this);
             }
@@ -5248,9 +5223,6 @@
             if (this.record_count() === 0) {
                 throw new Error(language.edit_no_records.replace('%s', this.item_name));
             }
-            if (this.master && !this.master.is_changing()) {
-                throw new Error(language.edit_master_not_changing.replace('%s', this.item_name));
-            }
             if (this.item_state !== consts.STATE_BROWSE) {
                 throw new Error(language.edit_not_browse.replace('%s', this.item_name));
             }
@@ -5311,6 +5283,11 @@
         }
 
         delete() {
+            this._edit_masters();
+            this._delete();
+        }
+
+        _delete() {
             var rec = this.rec_no;
             if (!this._active) {
                 throw new Error(language.delete_not_active.replace('%s', this.item_name));
@@ -5320,9 +5297,6 @@
             }
             if (this.record_count() === 0) {
                 throw new Error(language.delete_no_records.replace('%s', this.item_name));
-            }
-            if (this.master && !this.master.is_changing()) {
-                throw new Error(language.delete_master_not_changing.replace('%s', this.item_name));
             }
             try {
                 if (this.on_before_delete) {
@@ -5473,7 +5447,7 @@
                 result,
                 data;
             if (this.master) {
-                if(this.master_applies) {
+                if (this.master_applies) {
                     if (callback) {
                         callback.call(this);
                     }
@@ -5546,6 +5520,9 @@
                         callback.call(caller);
                     }
                     this.update_controls(consts.UPDATE_APPLIED);
+                    if (caller.master) {
+                        caller.master._detail_changed(caller);
+                    }
                     return data;
                 }
             }
@@ -6282,42 +6259,26 @@
         }
 
         cancel_edit() {
-            var self = this,
-                refresh = !this.master && this.log_changes &&
-                    this.item_state === consts.STATE_EDIT &&
-                    this.change_log.record_status;
             if (this.is_changing()) {
                 this.cancel();
             }
-            if (this._source_item) {
-                this.close_edit_form();
+            this.close_edit_form();
+        }
+
+        _do_after_delete_record(master_changing, callback) {
+            if (master_changing) {
+                this.master.edit();
             }
-            else {
-                if (refresh) {
-                    this.disable_edit_form();
-                    this.refresh(function() {
-                        self.close_edit_form();
-                    })
-                }
-                else {
-                    this.close_edit_form();
-                }
+            if (callback) {
+                callback.call(this, this);
             }
         }
 
         delete_record() {
-            var self = this,
-                rec_no = self.rec_no,
-                record = self._dataset[rec_no],
+            let self = this,
                 args = this._check_args(arguments),
                 callback = args['function'],
-                refresh_page = args['boolean'];
-            if (refresh_page === undefined) {
-                refresh_page = true;
-            }
-            if (!this.paginate) {
-                refresh_page = false;
-            }
+                master_changing = this.master && this.master.is_changing();
             if (this.can_delete()) {
                 if (this.rec_count > 0) {
                     let mess = this.question(language.delete_record,
@@ -6337,15 +6298,14 @@
                                     } else {
                                         self.alert_error(e);
                                     }
-                                    self.refresh(true);
+                                }
+                                if (self.paginate) {
+                                    self.refresh(function() {
+                                        self._do_after_delete_record(master_changing, callback);
+                                    });
                                 }
                                 else {
-                                    if (callback) {
-                                        callback.call(this, this);
-                                    }
-                                    else if (refresh_page) {
-                                        self.refresh(true);
-                                    }
+                                    self._do_after_delete_record(master_changing, callback);
                                 }
                             });
                         },
@@ -6427,9 +6387,6 @@
                                 callback.call(self, self);
                             }
                             if (options.close_form) {
-                                if (self.master) {
-                                    self.master.edit();
-                                }
                                 self.close_edit_form();
                             }
                             else {
@@ -7000,6 +6957,10 @@
                                 }
                                 self.enable_controls();
                             }
+                            self.apply(true);
+                            if (self.master) {
+                                self.master.edit();
+                            }
                         })
                     }
                 }
@@ -7443,6 +7404,24 @@
 
         set_view_fields(fields) {
             this.view_options.fields = fields;
+        }
+
+        copy_record_fields(source, copy_system_fields) {
+            let modified = false;
+            source.each_field(function(f) {
+                let copy_field = !(!copy_system_fields && f.system_field());
+                if (copy_field) {
+                    let field = this.field_by_name(f.field_name)
+                    if (field && field.data != f.data) {
+                        modified = true;
+                        field.data = f.data;
+                        field.lookup_data = f.lookup_data;
+                    }
+                }
+            });
+            if (modified) {
+                self._modified = true;
+            }
         }
 
         _do_on_refresh_record(copy, options, callback, async) {
@@ -9783,9 +9762,6 @@
             if (this.item.read_only) {
                 return false;
             }
-            if (this.item.master && !this.item.master.is_changing()) {
-                return false;
-            }
             return this.options.editable;
          }
 
@@ -10433,6 +10409,7 @@
                         }
                     }
                     self._sorted_fields = sorted_fields.slice();
+                    self.item._open_params.__order = self._sorted_fields;
                     if (!self.item._paginate) {
                         self.item._sort(self._sorted_fields);
                     } else {
@@ -10441,7 +10418,6 @@
                             desc = self._sorted_fields[self._sorted_fields.length - 1][1]
                             self._sorted_fields.push([field.field_name, desc]);
                         }
-                        self.item._open_params.__order = self._sorted_fields;
                         self.item.open({
                             params: self.item._open_params,
                             offset: 0
@@ -11223,11 +11199,15 @@
                     this.$table.empty();
                     break;
                 case consts.UPDATE_APPLIED:
-                    this.update_totals();
+                    if (this.options.update_summary_after_apply) {
+                        this.update_totals();
+                    }
                     break;
                 case consts.UPDATE_SUMMARY:
                     this.update_summary();
                     break;
+                case consts.UPDATE_REFRESH:
+                    this.update_totals();
             }
         }
 
@@ -11263,7 +11243,6 @@
                 sum_fields,
                 count_fields,
                 total_records = 0,
-                //~ expanded = false,
                 search_field,
                 funcs,
                 params = {};
@@ -11277,7 +11256,7 @@
                 else {
                     copy = this.item.copy({handlers: false, details: false});
                 }
-                count_field = copy.fields[0].field_name,
+                count_field = copy._primary_key;
                 fields = [];
                 count_fields = [];
                 sum_fields = [];

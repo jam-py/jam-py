@@ -1147,7 +1147,7 @@ function Events3() { // sys_items
 					'divider',
 					'order',
 					'indices',
-					'foreign_keys',
+					// 'foreign_keys',
 					'divider',
 					'reports',
 					'divider',
@@ -1169,7 +1169,7 @@ function Events3() { // sys_items
 				'divider',
 				'order',
 				'indices',
-				'foreign_keys',
+				// 'foreign_keys',
 				'divider',
 				'reports',
 				'divider',
@@ -1216,7 +1216,9 @@ function Events3() { // sys_items
 				'client_module',
 				'server_module',
 				'divider',
-				'report_params'
+				'report_params',
+				'divider',			
+				'privileges'
 			]);
 		}
 	}
@@ -2750,50 +2752,37 @@ function Events3() { // sys_items
 		}
 	}
 	
-	function can_import_tables(item) {
-		var fields = item.task.sys_fields.copy({handlers: false});
-		fields.set_where({owner_rec_id: item.task.item_tree.id.value});
-		fields.open({fields: ['id']});
-		if (fields.rec_count) {
-			item.warning(item.task.language.import_prohibited.replace('%s', item.task.item_tree.f_name.value));
-			return false;
-		}
-		return true;
-	}
-	
 	function import_tables(item) {
 		var imp = item.copy({handlers: false});
-		if (can_import_tables(item)) {
-			imp.each_field(function(f) {
-			f.required = false
-			});
-			imp.log_changes = false;
-			imp.set_where({id__in: []})
-			imp.init_view_table = function(imp, options) {
-				options.on_dblclick = function() {
-					import_table(item, imp);
-				}
+		imp.each_field(function(f) {
+		f.required = false
+		});
+		imp.log_changes = false;
+		imp.set_where({id__in: []})
+		imp.init_view_table = function(imp, options) {
+			options.on_dblclick = function() {
+				import_table(item, imp);
 			}
-			imp.on_view_form_shown = function(imp) {
-				imp.view_form.find('.modal-footer').show();
-				imp.view_form.find('#import-btn').click(function(e) {
-					e.preventDefault();
-					import_table(item, imp);
-				});
-				imp.task.server('server_get_table_names', function(table_names) {
-					for (var i = 0; i < table_names.length; i++) {
-						imp.append()
-						imp.f_table_name.value = table_names[i]
-						imp.post()
-					}
-					imp.first();
-				});
-			}
-			imp.view_options.template_class = 'import-tables-view';
-			imp.view_options.title = 'Import';
-			imp.view_options.fields = ['f_table_name'];
-			imp.view();
 		}
+		imp.on_view_form_shown = function(imp) {
+			imp.view_form.find('.modal-footer').show();
+			imp.view_form.find('#import-btn').click(function(e) {
+				e.preventDefault();
+				import_table(item, imp);
+			});
+			imp.task.server('server_get_table_names', function(table_names) {
+				for (var i = 0; i < table_names.length; i++) {
+					imp.append()
+					imp.f_table_name.value = table_names[i]
+					imp.post()
+				}
+				imp.first();
+			});
+		}
+		imp.view_options.template_class = 'import-tables-view';
+		imp.view_options.title = 'Import';
+		imp.view_options.fields = ['f_table_name'];
+		imp.view();
 	}
 	
 	function on_before_post(item) {
@@ -2949,7 +2938,6 @@ function Events3() { // sys_items
 	this.add_import_indexes = add_import_indexes;
 	this.convert_field_type = convert_field_type;
 	this.import_table = import_table;
-	this.can_import_tables = can_import_tables;
 	this.import_tables = import_tables;
 	this.on_before_post = on_before_post;
 	this.move_to_group = move_to_group;
@@ -5738,7 +5726,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 		item.create_inputs(item.edit_form.find("#definition"), {fields: fields});
 		item.create_inputs(item.edit_form.find("#lookups"),
 			{fields: ['f_object', 'f_object_field', 'f_object_field1', 'f_object_field2', 'f_master_field',
-				'f_check_before_deleting', 'f_lookup_values', 'f_enable_typehead']});
+				'f_lookup_values', 'f_enable_typehead']});
 		item.create_inputs(item.edit_form.find("#interface"),
 			{fields: ['f_alignment', 'f_mask', 'f_do_not_sanitize', 'f_placeholder', 'f_help']});
 		item.create_inputs(item.edit_form.find("#text-interface"),
@@ -6138,7 +6126,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 					}
 				}
 				if (field.field_name === 'f_field_name' || field.field_name === 'f_name') {
-					if (item.f_field_name && !item.owner.f_copy_of.value && (!item.task._manual_update || new_field(item))) {
+					if (item.f_field_name && !item.owner.f_copy_of.value && !item.task._manual_update) {
 						item.f_db_field_name.value = task.server('server_set_literal_case', item.f_field_name.value);
 					}
 				}
@@ -6151,7 +6139,6 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 					item.f_calc_item.value = null;
 					item.f_calc_field.value = null;
 					item.f_calc_op.value = null;
-					item.f_check_before_deleting.value = true;
 					item.f_enable_typehead.value = true;
 					if (item.f_object.value) {
 						res = task.server('server_get_primary_key_type', field.value);
@@ -6179,7 +6166,6 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 					item.f_calc_item.value = null;
 					item.f_calc_field.value = null;
 					item.f_calc_op.value = null;
-					item.f_check_before_deleting.value = null;
 					item.f_enable_typehead.value = true;
 					if (item.f_lookup_values.value) {
 						item.f_data_type.value = task.consts.INTEGER;
@@ -6378,7 +6364,6 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 		item.f_multi_select.read_only = true;
 		if (item.f_object.value && !item.f_master_field.value) {
 			item.f_multi_select.read_only = false;
-			item.f_check_before_deleting.read_only = false;
 			item.f_multi_select.read_only = item.f_enable_typehead.value;
 			item.f_multi_select_all.read_only = !item.f_multi_select.value;
 			if (!item.f_multi_select.value) {
@@ -6388,10 +6373,8 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 		else {
 			item.f_multi_select.read_only = true;
 			item.f_multi_select_all.read_only = true;
-			item.f_check_before_deleting.read_only = true;
 			item.f_multi_select.value = null;
 			item.f_multi_select_all.value = null;
-			item.f_check_before_deleting.value = null;
 		}
 		if (item.f_lookup_values.value || item.f_object.value && !item.f_master_field.value) {
 			if (!item.f_lookup_values.value) {
