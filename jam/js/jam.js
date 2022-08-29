@@ -2473,10 +2473,10 @@
             }
         },
 
-        create_menu_item: function(menu_item, parent, options, caption) {
+        create_menu_item: function(menu_item, parent, options) {
             if (menu_item.items.length) {
                 if (menu_item.items.length === 1 && !options.create_group_for_single_item) {
-                    this.create_menu_item(menu_item.items[0], parent, options, menu_item.caption);
+                    this.create_menu_item(menu_item.items[0], parent, options);
                 }
                 else {
                     let li,
@@ -2498,12 +2498,9 @@
                 }
             }
             else {
-                if (caption || menu_item.caption) {
-                    if (!caption) {
-                        caption = menu_item.caption
-                    }
+                if (menu_item.caption) {
                     parent.append($('<li>')
-                        .append($('<a class="item-menu" href="#">' + caption + '</a>')
+                        .append($('<a class="item-menu" href="#">' + menu_item.caption + '</a>')
                         .data('action', menu_item.action)));
                 }
                 else {
@@ -2512,32 +2509,34 @@
             }
         },
 
+        get_item_action: function(item) {
+            let action;
+            if (item.visible && item.can_view()) {
+                if (item instanceof Item) {
+                    action = function() {
+                        item.view(this.forms_container);
+                    }
+                }
+                else if (item instanceof Report) {
+                    action = function() {
+                        item.print(false);
+                    }
+                }
+            }
+            return action;
+        },
+
         add_menu_item: function(custom_item, parent) {
-            let menu_item = {},
-                item = custom_item,
+            let menu_item = {
+                    items: [],
+                    caption: undefined
+                },
                 sub_items = [];
-            if (custom_item instanceof Array) {
-                item = custom_item[0];
-                if (custom_item.length > 1) {
-                    sub_items = custom_item[1]
+            if (custom_item instanceof AbsrtactItem) {
+                let item = custom_item
+                if (menu_item.caption === undefined) {
+                    menu_item.caption = item.item_caption;
                 }
-            }
-            else if (custom_item instanceof Object && !(item instanceof AbsrtactItem)) {
-                for (item in custom_item) {
-                    if (custom_item[item] instanceof Array) {
-                        sub_items = custom_item[item];
-                    }
-                    else if (custom_item[item] instanceof AbsrtactItem) {
-                        sub_items[0] = custom_item[item];
-                    }
-                    else if (typeof custom_item[item] === "function") {
-                        menu_item.action = custom_item[item];
-                    }
-                }
-            }
-            menu_item.items = [];
-            if (item instanceof AbsrtactItem) {
-                menu_item.caption = item.item_caption;
                 if (item instanceof Group) {
                     if (item.visible) {
                         item.each_item(function(i) {
@@ -2551,29 +2550,34 @@
                     }
                 }
                 else {
-                    if (item.visible && item.can_view()) {
-                        if (item instanceof Item) {
-                            menu_item.action = function() {
-                                item.view(this.forms_container);
-                            }
-                        }
-                        else if (item instanceof Report) {
-                            menu_item.action = function() {
-                                item.print(false);
-                            }
-                        }
+                    menu_item.action = this.get_item_action(item);
+                }
+            }
+            else if (custom_item instanceof Array) {
+                menu_item.caption = custom_item[0];
+                if (custom_item.length > 1) {
+                    sub_items = custom_item[1]
+                }
+            }
+            else if (custom_item instanceof Object) {
+                for (let caption in custom_item) {
+                    menu_item.caption = caption;
+                    if (custom_item[caption] instanceof AbsrtactItem) {
+                        menu_item.action = this.get_item_action(custom_item[caption]);
+                    }
+                    else if (typeof custom_item[caption] === "function") {
+                        menu_item.action = custom_item[caption];
                     }
                     else {
-                        return;
+                        sub_items = custom_item[caption];
                     }
                 }
             }
-            else {
-                menu_item.caption = item;
-            }
-            parent.items.push(menu_item)
-            for (let i = 0; i < sub_items.length; i++) {
+            if (menu_item.action || sub_items.length) {
+                parent.items.push(menu_item)
+                for (let i = 0; i < sub_items.length; i++) {
                     this.add_menu_item(sub_items[i], menu_item);
+                }
             }
         },
 
