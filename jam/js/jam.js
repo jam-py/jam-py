@@ -2473,10 +2473,10 @@
             }
         },
 
-        create_menu_item: function(menu_item, parent, options) {
+        _create_menu_item: function(menu_item, parent, options) {
             if (menu_item.items.length) {
                 if (menu_item.items.length === 1 && !options.create_group_for_single_item) {
-                    this.create_menu_item(menu_item.items[0], parent, options);
+                    this._create_menu_item(menu_item.items[0], parent, options);
                 }
                 else {
                     let li,
@@ -2493,7 +2493,7 @@
                     ul = $('<ul class="dropdown-menu">');
                     li.append(ul);
                     for (let i = 0; i < menu_item.items.length; i++) {
-                        this.create_menu_item(menu_item.items[i], ul, options)
+                        this._create_menu_item(menu_item.items[i], ul, options)
                     }
                 }
             }
@@ -2509,24 +2509,38 @@
             }
         },
 
-        get_item_action: function(item) {
+        _add_item_menu: function(item, sub_items) {
             let action;
-            if (item.visible && item.can_view()) {
-                if (item instanceof Item) {
-                    action = function() {
-                        item.view(this.forms_container);
-                    }
+            if (item instanceof Group) {
+                if (item.visible) {
+                    item.each_item(function(i) {
+                        if (i.visible && i.can_view()) {
+                            sub_items.push(i);
+                        }
+                    });
                 }
-                else if (item instanceof Report) {
-                    action = function() {
-                        item.print(false);
+                else {
+                    return;
+                }
+            }
+            else {
+                if (item.visible && item.can_view()) {
+                    if (item instanceof Item) {
+                        action = function() {
+                            item.view(this.forms_container);
+                        }
+                    }
+                    else if (item instanceof Report) {
+                        action = function() {
+                            item.print(false);
+                        }
                     }
                 }
             }
             return action;
         },
 
-        add_menu_item: function(custom_item, parent) {
+        _add_menu_item: function(custom_item, owner) {
             let menu_item = {
                     items: [],
                     caption: undefined
@@ -2537,21 +2551,7 @@
                 if (menu_item.caption === undefined) {
                     menu_item.caption = item.item_caption;
                 }
-                if (item instanceof Group) {
-                    if (item.visible) {
-                        item.each_item(function(i) {
-                            if (i.visible && i.can_view()) {
-                                sub_items.push(i);
-                            }
-                        });
-                    }
-                    else {
-                        return;
-                    }
-                }
-                else {
-                    menu_item.action = this.get_item_action(item);
-                }
+                menu_item.action = this._add_item_menu(item, sub_items)
             }
             else if (custom_item instanceof Array) {
                 menu_item.caption = custom_item[0];
@@ -2563,7 +2563,7 @@
                 for (let caption in custom_item) {
                     menu_item.caption = caption;
                     if (custom_item[caption] instanceof AbsrtactItem) {
-                        menu_item.action = this.get_item_action(custom_item[caption]);
+                        menu_item.action = this._add_item_menu(custom_item[caption], sub_items);
                     }
                     else if (typeof custom_item[caption] === "function") {
                         menu_item.action = custom_item[caption];
@@ -2573,11 +2573,23 @@
                     }
                 }
             }
-            if (menu_item.action || sub_items.length) {
-                parent.items.push(menu_item)
+            else if (custom_item === '') {
+                menu_item.caption = '';
+            }
+            if (menu_item.action || sub_items.length || menu_item.caption === '') {
+                owner.items.push(menu_item);
                 for (let i = 0; i < sub_items.length; i++) {
-                    this.add_menu_item(sub_items[i], menu_item);
+                    let res = this._add_menu_item(sub_items[i], menu_item);
                 }
+            }
+        },
+
+        _clear_dividers: function(menu_item) {
+            if (menu_item.items.length && menu_item.items[menu_item.items.length - 1].caption === '') {
+                menu_item.items.pop();
+            }
+            for (let i = 0; i < menu_item.items.length; i++) {
+                this._clear_dividers(menu_item.items[i]);
             }
         },
 
@@ -2632,10 +2644,13 @@
             }
             menu_items.items = [];
             for (let i = 0; i < custom_menu.length; i++) {
-                this.add_menu_item(custom_menu[i], menu_items);
+                this._add_menu_item(custom_menu[i], menu_items);
             }
             for (let i = 0; i < menu_items.items.length; i++) {
-                this.create_menu_item(menu_items.items[i], $menu, options);
+                this._clear_dividers(menu_items.items[i]);
+            }
+            for (let i = 0; i < menu_items.items.length; i++) {
+                this._create_menu_item(menu_items.items[i], $menu, options);
             }
             $menu.find('.item-menu').on('click', (function(e) {
                 var action = $(this).data('action');
