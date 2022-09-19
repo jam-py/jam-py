@@ -9,7 +9,6 @@ from distutils import dir_util
 import json
 import traceback
 
-from werkzeug._compat import to_unicode
 from ..common import consts, file_read, file_write, error_message
 from ..db.databases import get_database
 from .admin import connect_task_db, FieldInfo

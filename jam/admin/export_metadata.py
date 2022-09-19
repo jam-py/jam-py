@@ -3,9 +3,7 @@ import zipfile
 import json
 import datetime
 
-from werkzeug._compat import to_unicode
-
-from ..common import consts
+from ..common import consts, to_str
 
 metadata_items = [
     'sys_items',
@@ -58,8 +56,8 @@ def export_task(task, url):
             os.makedirs(result_path)
         result_file = '%s_%s_%s_%s.zip' % (items.f_item_name.value, consts.VERSION,
             task.app.jam_version, datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-        os.rename(to_unicode(zip_file_name, 'utf-8'), os.path.join(to_unicode(result_path, 'utf-8'),
-            to_unicode(result_file, 'utf-8')))
+        os.rename(to_str(zip_file_name, 'utf-8'), os.path.join(to_str(result_path, 'utf-8'),
+            to_str(result_file, 'utf-8')))
         if url:
             result = '%s/static/internal/%s' % (url, result_file)
         else:

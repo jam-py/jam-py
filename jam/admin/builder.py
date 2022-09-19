@@ -5,8 +5,6 @@ from threading import Lock
 from operator import itemgetter
 from esprima import parseScript, nodes
 
-from werkzeug._compat import iteritems, iterkeys, to_unicode, to_bytes, text_type, string_types
-
 from jam.admin.admin import connect_task_db
 from jam.admin.admin import delete_item_query, update_item_query, insert_item_query
 from jam.admin.admin import indices_insert_query, indices_delete_query
@@ -15,6 +13,7 @@ from jam.common import consts, get_ext_list
 from jam.dataset import FIELD_NAME, FIELD_CAPTION, FIELD_LOOKUP_VALUES
 
 from jam.common import FieldInfo, consts, error_message, file_read, file_write
+from jam.common import to_str, to_bytes
 from jam.db.databases import get_database
 from jam.dataset import LOOKUP_ITEM, LOOKUP_FIELD, FIELD_ALIGNMENT
 from jam.events import get_events
@@ -425,7 +424,7 @@ def update_events_code(task, loading=None):
     for it in it:
         js_path = get_js_path(it)
         js_filename = get_js_file_name(js_path)
-        file_name = os.path.join(to_unicode(os.getcwd(), 'utf-8'), 'js', js_filename)
+        file_name = os.path.join(to_str(os.getcwd(), 'utf-8'), 'js', js_filename)
         if os.path.exists(file_name):
             os.remove(file_name)
         min_file_name = get_minified_name(file_name)
@@ -454,12 +453,12 @@ def update_events_code(task, loading=None):
         js_file_name = get_js_file_name(it.f_item_name.value)
         js_filenames[it.id.value] = js_file_name
         script = script_start + script_common + script_end
-        file_name = os.path.join(to_unicode(os.getcwd(), 'utf-8'), 'js', js_file_name)
+        file_name = os.path.join(to_str(os.getcwd(), 'utf-8'), 'js', js_file_name)
         file_write(file_name, script)
         if consts.COMPRESSED_JS:
             minify(file_name)
     sql = []
-    for key, value in iteritems(js_filenames):
+    for key, value in js_filenames.items():
         sql.append("UPDATE %s SET F_JS_FILENAME = '%s' WHERE ID = %s" % (it.table_name, value, key))
     it.task.execute(sql)
     if not loading and it.task.app.task:
@@ -590,7 +589,7 @@ def server_item_info(task, item_id, is_server):
 
 def parse_js(code):
     script = ''
-    ast = parseScript(to_unicode(code, 'utf-8'))
+    ast = parseScript(to_str(code, 'utf-8'))
     for e in ast.body:
         if isinstance(e, nodes.FunctionDeclaration):
             script += '\tthis.%s = %s;\n' % (e.id.name, e.id.name)
@@ -1078,7 +1077,7 @@ def indexes_get_table_names(indexes):
 
 def upload_file(task, path, file_name, f):
     if path and path in ['static/internal', 'static/reports']:
-        dir_path = os.path.join(to_unicode(task.work_dir, 'utf-8'), path)
+        dir_path = os.path.join(to_str(task.work_dir, 'utf-8'), path)
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
         f.save(os.path.join(dir_path, file_name))
@@ -1431,7 +1430,7 @@ def server_update_details(item, item_id, dest_list):
 
     def convert_details(i_list, attr, detail_list):
         try:
-            for media, options in iteritems(i_list):
+            for media, options in i_list.items():
                 try:
                     new = []
                     details = options[1].get(attr)
@@ -1478,6 +1477,7 @@ def server_update_details(item, item_id, dest_list):
         items.type_id.value = consts.DETAIL_TYPE
         items.table_id.value = table_id
         items.f_master_field.value = master_field
+        # items.f_master_applies.value = True
         items.parent.value = item.id.value
         items.f_name.value = name
         items.f_item_name.value = obj_name

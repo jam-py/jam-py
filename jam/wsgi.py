@@ -10,8 +10,6 @@ import mimetypes
 import logging
 import jam
 
-sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(jam.__file__), 'third_party')))
-
 from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Map, Rule
 from werkzeug.exceptions import HTTPException, NotFound, Forbidden
@@ -20,15 +18,13 @@ from werkzeug.wsgi import peek_path_info, get_path_info
 from werkzeug.local import Local, LocalManager
 from werkzeug.http import parse_date, http_date
 from werkzeug.utils import cached_property, secure_filename, redirect
-from werkzeug._compat import to_unicode, to_bytes
-from werkzeug.secure_cookie.securecookie import SecureCookie
-
-from .third_party.six import get_function_code
+from .secure_cookie.cookie import SecureCookie
 
 from .common import consts, error_message, file_read, file_write
 from .common import consts, ProjectError, ProjectNotCompleted
 from .common import json_defaul_handler, compressBuf
 from .common import validate_image, valid_uploaded_file
+from .common import to_str
 from .admin.admin import create_admin, login_user, get_privileges, get_field_restrictions
 from .admin.admin import user_valid_ip, user_valid_uuid
 from .admin.builder import update_events_code
@@ -148,7 +144,7 @@ class App(object):
     def __init__(self, work_dir, load_task):
         mimetypes.add_type('text/cache-manifest', '.appcache')
         self.started = datetime.datetime.now()
-        self.work_dir = to_unicode(work_dir)
+        self.work_dir = to_str(work_dir)
         self.state = consts.PROJECT_NONE
         self.__task = None
         self.privileges = None
@@ -157,7 +153,7 @@ class App(object):
         self.__loading = False
         self._busy = 0
         self.pid = os.getpid()
-        self.jam_dir = to_unicode(os.path.realpath(os.path.dirname(jam.__file__)))
+        self.jam_dir = to_str(os.path.realpath(os.path.dirname(jam.__file__)))
         self.jam_version = jam.version()
         self.application_files = {
             '/': self.work_dir,
@@ -230,32 +226,30 @@ class App(object):
         request = JamRequest(environ)
         if consts.MAX_CONTENT_LENGTH > 0:
             request.max_content_length = 1024 * 1024 * consts.MAX_CONTENT_LENGTH
-        parts = request.path.strip('/').split('/')
-        prefix = parts[0]
-        suffix = parts[len(parts) - 1]
         try:
-            if prefix == 'api':
-                return self.on_api(request)(environ, start_response)
-            elif prefix == 'upload':
-                return self.on_upload(request)(environ, start_response)
-            elif prefix == 'jam':
-                return self.on_jam_file(request, suffix)(environ, start_response)
-            elif prefix in ['js', 'css']:
-                return self.on_project_file(request, suffix)(environ, start_response)
-            elif prefix in ['builder.html', 'builder_login.html']:
-                return self.on_builder(request, prefix)(environ, start_response)
-            elif prefix == 'ext':
-                return self.on_ext(request)(environ, start_response)
-            elif prefix in ['static', 'favicon.ico', 'dummy.html']:
-                return Response('')(environ, start_response)
             if not self.under_maintenance:
-                if self.task.on_request:
-                    if not self.production:
-                        self.check_project_modified()
+                if self.__task and self.task.on_request:
                     response = self.task.on_request(self.task, request)
                     if response:
                         return response(environ, start_response)
-                if not prefix or prefix in ['index.html', 'login.html']:
+                parts = request.path.strip('/').split('/')
+                prefix = parts[0]
+                suffix = parts[len(parts) - 1]
+                if prefix == 'api':
+                    return self.on_api(request)(environ, start_response)
+                elif prefix == 'upload':
+                    return self.on_upload(request)(environ, start_response)
+                elif prefix == 'jam':
+                    return self.on_jam_file(request, suffix)(environ, start_response)
+                elif prefix in ['js', 'css']:
+                    return self.on_project_file(request, suffix)(environ, start_response)
+                elif prefix in ['builder.html', 'builder_login.html']:
+                    return self.on_builder(request, prefix)(environ, start_response)
+                elif prefix == 'ext':
+                    return self.on_ext(request)(environ, start_response)
+                elif prefix in ['static', 'favicon.ico', 'dummy.html']:
+                    return Response('')(environ, start_response)
+                elif not prefix or prefix in ['index.html', 'login.html']:
                     return self.on_index(request, prefix)(environ, start_response)
                 elif prefix == 'logout':
                     if self.task.on_logout:
@@ -265,6 +259,7 @@ class App(object):
                     response = self.logout(request)
                     return response(environ, start_response)
                 else:
+                    print(request.path)
                     raise NotFound()
         except ProjectNotCompleted as e:
             self.log.exception(error_message(e))
@@ -312,6 +307,7 @@ class App(object):
                 'password': consts.lang['password']
             }
             login_path = os.path.join(self.work_dir, 'login.html')
+            self.check_project_modified()
             if not os.path.exists(login_path):
                 login_path = os.path.join(self.jam_dir, 'html', 'login.html')
             if request.method == 'POST':
@@ -467,14 +463,7 @@ class App(object):
             user_info = self.default_login(task, form_data['login'], form_data['password'], ip, session_uuid)
         elif task.on_login:
             try:
-                try:
-                    user_info = task.on_login(task, form_data, {'ip': ip, 'session_uuid': session_uuid})
-                except:
-                    # for compatibility with previous versions
-                    if get_function_code(task.on_login).co_argcount == 5:
-                        user_info = task.on_login(task, form_data['login'], form_data['password'], ip, session_uuid)
-                    else:
-                        raise
+                user_info = task.on_login(task, form_data, {'ip': ip, 'session_uuid': session_uuid})
             except:
                 user_info = None
                 traceback.print_exc()
@@ -678,7 +667,7 @@ class App(object):
             try:
                 data = request.get_data()
                 if type(data) != str:
-                    data = to_unicode(data, 'utf-8')
+                    data = to_str(data, 'utf-8')
                 method, task_id, item_id, params, modification = json.loads(data)
                 if task_id == 0:
                     task = self.admin
@@ -751,7 +740,7 @@ class App(object):
             method = get_path_info(request.environ)
             data = request.get_data()
             if type(data) != str:
-                data = to_unicode(data, 'utf-8')
+                data = to_str(data, 'utf-8')
             try:
                 params = json.loads(data)
             except:
@@ -842,7 +831,7 @@ class App(object):
                             else:
                                 path = os.path.join('static', 'files')
                             if not r['error']:
-                                dir_path = os.path.join(to_unicode(self.work_dir, 'utf-8'), path)
+                                dir_path = os.path.join(to_str(self.work_dir, 'utf-8'), path)
                                 if not os.path.exists(dir_path):
                                     os.makedirs(dir_path)
                                 f.save(os.path.join(dir_path, file_name))

@@ -1,8 +1,6 @@
 import sys
 
 from werkzeug.utils import cached_property
-from werkzeug._compat import iteritems
-from werkzeug._compat import to_unicode, to_bytes
 
 import jam
 from .common import consts, error_message
@@ -140,18 +138,18 @@ class AbstractItem(object):
 
     def store_handlers(self):
         result = {}
-        for key, value in iteritems(self.__dict__):
+        for key, value in self.__dict__.items():
             if key[0:3] == 'on_':
                 result[key] = self.__dict__[key]
         return result
 
     def clear_handlers(self):
-        for key, value in iteritems(self.__dict__):
+        for key, value in self.__dict__.items():
             if key[0:3] == 'on_':
                 self.__dict__[key] = None
 
     def load_handlers(self, handlers):
-        for key, value in iteritems(handlers):
+        for key, value in handlers.items():
             self.__dict__[key] = handlers[key]
 
     def get_master_field(self, fields, master_field):

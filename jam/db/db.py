@@ -1,9 +1,8 @@
 import json
 import datetime
 
-from werkzeug._compat import iteritems, text_type, integer_types, string_types, to_bytes, to_unicode
-
 from ..common import consts, error_message, json_defaul_handler
+from ..common import to_bytes, to_str
 
 class WhereCondition(object):
     def __init__(self, db):
@@ -222,7 +221,7 @@ class AbstractDB(object):
 
     def check_lookup_refs(self, delta, connection, cursor):
         if delta._lookup_refs:
-            for item, fields in iteritems(delta._lookup_refs):
+            for item, fields in delta._lookup_refs.items():
                 for field in fields:
                     copy = item.copy(filters=False, details=False, handlers=False)
                     field_name = field.field_name
@@ -435,7 +434,7 @@ class AbstractDB(object):
         funcs = query.funcs
         if funcs:
             functions = {}
-            for key, value in iteritems(funcs):
+            for key, value in funcs.items():
                 functions[key.upper()] = value
         sql = []
         for i, field in enumerate(fields):
@@ -553,13 +552,13 @@ class AbstractDB(object):
 
     def convert_field_value(self, field, value):
         data_type = field.data_type
-        if type(value) in string_types:
-            value = to_unicode(value)
+        if isinstance(value, str):
+            value = to_str(value)
         if data_type == consts.DATE:
-            if type(value) in string_types:
+            if isinstance(value, str):
                 return datetime.datetime.strptime(value, '%Y-%m-%d')
         if data_type == consts.DATETIME:
-            if type(value) in string_types:
+            if isinstance(value, str):
                 return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
         if data_type == consts.BOOLEAN:
             if value:
@@ -598,7 +597,7 @@ class AbstractDB(object):
         sql_literal = self.conditions.next_literal
         filter_sign = self.get_filter_sign(item, filter_type, value)
         if filter_type in (consts.FILTER_IN, consts.FILTER_NOT_IN):
-            values = [to_unicode(v) for v in value if v is not None]
+            values = [to_str(v) for v in value if v is not None]
             sql_literal = '(%s)' % ', '.join(values)
             value = None
         elif filter_type == consts.FILTER_RANGE:
@@ -679,7 +678,7 @@ class AbstractDB(object):
         funcs = query.funcs
         if funcs:
             functions = {}
-            for key, value in iteritems(funcs):
+            for key, value in funcs.items():
                 functions[key.upper()] = value
         result = ''
         if group_fields:
@@ -710,7 +709,7 @@ class AbstractDB(object):
         funcs = query.funcs
         functions = {}
         if funcs:
-            for key, value in iteritems(funcs):
+            for key, value in funcs.items():
                 functions[key.upper()] = value
         order_list = query.order
         orders = []

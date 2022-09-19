@@ -12,7 +12,7 @@ if os.name == "nt":
     except:
         from _winreg import OpenKey, QueryValue, HKEY_LOCAL_MACHINE
 
-from werkzeug._compat import iteritems, integer_types, string_types, to_bytes
+from .common import to_bytes
 
 def tobytes(x):
     return to_bytes(x, 'utf-8')
@@ -132,7 +132,7 @@ class Report(object):
         return result
 
     def change_manifest(self, manifest_data, image_links):
-        for old_link, new_links in iteritems(image_links):
+        for old_link, new_links in image_links.items():
             old_link = tobytes(old_link)
             pos = manifest_data.find(old_link)
             if pos != -1:
@@ -300,7 +300,7 @@ class Report(object):
         band = self.bands_dict[band_tag]
         cell_vars = {}
         if var_dict:
-            for key, value in iteritems(var_dict):
+            for key, value in var_dict.items():
                 cell_vars[tobytes(key)] = value
         band_text = band.text
         for row in band.rows:
@@ -310,9 +310,9 @@ class Report(object):
                     value = cell_vars.get(var.var)
                     image = None
                     if not value is None:
-                        if type(value) in string_types:
+                        if isinstance(value, str):
                             text = tobytes(escape(value).replace('\n', '</text:p><text:p>'))
-                        elif type(value) in integer_types or type(value) == float:
+                        elif isinstance(value, int) or type(value) == float:
                             text = tobytes(str(value))
                         elif type(value) == dict and cell.image:
                             image = value.get('image')

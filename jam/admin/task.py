@@ -1,7 +1,6 @@
 import  os
 import json
 import shutil
-from werkzeug._compat import iterkeys
 
 from ..common import consts, ProjectError, ProjectNotCompleted
 from ..items import DBInfo, Task, Group, ReportGroup
@@ -296,7 +295,7 @@ def load_tree(admin, task):
     process_lookup_lists(task, admin)
 
 def remove_attr(task):
-    for key in list(iterkeys(task.__dict__)):
+    for key in list(task.__dict__.keys()):
         try:
             value = task.init_dict[key]
             if hasattr(task.__dict__[key], '__call__'):

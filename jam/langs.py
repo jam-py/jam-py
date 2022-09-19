@@ -4,8 +4,6 @@ import json
 import datetime
 from shutil import copyfile
 
-from werkzeug._compat import iteritems, to_bytes, to_unicode
-from jam.third_party.filelock import FileLock
 import jam
 
 LANG_FIELDS = ['id', 'f_name', 'f_language', 'f_country', 'f_abr', 'f_rtl']
@@ -121,7 +119,7 @@ def init_locale():
         for field in LOCALE_FIELDS:
             setting = field[2:]
             try:
-                result[field] = to_unicode(loc[setting], 'utf-8')
+                result[field] = jam.common.to_str(loc[setting], 'utf-8')
             except:
                 result[field] = jam.common.DEFAULT_LOCALE[setting.upper()]
     except:
@@ -185,10 +183,10 @@ def add_lang(task, lang_id, language, country, name, abr, rtl, copy_lang):
         fields = []
         values = []
         field_values = []
-        for key, value in iteritems(locale):
+        for key, value in locale.items():
             fields.append(key)
             values.append('?')
-            field_values.append(to_unicode(value, 'utf-8'))
+            field_values.append(jam.common.to_str(value, 'utf-8'))
         cursor.execute("INSERT INTO JAM_LANGS (ID, F_LANGUAGE, F_COUNTRY, F_NAME, F_ABR, F_RTL, %s) VALUES (?,?,?,?,?,?,%s)" % (','.join(fields), ','.join(values)),
             ([lang_id, language, country, name, abr, rtl] + field_values))
         if copy_lang:
@@ -208,8 +206,8 @@ def add_lang(task, lang_id, language, country, name, abr, rtl, copy_lang):
         langs.open()
         if langs.record_count():
             langs.edit()
-            for key, value in iteritems(locale):
-                langs.field_by_name(key).value = to_unicode(value, 'utf-8')
+            for key, value in locale.items():
+                langs.field_by_name(key).value = jam.common.to_str(value, 'utf-8')
             langs.post()
             langs.apply()
     finally:
@@ -293,7 +291,7 @@ def import_lang(task, file_path):
     error = ''
     try:
         with open(file_path, 'r') as f:
-            content = to_unicode(f.read(), 'utf-8')
+            content = jam.common.to_str(f.read(), 'utf-8')
         content = json.loads(content)
         language = content['language']
         translation = content['translation']
@@ -308,7 +306,7 @@ def import_lang(task, file_path):
                 lang_id = res[0][0]
                 fields = []
                 field_values = []
-                for key, value in iteritems(language):
+                for key, value in language.items():
                     fields.append('%s=?' % key)
                     field_values.append(value)
                 fields = ',' .join(fields)
@@ -321,7 +319,7 @@ def import_lang(task, file_path):
                 fields = []
                 values = []
                 field_values = []
-                for key, value in iteritems(language):
+                for key, value in language.items():
                     fields.append(key)
                     field_values.append(value)
                     values.append('?')
@@ -342,7 +340,7 @@ def import_lang(task, file_path):
                 for r in res:
                     keys[r[1]] = r[0]
                 recs = []
-                for keyword, value in iteritems(translation):
+                for keyword, value in translation.items():
                     key_id = keys.get(keyword)
                     if key_id:
                         cursor.execute('SELECT ID FROM JAM_LANG_VALUES WHERE F_LANG=%s AND F_KEY=%s' % (lang_id, key_id))

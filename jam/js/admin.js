@@ -1114,46 +1114,24 @@ function Events3() { // sys_items
 			]);
 		}
 		else if (task.item_tree.type_id.value === task.item_types.ITEMS_TYPE) {
-			if (item.f_copy_of.value) {
-				btns = [
-					'client_module',
-					'server_module',
-					'divider',
-					'viewing',
-					'editing',
-					'filters',
-					'divider',
-					'details',
-					'divider',
-					'order',
-					// 'indices',
-					// 'foreign_keys',
-					'divider',
-					'reports',
-					'divider',
-					'privileges'
-				];
-			}
-			else {
-				btns = [
-					'client_module',
-					'server_module',
-					'divider',
-					'viewing',
-					'editing',
-					'filters',
-					'divider',
-					'details',
-					'divider',
-					'order',
-					'indices',
-					// 'foreign_keys',
-					'divider',
-					'reports',
-					'divider',
-					'privileges'
-				];
-			}
+			btns = [
+				'client_module',
+				'server_module',
+				'divider',
+				'viewing',
+				'editing',
+				'filters',
+				'divider',
+				'details',
+				'divider',
+				'order',
+				'indices',
+				// 'foreign_keys',
+				'divider',
+				'reports',
+				'divider',
+				'privileges'
+			];
 			task.add_buttons(task, btns);
 		}
 		else if (task.item_tree.type_id.value === task.item_types.TABLES_TYPE) {
@@ -2022,8 +2000,10 @@ function Events3() { // sys_items
 		ScrollTimeOut = setTimeout(function() {
 				task.btns_panel.find('button').prop("disabled", item.rec_count === 0);
 				if (item.rec_count && item.f_table_name && item.f_virtual_table) {
-					task.btns_panel.find('button.indices').prop("disabled", item.f_virtual_table.value);
-					task.btns_panel.find('button.foreign_keys').prop("disabled", item.f_virtual_table.value);
+					task.btns_panel.find('button.indices').prop("disabled", 
+						item.f_virtual_table.value || item.f_copy_of.value);
+					task.btns_panel.find('button.foreign_keys').prop("disabled", 
+						item.f_virtual_table.value || item.f_copy_of.value);
 				}
 				if (item.view_form) {
 					item.view_form.find('#copy-btn').prop("disabled", !item.rec_count || item.f_copy_of.value);
@@ -6009,7 +5989,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	function on_field_validate(field) {
 		var item = field.owner,
 			error = '';
-		if (item.owner.f_copy_of.value) {
+		if (item.owner.f_copy_of && item.owner.f_copy_of.value) {
 			return; 
 		}		
 		if (field.field_name === 'f_field_name') {

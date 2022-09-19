@@ -4,6 +4,7 @@
 function Events1() { // demo 
 
 	function on_page_loaded(task) {
+		
 		$("title").text(task.item_caption);
 		$("#app-title").text(task.item_caption);
 		  
@@ -21,7 +22,21 @@ function Events1() { // demo
 			$('#container').removeClass('container').addClass('container-fluid');
 		}
 		$('#container').show();
-		
+	
+		// let menu = [
+		//		 {First:  [task.invoices, task.customers]},
+		//		 {'Second': [task.catalogs, '', task.reports]},
+		//		 {Third: [task.tracks, {Params: function() {alert('params clicked')}}]},
+		//		 {Fourth: [task.task.analytics, {'Artists list': task.artists}]},
+		//		 task.customers_report,
+		//		 task.reports,
+		//		 {Params: function() {alert('params clicked')}},
+		//	 ];
+		// task.create_menu($("#menu"), $("#content"), {
+		//	 custom_menu: menu,
+		//	 splash_screen: '<h1 class="text-center">Jam.py Demo Application</h1>',
+		//	 view_first: true
+		// });	
 		task.create_menu($("#menu"), $("#content"), {
 			splash_screen: '<h1 class="text-center">Jam.py Demo Application</h1>',
 			view_first: true
@@ -32,6 +47,7 @@ function Events1() { // demo
 			e.preventDefault();
 			window.open(admin, '_blank');
 		});
+		
 		$("#menu-right #about a").click(function(e) {
 			e.preventDefault();
 			task.message(
@@ -78,7 +94,7 @@ function Events1() { // demo
 		if (item.can_create()) {
 			item.view_form.find("#new-btn").on('click.task', function(e) {
 				e.preventDefault();
-				if (item.master || item.master_field) {
+				if (item.master) {
 					item.append_record();
 				}
 				else {
@@ -109,7 +125,7 @@ function Events1() { // demo
 	
 		task.view_form_created(item);
 		
-		if (!(item.master || item.master_field) && item.owner.on_view_form_created) {
+		if (!item.master && item.owner.on_view_form_created) {
 			item.owner.on_view_form_created(item);
 		}
 	
@@ -119,7 +135,7 @@ function Events1() { // demo
 		
 		item.create_view_tables();
 		
-		if (!(item.master || item.master_field) && item.view_options.open_item) {
+		if (!item.master && item.view_options.open_item) {
 			item.open(true);
 		}
 	
@@ -134,7 +150,7 @@ function Events1() { // demo
 	}
 	
 	function on_view_form_closed(item) {
-		if (!(item.master || item.master_field) && item.view_options.open_item) {	
+		if (!item.master && item.view_options.open_item) {	
 			item.close();
 		}
 	}
@@ -142,22 +158,16 @@ function Events1() { // demo
 	function on_edit_form_created(item) {
 		item.edit_options.inputs_container_class = 'edit-body';
 		item.edit_options.detail_container_class = 'edit-detail';
-	
-		item.edit_form.find("#cancel-btn").on('click.task', function(e) { 
-			e.preventDefault();
-			item.cancel_edit(e); 
-		});
-		item.edit_form.find("#ok-btn").on('click.task', function(e) { 
-			e.preventDefault();
-			item.apply_record(); 
-		});
+		
+		item.edit_form.find("#cancel-btn").on('click.task', function(e) { item.cancel_edit(e) });
+		item.edit_form.find("#ok-btn").on('click.task', function() { item.apply_record() });
 		if (!item.is_new() && !item.can_modify) {
 			item.edit_form.find("#ok-btn").prop("disabled", true);
 		}
 		
 		task.edit_form_created(item);
 		
-		if (!(item.master || item.master_field) && item.owner.on_edit_form_created) {
+		if (!item.master && item.owner.on_edit_form_created) {
 			item.owner.on_edit_form_created(item);
 		}
 	
@@ -213,12 +223,10 @@ function Events1() { // demo
 	function on_filter_form_created(item) {
 		item.filter_options.title = item.item_caption + ' - filters';
 		item.create_filter_inputs(item.filter_form.find(".edit-body"));
-		item.filter_form.find("#cancel-btn").on('click.task', function(e) {
-			e.preventDefault();
+		item.filter_form.find("#cancel-btn").on('click.task', function() {
 			item.close_filter_form(); 
 		});
-		item.filter_form.find("#ok-btn").on('click.task', function(e) { 
-			e.preventDefault();
+		item.filter_form.find("#ok-btn").on('click.task', function() { 
 			item.set_order_by(item.view_options.default_order);
 			item.apply_filters(item._search_params); 
 		});
@@ -226,12 +234,10 @@ function Events1() { // demo
 	
 	function on_param_form_created(item) {
 		item.create_param_inputs(item.param_form.find(".edit-body"));
-		item.param_form.find("#cancel-btn").on('click.task', function(e) { 
-			e.preventDefault();
+		item.param_form.find("#cancel-btn").on('click.task', function() { 
 			item.close_param_form();
 		});
-		item.param_form.find("#ok-btn").on('click.task', function(e) { 
-			e.preventDefault();
+		item.param_form.find("#ok-btn").on('click.task', function() { 
 			item.process_report();
 		});
 	}
@@ -249,7 +255,7 @@ function Events1() { // demo
 	
 	function on_view_form_keyup(item, event) {
 		if (event.keyCode === 45 && event.ctrlKey === true){
-			if (item.master || item.master_field) {
+			if (item.master) {
 				item.append_record();
 			}
 			else {
@@ -411,6 +417,26 @@ task.events.events15 = new Events15();
 
 function Events16() { // demo.journals.invoices 
 
+	function on_view_form_created(item) {
+		// item.invoice_table.master_applies = true;
+		var btn = item.add_view_button('Set invoice paid', {type: 'primary', btn_id: 'paid-btn'});
+		btn.click(function() {
+			item.question('Was the invoice paid?', function () {
+				item.edit();
+				item.paid.value = true;
+				item.post();
+				item.apply(true);
+			});
+		});
+	}
+	
+	function on_edit_form_created(item) {
+		item.read_only = item.paid.value;
+		if (!item.invoice_table.master_applies) {
+			item.edit_form.find('.form-footer').hide();
+		}
+	}
+	
 	function on_field_get_text(field) {
 		if (field.field_name === 'customer' && field.value) {
 			return field.owner.firstname.lookup_text + ' ' + field.lookup_text;
@@ -426,7 +452,8 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_field_changed(field, lookup_item) {
-		if (field.field_name === 'taxrate' || field.field_name === 'customer') {
+		if (field.field_name === 'taxrate') {
+			// calc_invoice(item);
 			field.owner.apply(function(error) {
 				if (error) {
 					item.alert_error(error);   
@@ -437,6 +464,10 @@ function Events16() { // demo.journals.invoices
 					field.owner.edit();
 				}
 			});
+		}
+		let today = new Date();
+		if (field.field_name === 'invoice_date' && field.value > today) {
+			field.value = today;
 		}
 	}
 	
@@ -453,27 +484,38 @@ function Events16() { // demo.journals.invoices
 		);
 	}
 	
-	function on_edit_form_created(item) {
-		item.read_only = item.paid.value;
-	}
+	// function calc_invoice(item) {
+	//	 let clone = item.invoice_table.clone(),
+	//		 subtotal = 0,
+	//		 tax = 0,
+	//		 total = 0;
+	//	 clone.each(function(c) {
+	//		 subtotal += c.amount.value;
+	//		 tax += c.tax.value;
+	//		 total += c.total.value;
+	//	 });
+	//	 item.subtotal.value = subtotal;
+	//	 item.tax.value = tax;
+	//	 item.total.value = total;
+	// }
 	
-	function on_view_form_created(item) {
-		var btn = item.add_view_button('Set invoice paid', {type: 'primary', btn_id: 'paid-btn'});
-		btn.click(function() {
-			item.question('Was the invoice paid?', function () {
-				item.edit();
-				item.paid.value = true;
-				item.post();
-				item.apply(true);
-			});
-		});
-	}
+	// function on_detail_changed(item, detail) {
+	//	 calc_invoice(item);
+	// }
+	
+	// function on_before_field_changed(field) {
+	//	 let today = new Date();
+	//	 console.log(field.new_value);
+	//	 if (field.field_name === 'invoice_date' && field.new_value < today) {
+	//		 field.value = today;
+	//	 }
+	// }
+	this.on_view_form_created = on_view_form_created;
+	this.on_edit_form_created = on_edit_form_created;
 	this.on_field_get_text = on_field_get_text;
 	this.on_field_get_html = on_field_get_html;
 	this.on_field_changed = on_field_changed;
 	this.on_after_scroll = on_after_scroll;
-	this.on_edit_form_created = on_edit_form_created;
-	this.on_view_form_created = on_view_form_created;
 }
 
 task.events.events16 = new Events16();
@@ -488,30 +530,45 @@ function Events17() { // demo.details.invoice_table
 		});
 		item.view_form.find("#delete-btn, #select-btn, #new-btn")
 			.prop("disabled", item.owner.paid.value);		
-	}
+	
+		item.add_view_button('Find').click(function() {
+			find_record(item);
+		});
+	}		
+	
+	function find_record(item) {
+		let copy = task.invoice_table.copy({handlers: false});
+		copy.open({fields: ['track'], open_empty: true});
+	
+		copy.edit_options.title = 'Find';
+		copy.edit_options.history_button = false;
+	
+		copy.on_edit_form_created = function(c) {
+			c.edit_form.find('#ok-btn')
+				.text('Find')
+				.off('click.task')
+				.on('click', function() {
+					try {
+						c.post();
+						item.locate('track', c.track.value);
+						c.cancel_edit();
+					}
+					finally {
+						c.edit();
+					}
+				});
+		};
+		copy.append_record();
+	}	
 	
 	function on_field_changed(field, lookup_item) {
-		let item = field.owner,
-			invoice = item.owner;
+		let item = field.owner;
 		if (lookup_item) {
 			item.unitprice.value = lookup_item.unitprice.value;
 		}
-		if (item.edit_form)
-			if (field.field_name === 'quantity' || field.field_name === 'unitprice') {
-				item.server(
-					'calculate', 
-					[item.quantity.value, item.unitprice.value, item.master.taxrate.value], 
-					function(result) {
-						if (item.is_changing()) {
-							item.amount.value = result.amount;
-							item.tax.value = result.tax;
-							item.total.value = result.total;
-						}
-					}
-				);
-		}
 	}
 	this.on_view_form_created = on_view_form_created;
+	this.find_record = find_record;
 	this.on_field_changed = on_field_changed;
 }
 

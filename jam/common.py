@@ -16,7 +16,6 @@ try:
 except ImportError:
     from io import BytesIO as StringIO
 
-from werkzeug._compat import iterkeys, iteritems, to_unicode, to_bytes, string_types
 from werkzeug.utils import cached_property
 
 from .langs import get_lang_dict, get_locale_dict
@@ -179,7 +178,7 @@ class Consts(object):
     @property
     def settings(self):
         result = {}
-        keys = list(iterkeys(consts.DEFAULT_SETTINGS))
+        keys = list(consts.DEFAULT_SETTINGS.keys())
         for key in keys:
             result[key] = self.__dict__[key]
         return result
@@ -239,9 +238,9 @@ class Consts(object):
 
     def read_settings(self, keys=None):
         if not keys:
-            keys = list(iterkeys(self.DEFAULT_SETTINGS))
+            keys = list(self.DEFAULT_SETTINGS.keys())
         params = self.read_params(keys)
-        for key, value in iteritems(params):
+        for key, value in params.items():
             self.__dict__[key] = value
         if self.__dict__.get('upload_file_ext'):
             del self.__dict__['upload_file_ext']
@@ -257,7 +256,7 @@ class Consts(object):
                     value = 1
                 else:
                     value = 0
-            if setting_type in string_types:
+            if isinstance(setting_type, str):
                 fields.append('F_%s="%s"' % (key, value))
             else:
                 fields.append('F_%s=%s' % (key, value))
@@ -274,7 +273,7 @@ class Consts(object):
 
     def write_settings(self, keys=None):
         if not keys:
-            keys = list(iterkeys(self.DEFAULT_SETTINGS))
+            keys = list(self.DEFAULT_SETTINGS.keys())
         self.write_params(keys)
 
     def language(self, key):
@@ -405,7 +404,7 @@ class Consts(object):
             time_tuple.tm_mday, time_tuple.tm_hour, time_tuple.tm_min, time_tuple.tm_sec)
 
     def convert_date(self, value):
-        if type(value) in string_types:
+        if isinstance(value, str):
             try:
                 return datetime.datetime.strptime(value, '%Y-%m-%d').date()
             except:
@@ -414,7 +413,7 @@ class Consts(object):
             return value
 
     def convert_date_time(self, value):
-        if type(value) in string_types:
+        if isinstance(value, str):
             value = value.replace('T', ' ')
             value = value[:26]
             try:
@@ -476,7 +475,7 @@ def compressBuf(buf):
 
 def file_read(filename):
     with open(filename, 'rb') as f:
-        return to_unicode(f.read(), 'utf-8', errors='ignore')
+        return to_str(f.read(), 'utf-8', errors='ignore')
 
 def file_write(filename, data):
     with open(filename, 'wb') as f:
@@ -519,3 +518,22 @@ def get_ext_list(accept):
                 raise Exception("File extension must start with '.'")
             result.append(t)
     return result
+
+def to_str(x, charset=sys.getdefaultencoding(), errors="strict", allow_none_charset=False):
+    if x is None or isinstance(x, str):
+        return x
+    if not isinstance(x, (bytes, bytearray)):
+        return str(x)
+    if charset is None:
+        if allow_none_charset:
+            return x
+    return x.decode(charset, errors)
+
+def to_bytes(x, charset=sys.getdefaultencoding(), errors="strict"):
+    if x is None or isinstance(x, bytes):
+        return x
+    if isinstance(x, (bytearray, memoryview)):
+        return bytes(x)
+    if isinstance(x, str):
+        return x.encode(charset, errors)
+    raise TypeError("Expected bytes")

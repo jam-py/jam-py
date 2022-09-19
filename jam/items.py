@@ -6,15 +6,14 @@ import pickle
 import json
 import types
 
-from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_bytes, to_unicode
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import redirect
+from sqlalchemy.pool import NullPool, QueuePool
 
-from .third_party.filelock import FileLock
-from .third_party.sqlalchemy.pool import NullPool, QueuePool
-from .third_party.six import exec_, print_, get_function_code
+from .filelock import FileLock
 
 from .common import consts, error_message, json_defaul_handler, QueryData
+from .common  import to_bytes
 from .db.databases import get_database
 from .tree import AbstrTask, AbstrGroup, AbstrItem, AbstrDetail, AbstrReport
 from .dataset import Dataset, DBField, DBFilter, ParamReport, Param, DatasetException
@@ -662,7 +661,7 @@ class AbstractServerTask(AbstrTask):
             except Exception as e:
                 self.log.exception(error_message(e))
             comp_code = compile(code, item.module_name, "exec")
-            exec_(comp_code, item_module.__dict__)
+            exec(comp_code, item_module.__dict__)
 
             item_module.__dict__['__loader__'] = item._loader
             funcs = inspect.getmembers(item_module, inspect.isfunction)
@@ -703,7 +702,7 @@ class Task(AbstractServerTask):
         self.on_logout = None
         self.on_ext_request = None
         self.init_dict = {}
-        for key, value in iteritems(self.__dict__):
+        for key, value in self.__dict__.items():
             self.init_dict[key] = value
 
     @property

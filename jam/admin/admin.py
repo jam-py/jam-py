@@ -2,8 +2,6 @@ import os
 import json
 import sqlite3
 
-from werkzeug._compat import iteritems, iterkeys
-
 from ..common import consts, error_message, file_read, file_write
 from ..items import AdminTask, Group
 from jam.db.databases import get_database
@@ -219,7 +217,7 @@ def recreate_table(delta, old_fields, new_fields, comp=None, fk_delta=None):
 def change_item_query(delta, old_fields, new_fields):
 
     def recreate(comp):
-        for key, (old_field, new_field) in iteritems(comp):
+        for key, (old_field, new_field) in comp.items():
             if old_field and new_field:
                 if old_field.field_name != new_field.field_name:
                     return True
@@ -246,10 +244,10 @@ def change_item_query(delta, old_fields, new_fields):
         recreate_table(delta, old_fields, new_fields, comp=comp)
         return
     else:
-        for key, (old_field, new_field) in iteritems(comp):
+        for key, (old_field, new_field) in comp.items():
             if old_field and not new_field:
                 result.append(db.del_field(table_name, old_field))
-        for key, (old_field, new_field) in iteritems(comp):
+        for key, (old_field, new_field) in comp.items():
             if old_field and new_field:
                 if (old_field.field_name != new_field.field_name) or \
                     (db.FIELD_TYPES[old_field.data_type] != db.FIELD_TYPES[new_field.data_type]) or \
@@ -260,7 +258,7 @@ def change_item_query(delta, old_fields, new_fields):
                         result += sql
                     else:
                         result.append(sql)
-        for key, (old_field, new_field) in iteritems(comp):
+        for key, (old_field, new_field) in comp.items():
             if not old_field and new_field:
                 result.append(db.add_field(table_name, new_field))
     return result

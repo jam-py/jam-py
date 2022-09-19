@@ -2,10 +2,10 @@ import os
 import datetime
 import traceback
 
-from werkzeug._compat import iteritems, iterkeys, text_type, string_types, to_unicode
 from werkzeug.utils import cached_property
 
 from .common import consts, error_message
+from .common  import to_str
 
 FIELD_DEF = FIELD_ID, FIELD_NAME, FIELD_CAPTION, FIELD_DATA_TYPE, FIELD_SIZE, REQUIRED, LOOKUP_ITEM, \
     LOOKUP_FIELD, LOOKUP_FIELD1, LOOKUP_FIELD2, FIELD_VISIBLE, \
@@ -98,10 +98,10 @@ class DBField(object):
         if self.row and self.bind_index >= 0:
             result = self.row[self.bind_index]
             if self.data_type == consts.DATE:
-                if type(result) in string_types:
+                if isinstance(result, str):
                     result = consts.convert_date(result)
             elif self.data_type == consts.DATETIME:
-                if type(result) in string_types:
+                if isinstance(result, str):
                     result = consts.convert_date_time(result)
             return result
 
@@ -124,7 +124,7 @@ class DBField(object):
             if self.row and (self.lookup_index >= 0):
                 result = self.row[self.lookup_index]
                 if self.data_type == consts.DATETIME and result:
-                    if type(result) in string_types:
+                    if isinstance(result, str):
                         result = result.replace('T', ' ')
                 return result
 
@@ -162,7 +162,7 @@ class DBField(object):
             elif data_type == consts.FILE:
                 result = self.get_secure_file_name(result)
             else:
-                result = text_type(result)
+                result = str(result)
         return result
 
     @property
@@ -173,7 +173,7 @@ class DBField(object):
     def text(self, value):
         if value != self.text:
             if self.data_type == consts.TEXT:
-                self.value = text_type(value)
+                self.value = str(value)
             elif self.data_type == consts.INTEGER:
                 self.value =  int(value)
             if self.data_type == consts.FLOAT:
@@ -219,8 +219,8 @@ class DBField(object):
                     result = []
         else:
             if self.data_type == consts.TEXT:
-                if not isinstance(result, text_type):
-                    result = to_unicode(result, 'utf-8')
+                if not isinstance(result, str):
+                    result = to_str(result, 'utf-8')
             elif self.data_type in (consts.FLOAT, consts.CURRENCY):
                 result = float(result)
             elif self.data_type == consts.DATE:
@@ -274,7 +274,7 @@ class DBField(object):
             self.new_value = value
             try:
                 if self.data_type == consts.TEXT:
-                    self.new_value = to_unicode(value, 'utf-8')
+                    self.new_value = to_str(value, 'utf-8')
                 elif self.data_type == consts.FLOAT:
                     self.new_value = float(value)
                 elif self.data_type == consts.CURRENCY:
@@ -312,7 +312,7 @@ class DBField(object):
         else:
             mess = consts.language('invalid_value')
         try:
-            val = to_unicode(value)
+            val = to_str(value)
             mess = mess % val
         except:
             mess = mess.replace('%s', '')
@@ -362,7 +362,7 @@ class DBField(object):
 
     def _get_value_in_list(self, value):
         result = '';
-        if type(value) in string_types:
+        if isinstance(value, str):
             return value
         try:
             for val, str_val in self.lookup_values:
@@ -475,7 +475,7 @@ class DBField(object):
     def file_path(self):
         if self.data_type in (consts.FILE, consts.IMAGE):
             if self.value:
-                dir_path = to_unicode(self.owner.task.work_dir, 'utf-8')
+                dir_path = to_str(self.owner.task.work_dir, 'utf-8')
                 return os.path.join(dir_path, 'static', 'files', self.value)
             else:
                 return ''
@@ -655,14 +655,14 @@ class RecInfo(object):
 
     def get_changes(self, updates=None):
         result = {};
-        for ID, detail in iteritems(self.details):
+        for ID, detail in self.details.items():
             detail_changes = {}
             detail.get_changes(detail_changes, updates)
             result[ID] = detail_changes;
         return result;
 
     def set_changes(self, details):
-        for ID, detail in iteritems(details):
+        for ID, detail in details.items():
             item = self.item.item_by_ID(int(ID))
             change_log = ChangeLog(item, True)
             self.details[int(ID)] = change_log
@@ -670,7 +670,7 @@ class RecInfo(object):
 
     def update(self, details):
         self.log_index = None;
-        for ID, detail in iteritems(details):
+        for ID, detail in details.items():
             self.details[ID].update(detail)
 
     def copy(self):
@@ -678,17 +678,17 @@ class RecInfo(object):
         result.record_status  = self.record_status
         result.log_index = self.log_index
         result.details = {}
-        for ID, detail in iteritems(self.details):
+        for ID, detail in self.details.items():
             result.details[ID] = self.details[ID].copy()
         return result;
 
     def restore(self):
-        for ID, detail in iteritems(self.details):
+        for ID, detail in self.details.items():
             self.details[ID].restore()
 
     def print_log(self, indent):
         indent += '    '
-        for ID, detail in iteritems(self.details):
+        for ID, detail in self.details.items():
             self.details[ID].print_log(indent)
 
 class ChangeLog(object):
@@ -1385,7 +1385,7 @@ class AbstractDataSet(object):
 
     def get_where_list(self, field_dict):
         result = []
-        for field_arg in iterkeys(field_dict):
+        for field_arg in field_dict.keys():
             field_name = field_arg
             pos = field_name.find('__')
             if pos > -1:
@@ -1421,7 +1421,7 @@ class AbstractDataSet(object):
         if dic:
             field_dict = dic
         if fields:
-            for key, value in iteritems(fields):
+            for key, value in fields.items():
                 field_dict[key] = value
         self._where_list = self.get_where_list(field_dict)
 
@@ -1986,11 +1986,11 @@ class MasterDetailDataset(MasterDataSet):
             return result
 
         params = {}
-        for args, value in iteritems(locals()):
+        for args, value in locals().items():
             if not args in ['self', 'ids', 'params', 'slice_ids']:
                 params[args] = value
         if type(ids) == dict:
-            keys = list(iterkeys(ids))
+            keys = list(ids.keys())
             id_field_name = keys[0]
             ids = ids[id_field_name]
         elif type(ids) == list:

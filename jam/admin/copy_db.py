@@ -1,7 +1,6 @@
 import datetime
 
-from werkzeug._compat import text_type, to_bytes, to_unicode
-
+from ..common import to_bytes, to_str
 from ..common import consts, error_message, QueryData
 from ..db.databases import get_database
 
@@ -91,17 +90,17 @@ def copy_database(task, dbtype, connection, limit = 1000):
                                 r[j] = 1
                             else:
                                 r[j] = 0
-                        elif field.data_type == consts.DATE and type(r[j]) == text_type:
+                        elif field.data_type == consts.DATE and type(r[j]) == str:
                             r[j] = consts.convert_date(r[j])
-                        elif field.data_type == consts.DATETIME and type(r[j]) == text_type:
+                        elif field.data_type == consts.DATETIME and type(r[j]) == str:
                             r[j] = consts.convert_date_time(r[j])
                         elif field.data_type in [consts.LONGTEXT, consts.KEYS]:
                             if task.db.db_type == consts.FIREBIRD:
-                                if type(r[j]) == text_type:
+                                if type(r[j]) == str:
                                     r[j] = to_bytes(r[j], 'utf-8')
                             elif db.db_type == consts.FIREBIRD:
                                 if type(r[j]) == bytes:
-                                    r[j] = to_unicode(r[j], 'utf-8')
+                                    r[j] = to_str(r[j], 'utf-8')
                     j += 1
         cursor = con.cursor()
         try:
