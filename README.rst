@@ -54,9 +54,6 @@ More demos on PythonAnywhere:
 * `SAP Theme Demo <https://jampyapp.pythonanywhere.com/>`_
 * `Personal Account Ledger from MS Access template <https://msaccess.pythonanywhere.com/>`_
 * `The ERP POC Demo with Italian and English translations <https://sem.pythonanywhere.com/>`_
-
-Demo on PythonAnywhere:
-
 * `Jam.py Assets/Parts Application (wip) <https://jampy.pythonanywhere.com>`_
 
 Jam.py alternative site:
