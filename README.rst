@@ -49,14 +49,11 @@ Please watch the
 `Jam.py framework applications <https://youtu.be/qkJvGlgoabU>`_  video
 to see some applications written in Jam.py.
 
-More demos on Heroku:
+More demos on PythonAnywhere:
 
-* `The RedHat Satellite 5.x Dashboard utility Demo <https://redhatsatellite.herokuapp.com>`_
-* `The Postfix email aliases utility Demo <https://jampy-aliases.herokuapp.com>`_
-* `The Samba Shares utility Demo <https://sambashares.herokuapp.com>`_
-
-`Here <https://youtu.be/pQYer6po820>`_ is a video showing how to publish a
-Jam.py application from GitHub repo on Heroku
+* `SAP Theme Demo <https://jampyapp.pythonanywhere.com/>`_
+* `Personal Account Ledger from MS Access template <https://msaccess.pythonanywhere.com/>`_
+* `The ERP POC Demo with Italian and English translations <https://sem.pythonanywhere.com/>`_
 
 Demo on PythonAnywhere:
 
