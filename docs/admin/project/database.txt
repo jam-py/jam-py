@@ -7,7 +7,7 @@ Database
 	:align: center
 	:alt: Database dialog
 
-In this dialog project database pararameters are displayed. When they have been 
+In this dialog project database parameters are displayed. When they have been 
 changed and OK button is clicked, the Application builder will check connection 
 to the database and if it failed to connect an error will be displayed.
 
@@ -23,7 +23,7 @@ automatically modified. For example, if we add a new field to some item in the
 is checked, no modifications to the database tables are made. 
 
 .. note::
-    Please be very carefull when using this option.
+    Please be very careful when using this option.
 
 Examples of database setups
 ===========================
