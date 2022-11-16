@@ -40,7 +40,7 @@ The upper part of the **Detail Group Editor** have the following fields:
   create this field first, see below 
   
 In the center part of the **Detail Group Editor** dialog there is a table 
-containing a list of fields, defined for the item. Thsese fields are 
+containing a list of fields, defined for the item. These fields are 
 :doc:`common </programming/data/common_fields>`
 to all items the group will own. 
 
