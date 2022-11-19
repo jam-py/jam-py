@@ -1,6 +1,7 @@
 import consts from "./consts.js";
 import AbsrtactItem from "./abstr_item.js";
 import Param from "./param.js";
+import {DBInput} from "./input.js";
 
 class Report extends AbsrtactItem {
     constructor(owner, ID, item_name, caption, visible, type, js_filename) {
@@ -234,19 +235,31 @@ class Report extends AbsrtactItem {
             });
         }
         container.empty();
-        form = $('<form form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
+
+        form = $(
+            '<form class="input-form" autocomplete="off">' +
+                '<div class="container">' +
+                    '<div class="row">' +
+                    '</div>' +
+                '</div>' +
+            '</form>'
+            ).appendTo(container);
         if (options.in_well) {
             form.addClass('well');
         }
         if (options.autocomplete) {
             form.attr("autocomplete", "on")
         }
-        if (!options.label_on_top) {
-            form.addClass("form-horizontal");
+        else {
+            form.attr("autocomplete", "off")
         }
+        let row = form.find('div.row')
+        form.append(row)
         len = params.length;
         for (col = 0; col < options.col_count; col++) {
-            cols.push($("<div></div>").addClass("span" + 12 / options.col_count).appendTo(form));
+            cols.push($("<div></div>")
+            .addClass("col-md-" + 12 / options.col_count)
+            .appendTo(row));
         }
         tabindex = options.tabindex;
         if (!tabindex && this.param_form) {

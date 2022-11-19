@@ -474,7 +474,7 @@ def get_minified_name(file_name):
 
 def minify(file_name):
     min_file_name = get_minified_name(file_name)
-    from jam.third_party.jsmin import jsmin
+    from jsmin import jsmin
     text = file_read(file_name)
     file_write(min_file_name, jsmin(text))
 
@@ -797,10 +797,6 @@ def change_theme(task):
     for t in consts.THEME_FILE:
         if t and t != theme:
             rlist.append((t, theme))
-    if consts.SMALL_FONT:
-        rlist.append(('jam.css', 'jam12.css'))
-    else:
-        rlist.append(('jam12.css', 'jam.css'))
     file_name = os.path.join(task.work_dir, 'index.html')
     content = file_read(file_name)
     for r1, r2 in rlist:

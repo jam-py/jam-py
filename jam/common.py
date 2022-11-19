@@ -54,7 +54,7 @@ class Consts(object):
         'CLIENT_MODIFIED': False,
         'SERVER_MODIFIED': False,
         'BUILD_VERSION': 0,
-        'PARAMS_VERSION': 0
+        'PARAMS_VERSION': 0,
     }
     DEFAULT_LOCALE = {
         'DECIMAL_POINT': '.',
@@ -75,12 +75,12 @@ class Consts(object):
     }
     SQLITE, FIREBIRD, POSTGRESQL, MYSQL, ORACLE, MSSQL = range(1, 7)
     DB_TYPE = ('Sqlite', 'FireBird', 'PostgreSQL', 'MySQL', 'Oracle', 'MSSQL')
-    THEMES = ('Bootstrap', 'Cerulean', 'Amelia', 'Flatly', 'Journal',
-        'Slate', 'United', 'Cosmo', 'Readable', 'Spacelab')
+    THEMES = ('Bootstrap', 'Cerulean', 'Quartz', 'Flatly', 'Journal',
+        'Darkly', 'United', 'Cosmo', 'Materia', 'Morph')
     THEME_FILE = ('', 'bootstrap.css', 'bootstrap-cerulean.css',
-        'bootstrap-amelia.css', 'bootstrap-flatly.css', 'bootstrap-journal.css',
-        'bootstrap-slate.css', 'bootstrap-united.css', 'bootstrap-cosmo.css',
-        'bootstrap-readable.css', 'bootstrap-spacelab.css')
+        'bootstrap-quartz.css', 'bootstrap-flatly.css', 'bootstrap-journal.css',
+        'bootstrap-darkly.css ', 'bootstrap-united.css', 'bootstrap-cosmo.css',
+        'bootstrap-materia.css', 'bootstrap-morph.css')
     PROJECT_NONE, PROJECT_NO_PROJECT, PROJECT_LOADING, PROJECT_ERROR, \
         PROJECT_NOT_LOGGED, PROJECT_LOGGED, PROJECT_MAINTAINANCE, \
         PROJECT_MODIFIED, RESPONSE = range(1, 10)
@@ -256,7 +256,7 @@ class Consts(object):
                     value = 1
                 else:
                     value = 0
-            if isinstance(setting_type, str):
+            if setting_type == str:
                 fields.append('F_%s="%s"' % (key, value))
             else:
                 fields.append('F_%s=%s' % (key, value))
@@ -266,7 +266,8 @@ class Consts(object):
             cursor = con.cursor()
             cursor.execute(sql)
             con.commit()
-        except:
+        except Exception as x:
+            print(x)
             con.rollback()
         finally:
             con.close()

@@ -1005,25 +1005,6 @@ class Field {
         }
     }
 
-    type_error() {
-        switch (this.data_type) {
-            case consts.INTEGER:
-                return task.language.invalid_int.replace('%s', '');
-            case consts.FLOAT:
-                return task.language.invalid_float.replace('%s', '');
-            case consts.CURRENCY:
-                return task.language.invalid_cur.replace('%s', '');
-            case consts.DATE:
-                return task.language.invalid_date.replace('%s', '');
-            case consts.DATE_TIME:
-                return task.language.invalid_date.replace('%s', '');
-            case consts.BOOLEAN:
-                return task.language.invalid_bool.replace('%s', '');
-            default:
-                return task.language.invalid_value.replace('%s', '');
-        }
-    }
-
     valid_char_code(code) {
         var ch = String.fromCharCode(code),
             isDigit = code >= 48 && code <= 57,

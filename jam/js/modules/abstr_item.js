@@ -413,55 +413,20 @@ class AbsrtactItem {
     }
 
     _create_form_header(form, options, form_type, container) {
-        var $doc,
-            $form,
-            $title,
-            mouseX,
-            mouseY,
-            defaultOptions = {
-                title: this.item_caption,
-                close_button: true,
-                print: false
-            },
-            form_header,
-            item_class = '';
-
-        function captureMouseMove(e) {
-            var $title = $form.find('.modal-header');
-            if (mouseX) {
-                e.preventDefault();
-                $title.css('cursor', 'auto');
-                $form.css('margin-left', parseInt($form.css('margin-left'), 10) + e.screenX - mouseX);
-                $form.css('margin-top', parseInt($form.css('margin-top'), 10) + e.screenY - mouseY);
-                mouseX = e.screenX;
-                mouseY = e.screenY;
-            }
-        }
-
-        function release_mouse_move(e) {
-            mouseX = undefined;
-            mouseY = undefined;
-            $doc.off("mousemove.modalform");
-            $doc.off("mouseup.modalform");
-        }
-        if (task.old_forms) {
-            form_header = $('<div class="modal-header">');
-            form_header.css('display', 'block');
-        }
-        else {
-            if (options.form_header && (!form_header || !form_header.length)) {
-                form_header = $(
-                    '<div class="modal-header">' +
-                        '<div class="header-title"></div>' +
-                        '<div class="header-refresh-btn"></div>' +
-                        '<div class="header-history-btn"></div>' +
-                        '<div class="header-filters"></div>' +
-                        '<div class="header-search"></div>' +
-                        '<div class="header-print-btn"></div>' +
-                        '<div class="header-close-btn"></div>' +
-                    '</div>'
-                );
-            }
+        let form_header,
+            item_class;
+        if (options.form_header) {
+            form_header = $(
+                '<div class="card-header form-header">' +
+                    '<div class="form-header-title"></div>' +
+                    '<div class="form-header-info" style="display: none"></div>' +
+                    '<div class="form-header-refresh-btn"></div>' +
+                    '<div class="form-header-history-btn"></div>' +
+                    '<div class="form-header-filters"></div>' +
+                    //~ '<div class="form-header-print-btn"></div>' +
+                    '<div class="form-header-close-btn"></div>' +
+                '</div>'
+            );
         }
         if (form_type) {
             if (this.master) {
@@ -471,52 +436,27 @@ class AbsrtactItem {
                 item_class = this.item_name + ' ' + form_type + '-form';
             }
         }
-        options = $.extend({}, defaultOptions, options);
-        if (!options.title) {
-            options.title = '&nbsp';
-        }
-
-        if (container && container.length) {
-            if (task.old_forms) {
-                form.addClass('jam-form');
-                form.addClass(item_class)
-                if (options.form_header && form_type === 'edit') {
-                    form.prepend(form_header);
-                }
-                return form
+        let style_width = '';
+        if (form_type != 'view') {
+            if (!options.width) {
+                options.width = 600;
             }
-            else {
-                $form = $(
-                    '<div class="form-frame ' + item_class + '" tabindex="-1">' +
-                    '</div>'
-                );
-                if (options.form_header) {
-                    $form.append(form_header);
-                }
-                if (!options.form_border) {
-                    $form.addClass('no-border');
-                }
+            if (container) {
+                style_width = 'max-width:' + options.width + 'px;';
             }
         }
-        else {
-            $form = $(
-                '<div class="modal hide normal-modal-border ' + item_class + '" tabindex="-1" data-backdrop="static">' +
-                '</div>'
-            );
-            if (options.form_header) {
-                $form.append(form_header);
-            }
-            $doc = $(document);
-            $form.on("mousedown", ".modal-header", function(e) {
-                mouseX = e.screenX;
-                mouseY = e.screenY;
-                $doc.on("mousemove.modalform", captureMouseMove);
-                $doc.on("mouseup.modalform", release_mouse_move);
-            });
-
-            $form.on("mousemove", ".modal-header", function(e) {
-                $(this).css('cursor', 'move');
-            });
+        let $form = $(
+            '<div class="card ' + item_class + '" tabindex="-1" style="width:100%;' + style_width + '">' +
+            '</div>'
+        );
+        if (options.form_header) {
+            $form.append(form_header);
+        }
+        if (!options.form_border) {
+            $form.addClass('no-border');
+        }
+        if (!container) {
+            $form.addClass('modal-form');
         }
         this._set_form_options($form, options);
         $form.append(form);
@@ -524,103 +464,35 @@ class AbsrtactItem {
         return $form;
     }
 
-    _set_old_form_options(form, options, form_type) {
-        var self = this,
-            form_name = form_type + '_form',
-            body,
-            header = form.find('.modal-header'),
-            title = header.find('.modal-title'),
-            closeCaption = '',
-            close_button = '',
-            printCaption = '',
-            print_button = '',
-            history_button = '';
-        if (options.close_button) {
-            if (task.language && options.close_on_escape) {
-                closeCaption = '&nbsp;' + task.language.close + ' - [Esc]</small>';
-            }
-            close_button = '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' +
-                closeCaption + ' ×</button>';
-        }
-        if (task.language && options.print) {
-            printCaption = '&nbsp;' + task.language.print + ' - [Ctrl-P]</small>',
-                print_button = '<button type="button" id="print-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' +
-                printCaption + '</button>';
-        }
-        if (options.history_button && this.keep_history && task.history_item) {
-            history_button = '<i id="history-btn" class="icon-film" style="float: right; margin: 5px;"></i>';
-        }
-
-        if (!title.text().length) {
-            title = ('<h4 class="modal-title">' + options.title + '</h4>');
-        } else {
-            title.html(options.title);
-        }
-        header.empty();
-        header.append(close_button + history_button + print_button);
-        header.append(title);
-        header.find("#close-btn").css('cursor', 'default').click(function(e) {
-            if (form_name) {
-                self._close_form(form_type);
-            }
-        });
-        header.find('#print-btn').css('cursor', 'default').click(function(e) {
-            if (form.find(".form-body").length) {
-                body = form.find(".form-body");
-            }
-            else if (form.find(".modal-body").length) {
-                body = form.find(".modal-body");
-            }
-            self.print_html(body);
-        });
-        header.find('#history-btn').css('cursor', 'default').click(function(e) {
-            self.show_history();
-        });
-    }
-
     _set_form_options(form, options, form_type) {
         var self = this,
             form_name = form_type + '_form',
-            header = form.find('.modal-header'),
+            header = form.find('.form-header'),
             close_caption = '',
             close_button = '',
             print_caption = '',
             print_button = '',
             filter_count = 0,
+            title = options.title,
             body;
-        if (task.old_forms) {
-            this._set_old_form_options(form, options, form_type);
-            return;
-        }
-        if (!options.title) {
-            options.title = this.item_caption;
+        if (!title) {
+            title = this.item_caption;
         }
 
         if (options.close_button) {
             if (task.language && options.close_on_escape) {
-                close_caption = '&nbsp;' + task.language.close + ' - [Esc]</small>';
+                close_caption = task.language.close + ' - [Esc] <i class="bi bi-x"></i>';
             }
-            close_button = '<button type="button" id="close-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' +
-                close_caption + ' ×</button>';
-            header.find('.header-close-btn').html(close_button);
+            close_button = '<button type="button" class="btn-close close-form-btn" tabindex="-1"></button>';
+            header.find('.form-header-close-btn').html(close_button);
         }
         else {
-            header.find('.header-close-btn').hide();
-        }
-
-        if (task.language && options.print) {
-            print_caption = '&nbsp;' + task.language.print + ' - [Ctrl-P]</small>',
-                print_button = '<button type="button" id="print-btn" class="close" tabindex="-1" aria-hidden="true" style="padding: 0px 10px;">' +
-                print_caption + '</button>';
-            header.find('.header-print-btn').html(print_button);
-        }
-        else {
-            header.find('.header-print-btn').hide();
+            header.find('.form-header-close-btn').hide();
         }
 
         if (options.history_button && this.keep_history && task.history_item) {
-            header.find('.header-history-btn')
-                .html('<a class="btn header-btn history-btn" href="#"><i class="icon-film"></i></a>')
+            header.find('.form-header-history-btn')
+                .html('<button type="button" class="btn btn-secondary history-btn"><i class="bi bi-film"></i></button>')
                 .tooltip({placement: 'bottom', title: task.language.view_rec_history, trigger: 'hover'});
             header.find('.history-btn').css('cursor', 'default').click(function(e) {
                 e.preventDefault();
@@ -628,12 +500,12 @@ class AbsrtactItem {
             });
         }
         else {
-            header.find('.header-history-btn').hide();
+            header.find('.form-header-history-btn').hide();
         }
 
         if (!this.virtual_table && options.refresh_button) {
-            header.find('.header-refresh-btn')
-                .html('<a class="btn header-btn refresh-btn" href="#"><i class="icon-refresh"></i></a>')
+            header.find('.form-header-refresh-btn')
+                .html('<button type="button" class="btn btn-secondary refresh-btn"><i class="bi bi-arrow-clockwise"></i></button>')
                 .tooltip({placement: 'bottom', title: task.language.refresh_page, trigger: 'hover'});
             header.find(".refresh-btn").css('cursor', 'default').click(function(e) {
                 e.preventDefault();
@@ -641,7 +513,7 @@ class AbsrtactItem {
             });
         }
         else {
-            header.find('.header-refresh-btn').hide();
+            header.find('.form-header-refresh-btn').hide();
         }
 
         if (this.each_filter) {
@@ -652,14 +524,14 @@ class AbsrtactItem {
             })
         }
         if (options.enable_filters && filter_count) {
-            header.find('.header-filters')
+            header.find('.form-header-filters')
                 .html(
-                    '<a class="btn header-btn header-filters-btn" href="#">' +
-                    //~ '<i class="icon-filter"></i> ' +
-                    task.language.filters + '</a>' +
-                    '<span class="filters-text pull-left"></span>'
+                    '<button type="button" class="btn btn-secondary form-header-filters-btn">' +
+                    //~ '<i class="bi bi-filter"></i>' + '</button>' +
+                    task.language.filters + '</button>' +
+                    '<span class="filters-text"></span>'
                 )
-            header.find('.header-filters-btn')
+            header.find('.form-header-filters-btn')
                 .tooltip({placement: 'bottom', title: task.language.set_filters, trigger: 'hover'})
                 .css('cursor', 'default')
                 .click(function(e) {
@@ -668,13 +540,9 @@ class AbsrtactItem {
                 });
         }
 
-        if (!options.enable_search) {
-            header.find('.header-search').hide();
-        }
+        header.find('.form-header-title').html('<h5 class="form-title">' + title + '</h5>')
 
-        header.find('.header-title').html('<h4 class="modal-title">' + options.title + '</h4>')
-
-        header.find("#close-btn").css('cursor', 'default').click(function(e) {
+        header.find(".close-form-btn").click(function(e) {
             if (form_name) {
                 self._close_form(form_type);
             }
@@ -706,135 +574,44 @@ class AbsrtactItem {
         };
     }
 
-    init_search() {
-
-        function can_search_on_field(field) {
-            if (field && field.lookup_type !== "boolean" &&
-                field.lookup_type !== "image" &&
-                field.lookup_type !== "date" &&
-                field.lookup_type !== "datetime") {
-                return true;
-            }
+    _can_search_on_field(field) {
+        if (field && field.lookup_type !== "boolean" &&
+            field.lookup_type !== "image" &&
+            field.lookup_type !== "date" &&
+            field.lookup_type !== "datetime") {
+            return true;
         }
+    }
 
-        function isCharCode(code) {
-            if (code >= 48 && code <= 57 || code >= 96 && code <= 105 ||
-                code >= 65 && code <= 90 || code >= 186 && code <= 192 ||
-                code >= 219 && code <= 222) {
-                return true;
-            }
-        }
+    _init_column_title_search(field, $search_input) {
+        let self = this,
+            time_out;
 
-        function do_search(item, input) {
-            var field = item.field_by_name(search_field),
-                search_type = 'contains_all';
-            item.set_order_by(item.view_options.default_order);
-            item._search_params = item.search(search_field, input.val(), search_type, true, function() {
-                input.css('font-weight', 'bold');
-            });
-        }
+        $search_input.on('input', function() {
+            let $input = $(this);
+            $input.css('font-weight', 'normal')
+            clearTimeout(time_out);
+            time_out = setTimeout(
+                function() {
+                    let search_type = 'contains_all';
+                    self.set_order_by(self.view_options.default_order);
+                    self._search_params = self.search(field.field_name, $input.val(), search_type, true, function() {
+                        $input.css('font-weight', 'bold')
+                    });
+                },
+                500
+            );
+        });
 
-        var timeOut,
-            self = this,
-            i,
-            counter = 0,
-            search_form,
-            search,
-            fields_menu,
-            li,
-            captions = [],
-            field,
-            field_btn,
-            search_field,
-            fields = [];
-
-        if (this.view_options.search_field) {
-            search_field = this.view_options.search_field;
-        }
-        for (i = 0; i < this.view_options.fields.length; i++) {
-            field = this.field_by_name(this.view_options.fields[i]);
-            if (field && can_search_on_field(field)) {
-                fields.push([field.field_name, field.field_caption])
-                if (!search_field) {
-                    search_field = this.view_options.fields[i];
-                }
-                counter += 1;
-                if (counter > 20) {
-                    break;
-                }
-            }
-        }
-        if (search_field) {
-            let input_class = 'input-medium';
-            this.view_form.find('#search-form').remove() // for compatibility with previous verdions
-            this.view_form.find('.header-search').append(
-                '<form id="search-form" class="form-inline pull-right">' +
-                    '<div class="btn-group">' +
-                        '<button class="field-btn btn btn-small">' + this.field_by_name(search_field).field_caption + '</button>' +
-                        '<button class="btn btn-small dropdown-toggle" data-toggle="dropdown">' +
-                            '<span class="caret"></span>' +
-                        '</button>' +
-                        '<ul class="dropdown-menu">' +
-                        '</ul>' +
-                    '</div>' +
-                    ' <input id="search-input" type="text" class="' + input_class + ' search-query" autocomplete="off">' +
-                '</form>');
-            search = this.view_form.find("#search-input");
-            field_btn = this.view_form.find('#search-form .field-btn');
-            field_btn.click(function(e) {
+        $search_input.keyup(function(e) {
+            var code = e.which;
+            if (code === 13) {
                 e.preventDefault();
-                search.focus();
-            });
-            fields_menu = this.view_form.find('#search-form .dropdown-menu')
-            for (i = 0; i < fields.length; i++) {
-                li = $('<li><a href="#">' + fields[i][1] + '</a></li>')
-                li.data('field', fields[i]);
-                li.click(function(e) {
-                    var field = $(this).data('field');
-                    e.preventDefault();
-                    search_field = field[0];
-                    field_btn.text(field[1]);
-                    search.focus();
-                    search.val('');
-                    do_search(self, search);
-                });
-                fields_menu.append(li)
             }
-            search.on('input', function() {
-                var input = $(this);
-                input.css('font-weight', 'normal');
-                clearTimeout(timeOut);
-                timeOut = setTimeout(
-                    function() {
-                        do_search(self, input);
-                    },
-                    500
-                );
-            });
-            search.keyup(function(e) {
-                var code = e.which;
-                if (code === 13) {
-                    e.preventDefault();
-                }
-                //~ else if (code === 40 || code === 27) {
-                else if (code === 27) {
-                    self.view_form.find('.dbtable.' + self.item_name + ' .inner-table').focus();
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-            });
-            this.view_form.on('keydown', function(e) {
-                var code = e.keyCode || e.which;
-                if (code === 70 && e.ctrlKey) {
-                    e.preventDefault();
-                    search.focus();
-                }
-                return
-            });
-        }
-        else {
-            this.view_form.find("#search-form").hide();
-        }
+        });
+        $search_input.on('mousedown', (function(e) {
+            e.stopPropagation();
+        }));
     }
 
     _process_key_event(form_type, event_type, e) {
@@ -849,9 +626,9 @@ class AbsrtactItem {
                 e.stopImmediatePropagation();
             }
             else {
-                if (e.which !== 116) { //F5
-                    e.stopPropagation();
-                }
+                //~ if (e.which !== 116) { //F5
+                    //~ e.stopPropagation();
+                //~ }
                 this._process_event(form_type, event_type, e);
                 forms = form.find('.jam-form');
                 forms.each(function() {
@@ -916,30 +693,6 @@ class AbsrtactItem {
         }
     }
 
-    _resize_form(form_type, container) {
-        var form_name = form_type + '_form',
-            form = this[form_name],
-            item_options = this[form_type + '_options'],
-            parent_width,
-            width = item_options.width,
-            container_width;
-        parent_width = container.parent().parent().innerWidth();
-        container.width(parent_width);
-        container_width = container.innerWidth() -
-            parseInt(form.css('border-left-width'), 10) -
-            parseInt(form.css('border-right-width'), 10);
-        if (!width) {
-            width = form.width()
-        }
-        if (width < container_width) {
-            form.width(width);
-        }
-        else {
-            form.width(container_width);
-        }
-        this.resize_controls();
-    }
-
     _active_form(form_type) {
         var self = this,
             form_name = form_type + '_form',
@@ -975,6 +728,14 @@ class AbsrtactItem {
         return result;
     }
 
+    _key_suffix(form_type, options) {
+        let result = form_type + '_form' + '.' + this.item_name;
+        if (options.tab_id) {
+            result += '.' + options.tab_id;
+        }
+        return result;
+    }
+
     _create_form(form_type, container) {
         var self = this,
             form,
@@ -989,10 +750,7 @@ class AbsrtactItem {
         options.form_type = form_type;
         options.item_options = item_options;
         options.item_options.form_type = form_type;
-        key_suffix = form_name + '.' + this.item_name;
-        if (item_options.tab_id) {
-            key_suffix += '.' + item_options.tab_id;
-        }
+        key_suffix = this._key_suffix(form_type, item_options);
         if (container) {
             container.empty();
             this.task.default_content_visible = false;
@@ -1027,70 +785,9 @@ class AbsrtactItem {
                 this._process_event(form_type, 'created');
                 this._set_form_options(form, item_options, form_type);
                 this._focus_form(form);
-                if (form_type === 'edit') {
-                    this._resize_form(form_type, container);
-                    $(window).on("resize." + key_suffix, function(e) {
-                        clearTimeout(resize_timeout);
-                        resize_timeout = setTimeout(
-                            function() {
-                                self._resize_form(form_type, container);
-                            },
-                            100
-                        );
-                    })
-                }
                 this._process_event(form_type, 'shown');
             } else {
-                if (form.hasClass("modal")) {
-                    form.on("show", function(e) {
-                        if (e.target === self[form_name].get(0)) {
-                            e.stopPropagation();
-                            self._process_event(form_type, 'created');
-                            self._set_form_options(self[form_name], item_options, form_type);
-                        }
-                    });
-                    form.on("shown", function(e) {
-                        if (e.target === self[form_name].get(0)) {
-                            self._focus_form(self[form_name]);
-                            if (form_type === 'edit') {
-                                self.resize_controls();
-                            }
-                            e.stopPropagation();
-                            self._process_event(form_type, 'shown');
-                        }
-                    });
-                    form.on("hide", function(e) {
-                        if (e.target === self[form_name].get(0)) {
-                            var canClose = true;
-                            e.stopPropagation();
-                            canClose = self._process_event(form_type, 'close_query');
-                            if (canClose === false) {
-                                e.preventDefault();
-                                self[form_name].data('_closing', false);
-                            }
-                        }
-                    });
-                    form.on("hidden", function(e) {
-                        if (e.target === self[form_name].get(0)) {
-                            e.stopPropagation();
-                            self._process_event(form_type, 'closed');
-                            self[form_name].remove();
-                            self[form_name] = undefined;
-                        }
-                    });
-                    form.on("keydown." + key_suffix, function(e) {
-                        self._process_key_event(form_type, 'keydown', e)
-                    });
-                    form.on("keyup." + key_suffix, function(e) {
-                        self._process_key_event(form_type, 'keyup', e)
-                    });
-
-                    form.modal({
-                        item: this,
-                        form_name: form_name,
-                        item_options: item_options
-                    });
-                }
+                task.modals.create_modal_form(form, item_options, this, form_type);
             }
         }
     }
@@ -1114,7 +811,6 @@ class AbsrtactItem {
             form_name = form_type + '_form',
             form = this[form_name],
             options,
-            canClose,
             key_suffix;
 
         if (form) {
@@ -1123,18 +819,22 @@ class AbsrtactItem {
             if (options.item_options.tab_id) {
                 key_suffix += '.' + options.item_options.tab_id;
             }
-            form.data('_closing', true);
-            form.find('.jam-form').data('_closing', true);
-            if (form.hasClass('modal')) {
-                setTimeout(
-                    function() {
-                        form.modal('hide');
-                    },
-                    100
-                );
-            } else {
-                canClose = self._process_event(options.form_type, 'close_query');
-                if (canClose !== false) {
+            let can_close = this._process_event(options.form_type, 'close_query');
+            if (can_close !== false && this[form_name]) {
+                form.data('_closing', true);
+                form.find('.jam-form').data('_closing', true);
+                if (form.hasClass('modal-form')) {
+                    setTimeout(
+                        function() {
+                            if (self['modal_' + form_type + '_object'].close_form()) {
+                                this[form_name] = undefined;
+                                self._process_event(options.form_type, 'closed');
+                            }
+                            form.data('_closing', false);
+                        },
+                        100
+                    );
+                } else {
                     $(window).off("keydown." + key_suffix);
                     $(window).off("keyup." + key_suffix);
                     $(window).off("resize." + key_suffix);
@@ -1143,9 +843,10 @@ class AbsrtactItem {
                         this.task.close_tab(this._tab_info.container, this._tab_info.tab_id);
                         this._tab_info = undefined;
                     }
+                    form.data('_closing', false);
                     self._process_event(options.form_type, 'closed');
                     form.remove();
-                    let forms = $(".jam-form:not('.modal')");
+                    let forms = $(".jam-form:not('.modal-form')");
                     if (forms.length === 0) {
                         this.task.default_content_visible = true;
                     }
@@ -1220,16 +921,20 @@ class AbsrtactItem {
             return;
         }
         if (!options.header) {
-            options.header = task.language[options.type];
+            let type = options.type;
+            if (options.type === "danger") {
+                type = "error"
+            }
+            options.header = task.language[type];
         }
         if (!options.header) {
             options.show_header = false;
         }
         $alert = $(
-        '<div class="alert alert-block alert-absolute">' +
-          '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+        '<div class="alert alert-dismissible alert-absolute alert-danger fade show">' +
           '<h4>' + options.header + '</h4>' +
           '<p>' + message + '</p>' +
+          '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
         '</div>'
         );
         if (task.forms_container && task.forms_container.length) {
@@ -1296,7 +1001,7 @@ class AbsrtactItem {
 
     alert_error(message, options) {
         options = $.extend({}, options);
-        options.type = 'error';
+        options.type = 'danger';
         this.alert(message, options);
     }
 
@@ -1307,72 +1012,75 @@ class AbsrtactItem {
     }
 
     message(mess, options) {
-        var self = this,
+        let self = this,
             default_options = {
                 title: '',
-                width: 400,
+                width: '25rem',
                 form_header: true,
                 height: undefined,
                 margin: undefined,
                 buttons: undefined,
+                button_class: {},
                 default_button: undefined,
                 print: false,
                 text_center: false,
-                button_min_width: 100,
+                button_min_width: '5rem',
                 center_buttons: false,
                 close_button: true,
                 close_on_escape: true,
                 focus_last_btn: false,
                 hide: true
             },
-            buttons,
-            key,
-            el = '',
             $element,
-            $modal_body,
-            $button = $('<button type="button" class="btn">OK</button>'),
-            timeOut;
+            $form_body,
+            timeOut,
+            modal_object;
 
         if (mess instanceof jQuery) {
             mess = mess.clone()
         }
         options = $.extend({}, default_options, options);
-        buttons = options.buttons;
+        let buttons = options.buttons;
 
-        el = '<div class="modal-body"></div>';
+        let el = '<div class="form-body"></div>';
         if (!this.is_empty_obj(buttons)) {
-            el += '<div class="modal-footer"></div>';
+            el += '<div class="form-footer"></div>';
         }
 
         $element = this._create_form_header($(el), options);
 
-        $modal_body = $element.find('.modal-body');
+        $form_body = $element.find('.form-body');
 
         if (options.margin) {
-            $modal_body.css('margin', options.margin);
+            $form_body.css('margin', options.margin);
         }
 
-        $modal_body.html(mess);
+        if (options.height) {
+            $form_body.css('height', options.height);
+            $form_body.css('overflow', 'overlay');
+        }
+        $form_body.html(mess);
 
         if (!options.title) {
-            $element.find('.modal-header').remove();
+            $element.find('.form-header').remove();
         }
 
         if (options.text_center) {
-            $modal_body.html(mess).addClass("text-center");
+            $form_body.html(mess).addClass("text-center");
         }
         if (options.center_buttons) {
-            $element.find(".modal-footer").css("text-align", "center");
+            $element.find(".form-footer").addClass('message');
         }
 
-        $element.find("#close-btn").click(function(e) {
-            $element.modal('hide');
+        $element.find(".close-form-btn").click(function(e) {
+            modal_object.close_form();
         });
-
-        for (key in buttons) {
+        let btn_str = '<button type="button" class="btn">OK</button>',
+            btn_col_str = '<div class="col">',
+            $btns_div = $('<div class="row gx-1 gx-sm-2 gx-md-3 gx-lg-4">');
+        for (let key in buttons) {
             if (buttons.hasOwnProperty(key)) {
-                $element.find(".modal-footer").append(
-                    $button.clone()
+                let $btn = $(btn_str)
                     .data('key', key)
                     .css("min-width", options.button_min_width)
                     .html(key)
@@ -1390,35 +1098,33 @@ class AbsrtactItem {
                                     console.error(e);
                                 }
                                 if (options.hide) {
-                                    $element.modal('hide');
+                                    modal_object.close_form();
                                 }
                             },
                             100
                         );
                     })
-                );
+                    let btn_class = 'btn-secondary';
+                    if (options.button_class[key]) {
+                        btn_class = options.button_class[key];
+                    }
+                    $btn.addClass(btn_class);
+                let $btn_col = $(btn_col_str).append($btn);
+                $btns_div.append($btn_col)
             }
         }
+        if ($btns_div.children.length) {
+            $element.find(".form-footer").append($btns_div);
+        }
 
-        $element.on("show hide hidden", function(e) {
-            if (e.target === $element.get(0)) {
-                e.stopPropagation();
+        $element.on_shown = function() {
+            if (options.focus_last_btn) {
+                $element.find(".form-footer button.btn:last").focus();
             }
-        });
-
-        $element.on("shown", function(e) {
-            if (e.target === $element.get(0)) {
-                self._focus_form($element);
-                if (options.focus_last_btn) {
-                    $element.find(".modal-footer button.btn:last").focus();
-                }
-                e.stopPropagation();
-            }
-        });
+        };
 
         $element.on("keyup keydown", function(e) {
             var event;
-            e.stopPropagation();
             if (e.which === 37 || e.which === 39) {
                 event = jQuery.Event(e.type);
                 event.which = e.which + 1;
@@ -1426,30 +1132,29 @@ class AbsrtactItem {
             }
             else if (e.which === 80 && e.ctrlKey) {
                 e.preventDefault();
-                self.print_html($element.find(".modal-body"));
+                self.print_html($element.find(".form-body"));
             }
         });
 
-        $element.modal({
-            width: options.width,
-            height: options.height,
-            keyboard: options.close_on_escape
-        });
-        return $element;
+        modal_object = task.modals.create_modal_form($element, options);
+        return modal_object;
     }
 
     question(mess, yesCallback, noCallback, options) {
-        var buttons = {},
+        let buttons = {},
+            button_class = {},
             default_options = {
                 buttons: buttons,
-                margin: "40px 20px",
+                margin: "1.5rem 1.5rem",
                 text_center: true,
                 center_buttons: true,
-                focus_last_btn: true
+                focus_last_btn: true,
+                button_class: button_class
             };
         options = $.extend({}, default_options, options);
         buttons[task.language.yes] = yesCallback;
         buttons[task.language.no] = noCallback;
+        button_class[task.language.yes] = 'btn-primary';
         return this.message(mess, options);
     }
 
@@ -1457,7 +1162,7 @@ class AbsrtactItem {
         var buttons = {"OK": callback},
             default_options = {
                 buttons: buttons,
-                margin: "40px 20px",
+                margin: "1.5rem 1.5rem",
                 text_center: true,
                 center_buttons: true,
                 focus_last_btn: true,
@@ -1470,29 +1175,32 @@ class AbsrtactItem {
         return this.message(mess, options);
     }
 
-    hide_message($element) {
-        $element.modal('hide');
+    hide_message(modal_object) {
+        modal_object.close_form();
     }
 
     yes_no_cancel(mess, yesCallback, noCallback, cancelCallback) {
-        var buttons = {};
+        var buttons = {},
+            button_class = {}
         buttons[task.language.yes] = yesCallback;
         buttons[task.language.no] = noCallback;
         buttons[task.language.cancel] = cancelCallback;
+        button_class[task.language.yes] = 'btn-primary';
+        button_class[task.language.cancel] = 'btn-outline-secondary';
         return this.message(mess, {
             buttons: buttons,
-            margin: "40px 20px",
+            button_class: button_class,
+            margin: "1.5rem 1.5rem",
             text_center: true,
             width: 500,
-            center_buttons: true,
-            focus_last_btn: true
+            center_buttons: true
         });
     }
 
     display_history(hist) {
         var self = this,
             html = '',
-            acc_div = $('<div class="accordion history-accordion" id="history_accordion">'),
+            acc_div = $('<div class="accordion" id="history_accordion">'),
             item,
             master,
             lookups = {},
@@ -1516,13 +1224,14 @@ class AbsrtactItem {
         item.append();
         hist.each(function(h) {
             var acc = $(
-                '<div class="accordion-group history-group">' +
-                    '<div class="accordion-heading history-heading">' +
-                        '<a class="accordion-toggle history-toggle" data-toggle="collapse" data-parent="#history_accordion" href="#history_collapse' + h.rec_no + '">' +
-                        '</a>' +
-                    '</div>' +
-                    '<div id="history_collapse' + h.rec_no + '" class="accordion-body collapse">' +
-                        '<div class="accordion-inner history-inner">' +
+                '<div class="accordion-item">' +
+                    '<h3 class="accordion-header">' +
+                        '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse' + h.rec_no + '">' +
+                        '</button>' +
+                    '</h3>' +
+                    '<div id="collapse' + h.rec_no + '" class="accordion-collapse collapse" data-bs-parent="#history_accordion">' +
+                        '<div class="accordion-body">' +
+
                         '</div>' +
                     '</div>' +
                  '</div>'
@@ -1601,20 +1310,21 @@ class AbsrtactItem {
                 operation = self.task.language.deleted;
             }
 
-            acc.find('.accordion-toggle').html(h.date.format_date_to_string(h.date.value, '%d.%m.%Y %H:%M:%S') + ': ' +
-                operation + ' ' + user);
-            acc.find('.accordion-inner').html(content);
+            acc.find('.accordion-button')
+                .html(h.date.format_date_to_string(h.date.value, '%d.%m.%Y %H:%M:%S') + ': ' +
+                    operation + ' ' + user);
+            acc.find('.accordion-body').html(content);
             if (h.rec_no === 0) {
-                acc.find('.accordion-body').addClass('in');
+                acc.find('.accordion-button').removeClass('collapsed');
+                acc.find('.accordion-collapse').addClass('show');
             }
             acc_div.append(acc)
         })
         if (hist.record_count()) {
             html = acc_div;
         }
-        mess = self.task.message(html, {width: 700, height: 600,
+        mess = self.task.message(html, {width: 600, height: 600,
             title: hist.item_caption + ': ' + self.item_caption, footer: false, print: true});
-        acc_div = mess.find('#history_accordion.accordion');
         for (var ID in lookups) {
             if (lookups.hasOwnProperty(ID)) {
                 lookup_item = self.task.item_by_ID(parseInt(ID, 10));

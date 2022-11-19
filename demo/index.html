@@ -6,44 +6,36 @@
         <title>Jam.py demo</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" href="static/img/j.png" type="image/png">
-
-        <link href="jam/css/bootstrap.css" rel="stylesheet">            <!--do not modify-->
-        <link href="jam/css/bootstrap-responsive.css" rel="stylesheet">
-        <link href="jam/css/bootstrap-modal.css" rel="stylesheet">
+        <link href="jam/css/bs5/bootstrap.css" rel="stylesheet">
+        <link href="jam/css/bs5/bootstrap-icons.css" rel="stylesheet">
         <link href="jam/css/datepicker.css" rel="stylesheet">
-        <link href="jam/css/jam.css" rel="stylesheet">                  <!--do not modify-->
+        <link href="jam/css/jam.css" rel="stylesheet">
         <link href="css/project.css" rel="stylesheet">
     </head>
     <body>
         <div id="container" class="container" style="display: none">
-            <div class="row-fluid">
-                <div class="span6">
-                    <h3 id="app-title" class="muted"></h3>
-                </div>
-                <div id="app-user" class="span6">
-                    <span id="user-info"></span>
-                    <a id="log-out" href="#" style="display: none">Log out</a>
-                </div>
-            </div>
-            <div id="taskmenu" class="navbar">
-                <div class="navbar-inner">
-                    <ul id="menu" class="nav">
+            <nav class="navbar navbar-expand-md bg-light mb-2">
+                <div class="container-fluid">
+                    <span id="app-title" class="navbar-brand mb-0 h1"></span>
+                    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul id="menu" class="navbar-nav me-auto mb-2 mb-lg-0">
                     </ul>
-                    <ul id="menu-right" class="nav pull-right">
-                        <!--<li id="admin"><a href="#">Application builder</a></li>-->
-                        <li id="about"><a href="#">About</a></li>
-                        <li id="jam"><a href="http://jam-py.com/" target="_blank">Jam.py</a></li>
-                    </ul>
+                    <div class="d-flex pe-2 justify-content-end">
+                        <span id="user-info" class="navbar-text p-2"></span>
+                        <button id="log-out" class="btn btn-secondary" type="button" style="display: none"><i class="bi bi-box-arrow-right"></i></button>
+                    </div>
                 </div>
-            </div>
+              </div>
+            </nav>
             <div id="content">
             </div>
         </div>
 
         <script src="jam/js/jquery.js"></script>
-        <script src="jam/js/bootstrap.js"></script>
-        <script src="jam/js/bootstrap-modal.js"></script>
-        <script src="jam/js/bootstrap-modalmanager.js"></script>
+        <script src="jam/js/bs5/bootstrap.bundle.js"></script>
         <script src="jam/js/bootstrap-datepicker.js"></script>
         <script src="jam/js/jquery.maskedinput.js"></script>
         <script type="module" src="jam/js/jam.js"></script>

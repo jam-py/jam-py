@@ -2,7 +2,7 @@ import consts from "./consts.js";
 import AbsrtactItem from "./abstr_item.js";
 import Group from "./group.js";
 import Item from "./item.js";
-//~ import Detail from "./detail.js";
+import ModalForms from "./modals.js";
 import Report from "./report.js";
 
 class Task extends AbsrtactItem {
@@ -14,13 +14,14 @@ class Task extends AbsrtactItem {
         this._grid_id = 0;
         this._edited_items = [];
         this.events = {};
+        this.modals = new ModalForms(this);
         this.form_options = {
             left: undefined,
             top: undefined,
             title: '',
             fields: [],
             form_header: true,
-            form_border: false,
+            form_border: true,
             close_button: true,
             close_on_escape: true,
             close_focusout: false,
@@ -33,7 +34,8 @@ class Task extends AbsrtactItem {
             edit_details: [],
             detail_height: 0,
             buttons_on_top: false,
-            modeless: false
+            modeless: false,
+            in_well: false
         });
         this.view_options = $.extend({}, this.form_options, {
             history_button: true,
@@ -111,9 +113,9 @@ class Task extends AbsrtactItem {
                     } else if (self.ID && data.result.status === consts.PROJECT_MODIFIED) {
                         if (!self.task._version_changed) {
                             self.task._version_changed = true;
-                            self.message('<h4 class="text-info">' + task.language.version_changed + '</h4>', {
-                                margin: '50px 50px',
-                                width: 500,
+                            self.message('<h5 class="text-primary">' + task.language.version_changed + '</h5>', {
+                                margin: "2rem 4rem",
+                                width: "36rem",
                                 text_center: true
                             });
                         }
@@ -316,6 +318,7 @@ class Task extends AbsrtactItem {
             self.safe_mode = self.settings.SAFE_MODE;
             self.forms_in_tabs = self.settings.FORMS_IN_TABS;
             self.full_width = self.settings.FULL_WIDTH;
+            self.small_font = self.settings.SMALL_FONT;
             self.version = self.settings.VERSION;
             self.modification = self.settings.MODIFICATION;
             self.ID = info.task.id;
@@ -556,7 +559,7 @@ class Task extends AbsrtactItem {
                 default_content.append(options.splash_screen)
             }
             if (this.forms_in_tabs) {
-                this.init_tabs(container, 'tabs-top', true);
+                this.init_tabs(container, {hide: true});
             }
         }
     }
@@ -570,15 +573,16 @@ class Task extends AbsrtactItem {
                 let li,
                     ul;
                 if (parent.hasClass('dropdown-menu')) {
-                    li = $('<li class="dropdown-submenu"><a tabindex="-1" href="#">' +
-                        menu_item.caption + '</a></li>');
+                    li = $('<li><a  class="dropdown-item" href="#">' +
+                        menu_item.caption + ' &rtrif;</a></li>');
+                    ul = $('<ul class="dropdown-menu dropdown-submenu">');
                 }
                 else {
-                    li = $('<li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown" href="#">' +
-                        menu_item.caption + ' <b class="caret"></b></a></li>');
+                    li = $('<li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">' +
+                        menu_item.caption + '</a></li>');
+                    ul = $('<ul class="dropdown-menu">');
                 }
                 parent.append(li);
-                ul = $('<ul class="dropdown-menu">');
                 li.append(ul);
                 for (let i = 0; i < menu_item.items.length; i++) {
                     this._create_menu_item(menu_item.items[i], ul, options)
@@ -587,12 +591,19 @@ class Task extends AbsrtactItem {
         }
         else {
             if (menu_item.caption) {
-                parent.append($('<li>')
-                    .append($('<a class="item-menu" href="#">' + menu_item.caption + '</a>')
-                    .data('action', menu_item.action)));
+                if (parent.hasClass('dropdown-menu')) {
+                    parent.append($('<li>')
+                        .append($('<a class="dropdown-item item-menu" href="#">' + menu_item.caption + '</a>')
+                        .data('action', menu_item.action)));
+                }
+                else {
+                    parent.append($('<li class="nav-item">')
+                        .append($('<a class="nav-link item-menu" href="#">' + menu_item.caption + '</a>')
+                        .data('action', menu_item.action)));
+                }
             }
             else {
-                parent.append($('<li class="divider"></li>'));
+                parent.append($('<li class="dropdown-divider"></li>'));
             }
         }
     }
@@ -753,7 +764,8 @@ class Task extends AbsrtactItem {
             }
         }));
         if (options.view_first) {
-            $menu.find('.item-menu:first').click();
+            let action = $menu.find('.item-menu:first').data('action');
+            action.call(self);
         }
     }
 
@@ -763,43 +775,52 @@ class Task extends AbsrtactItem {
     edit_form_created(item) {
     }
 
-    _tab_content(tab) {
-        var item_name = tab.find('a').attr('href').substr(1);
-        return tab.parent().parent().find('> div.tab-content > div.' + item_name)
+    _focusable_elements($element, inputs_only) {
+        let tags;
+        if (inputs_only) {
+            tags = ['input', 'textarea', 'select'];
+        }
+        else {
+            tags = ['a', 'button', 'input', 'textarea', 'select', 'details', '[tabindex]', '[contenteditable="true"]'];
+        }
+        //~ const focusables = tags.map(selector => `${selector}:not([tabindex^="-"]:not(hidden))`).join(',');
+        const focusables = tags.map(selector => selector + ':not([tabindex^="-"]:not(hidden))').join(',');
+        return [...$element.get(0).querySelectorAll(focusables)
+            ].filter(el => el.offsetParent !== null)
     }
 
-    _focus_element(element) {
-        var focused = false;
-        element.find(':input:not(:button):enabled:visible').each(function(el) {
-            if (this.tabIndex !== -1) {
-                this.focus();
-                focused = true;
-                return false;
-            }
-        })
-        if (!focused) {
-            element.focus();
+    _focus_element($element) {
+        let focusable_elements = this._focusable_elements($element, true);
+        if (focusable_elements.length) {
+            focusable_elements[0].focus();
+        }
+        else {
+            $element.focus();
         }
     }
 
+    _tab_pane(tab) {
+        let item_name = tab.find('button').attr('id');
+        return tab.parent().parent().find('> div.tab-content > div#' + item_name + '-pane')
+    }
+
     _show_tab(tab) {
-        var item_name = tab.find('a').attr('href').substr(1),
-            el,
-            tab_content = this._tab_content(tab),
-            tab_div = tab.parent().parent().parent();
-        tab_div.find('> .tabbable > div.tab-content > div.tab-pane').removeClass('active');
-        tab_content.addClass('active').trigger('tab_active_changed');
-        tab_div.find('> .tabbable > ul.nav-tabs > li').removeClass('active');
-        tab.addClass('active');
-        el = tab_content.data('active_el');
+        let item_name = tab.find('button').attr('id'),
+            tab_pane = this._tab_pane(tab),
+            tab_div = tab.parent().parent();
+        tab_div.find('> ul.nav-tabs > li > button').removeClass('active');
+        tab_div.find('> div.tab-content > div.tab-pane').removeClass('active');
+        tab.find('button').addClass('active');
+        tab_pane.addClass('active').addClass('show').trigger('tab_active_changed');
+        let el = tab_pane.data('active_el');
         if (el) {
             el.focus();
         }
         else {
-            this._focus_element(tab_content);
+            this._focus_element(tab_pane);
         }
-        tab_content.on('tab_active_changed', function() {
-            var form = tab_content.find('.jam-form:first');
+        tab_pane.on('tab_active_changed', function() {
+            var form = tab_pane.find('.jam-form:first');
             if (form.length) {
                 form.trigger('active_changed');
             }
@@ -807,7 +828,7 @@ class Task extends AbsrtactItem {
     }
 
     _check_tabs_empty(container) {
-        var tabs = container.find('> .tabbable');
+        var tabs = container.find('> .tabs-div');
         if (tabs.find('> ul.nav-tabs > li').length) {
             tabs.show();
         }
@@ -817,7 +838,7 @@ class Task extends AbsrtactItem {
     }
 
     show_tab(container, tab_id) {
-        var tab = container.find('> .tabbable > ul.nav-tabs > li a[href="#' + tab_id + '"]');
+        var tab = container.find('> .tabs-div > ul.nav-tabs > li > button#' + tab_id);
         if (tab.length) {
             this._show_tab(tab.parent());
         }
@@ -826,7 +847,7 @@ class Task extends AbsrtactItem {
 
     _close_tab(tab) {
         var tabs = tab.parent(),
-            tab_content = this._tab_content(tab),
+            tab_content = this._tab_pane(tab),
             new_tab;
         this._show_tab(tab);
         if (tab.prev().length) {
@@ -835,7 +856,7 @@ class Task extends AbsrtactItem {
         else {
             new_tab = tab.next()
         }
-        this._tab_content(tab).remove()
+        this._tab_pane(tab).remove()
         tab.remove();
         if (new_tab.length) {
             this._show_tab(new_tab);
@@ -846,38 +867,39 @@ class Task extends AbsrtactItem {
     }
 
     close_tab(container, tab_id) {
-        var tab = container.find('> .tabbable > ul.nav-tabs > li a[href="#' + tab_id + '"]');
+        var tab = container.find('> .tabs-div > ul.nav-tabs > li button#' + tab_id);
         if (tab.length) {
             this._close_tab(tab.parent());
         }
         this._check_tabs_empty(container);
     }
 
-    init_tabs(container, tabs_position, hide) {
-        var self = this,
-            div;
-        if (!tabs_position) {
-            tabs_position = 'tabs-top'
+    init_tabs(container, options) {
+        let div,
+            default_options = {
+                tab_content: true,
+                consistent_height: false,
+                hide: false
+            }
+        options = $.extend({}, default_options, options);
+        div = $('<div class="tabs-div">');
+        if (options.consistent_height) {
+            div.addClass('consistent-height')
         }
-        div = $('<div class="tabbable ' + tabs_position + '">');
         container.empty();
         container.append(div);
-        if (hide) {
+        if (options.hide) {
             div.hide();
         }
-        if (tabs_position === 'tabs-below') {
-            div.append('<div class="tab-content">');
-            div.append('<ul class="nav nav-tabs">');
-        }
-        else {
-            div.append('<ul class="nav nav-tabs">');
+        div.append('<ul class="nav nav-tabs" role="tablist">');
+        if (options.tab_content) {
             div.append('<div class="tab-content">');
         }
         div.hide();
     }
 
     can_add_tab(container) {
-        return container.find('> .tabbable  > ul.nav-tabs').length > 0
+        return container.find('> .tabs-div  > ul.nav-tabs').length > 0
     }
 
     add_tab(container, tab_name, options) {
@@ -898,24 +920,31 @@ class Task extends AbsrtactItem {
         if (!options) {
             options = {};
         }
-        tabs = container.find('> .tabbable > ul.nav-tabs');
+        tabs = container.find('> .tabs-div > ul.nav-tabs');
         if (tabs.length) {
-            active_tab = tabs.find('> li.active');
+            active_tab = tabs.find('> li > button.active');
+            if (active_tab) {
+                active_tab = active_tab.parent();
+            }
             if (options.tab_id === undefined) {
                 options.tab_id = 'tab' + tabs.find('> li').length + 1;
             }
-            cur_tab = tabs.find('> li a[href="#' + options.tab_id + '"]');
+            cur_tab = tabs.find('> li button#' + options.tab_id);
             if (cur_tab.length) {
                 cur_tab = cur_tab.parent();
             }
             else {
-                tab_content = container.find('> .tabbable > div.tab-content');
+                tab_content = container.find('> .tabs-div > div.tab-content');
                 if (options.show_close_btn) {
-                    tab_name = '<span> ' + tab_name + ' </span><i class="icon-remove close-tab-btn"></i>';
+                    tab_name = '<span> ' + tab_name + '  </span><i class="bi bi-x-lg close-tab-btn ms-1"></i>';
                 }
-                cur_tab = $('<li><a href="#' + options.tab_id + '">' +
-                    tab_name + '</a></li>');
-                cur_tab_content = $('<div class="tab-pane ' + options.tab_id + '"></div>');
+                cur_tab = $('<li class="nav-item" role="presentation">' +
+                    '<button class="nav-link" id="' + options.tab_id +
+                    '" data-bs-toggle="tab" data-bs-target="#' + options.tab_id + '-pane" type="button"' +
+                    'role="tab" aria-controls="' + options.tab_id +'-pane" aria-selected="true">' +
+                    tab_name + '</button>');
+                cur_tab_content = $('<div class="tab-pane" id="' + options.tab_id + '-pane"' +
+                    '" role="tabpanel" aria-labelledby="home-tab" tabindex="0"></div>');
                 if (options.insert_after_cur_tab) {
                     cur_tab.insertAfter(active_tab)
                 }
@@ -958,6 +987,14 @@ class Task extends AbsrtactItem {
             }
             return cur_tab_content
         }
+    }
+
+    px_size(size) {
+        if (typeof size == 'string' && size.slice(-3) == 'rem') {
+            return parseFloat(size) *
+                parseFloat(getComputedStyle(document.documentElement).fontSize);
+        }
+        return size
     }
 }
 

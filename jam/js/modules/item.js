@@ -1930,16 +1930,46 @@ class Item extends AbsrtactItem {
     }
 
     search() {
-        var args = this._check_args(arguments),
+        let args = this._check_args(arguments),
             callback = args['function'],
             paginating = args['boolean'],
             field_name = arguments[0],
             text = arguments[1].trim(),
-            search_text = text,
-            filter,
+            filter_type = consts.FILTER_CONTAINS_ALL;
+        if (arguments.length > 2 && typeof arguments[2] === "string") {
+            let filter = arguments[2];
+            filter_type = consts.filter_value.indexOf(filter) + 1;
+        }
+        if (!this.paginate && this.master || this.virtual_table) {
+            this._search_detail(field_name, text, callback);
+        }
+        else {
+            this._pagination_search(field_name, text, filter_type, callback, paginating);
+        }
+    }
+
+    _search_detail(field_name, text, callback) {
+        console.log('_search_detail')
+        let clone = this.clone(),
+            field = clone.field_by_name(field_name),
+            search_text = text.toLowerCase(),
+            rec_no;
+        if (search_text) {
+            clone.each(function(c) {
+                if (field.display_text.toLowerCase().includes(search_text)) {
+                    rec_no = c.rec_no;
+                    return false;
+                }
+            });
+            if (rec_no !== undefined) {
+                this.rec_no = rec_no;
+            }
+        }
+    }
+
+    _pagination_search(field_name, text, filter_type, callback, paginating) {
+        let search_text = text,
             field,
-            filter,
-            filter_type,
             i, j,
             index,
             ids,
@@ -1948,13 +1978,6 @@ class Item extends AbsrtactItem {
             found,
             lookup_values,
             params = {};
-        if (arguments.length > 2 && typeof arguments[2] === "string") {
-            filter = arguments[2];
-            filter_type = consts.filter_value.indexOf(filter) + 1;
-        }
-        else {
-            filter_type = consts.FILTER_CONTAINS_ALL;
-        }
         field = this.field_by_name(field_name);
         if (field) {
             if (text && field.lookup_values) {
@@ -3083,7 +3106,7 @@ class Item extends AbsrtactItem {
             tab_name = options.tab_name;
         }
         if (!tab_name) {
-            tab_name = '<i class="icon-edit"></i> ' + this.item_caption;
+            tab_name = '<i class="bi bi-pencil-square"></i> ' + this.item_caption;
         }
         content = task.add_tab(container, tab_name,
         {
@@ -3262,9 +3285,18 @@ class Item extends AbsrtactItem {
             };
         options = $.extend({}, default_options, options);
         if (this.is_changing()) {
-            this.disable_edit_form();
             try {
                 this.post();
+            }
+            catch (e) {
+                if (!this.is_changing()) {
+                    this.edit();
+                }
+                return;
+            }
+            this.disable_edit_form();
+            try {
+                //~ this.post();
                 this.apply(options.apply_params, function(error) {
                     if (error && error.indexOf('aborted:') !== 0) {
                         self.alert_error(error, {duration: 10});
@@ -3335,9 +3367,6 @@ class Item extends AbsrtactItem {
                 }
             }
             self.create_view_form(container);
-            if (self.view_options.enable_search) {
-                self.init_search();
-            }
             if (self.view_options.enable_filters) {
                 self.init_filters();
             }
@@ -3710,6 +3739,9 @@ class Item extends AbsrtactItem {
         if (options.type) {
             result.addClass('btn-' + options.type);
         }
+        else {
+            result.addClass('btn-secondary');
+        }
         if (options.image && options.shortcut) {
             result.html('<i class="' + options.image + '"></i> ' + text + '<small class="muted">&nbsp;[' + options.shortcut + ']</small>')
         }
@@ -4012,7 +4044,7 @@ class Item extends AbsrtactItem {
     create_tabs(container) {
         var i,
             tabs = this.edit_options.tabs;
-        this.task.init_tabs(container);
+        this.task.init_tabs(container, {consistent_height: true});
         for (i = 0; i < tabs.length; i++) {
             this.create_bands(tabs[i], task.add_tab(container, tabs[i].name))
         }
@@ -4095,7 +4127,14 @@ class Item extends AbsrtactItem {
 
         container.empty();
 
-        form = $('<form class="row-fluid" autocomplete="off"></form>').appendTo(container);
+        form = $(
+            '<form class="input-form" autocomplete="off">' +
+                '<div class="container">' +
+                    '<div class="row">' +
+                    '</div>' +
+                '</div>' +
+            '</form>'
+            ).appendTo(container);
         if (options.in_well) {
             form.addClass('well');
         }
@@ -4105,18 +4144,15 @@ class Item extends AbsrtactItem {
         else {
             form.attr("autocomplete", "off")
         }
-        if (!options.label_on_top) {
-            form.addClass("form-horizontal");
-        }
+        let row = form.find('div.row')
+        form.append(row)
         len = fields.length;
         for (col = 0; col < options.col_count; col++) {
-            cols.push($("<div></div>").addClass("span" + 12 / options.col_count).appendTo(form));
+            cols.push($("<div></div>")
+            .addClass("col-md-" + 12 / options.col_count)
+            .appendTo(row));
         }
         tabindex = options.tabindex;
-        //~ if (!tabindex && this.edit_form) {
-            //~ tabindex = this.edit_form.tabindex;
-            //~ this.edit_form.tabindex += len;
-        //~ }
         if (!options.row_count) {
             options.row_count = Math.ceil(len / options.col_count);
         }
@@ -4164,19 +4200,30 @@ class Item extends AbsrtactItem {
             });
         }
         container.empty();
-        form = $('<form form class="row-fluid" autocomplete="off"></form>').appendTo($("<div></div>").addClass("row-fluid").appendTo(container));
+        form = $(
+            '<form class="input-form" autocomplete="off">' +
+                '<div class="container">' +
+                    '<div class="row">' +
+                    '</div>' +
+                '</div>' +
+            '</form>'
+            ).appendTo(container);
         if (options.in_well) {
             form.addClass('well');
         }
         if (options.autocomplete) {
             form.attr("autocomplete", "on")
         }
-        if (!options.label_on_top) {
-            form.addClass("form-horizontal");
+        else {
+            form.attr("autocomplete", "off")
         }
+        let row = form.find('div.row')
+        form.append(row)
         len = filters.length;
         for (col = 0; col < options.col_count; col++) {
-            cols.push($("<div></div>").addClass("span" + 12 / options.col_count).appendTo(form));
+            cols.push($("<div></div>")
+            .addClass("col-md-" + 12 / options.col_count)
+            .appendTo(row));
         }
         tabindex = options.tabindex;
         if (!tabindex && this.filter_form) {

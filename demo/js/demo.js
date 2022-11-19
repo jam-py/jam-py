@@ -3,10 +3,17 @@
 
 function Events1() { // demo 
 
-	function on_page_loaded(task) {
+	function on_page_loaded(task) { 
 		
 		$("title").text(task.item_caption);
-		$("#app-title").text(task.item_caption);
+		$("#app-title").text(task.item_caption); 
+	
+		if (task.small_font) {
+			$('html').css('font-size', '14px');
+		}
+		if (task.full_width) {
+			$('#container').removeClass('container').addClass('container-fluid');
+		}
 		  
 		if (task.safe_mode) {
 			$("#user-info").text(task.user_info.role_name + ' ' + task.user_info.user_name);
@@ -18,25 +25,22 @@ function Events1() { // demo
 			}); 
 		}
 	
-		if (task.full_width) {
-			$('#container').removeClass('container').addClass('container-fluid');
-		}
 		$('#container').show();
 	
-		// let menu = [
-		//		 {First:  [task.invoices, task.customers]},
-		//		 {'Second': [task.catalogs, '', task.reports]},
-		//		 {Third: [task.tracks, {Params: function() {alert('params clicked')}}]},
-		//		 {Fourth: [task.task.analytics, {'Artists list': task.artists}]},
-		//		 task.customers_report,
-		//		 task.reports,
-		//		 {Params: function() {alert('params clicked')}},
-		//	 ];
+		// let menu = [ 
+		//	 ['First',  [task.invoices, task.customers]],
+		//	 {'Second': [task.catalogs, '', task.reports]},
+		//	 {Third: [task.tracks, {Params: function() {alert('params clicked')}}]},
+		//	 {Fourth: [task.task.analytics, {'Artists list': [task.artists]}]},
+		//	 task.reports,
+		//	 {Params: function() {alert('params clicked')}},
+		// ];
 		// task.create_menu($("#menu"), $("#content"), {
 		//	 custom_menu: menu,
 		//	 splash_screen: '<h1 class="text-center">Jam.py Demo Application</h1>',
 		//	 view_first: true
-		// });	
+		// });
+	
 		task.create_menu($("#menu"), $("#content"), {
 			splash_screen: '<h1 class="text-center">Jam.py Demo Application</h1>',
 			view_first: true
@@ -81,13 +85,13 @@ function Events1() { // demo
 		item.view_options.detail_container_class = 'view-detail';
 		item.view_options.open_item = !item.virtual_table;
 		
-		if (item.view_form.hasClass('modal')) {
+		if (item.view_form.hasClass('modal-form')) {
 			item.view_options.width = 1060;
 			item.table_options.height = $(window).height() - 300;
 		}
 		else {
 			if (!item.table_options.height) {
-				item.table_options.height = $(window).height() - $('body').height() - 20;
+				item.table_options.height = $(window).height() - $('body').height() - 10;
 			}
 		}
 		
@@ -142,6 +146,8 @@ function Events1() { // demo
 		if (!table_options_height) {
 			item.table_options.height = undefined;
 		}
+		
+		translate_btns(item.view_form.find('.form-footer'));
 		return true;
 	}
 	
@@ -178,6 +184,7 @@ function Events1() { // demo
 		item.create_inputs(item.edit_form.find('.' + item.edit_options.inputs_container_class));
 		item.create_detail_views(item.edit_form.find('.' + item.edit_options.detail_container_class));
 	
+		translate_btns(item.edit_form.find('.form-footer'));
 		return true;
 	}
 	
@@ -202,6 +209,7 @@ function Events1() { // demo
 	function on_edit_form_close_query(item) {
 		var result = true;
 		if (item.is_changing()) {
+			result = false;
 			if (item.is_modified()) {
 				item.yes_no_cancel(task.language.save_changes,
 					function() {
@@ -211,7 +219,6 @@ function Events1() { // demo
 						item.cancel_edit();
 					}
 				);
-				result = false;
 			}
 			else {
 				item.cancel_edit();
@@ -230,6 +237,7 @@ function Events1() { // demo
 			item.set_order_by(item.view_options.default_order);
 			item.apply_filters(item._search_params); 
 		});
+		translate_btns(item.filter_form.find('.form-footer'));
 	}
 	
 	function on_param_form_created(item) {
@@ -240,6 +248,7 @@ function Events1() { // demo
 		item.param_form.find("#ok-btn").on('click.task', function() { 
 			item.process_report();
 		});
+		translate_btns(item.param_form.find('.form-footer'));
 	}
 	
 	function on_before_print_report(report) {
@@ -288,7 +297,7 @@ function Events1() { // demo
 			if (reports.length) {
 				$ul = item.view_form.find("#report-btn ul");
 				for (i = 0; i < reports.length; i++) {
-					$li = $('<li><a href="#">' + reports[i].item_caption + '</a></li>');
+					$li = $('<li><a class="dropdown-item" href="#">' + reports[i].item_caption + '</a></li>');
 					$li.find('a').data('report', reports[i]);
 					$li.on('click', 'a', function(e) {
 						e.preventDefault();
@@ -305,6 +314,20 @@ function Events1() { // demo
 			item.view_form.find("#report-btn").hide();
 		}
 	}
+	
+	function translate_btns(container) {
+		container.find('.btn').each(function() {
+			let btn = $(this).clone();
+			btn.find('i', 'small').remove()
+			let text = btn.text().trim();
+			text = text.split()[0].split('[')[0];
+			text = text.trim();
+			let translation = task.language[text.toLowerCase()];
+			if (translation) {
+				$(this).html($(this).html().replace(text, translation)) 
+			}
+		});
+	}
 	this.on_page_loaded = on_page_loaded;
 	this.on_view_form_created = on_view_form_created;
 	this.on_view_form_shown = on_view_form_shown;
@@ -318,6 +341,7 @@ function Events1() { // demo
 	this.on_view_form_keyup = on_view_form_keyup;
 	this.on_edit_form_keyup = on_edit_form_keyup;
 	this.create_print_btns = create_print_btns;
+	this.translate_btns = translate_btns;
 }
 
 task.events.events1 = new Events1();
@@ -418,8 +442,8 @@ task.events.events15 = new Events15();
 function Events16() { // demo.journals.invoices 
 
 	function on_view_form_created(item) {
-		// item.invoice_table.master_applies = true;
-		var btn = item.add_view_button('Set invoice paid', {type: 'primary', btn_id: 'paid-btn'});
+		item.invoice_table.master_applies = true;
+		let btn = item.add_view_button('Set paid', {type: 'primary', btn_id: 'paid-btn'});
 		btn.click(function() {
 			item.question('Was the invoice paid?', function () {
 				item.edit();
@@ -484,24 +508,24 @@ function Events16() { // demo.journals.invoices
 		);
 	}
 	
-	// function calc_invoice(item) {
-	//	 let clone = item.invoice_table.clone(),
-	//		 subtotal = 0,
-	//		 tax = 0,
-	//		 total = 0;
-	//	 clone.each(function(c) {
-	//		 subtotal += c.amount.value;
-	//		 tax += c.tax.value;
-	//		 total += c.total.value;
-	//	 });
-	//	 item.subtotal.value = subtotal;
-	//	 item.tax.value = tax;
-	//	 item.total.value = total;
-	// }
+	function calc_invoice(item) {
+		let clone = item.invoice_table.clone(),
+			subtotal = 0,
+			tax = 0,
+			total = 0;
+		clone.each(function(c) {
+			subtotal += c.amount.value;
+			tax += c.tax.value;
+			total += c.total.value;
+		});
+		item.subtotal.value = subtotal;
+		item.tax.value = tax;
+		item.total.value = total;
+	}
 	
-	// function on_detail_changed(item, detail) {
-	//	 calc_invoice(item);
-	// }
+	function on_detail_changed(item, detail) {
+		calc_invoice(item);
+	}
 	
 	// function on_before_field_changed(field) {
 	//	 let today = new Date();
@@ -516,6 +540,8 @@ function Events16() { // demo.journals.invoices
 	this.on_field_get_html = on_field_get_html;
 	this.on_field_changed = on_field_changed;
 	this.on_after_scroll = on_after_scroll;
+	this.calc_invoice = calc_invoice;
+	this.on_detail_changed = on_detail_changed;
 }
 
 task.events.events16 = new Events16();
@@ -523,43 +549,17 @@ task.events.events16 = new Events16();
 function Events17() { // demo.details.invoice_table 
 
 	function on_view_form_created(item) {
-		let btn = item.add_view_button('Select', {type: 'primary', btn_id: 'select-btn'});
-		btn.click(function() {
-			item.alert('Select the records to add to the invoice and close the from');
-			item.select_records('track');
-		});
-		item.view_form.find("#delete-btn, #select-btn, #new-btn")
-			.prop("disabled", item.owner.paid.value);		
-	
-		item.add_view_button('Find').click(function() {
-			find_record(item);
-		});
+		if (item.master) {
+			let btn = item.add_view_button('Select tracks', {type: 'primary', btn_id: 'select-btn'});
+			btn.click(function() {
+				item.alert('Select the records to add to the invoice and close the from');
+				item.select_records('track');
+			});
+			item.view_form.find("#delete-btn, #select-btn, #new-btn")
+				.prop("disabled", item.owner.paid.value);		
+		
+		}
 	}		
-	
-	function find_record(item) {
-		let copy = task.invoice_table.copy({handlers: false});
-		copy.open({fields: ['track'], open_empty: true});
-	
-		copy.edit_options.title = 'Find';
-		copy.edit_options.history_button = false;
-	
-		copy.on_edit_form_created = function(c) {
-			c.edit_form.find('#ok-btn')
-				.text('Find')
-				.off('click.task')
-				.on('click', function() {
-					try {
-						c.post();
-						item.locate('track', c.track.value);
-						c.cancel_edit();
-					}
-					finally {
-						c.edit();
-					}
-				});
-		};
-		copy.append_record();
-	}	
 	
 	function on_field_changed(field, lookup_item) {
 		let item = field.owner;
@@ -568,7 +568,6 @@ function Events17() { // demo.details.invoice_table
 		}
 	}
 	this.on_view_form_created = on_view_form_created;
-	this.find_record = find_record;
 	this.on_field_changed = on_field_changed;
 }
 

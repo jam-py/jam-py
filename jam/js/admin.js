@@ -217,10 +217,10 @@ function Events0() { // app_builder
 	
 	function resize_elements(task) {
 		var height = $(window).height() -
-			($('#task-tabs').offset().top + $('#task-tabs').outerHeight(true)) - 15;
+			($('#task-tabs').offset().top + $('#task-tabs').outerHeight(true)) - 30;
 		resize_panels(task, height);
 		resize_editor(task, height);
-		if ($('ul#task-tabs li.active').attr('id') === 'admin') {
+		if ($('ul#task-tabs li button.active').attr('id') === 'admin') {
 			resize_item(task, height);
 			task.sys_items.update_controls();
 		}
@@ -241,13 +241,13 @@ function Events0() { // app_builder
 	
 	function resize_item(task, height) {
 		var dbtable = $('#center-panel .dbtable'),
-			header_height = $('#center-panel .title').outerHeight(true),
-			footer_height = $('#center-panel .modal-footer').outerHeight(true),
+			footer_height = $('#center-panel .form-footer').outerHeight(true),
 			table;
+		$('#center-panel .form-header').hide();
 		if (dbtable.length) {
 			table = dbtable.data('dbtable');
-			if (table.height() !== height - header_height - footer_height) {
-				table.height(height - header_height - footer_height);
+			if (table.height() !== height - footer_height) {
+				table.height(height - footer_height - 20);
 			}
 		}
 	}
@@ -291,9 +291,9 @@ function Events0() { // app_builder
 			icon_html = '<i class="' + icon + '"></i>';
 		}
 		if (short_cut) {
-			short_cut_html = '<small class="muted">&nbsp;[' + short_cut + ']</small>'
+			short_cut_html = '<small>&nbsp;[' + short_cut + ']</small>'
 		}
-		btn = $('<button class="btn vert-btn text-center ' + caption + '" type="button">' + icon_html + ' ' + caption_html + short_cut_html + '</button>');
+		btn = $('<button class="btn vert-btn btn-outline-secondary ' + caption + '" type="button">' + icon_html + ' ' + caption_html + short_cut_html + '</button>');
 		task.btns_panel.append(btn);
 		if (handler) {
 			btn.click(function(e) {
@@ -393,7 +393,7 @@ function Events0() { // app_builder
 			return;
 		}
 		if (task.cur_task_info) {
-			$('.admin-task-info').html(task.cur_task_info)
+			$('#task-info').html(task.cur_task_info)
 		}
 		task.server('server_get_task_info', function(res) {
 			var task_caption = res[1],
@@ -401,9 +401,9 @@ function Events0() { // app_builder
 				task_db = res[3];
 			task.task_name = res[0];
 			task.server_started = res[4];
-			task.cur_task_info = '<h4 class="editor-title"><span>' +
-					task_caption + '</span> <span class="muted">' + task_db + '</span> v. ' + task_version + '</h4>';
-			$('.admin-task-info').html(task.cur_task_info);
+			task.cur_task_info = '<h5 class="editor-title"><span>' +
+					task_caption + '</span> <span class="text-muted">' + task_db + '</span> v. ' + task_version + '</h5>';
+			$('#task-info').html(task.cur_task_info);
 		});
 	}
 	
@@ -428,7 +428,7 @@ function Events0() { // app_builder
 			return
 		}
 		item.paginate = false;
-		if (item.view_form.hasClass('modal')) {
+		if (item.view_form.hasClass('modal-form')) {
 			item.view_form.find("#select-btn").on('click.task', function() {item.set_lookup_field_value();});
 			item.view_options.width = 1170;
 			table_height = 480;
@@ -453,13 +453,16 @@ function Events0() { // app_builder
 			}
 		}
 		else {
+			item.view_options.form_header = false;
+			item.view_options.form_border = false;
 			item.view_options.close_on_escape = false;
+			item.view_form.addClass('view-form-no-border')
 			task.cur_item = item;
 			item.view_form.find(".modal-body").css('padding', 0);
-			item.view_form.find("#title-left").html('<h4 class="editor-title">' + '<span>' + task.cur_item_title + '</span>' + '</h4>');
+			$("#title-left").html('<h5 class="editor-title">' + '<span>' + task.cur_item_title + '</span>' + '</h5>');
 			item.view_form.find("#select-btn").hide()
 			table_height = task.center_panel.height() - 104;
-			item.view_form.find("#title-right").addClass('admin-task-info');
+			// item.view_form.find("#title-right").addClass('admin-task-info');
 			update_task_info(task);
 		}
 	
@@ -468,13 +471,13 @@ function Events0() { // app_builder
 		}
 		if (item.item_name !== "sys_roles") {
 			item.view_form.find("#new-btn")
-				.text(item.task.language['new'])
+				// .text(item.task.language['new'])
 				.on('click.task', function() {item.append_record();});
 			item.view_form.find("#edit-btn")
-				.text(item.task.language.edit)
+				// .text(item.task.language.edit)
 				.on('click.task', function() {item.edit_record();});
 			item.view_form.find("#delete-btn")
-				.text(item.task.language['delete'])
+				// .text(item.task.language['delete'])
 				.on('click.task', function() {item.delete_record();});
 			options =
 				{
@@ -491,10 +494,21 @@ function Events0() { // app_builder
 				resize_elements(task);
 			}
 		}
+		open_item(item);
 		create_print_btns(item);
+		translate_btns(item.view_form.find('.form-footer'));
 	}
 	
 	function on_view_form_shown(item) {
+		if (item.item_name === 'sys_items') {
+			resize_elements(task);
+		}
+		if (item.active) {
+			item.view_table.focus();
+		}
+	}
+	
+	function open_item(item) {
 		if (item.item_name === 'sys_fields_editor' || item.item_name === 'sys_code_editor') {
 			return
 		}
@@ -509,26 +523,22 @@ function Events0() { // app_builder
 				'f_primary_key', 'f_deleted_flag', 'f_master_id', 'f_master_rec_id',
 				'f_keep_history', 'f_edit_lock', 'sys_id', 'f_master_field', 'f_copy_of', 'f_master_applies'
 			]});
-			resize_elements(task);
 		}
 		else {
 			item.open();
 		}
-		if (item.active) {
-			item.view_table.focus();
-		}
 	}
 	
-	function set_btn_lang(form) {
-		var changes = ['Cancel', 'OK', 'Delete', 'Edit', 'New']
-		form.find('button.btn').each(function() {
-			var $this = $(this),
-				text = $this.text(),
-				i;
-			for (i = 0; i < changes.length; i++) {
-				if (text.indexOf(changes[i]) !== -1) {
-					$this.text($this.text().replace(changes[i], task.language[changes[i].toLowerCase()]))
-				}
+	function translate_btns(container) {
+		container.find('button.btn').each(function() {
+			let btn = $(this).clone();
+			btn.find('i', 'small').remove()
+			let text = btn.text().trim();
+			text = text.split()[0].split('[')[0]		
+			text = text.trim();
+			let translation = task.language[text.toLowerCase()];
+			if (translation) {
+				$(this).html($(this).html().replace(text, translation)) 
 			}
 		});
 	}
@@ -542,13 +552,13 @@ function Events0() { // app_builder
 			}
 			item.create_inputs(item.edit_form.find(".edit-body"), options);
 			item.edit_form.find("#cancel-btn")
-				.text(item.task.language.cancel)
+				// .text(item.task.language.cancel)
 				.on('click.task', function(e) {item.cancel_edit(e); return false;});
 			item.edit_form.find("#ok-btn")
-				.text(item.task.language.ok)
+				// .text(item.task.language.ok)
 				.on('click.task', function() {item.apply_record()});
 		}
-		set_btn_lang(item.edit_form);
+		translate_btns(item.edit_form.find('.form-footer'));
 	}
 	
 	function on_edit_form_shown(item) {
@@ -558,8 +568,8 @@ function Events0() { // app_builder
 	}
 	
 	function help_badge(link) {
-		return ' <span class="badge badge-info topic-badge"><a href="' + 
-				link + '" target="_blank"> ? </a></span>'
+		return ' <span><a class="help-btn btn btn-primary" href="' + 
+				link + '" target="_blank"><i class="bi bi-question-circle"></i></a></span>'
 	}
 	
 	function on_edit_form_close_query(item) {
@@ -756,7 +766,7 @@ function Events0() { // app_builder
 	
 	function update_db_manual_mode(task) {
 		if (task._manual_update) {
-			$("#project-mode").text('DB manual mode').css("color", "red");
+			$("#project-mode").text('DB manual mode');
 		}
 		else {
 			$("#project-mode").text('')
@@ -779,15 +789,9 @@ function Events0() { // app_builder
 	}
 	
 	function on_edit_form_keydown(item, event) {
-		if (item.item_name === 'sys_users' ||
-			item.item_name === 'sys_indices' ||
-			item.item_name === 'sys_report_params' ||
-			item.item_name === 'sys_filters') {
-			if (event.keyCode === 13 && event.ctrlKey === true){
-				event.preventDefault();
-				item.edit_form.find("#ok-btn").focus();
-				item.apply_record();
-			}
+		if (event.keyCode === 13 && event.ctrlKey === true){
+			event.preventDefault();
+			item.edit_form.find("#ok-btn").click();
 		}
 	}
 	this.tree_changed = tree_changed;
@@ -809,7 +813,8 @@ function Events0() { // app_builder
 	this.read_task_name = read_task_name;
 	this.on_view_form_created = on_view_form_created;
 	this.on_view_form_shown = on_view_form_shown;
-	this.set_btn_lang = set_btn_lang;
+	this.open_item = open_item;
+	this.translate_btns = translate_btns;
 	this.on_edit_form_created = on_edit_form_created;
 	this.on_edit_form_shown = on_edit_form_shown;
 	this.help_badge = help_badge;
@@ -891,7 +896,8 @@ function Events2() { // sys_roles
 						f_can_delete: w
 					},
 					sortable: true,
-					dblclick_edit: false
+					dblclick_edit: false,
+					title_line_count: 2
 				}
 			);
 			item.detail_table.$table.on('click', 'td', function() {
@@ -1309,6 +1315,7 @@ function Events3() { // sys_items
 			item.view_form.find('#delete-btn').hide();
 			item.view_form.find('#up-btn').hide();
 			item.view_form.find('#down-btn').hide();
+			item.view_form.find('#move-btn').hide();
 		}
 		else if ([types.ITEMS_TYPE, types.TABLES_TYPE, types.REPORTS_TYPE].indexOf(type_id) !== -1) {
 			item.view_form.find('#copy-btn').hide();
@@ -1525,20 +1532,20 @@ function Events3() { // sys_items
 					update_sys_fields_read_only(item, false);
 				}
 				else {
-					height = $(window).height() - 490;
+					height = $(window).height() - 540;
 					if (height < 200) {
 						height = 200;
 					}
-					else if (height > 550) {
-						height = 550;
+					else if (height > 500) {
+						height = 500;
 					}
 					if (parent_type_id === types.TABLES_TYPE) {
 						height = $(window).height() - 530;
 						if (height < 200) {
 							height = 200;
 						}
-						else if (height > 500) {
-							height = 500;
+						else if (height > 450) {
+							height = 450;
 						}
 					}
 					if (item.id.value) {
@@ -1813,11 +1820,11 @@ function Events3() { // sys_items
 			link = task.help_badge(help_link);
 		}
 		if (item.is_new()) {
-			item.edit_form.find('h4.modal-title').html(caption + link);
+			item.edit_form.find('h5.form-title').html(caption + link);
 		}
 		else {
-			item.edit_form.find('h4.modal-title').html(caption + 
-				' <span class="editor-title">' + item.f_item_name.value + '</span>' + link);
+			item.edit_form.find('h5.form-title').html(caption + 
+				' <span class="text-muted">' + item.f_item_name.value + '</span>' + link);
 		}
 	}
 	
@@ -2126,7 +2133,7 @@ function Events3() { // sys_items
 			}
 			view_object = { 0: ['', {}, [], {}, list, []] };
 		}
-		title = item.task.language.viewing + ' <span class="editor-title">' + item.f_item_name.value + '</span>' + help_link;
+		title = item.task.language.viewing + ' <span class="text-muted">' + item.f_item_name.value + '</span>' + help_link;
 		item.task.sys_fields_editor.fields_editor('view', item, title, source_def, get_fields_list(item.task), dest_def, view_object, save_view);
 	}
 	
@@ -2195,8 +2202,8 @@ function Events3() { // sys_items
 			}
 			edit_object = { 0: ['', {}, [], [['', [[{}, list, '']]]]] };
 		}
-	
-		title = item.task.language.editing + ' <span class="editor-title">' + item.f_item_name.value + '</span>' + help_link;
+		
+		title = item.task.language.editing + ' <span class="text-muted">' + item.f_item_name.value + '</span>' + help_link;
 		item.task.sys_fields_editor.fields_editor('edit', item, title, source_def, get_fields_list(item.task), dest_def, edit_object, save_edit);
 	}
 	
@@ -2335,7 +2342,7 @@ function Events3() { // sys_items
 			['param3', item.task.language.field, true],
 			['row_count', '', false]
 		];
-		title = item.task.language.details + ' <span class="editor-title">' + item.f_item_name.value + '</span>' + help_link;
+		title = item.task.language.details + ' <span class="text-muted">' + item.f_item_name.value + '</span>' + help_link;
 		item.task.sys_fields_editor.fields_editor('details', item, title, source_def, source_list, dest_def, dest_list, save_edit, undefined, true);
 	}
 	
@@ -2362,7 +2369,7 @@ function Events3() { // sys_items
 			['name', item.task.language.caption_name, true, '80%'],
 			['param1', item.task.language.caption_descening, true]
 		];
-		title = item.task.language.order + ' <span class="editor-title">' + item.f_item_name.value + '</span>' + help_link;
+		title = item.task.language.order + ' <span class="text-muted">' + item.f_item_name.value + '</span>' + help_link;
 		item.task.sys_fields_editor.fields_editor('order', item, title, source_def, get_fields_list(item.task), dest_def, info.order_list, save_view);
 	}
 	
@@ -2403,7 +2410,7 @@ function Events3() { // sys_items
 			['id', '', false],
 			['name', item.task.language.caption_name, true]
 		];
-		title = item.task.language.reports + ' <span class="editor-title">' + item.f_item_name.value + '</span>' + help_link;
+		title = item.task.language.reports + ' <span class="text-muted">' + item.f_item_name.value + '</span>' + help_link;
 		item.task.sys_fields_editor.fields_editor('reports', item, title, source_def, get_reports_list(item), dest_def, info.reports_list, save_edit);
 	}
 	
@@ -2414,7 +2421,7 @@ function Events3() { // sys_items
 		item.task.sys_filters.view_options.fields = ['f_name', 'f_filter_name', 'f_type', 'f_field', 'f_visible'];
 		item.task.sys_filters.edit_options.fields = ['f_field', 'f_name', 'f_filter_name', 'f_type', 'f_placeholder',
 			'f_help', 'f_visible'];
-		item.task.sys_filters.view_options.title = 'Filters <span class="editor-title">' + 
+		item.task.sys_filters.view_options.title = 'Filters <span class="text-muted">' + 
 			item.f_item_name.value + '</span>' + help_link;
 		item.task.sys_filters.view();
 	}
@@ -2424,7 +2431,7 @@ function Events3() { // sys_items
 			help_link = task.help_badge('http://jam-py.com/docs/admin/items/indices_dialog.html');
 		indices.foreign_index = false;
 		indices.set_where({owner_rec_id: item.id.value, f_foreign_index: false});
-		indices.view_options.title = 'Indices <span class="editor-title">' + 
+		indices.view_options.title = 'Indices <span class="text-muted">' + 
 			item.f_item_name.value + '</span>' + help_link;
 		indices.view();
 	}
@@ -2434,7 +2441,7 @@ function Events3() { // sys_items
 			help_link = task.help_badge('http://jam-py.com/docs/admin/items/foreign_keys_dialog.html');	
 		indices.foreign_index = true;
 		indices.set_where({owner_rec_id: item.id.value, f_foreign_index: true});
-		indices.view_options.title = 'Foreign keys <span class="editor-title">' + 
+		indices.view_options.title = 'Foreign keys <span class="text-muted">' + 
 			item.f_item_name.value + '</span>' + help_link;
 		indices.view();
 	}
@@ -2449,7 +2456,7 @@ function Events3() { // sys_items
 		fields = ['f_name', 'f_param_name','f_data_type', 'f_object', 'f_object_field', 'f_enable_typehead', 'f_multi_select',
 			'f_multi_select_all', 'f_lookup_values', 'f_required', 'f_alignment', 'f_placeholder', 'f_help', 'f_visible'];
 		item.task.sys_report_params.edit_options.fields = fields;
-		item.task.sys_report_params.view_options.title = 'Params <span class="editor-title">' + 
+		item.task.sys_report_params.view_options.title = 'Params <span class="text-muted">' + 
 			item.f_item_name.value + '</span>';
 		item.task.sys_report_params.view();
 	}
@@ -2967,7 +2974,7 @@ function Events8() { // app_builder.catalogs.sys_params
 	
 			item.edit_options.width = 620;
 	
-			task.init_tabs(edit_body);
+			task.init_tabs(edit_body, {consistent_height: true});
 			general = task.add_tab(edit_body, task.language.general);
 			intface = task.add_tab(edit_body, task.language.interface);
 	
@@ -2979,13 +2986,13 @@ function Events8() { // app_builder.catalogs.sys_params
 				'f_ignore_change_ip', 'f_max_content_length', 'f_import_delay',
 				'f_delete_reports_after', 'f_upload_file_ext', 'f_version'
 				],
-				in_well: false,
-				label_width: 240
+				// in_well: false,
+				label_size: 5
 			});
 			item.create_inputs(intface, {
 				fields: ['f_theme', 'f_small_font', 'f_full_width', 'f_forms_in_tabs'],
-				in_well: false,
-				label_width: 240
+				// in_well: false,
+				label_size: 5
 			});
 		}
 	}
@@ -3136,11 +3143,11 @@ function Events9() { // app_builder.catalogs.sys_langs
 	
 		item.transl_table = task.sys_lang_keys_values.copy();
 	
-		item.edit_options.width = 1000;
+		item.edit_options.width = '75rem';
 	
 		item.create_inputs(item.edit_form.find('.edit-title'), {fields: ['f_language', 'f_country'], col_count: 2});
 	
-		task.init_tabs(edit_body);
+		task.init_tabs(edit_body, {consistent_height: true});
 		locale = task.add_tab(edit_body, 'Locale');
 		translation = task.add_tab(edit_body, 'Translation');
 	
@@ -3149,7 +3156,7 @@ function Events9() { // app_builder.catalogs.sys_langs
 				'f_currency_symbol', 'f_frac_digits', 'f_p_cs_precedes', 'f_n_cs_precedes', 'f_p_sep_by_space',
 				'f_n_sep_by_space', 'f_positive_sign', 'f_negative_sign',
 				'f_p_sign_posn', 'f_n_sign_posn', 'f_d_fmt', 'f_d_t_fmt'],
-			label_width: 500
+			label_size: 6
 		});
 		locale.find('input.input-text').width(120);
 		locale.find('input.input-integer').width(20);
@@ -3159,7 +3166,7 @@ function Events9() { // app_builder.catalogs.sys_langs
 		fill_table(item);
 		item.transl_table.create_table(translation.find("#table-div"), {
 			fields: ['f_key_str', 'f_eng_str', 'f_value'],
-			height: 520,
+			height: '47rem',
 			row_line_count: 1,
 			expand_selected_row: 2,
 			sortable: true,
@@ -3217,8 +3224,7 @@ function Events9() { // app_builder.catalogs.sys_langs
 	
 	function on_edit_form_keyup(item, event) {
 		if (event.keyCode === 77 && event.ctrlKey === true){
-			item.edit_form.find('.modal-footer #new-btn').show();
-			item.edit_form.find('.modal-footer #delete-btn').show();
+			item.edit_form.find('.form-footer').show();
 		}
 	}
 	
@@ -3637,7 +3643,7 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 	function init_tabs(task) {
 		$("#content").show();
 		task.tabs = {};
-		$('body').on('click', 'ul#task-tabs li', function(e) {
+		$('body').on('click', 'ul#task-tabs li button', function(e) {
 			e.preventDefault();
 			e.stopPropagation();
 			show_tab(task, $(this).attr('id'));
@@ -3645,47 +3651,13 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 		$('body').on('click', 'ul#task-tabs .close-editor-btn', function(e) {
 			e.preventDefault();
 			e.stopPropagation();
-			close_editor(task, $(this).parent().parent().attr('id'));
+			close_editor(task, $(this).parent().attr('id'));
 		});
 	}
 	
-	function resize(task, height) {
-		if (task.code_editor.is(':visible')) {
-			var footer = task.code_editor.find('.modal-footer'),
-				center_box = task.code_editor.find("#center-box"),
-				editor_box = task.code_editor.find("#editor-box"),
-				left_box = task.code_editor.find('#left-box'),
-				editor_tabs = task.code_editor.find('#editor-tabs'),
-				info_grids = task.code_editor.find('#info-grids'),
-				info_trees = task.code_editor.find('#editor-tabs div.info-tree'),
-				dbtrees = task.code_editor.find('#editor-tabs div.info-tree .dbtree'),
-				tabs_height = task.code_editor.find('ul.nav-tabs').outerHeight();
-			if (footer.length) {
-				height -= footer.outerHeight(true);
-			}
-			left_box.children().hide();
-			left_box.hide();
-			editor_box.hide();
-			center_box.outerHeight(height, true);
-			editor_box.outerHeight(center_box.height(), true);
-			editor_box.show();
-			left_box.outerHeight(height, true);
-			left_box.show();
-			editor_tabs.outerHeight(left_box.height(), true);
-			editor_tabs.show();
-			info_grids.outerHeight(left_box.height() - tabs_height, true);
-			info_grids.show();
-			info_trees.outerHeight(info_grids.height(), true);
-			dbtrees.outerHeight(info_grids.height(), true);
-			if (task.editor) {
-				task.editor.resize();
-			}
-		}
-	}
-	
 	function show_tab(task, tag) {
-		$('ul#task-tabs li').removeClass('active');
-		$('ul#task-tabs li#' + tag).addClass('active');
+		$('ul#task-tabs li button').removeClass('active');
+		$('ul#task-tabs li button#' + tag).addClass('active');
 		if (tag === 'admin') {
 			$('#tab-content #code-editor').hide();
 			$('#tab-content #admin').show();
@@ -3707,9 +3679,11 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 		}
 		else {
 			$('ul#task-tabs').append(
-				'<li id="' + tag +
-				'" class="active"><a href="#code-editor" data-toggle="tab"><span> ' +
-			info.name + ' </span><i class="icon-remove close-editor-btn"></i></a></li>'
+				'<li class="nav-item" role="editortab">' +
+					'<button class="nav-link active" id="' + tag + '" data-bs-toggle="tab" type="button" role="tab">' +
+						'<span> ' + info.name + ' </span><i class="bi bi-x-lg close-editor-btn ms-1"></i>' +
+					'</button>' +
+				'</li>'
 			);
 			task.tabs[tag] = info;
 			show_tab(task, tag);
@@ -3717,7 +3691,7 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 	}
 	
 	function close_editor(task, tag) {
-		var tab = $('ul#task-tabs li#' + tag),
+		var tab = $('ul#task-tabs li button#' + tag).parent(),
 			new_tab;
 			if (tab.next().length) {
 				new_tab = tab.next();
@@ -3727,7 +3701,8 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 			}
 			show_tab(task, tag);
 			close_query(task, tag, function () {
-				show_tab(task, new_tab.attr('id'));
+				update_error_message(task, '');
+				show_tab(task, new_tab.find('button').attr('id'));
 				delete task.tabs[tag];
 				tab.remove();
 			});
@@ -3758,7 +3733,7 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 			update_buttons(task);
 		});
 		task.code_editor.find('#ok-btn').click(function() {
-			save_edit(task, $('ul#task-tabs li.active').attr('id'));
+			save_edit(task, $('ul#task-tabs li button.active').attr('id'));
 		});
 		task.code_editor.find('#find-btn')
 			.text(task.code_editor.find('#find-btn').text().replace('find_in_task', task.language.find_in_task))
@@ -3767,18 +3742,18 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 			}
 		);
 	
-		task.code_editor.on('click', '#editor-tabs > .nav > li', function() {
+		task.code_editor.on('click', '#editor-tabs > .nav > li button', function() {
 			info_tab_clicked(task, $(this));
 		});
 		task.code_editor.on('dblclick', '.dbtree ul li', function(e) {
 			e.preventDefault();
 			e.stopPropagation();
-			tree_node_clicked(task, $('ul#task-tabs li.active').attr('id'), $(this));
+			tree_node_clicked(task, $('ul#task-tabs li button.active').attr('id'), $(this));
 		});
 	
 		$(window).on('keydown.editor', function(e) {
 			if (e.ctrlKey && e.which === 83) {
-				var tag = $('ul#task-tabs li.active').attr('id');
+				var tag = $('ul#task-tabs li button.active').attr('id');
 				if (tag && tag !== 'admin') {
 					e.preventDefault();
 					save_edit(task, tag);
@@ -3789,7 +3764,7 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 		$(window).on('keyup.editor', function(e) {
 			if (e.which === 27) {
 				return;
-				var tag = $('ul#task-tabs li.active').attr('id');
+				var tag = $('ul#task-tabs li button.active').attr('id');
 				if (tag && tag !== 'admin') {
 					e.preventDefault();
 					e.stopPropagation();
@@ -3842,7 +3817,7 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 		task.code_editor.find("#editor-tabs").detach();
 		task.code_editor.find('#left-box').append(info.editor_tabs);
 		add_tree(task, task.task_dict, "task");
-		if ($('#editor-tabs li#fields').length && info.item_id) {
+		if ($('#editor-tabs li button#fields').length && info.item_id) {
 			if (info.table_id) {
 				info.fields = task.task_item_fields[info.table_id]
 			}
@@ -3851,7 +3826,7 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 			}
 			add_tree(task, info.fields, "fields");
 		}
-		info_tab_clicked(task, $('#editor-tabs li.active'));
+		info_tab_clicked(task, $('#editor-tabs li button.active'));
 		if (info.name === 'project.css') {
 			task.code_editor.find("#left-box").hide();
 		}
@@ -3946,30 +3921,29 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 		set_info_grids_height();
 		if (info.doc_type) {
 			task.code_editor.find('#editor-tabs ul')
-				.append('<li id="module"><a href="#">Module</a></li>')
-				.append('<li id="events"><a href="#">Events</a></li>')
-				.append('<li id="task"><a href="#">Task</a></li>')
-				.append('<li id="fields"><a href="#">Fields</a></li>');
-	
+				.append('<li class="nav-item"><button class="nav-link" id="module" href="#">Module</button></li>')
+				.append('<li class="nav-item"><button class="nav-link" id="events" href="#">Events</button></li>')
+				.append('<li class="nav-item"><button class="nav-link" id="task" href="#">Task</button></li>')
+				.append('<li class="nav-item"><button class="nav-link" id="fields" href="#">Fields</button></li>');
 			add_tree(task, info.module, "module");
 			add_tree(task, info.events, "events");
 			add_tree(task, task.task_dict, "task");
 			add_tree(task, info.fields, "fields");
-			info_tab_clicked(task, $('#editor-tabs li#module'));
+			info_tab_clicked(task, $('#editor-tabs li button#module'));
 		}
 		else if (info.templates) {
 			task.code_editor.find('#editor-tabs ul')
-				.append('<li id="templates"><a href="#">templates</a></li>')
-				.append('<li id="task"><a href="#">Task</a></li>');
+				.append('<li class="nav-item"><button class="nav-link" id="templates" href="#">Templates</button></li>')
+				.append('<li class="nav-item"><button class="nav-link" id="task" href="#">Task</button></li>')
 			add_tree(task, info.templates, "templates");
 			add_tree(task, task.task_dict, "task");
-			info_tab_clicked(task, task.code_editor.find('#editor-tabs li#templates'));
+			info_tab_clicked(task, task.code_editor.find('#editor-tabs li button#templates'));
 		}
 		else {
 			task.code_editor.find('#editor-tabs ul')
-				.append('<li id="task"><a href="#">Task</a></li>');
+				.append('<li class="nav-item"><button class="nav-link" id="task" href="#">Task</button></li>')
 			add_tree(task, task.task_dict, "task");
-			info_tab_clicked(task, task.code_editor.find('#editor-tabs li#task'));
+			info_tab_clicked(task, task.code_editor.find('#editor-tabs li button#task'));
 		}
 		info.editor_tabs = editor_tabs;
 	}
@@ -4030,9 +4004,9 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 		return cur_id;
 	}
 	
-	function info_tab_clicked(task, $li) {
-		task.code_editor.find('#editor-tabs li').removeClass('active');
-		$li.addClass('active');
+	function info_tab_clicked(task, $btn) {
+		task.code_editor.find('#editor-tabs li button').removeClass('active');
+		$btn.addClass('active');
 		update_tab_height(task);
 	}
 	
@@ -4086,18 +4060,23 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 	}
 	
 	function update_tab_height(task) {
-		var $li,
+		let $btn,
+			$info_tree,
+			$tree,
 			dbtree,
 			height;
-		$li = task.code_editor.find('#editor-tabs > .nav > li.active');
-		if ($li.length) {
+		$btn = task.code_editor.find('#editor-tabs > .nav > li button.active');
+		if ($btn.length) {
 			height = task.code_editor.find('#editor-tabs #info-grids').innerHeight();
 			task.code_editor.find('#editor-tabs div.info-tree').hide();
-			task.code_editor.find('#editor-tabs div.info-tree.' + $li.attr('id'))
-				.show()
-				.height(height)
-				.find('.dbtree').height(height);
-			dbtree = task.code_editor.find('#editor-tabs div.info-tree.' + $li.attr('id')).find('.dbtree').data('tree');
+			$info_tree = task.code_editor.find('#editor-tabs div.info-tree.' + $btn.attr('id'));
+			$tree = $info_tree.find('.dbtree');
+			$tree.hide();
+			$info_tree.height('100%')
+			$info_tree.show();
+			$tree.height($info_tree.innerHeight());
+			$tree.show();
+			dbtree = task.code_editor.find('#editor-tabs div.info-tree.' + $btn.attr('id')).find('.dbtree').data('tree');
 			if (dbtree) {
 				dbtree.scroll_into_view();
 			}
@@ -4113,8 +4092,40 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 			regExp: false
 		});
 	}
+	
+	function resize(task, height) {
+		if (task.code_editor.is(':visible')) {
+			var footer = task.code_editor.find('.editor-footer'),
+				center_box = task.code_editor.find("#center-box"),
+				editor_box = task.code_editor.find("#editor-box"),
+				left_box = task.code_editor.find('#left-box'),
+				editor_tabs = task.code_editor.find('#editor-tabs'),
+				info_grids = task.code_editor.find('#info-grids'),
+				info_trees = task.code_editor.find('#editor-tabs div.info-tree'),
+				dbtrees = task.code_editor.find('#editor-tabs div.info-tree .dbtree'),
+				tabs_height = task.code_editor.find('ul.nav-tabs').outerHeight();
+			if (footer.length) {
+				height -= footer.outerHeight(true);
+			}
+			left_box.children().hide();
+			left_box.hide();
+			editor_box.hide();
+			center_box.outerHeight(height, true);
+			editor_box.outerHeight(center_box.height(), true);
+			editor_box.show();
+			left_box.outerHeight(height, true);
+			left_box.show();
+			editor_tabs.outerHeight(left_box.height(), true);
+			editor_tabs.show();
+			info_grids.outerHeight(left_box.height() - tabs_height, true);
+			info_grids.show();
+			update_tab_height(task);
+			if (task.editor) {
+				task.editor.resize();
+			}
+		}
+	}
 	this.init_tabs = init_tabs;
-	this.resize = resize;
 	this.show_tab = show_tab;
 	this.show_editor = show_editor;
 	this.close_editor = close_editor;
@@ -4137,6 +4148,7 @@ function Events04() { // app_builder.catalogs.sys_code_editor
 	this.set_info_grids_height = set_info_grids_height;
 	this.update_tab_height = update_tab_height;
 	this.find_text = find_text;
+	this.resize = resize;
 }
 
 task.events.events14 = new Events04();
@@ -4188,7 +4200,7 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 		if (item.dest_object[media] === undefined) {
 			if (item.type === 'view') {
 				item.dest_object[media] = ['', {}, [], {}, []];
-			} else if (item.type === 'edit') {
+			} else if (item.type === 'edit') { 
 				item.dest_object[media] = ['', {}, [], [['', [[{}, [], '']]]]];
 			}
 		}
@@ -4200,9 +4212,9 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 		}
 		else {
 			tabs = item.cur_media[TABS];
-			item.view_form.find('#field-tabs > li').remove();
+			item.view_form.find('#field-tabs > li').remove(); 
 			for (i = 0; i < tabs.length; i++) {
-				$tab = $('<li><a href="#tab' + (i + 1) + '">' + item.cur_media[TABS][i][TAB_NAME] +  '</a></li>');
+				$tab = $('<li class="nav-item"><a class="nav-link" href="#tab' + (i + 1) + '">' + item.cur_media[TABS][i][TAB_NAME] +  '</a></li>');
 				$tab.data('tab', i);
 				item.view_form.find('#field-tabs').append($tab);
 			}
@@ -4211,7 +4223,7 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 			}
 			else {
 				item.view_form.find('#field-tabs > li').show();
-				item.view_form.find('#field-tabs > li').eq(0).addClass('active');
+				item.view_form.find('#field-tabs > li > a').eq(0).addClass('active');
 			}
 			item.set_cur_tab(item, 0);
 		}
@@ -4227,7 +4239,10 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 		set_cur_band(item, item.cur_tab[BANDS][0]);
 		item.view_form.find('#field-bands').empty();
 		for (i = 0; i < item.cur_tab[BANDS].length; i++) {
-			band = $('<li><a href="#band' + (i + 1) + '">' + item.cur_tab[BANDS][i][BAND_NAME] +  '</a></li>');
+			band = $('<li class="nav-item">' + 
+					'<a class="nav-link" href="#band' + (i + 1) + '">' + item.cur_tab[BANDS][i][BAND_NAME] +  
+					'</a>' + 
+				'</li>');
 			band.data('band', item.cur_tab[BANDS][i]);
 			item.view_form.find('#field-bands').append(band);
 		}
@@ -4235,8 +4250,9 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 			item.view_form.find('#field-bands > li').hide();
 		}
 		else {
-			item.view_form.find('#field-bands > li').show();
-			item.view_form.find('#field-bands > li').eq(0).addClass('active');
+			let $li = item.view_form.find('#field-bands > li').eq(0);
+			$li.addClass('active').show();
+			$li.find('a').addClass('active');
 		}
 	}
 	
@@ -4246,38 +4262,13 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 		band[BAND_OPTIONS] = set_options(item, band[BAND_OPTIONS]);
 		item.dest_list = item.cur_band[BAND_FIELDS];
 		update_lists(item);
-	}
+	} 
 	
 	function set_editor_type(item) {
-		var i,
+		var i, 
 			tab;
 		if (item.type === 'edit' || item.type === 'view') {
 			item.view_form.find('#section-tabs').show();
-			item.view_form.find('#buttons').hide();
-			item.view_form.find('#form').hide();
-			item.view_form.on('click', '#section-tabs > li > a',
-				function(e) {
-					e.preventDefault();
-					$('#section-tabs > li').removeClass('active');
-					$(this).parent().addClass('active');
-					if ($(this).attr("href") === '#layout') {
-						item.view_form.find('#layout').show();
-						item.view_form.find('#buttons').hide();
-						item.view_form.find('#form').hide();
-					}
-					else if ($(this).attr("href") === '#buttons') {
-						item.view_form.find('#layout').hide();
-						item.view_form.find('#buttons').show();
-						item.view_form.find('#form').hide();
-						//~ refresh_actions(item);
-					}
-					else {
-						item.view_form.find('#layout').hide();
-						item.view_form.find('#buttons').hide();
-						item.view_form.find('#form').show();
-					}
-				}
-			);
 			set_cur_media(item, 0);
 			item.view_form.find('#media-tabs').show();
 			item.view_form.on('click', '#media-tabs > li > a',
@@ -4290,20 +4281,22 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 			);
 			if (item.type === 'edit') {
 				item.view_form.find('#media-tabs').show();
-				item.view_form.find('#field-tabs').show();
+				item.view_form.find('#field-tabs-container').show();
 				item.view_form.find('#bands-box').show();
 				item.view_form.on('click', '#field-tabs > li > a',
 					function(e) {
 						e.preventDefault();
-						$('#field-tabs > li').removeClass('active');
-						$(this).parent().addClass('active');
-						set_cur_tab(item, $(this).parent().data('tab'))
+						$('#field-tabs > li > a').removeClass('active');
+						$(this).addClass('active');
+						set_cur_tab(item, $(this).parent().data('tab'));
 					}
 				);
 				item.view_form.on('click', '#field-bands > li > a',
 					function(e) {
 						e.preventDefault();
 						$('#field-bands > li').removeClass('active');
+						$('#field-bands > li > a').removeClass('active');
+						$(this).addClass('active');
 						$(this).parent().addClass('active');
 						set_cur_band(item, $(this).parent().data('band'));
 					}
@@ -4353,7 +4346,7 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 		if (op === 'del_tab') {
 			if (item.cur_media[TABS].length === 1) {
 				item.cur_media[TABS][0][TAB_NAME] = '';
-				item.view_form.find('#field-tabs > li.active').hide();
+				item.view_form.find('#field-tabs > li > a.active').hide();
 			}
 			else {
 				index = item.cur_media[TABS].indexOf(item.cur_tab);
@@ -4361,8 +4354,8 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 				if (index === item.cur_media[TABS].length) {
 					index -= 1;
 				}
-				item.view_form.find('#field-tabs > li.active').remove()
-				item.view_form.find('#field-tabs > li').eq(index).addClass('active');
+				item.view_form.find('#field-tabs > li > a.active').remove()
+				item.view_form.find('#field-tabs > li > a').eq(index).addClass('active');
 				set_cur_tab(item, index);
 			}
 		}
@@ -4374,9 +4367,9 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 			}
 			else {
 				band = [{}, [], 'Band ' + (item.cur_tab[BANDS].length + 1)];
-				$('#field-bands > li').removeClass('active');
+				$('#field-bands > li > a').removeClass('active');
 				item.cur_tab[BANDS].push(band)
-				$band = $('<li class="active"><a href="#band"' + (item.cur_tab[BANDS].length + 1) + '>' + band[BAND_NAME] +  '</a></li>');
+				$band = $('<li class="nav-item"><a class="nav-link active" href="#band"' + (item.cur_tab[BANDS].length + 1) + '>' + band[BAND_NAME] +  '</a></li>');
 				$band.data('band', band)
 				item.view_form.find('#field-bands').append($band);
 				set_cur_band(item, band);
@@ -4385,7 +4378,7 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 		else if (op === 'del_band') {
 			if (item.cur_tab[BANDS].length === 1) {
 				item.cur_tab[BANDS][0][BAND_NAME] = '';
-				item.view_form.find('#field-bands > li.active').hide();
+				item.view_form.find('#field-bands > li > a.active').hide();
 			}
 			else {
 				index = item.cur_tab[BANDS].indexOf(item.cur_band);
@@ -4393,8 +4386,8 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 				if (index === item.cur_tab[BANDS].length) {
 					index -= 1;
 				}
-				item.view_form.find('#field-bands > li.active').remove()
-				item.view_form.find('#field-bands > li').eq(index).addClass('active');
+				item.view_form.find('#field-bands > li > a.active').remove()
+				item.view_form.find('#field-bands > li > a').eq(index).addClass('active');
 				set_cur_band(item, item.cur_tab[BANDS][index]);
 			}
 		}
@@ -4419,7 +4412,7 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 									tab = [it.name.value, [[{}, [], '']]];
 									item.view_form.find('#field-tabs > li').removeClass('active');
 									item.cur_media[TABS].push(tab)
-									$tab = $('<li class="active"><a href="#tab' + (item.cur_media[TABS].length + 1) + '">' + tab[TAB_NAME] +  '</a></li>');
+									$tab = $('<li class="nav-item"><a class="nav-link active" href="#tab' + (item.cur_media[TABS].length + 1) + '">' + tab[TAB_NAME] +  '</a></li>');
 									$tab.data('tab', item.cur_media[TABS].length - 1);
 									item.view_form.find('#field-tabs').append($tab);
 									set_cur_tab(item, item.cur_media[TABS].length - 1);
@@ -4427,7 +4420,7 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 							}
 							else if (op === 'edit_tab') {
 								item.cur_tab[TAB_NAME] = it.name.value;
-								item.view_form.find('#field-tabs > li.active a').text(it.name.value);
+								item.view_form.find('#field-tabs > li > a.active').text(it.name.value);
 							}
 							it.cancel_edit();
 						}
@@ -4512,8 +4505,14 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 				opt_fields.push(options_list[i][0]);
 			}
 			options = new_options;
-			item.create_inputs(container,
-				{fields: opt_fields, in_well: false, label_width: 140});
+			let col_count,
+				row_count;
+			if (is_form) {
+				col_count = 2;
+				row_count = 10;
+			}
+			item.create_inputs(container, 
+				{fields: opt_fields, in_well: false, label_size: 5, col_count: col_count, row_count: row_count});
 			item.on_field_changed = update_option;
 			item.on_field_select_value = function(field, lookup_item) {
 				if (field.field_name === 'edit_details' || field.field_name === 'view_detail') {
@@ -4628,15 +4627,17 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 	
 	function on_view_form_created(item) {
 		if (item.type === 'edit') {
-			item.view_options.width = 1080;
+			item.view_options.width = '78rem';
 		}
 		else if (item.type === 'view') {
-			item.view_options.width = 960;
+			item.view_options.width = '74rem';
 		}
 		else {
-			item.view_options.width = 660;
+			item.view_options.width = '54rem';
+			// item.view_options.width = '52rem';
 		}
 		set_layout(item);
+		task.translate_btns(item.view_form.find('.form-footer'));
 		//~ set_actions(item);
 	}
 	
@@ -4661,7 +4662,7 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 				view_fields.push(item.source_def[i][0]);
 			}
 		}
-		item.source.set_view_fields(view_fields);
+		item.source.table_options.fields = view_fields;
 		item.source.open({open_empty: true});
 		for (i = 0; i < item.source_def.length; i++) {
 			if (item.source_def[i][2]) {
@@ -4676,26 +4677,31 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 				view_fields.push(item.dest_def[i][0]);
 			}
 		}
-		item.dest.set_view_fields(view_fields);
+		item.dest.table_options.fields = view_fields;
 		item.dest.open({open_empty: true});
 		for (i = 0; i < item.dest_def.length; i++) {
 			if (item.dest_def[i][2]) {
 				item.dest.field_by_name(item.dest_def[i][0]).field_caption = item.dest_def[i][1];
 			}
 		}
-	
+		
+		item.dest.view_options.enable_search = false;
+		item.source.view_options.enable_search = false;
+		
 		item.left_grid = item.dest.create_table(item.view_form.find("#left-grid"), {
-			height: 360,
+			height: '32rem',
 			column_width: name_width,
 			editable: true,
 			editable_fields: ['param3'],
 			dblclick_edit: false,
 			striped: false
+			// sort_fields: [item.dest.table_options.fields[0]]
 		});
 		item.right_grid = item.source.create_table(item.view_form.find("#right-grid"), {
-			height: 360,
+			height: '32rem',
 			dblclick_edit: false,
 			striped: false
+			// sort_fields: [item.source.table_options.fields[0]]
 		});
 		item.left_grid.$table.keydown(function(e) {
 			var code = (e.keyCode ? e.keyCode : e.which);
@@ -4731,10 +4737,10 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 			move_right(item);
 		});
 		item.view_form.find("#cancel-btn")
-			.text(item.task.language.cancel)
+			// .text(item.task.language.cancel)
 			.on('click.task', function(e) {item_cancel(item);});
 		item.view_form.find("#ok-btn")
-			.text(item.task.language.ok)
+			// .text(item.task.language.ok)
 			.on('click.task', function() {save_result(item)});
 		if (item.read_only) {
 			item.view_form.find("button.arrow_btn").hide();
@@ -4905,7 +4911,7 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 			clone = item.dest.clone(),
 			values,
 			new_values;
-		if (!item._options_changing) {
+		if (item.rec_count && !item._options_changing) {
 			for (i = 0; i < field_names.length; i++) {
 				field = item.field_by_name(field_names[i]);
 				if (field && field.value.length && field.field_type === 'keys') {
@@ -5019,11 +5025,12 @@ function Events06() { // app_builder.catalogs.sys_search
 	}
 	
 	function on_edit_form_created(item) {
+		item.edit_options.title = task.language.find_in_task;
+		item.create_inputs(item.edit_form.find(".edit-body"), {
+			fields: ['find_text', 'case_sensitive', 'whole_words'], col_count: 1, label_size: 4
+		});
 		item.edit_form.title = task.language.find;
-		item.edit_form.find("#cancel-btn")
-			.text(task.language.close);
 		item.edit_form.find("#ok-btn")
-			.text(task.language.find)
 			.off('click.task')
 			.on('click', function() {do_find(item)});
 	}
@@ -5033,8 +5040,8 @@ function Events06() { // app_builder.catalogs.sys_search
 			i,
 			$p,
 			lines,
-			width = $(window).width() - 50,
-			height = $(window).height() - 200,
+			width = $(window).width() - task.px_size('4rem'),
+			height = $(window).height() - task.px_size('14rem'),
 			html = $('<div>');
 		if (item.find_text.value) {
 			result = item.task.server('server_find_in_task',
@@ -5055,7 +5062,7 @@ function Events06() { // app_builder.catalogs.sys_search
 					html.append($p);
 				}
 				task.message(html,
-					{title: 'Search result', margin: 10, width: width, height: height,
+					{title: 'Search result', margin: '1rem', width: width, height: height,
 						text_center: false, buttons: {"Close": undefined}, center_buttons: false, print: true}
 				);
 			}
@@ -5679,11 +5686,6 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	
 		var fields;
 	
-		item.edit_form.find('#field-edit a').click(function (e) {
-			e.preventDefault();
-			$(this).tab('show');
-		});
-	
 		item.f_field_name.read_only = item.f_field_name.value === 'id' || item.f_field_name.value === 'deleted' ||
 			item.f_field_name.value === 'owner_id' || item.f_field_name.value === 'owner_rec_id';
 		item.f_data_type.read_only = false;
@@ -5703,23 +5705,48 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 		else {
 			fields = ['f_name', 'f_field_name',  'f_data_type', 'f_size', 'f_default_value', 'f_default_lookup_value', 'f_required', 'f_read_only'];
 		}
-		item.create_inputs(item.edit_form.find("#definition"), {fields: fields});
-		item.create_inputs(item.edit_form.find("#lookups"),
+		 
+		let edit_body = item.edit_form.find('.edit-body');
+		task.init_tabs(item.edit_form.find('.edit-body'), {consistent_height: true});
+		let general = task.add_tab(edit_body, 'Field'),
+			lookups = task.add_tab(edit_body, 'Lookup'),
+			intface = task.add_tab(edit_body, 'Interface'),
+			calculation = task.add_tab(edit_body, 'Calculation');
+	
+			intface.append($(
+				`<div id="interface" class="field-group">
+				</div>
+				<div id="text-interface" class="field-group">
+				</div>
+				<div id="file-interface" class="field-group">
+				</div>
+				<div id="image-interface" class="field-group">
+					<div id="image-interface1" class="field-group">
+					</div>
+					<div id="image-interface2" class="field-group" style="margin-top: 6px;">
+					</div>
+					<div id="image-interface3" class="field-group" style="margin-top: 6px;">
+					</div>
+				</div>`)
+				);
+	
+		item.create_inputs(general, {fields: fields});
+		item.create_inputs(lookups,
 			{fields: ['f_object', 'f_object_field', 'f_object_field1', 'f_object_field2', 'f_master_field',
 				'f_lookup_values', 'f_enable_typehead']});
-		item.create_inputs(item.edit_form.find("#interface"),
+		item.create_inputs(intface.find("#interface"),
 			{fields: ['f_alignment', 'f_mask', 'f_do_not_sanitize', 'f_placeholder', 'f_help']});
-		item.create_inputs(item.edit_form.find("#text-interface"),
+		item.create_inputs(intface.find("#text-interface"),
 			{fields: ['f_alignment', 'f_mask', 'f_textarea', 'f_do_not_sanitize', 'f_placeholder', 'f_help']});
-		item.create_inputs(item.edit_form.find("#file-interface"),
+		item.create_inputs(intface.find("#file-interface"),
 			{fields: ['f_file_download_btn', 'f_file_open_btn', 'f_file_accept', 'f_help']});
-		item.create_inputs(item.edit_form.find("#image-interface1"),
+		item.create_inputs(intface.find("#image-interface1"),
 			{fields: ['f_image_view_width', 'f_image_view_height', 'f_image_edit_width', 'f_image_edit_height'], col_count: 2, label_size: 2});
-		item.create_inputs(item.edit_form.find("#image-interface2"),
+		item.create_inputs(intface.find("#image-interface2"),
 			{fields: ['f_image_camera'], col_count: 1, label_size: 2});
-		item.create_inputs(item.edit_form.find("#image-interface3"),
+		item.create_inputs(intface.find("#image-interface3"),
 			{fields: ['f_image_placeholder']});
-		item.create_inputs(item.edit_form.find("#calc"), {fields: ['f_calc_item', 'f_calc_lookup_field', 'f_calc_field', 'f_calc_op', 'f_do_not_sanitize']});
+		item.create_inputs(calculation, {fields: ['f_calc_item', 'f_calc_lookup_field', 'f_calc_field', 'f_calc_op']});
 	
 		update_read_only(item);
 		update_iterface_tab(item);

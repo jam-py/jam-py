@@ -614,6 +614,14 @@ class AbstractDB(object):
             if filter_type in [consts.FILTER_CONTAINS, consts.FILTER_STARTWITH, consts.FILTER_ENDWITH]:
                 value = self.convert_field_value(field, value)
                 value, esc_found = self.escape_search(value, esc_char)
+                if field.lookup_item:
+                    if field.lookup_item1:
+                        cond_field_name = '%s."%s"' % (self.lookup_table_alias1(item, field), field.lookup_db_field1)
+                    else:
+                        if field.data_type == consts.KEYS:
+                            cond_field_name = '%s."%s"' % (self.table_alias(item), field.db_field_name)
+                        else:
+                            cond_field_name = '%s."%s"' % (self.lookup_table_alias(item, field), field.lookup_db_field)
                 if filter_type == consts.FILTER_CONTAINS:
                     value = '%' + value + '%'
                 elif filter_type == consts.FILTER_STARTWITH:
@@ -622,7 +630,9 @@ class AbstractDB(object):
                     value = '%' + value
                 cond_field_name, value = self.convert_like(cond_field_name, value, field.data_type)
                 if esc_found:
-                    value = value + "' ESCAPE '" + esc_char
+                    value = '' + value + "' ESCAPE '" + esc_char
+                sql_literal = "'%s'" % value
+                value = None
         sql = '%s %s %s' % (cond_field_name, filter_sign, sql_literal)
         if field.data_type == consts.BOOLEAN and value == 0 and filter_sign == '=':
             value = '1'

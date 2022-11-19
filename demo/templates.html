@@ -1,24 +1,25 @@
+
 <div class="default-top-view">
     <div class="form-header">
-        <button id="new-btn" class="btn expanded-btn" type="button">
+        <button id="new-btn" class="btn btn-secondary" type="button">
             <i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small>
         </button>
-        <button id="edit-btn" class="btn expanded-btn" type="button">
+        <button id="edit-btn" class="btn btn-secondary" type="button">
             <i class="icon-edit"></i> Edit
         </button>
         <div id="report-btn" class="btn-group dropdown">
-            <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
+            <a class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" href="#">
                 <i class="icon-print"></i> Reports
                 <span class="caret"></span>
             </a>
             <ul class="dropdown-menu bottom-up">
             </ul>
         </div>
-        <button id="delete-btn" class="btn expanded-btn pull-right" type="button">
+        <button id="delete-btn" class="btn btn-danger" type="button">
             <i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small>
         </button>
     </div>
-    <div class="form-body">
+    <div class="card-body form-body">
         <div class="view-table"></div>
         <div class="view-detail"></div>
     </div>
@@ -30,33 +31,32 @@
         <div class="view-detail"></div>
     </div>
     <div class="form-footer">
-        <button id="delete-btn" class="btn expanded-btn pull-left" type="button">
-            <i class="icon-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small>
+        <div id="report-btn" class="btn dropdown dropup">
+          <a class="btn btn-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Reports
+          </a>
+          <ul class="dropdown-menu">
+          </ul>
+        </div>            
+        <button id="delete-btn" class="btn btn-danger" type="button">
+            <i class="bi-trash"></i> Delete<small class="muted">&nbsp;[Ctrl+Del]</small>
         </button>
-        <div id="report-btn" class="btn-group dropup">
-            <a class="btn expanded-btn dropdown-toggle" data-toggle="dropdown" href="#">
-                <i class="icon-print"></i> Reports
-                <span class="caret"></span>
-            </a>
-            <ul class="dropdown-menu bottom-up">
-            </ul>
-        </div>
-        <button id="edit-btn" class="btn expanded-btn" type="button">
-            <i class="icon-edit"></i> Edit
+        <button id="edit-btn" class="btn btn-secondary" type="button">
+            <i class="bi-pencil-square"></i> Edit
         </button>
-        <button id="new-btn" class="btn expanded-btn" type="button">
-            <i class="icon-plus"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small>
+        <button id="new-btn" class="btn btn-secondary" type="button">
+            <i class="bi-plus-square"></i> New<small class="muted">&nbsp;[Ctrl+Ins]</small>
         </button>
     </div>
 </div>
 
 <div class="default-top-edit">
     <div class="form-header">            
-        <button type="button" id="ok-btn" class="btn expanded-btn">
-            <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
+        <button type="button" id="ok-btn" class="btn btn-primary">
+            <i class="bi bi-check-square"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
         </button>
-        <button type="button" id="cancel-btn" class="btn expanded-btn">
-            <i class="icon-remove"></i> Cancel
+        <button type="button" id="cancel-btn" class="btn btn-secondary">
+            <i class="bi bi-x-square"></i> Cancel
         </button>
     </div>
     <div class="form-body">
@@ -71,11 +71,11 @@
         <div class="edit-detail"></div>
     </div>
     <div class="form-footer">
-        <button type="button" id="ok-btn" class="btn expanded-btn">
-            <i class="icon-ok"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
+        <button type="button" id="ok-btn" class="btn btn-primary">
+            <i class="bi bi-check-square"></i> OK<small class="muted">&nbsp;[Ctrl+Enter]</small>
         </button>
-        <button type="button" id="cancel-btn" class="btn expanded-btn">
-            <i class="icon-remove"></i> Cancel
+        <button type="button" id="cancel-btn" class="btn btn-secondary">
+            <i class="bi bi-x-square"></i> Cancel
         </button>
     </div>
 </div>
@@ -86,17 +86,17 @@
         </div>
     </div>
     <div class="form-footer">
-        <select id='extension' class="pull-left" style="width: 60px">
+        <select id='extension' class="form-select" style="width: 5rem">
             <option>pdf</option>
             <option>ods</option>
             <option>xls</option>
             <option>html</option>
         </select>
-        <button type="button" id="ok-btn" class="btn expanded-btn">
+        <button type="button" id="ok-btn" class="btn btn-primary">
             <i class="icon-print"></i> Print
         </button>
-        <button type="button" id="cancel-btn" class="btn expanded-btn">
-            <i class="icon-remove"></i> Close
+        <button type="button" id="cancel-btn" class="btn btn-secondary">
+            <i class="bi bi-x-square"></i> Close
         </button>
     </div>
 </div>
@@ -107,50 +107,27 @@
         </div>
     </div>
     <div class="form-footer">
-        <button type="button" id="ok-btn" class="btn expanded-btn">
+        <button type="button" id="ok-btn" class="btn btn-primary">
             <i class="icon-filter"></i> Apply
         </button>
-        <button type="button" id="cancel-btn" class="btn expanded-btn">
-            <i class="icon-remove"></i> Close
+        <button type="button" id="cancel-btn" class="btn btn-secondary">
+            <i class="bi bi-x-square"></i> Close
         </button>
     </div>
 </div>
 
 <div class="dashboard-view">
-    <div class="row-fluid">
-        <div class="span6">                
-            <canvas id="cutomers-canvas"></canvas>                
-            <div id="customer-table"></div>
-        </div>                            
-        <div class="span6">                        
-            <canvas id="tracks-canvas"></canvas>
-            <div id="tracks-table"></div>
-        </div>                
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-6">                
+                <canvas id="cutomers-canvas"></canvas>                
+                <div id="customer-table"></div>
+            </div>                            
+            <div class="col-lg-6">                        
+                <canvas id="tracks-canvas"></canvas>
+                <div id="tracks-table"></div>
+            </div>                
+        </div>
     </div>
 </div>
 
-<div class="about">
-    <a href="http://jam-py.com/" target="_blank"><h3>Jam.py</h3></a>
-    <h3>Demo application</h3>
-    with <a href="http://chinookdatabase.codeplex.com/" target="_blank">Chinook Database</a>
-    <p>by Andrew Yushev</p>
-    <p>2015-2017</p>
-</div>
-
-<form id="login-form" target="dummy" class="form-horizontal" data-caption="Log in" style="margin: 10px 0 0; padding: 0px">
-    <div class="control-group">
-        <label class="control-label" for="input-login">Login</label>
-        <div class="controls">
-            <input type="text" id="input-login" name="login" tabindex="1" placeholder="login">
-        </div>
-    </div>
-    <div class="control-group">
-        <label class="control-label" for="input-password">Password</label>
-        <div class="controls">
-            <input type="password" id="input-password" name="password" tabindex="2" placeholder="password" autocomplete="on">
-        </div>
-    </div>
-    <div class="form-footer">
-        <input type="submit" class="btn expanded-btn pull-right" id="login-btn" value="OK" tabindex="3">
-    </div>
-</form>

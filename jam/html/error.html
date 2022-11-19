@@ -6,14 +6,15 @@
         <title></title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" href="static/img/j.png" type="image/png">
-        <link href="jam/css/bootstrap.css" rel="stylesheet">
+        <link href="jam/css/bs5/bootstrap.css" rel="stylesheet">
         <link href="jam/css/jam.css" rel="stylesheet">
     </head>
     <body>
-        <div class="alert alert-block alert-absolute %(error_class)s" style="top: 0px; right: 0;">
-            <h4 class="pulsate">%(error_type)s</h4>
+        '<div class="alert alert-dismissible alert-absolute alert-danger fade show" style="top: 0px; right: 0;">' +
+            <h4>%(error_type)s</h4>
             <p>%(message)s</p>
-        </div>
+            '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
+        '</div>'
     </body>
 </html>
 

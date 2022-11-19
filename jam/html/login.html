@@ -6,35 +6,39 @@
         <title>%(title)s</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" href="static/img/j.png" type="image/png">
-        <link href="jam/css/bootstrap.css" rel="stylesheet">
-        <link href="jam/css/bootstrap-responsive.css" rel="stylesheet">
-        <link href="jam/css/bootstrap-modal.css" rel="stylesheet">
+        <link href="jam/css/bs5/bootstrap.css" rel="stylesheet">
         <link href="jam/css/jam.css" rel="stylesheet">
     </head>
     <body>
-        <div class="modal fade in modal-centered %(error)s">
-            <form class="form-horizontal" action="" method="post">
-                <div class="modal-header">
-                    <h4 class="modal-title">%(form_title)s</h4>
-                </div>
-                <div class="form-body">
-                    <div class="control-group">
-                        <label class="control-label" for="login">%(login)s</label>
-                        <div class="controls">
-                            <input type="text" name="login" placeholder="%(login)s" required>
-                        </div>
+        <div class="modal fade show" id="staticBackdropLive" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLiveLabel" style="display: block;" aria-modal="true" role="dialog">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="staticBackdropLiveLabel">%(form_title)s</h5>
                     </div>
-                    <div class="control-group">
-                        <label class="control-label" for="password">%(password)s</label>
-                        <div class="controls">
-                            <input type="password" name="password" placeholder="%(password)s" required>
+                    <form action="" method="post">
+                        <div class="modal-body">
+                            <div class="my-1 mx-5 row">
+                                <label for="login" class="col-sm-3 col-form-label">%(login)s</label>
+                                <div class="col-sm-9">
+                                    <input type="text" class="form-control" name="login" placeholder="%(login)s" required>
+                                </div>
+                            </div>
+                            <div class="my-1 mx-5 row">
+                                <label for="password" class="col-sm-3 col-form-label">%(password)s</label>
+                                <div class="col-sm-9">
+                                    <input type="password" class="form-control" name="password" placeholder="%(password)s" required>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                        <div class="modal-footer">
+                            <input class="btn btn-primary px-4" type="submit" value="OK">
+                        </div>
+                    </form>
                 </div>
-                <div class="form-footer">
-                    <input class="btn expanded-btn pull-right" type="submit" value="OK">
-                </div>
-            </form>
+            </div>
         </div>
     </body>
 </html>
+
+

@@ -1,88 +1,148 @@
 import consts from "./consts.js";
 
+
 class DBAbstractInput {
     constructor(field) {
-        var self = this;
         this.field = field;
         this.read_only = false;
         this.is_changing = true;
     }
 
-    create_input(field, tabIndex, container) {
-        var self = this,
-            align,
-            height,
-            width,
-            $control_group,
-            $label,
-            $input,
-            $div,
-            $ul,
-            $li,
-            $a,
-            $btn,
-            $controls,
-            $btnCtrls,
-            $help,
-            field_type = field.lookup_data_type,
-            field_mask,
-            inpit_btn_class = '';
-        if ($('body').css('font-size') === '12px') {
-            inpit_btn_class = ' btn12'
-        }
-        else {
-            inpit_btn_class = ' btn14'
-        }
+    add_to_dom(field, tabIndex, container) {
+        let field_type = field.lookup_data_type;
         if (!field) {
             return;
         }
-        if (this.label) {
-            $label = $('<label class="control-label"></label>')
-                .attr("for", field.field_name).text(this.label).
-            addClass(field.field_name);
-            if (this.field.required) {
-                $label.addClass('required');
+        let input = '<input type="text" class="form-control"">',
+            label = '<label class="form-label input-centered-label"></label>';
+        if (field.lookup_item && !field.master_field || field.lookup_values ||
+            field_type === consts.DATE || field_type === consts.DATETIME) {
+            let icon_name = 'bi-chevron-down';
+            if (field.lookup_item) {
+                icon_name = 'bi-table';
+            } else if (field_type === consts.DATE || field_type === consts.DATETIME) {
+                icon_name = 'bi-calendar';
             }
-            if (this.label_width) {
-                $label.width(this.label_width);
+            input = '<div class="input-group">' +
+                '<button type="button" class="first-btn btn btn-outline-secondary" tabindex="-1"><i class="bi bi-x-square"></i></button>' +
+                '<input type="text" class="form-control">' +
+                '<button type="button" class="last-btn btn btn-outline-secondary" tabindex="-1"><i class="bi ' + icon_name + '"></i></button>' +
+            '</div>'
+        }
+        else if (field_type === consts.FILE) {
+            let field_file;
+            if (this.field.data_type === consts.FILE) {
+                field_file = this.field.field_file;
             }
+            else {
+                field_file = this.field.lookup_item[this.field.lookup_field].field_file;
+            }
+            input = '<div class="input-group">' +
+              '<button type="button" class="first-btn btn btn-outline-secondary" tabindex="-1""><i class="bi bi-x-square"></i></button>' +
+              '<input type="text" class="form-control">' +
+              '<button type="button" class="upload-btn btn btn-outline-secondary" tabindex="-1"><i class="bi bi-upload"></i></button>'
+            if (field_file.download_btn) {
+                input += '<button type="button" class="download-btn btn btn-outline-secondary" tabindex="-1""><i class="bi bi-download"></i></button>'
+            }
+            if (field_file.open_btn) {
+                input += '<button type="button" class="open-btn btn btn-outline-secondary" tabindex="-1"><i class="bi bi-play-btn"></i></button>'
+            }
+            input += '</div>'
+        }
+        else if (field_type === consts.IMAGE) {
+            input = '<div class="image-div">';
         }
         if (field.lookup_data_type === consts.BOOLEAN) {
-            $input = $('<input>')
-                .attr("type", "checkbox")
-                .click(function(e) {
-                    self.field.value = !self.field.value;
-                });
-        } else if (field_type === consts.IMAGE) {
-            $input = $('<div>');
+            input = '<input class="form-check-input check-box-centered-input" type="checkbox" value="">';
+            label = '<label class="form-check-label checkbox-centered-label">';
         } else if (field.lookup_data_type === consts.LONGTEXT || field.field_textarea) {
-            $input = $('<textarea>').height('4.5em');
-        } else if (!field.field_textarea) {
-            $input = $('<input>').attr("type", "text")
+            input = '<textarea class="form-control" rows="3"></textarea>';
         }
-        if (tabIndex) {
-            $input.attr("tabindex", tabIndex + "");
+        if (this.label_on_top) {
+            this.$container = $('<div class="mb-2">' + label + input + '</div>');
         }
-        $controls = $('<div class="controls"></div>');
-        if (this.label_width && !this.label_on_top) {
-            $controls.css('margin-left', this.label_width + 20 + 'px');
+        else {
+            this.$container = $('<div class="mb-2 row">' +
+                '<div class="col-md-' + this.label_size + '">' +
+                    label +
+                '</div>' +
+                '<div class="col-md-' + (12 -this.label_size) + '">' +
+                    input +
+                '</div>' +
+            '</div>');
         }
-        field_mask = this.field.field_mask;
+        if (container) {
+            container.append(this.$container);
+        }
+        this.$label = this.$container.find('label');
+        this.$input = this.$container.find('input');
+        this.$first_btn = this.$container.find('button.first-btn');
+        this.$last_btn = this.$container.find('button.last-btn');
+        this.$upload_btn = this.$container.find('button.upload-btn');
+        this.$download_btn = this.$container.find('button.download-btn');
+        this.$open_btn = this.$container.find('button.open-btn');
+        if (field_type === consts.IMAGE) {
+            this.$input = this.$container.find('div.image-div');
+        }
+        if (this.field.lookup_data_type === consts.LONGTEXT || this.field.field_textarea) {
+            this.$input = this.$container.find('textarea')
+        }
+        this.$form = this.$input.closest('.jam-form');
+
+        this.$label
+            .attr("for", this.field.field_name).text(this.label)
+            .addClass(this.field.field_name);
+        if (this.field.required) {
+            this.$label.addClass('required');
+        }
+        this.$input.addClass(this.field.field_name)
+    }
+
+    init_buttons() {
+        let self = this,
+            field_type = this.field.lookup_data_type;
+        this.$first_btn.click(function() {
+            self.field.value = null;
+        });
+        this.$last_btn.click(function() {
+            if (self.field.lookup_values) {
+                self.dropdown.enter_pressed();
+            }
+            else if (self.field.lookup_item){
+                self.select_value();
+            }
+            else if (self.field.data_type === consts.DATE ||
+                self.field.data_type === consts.DATETIME) {
+                self.show_date_picker();
+            }
+        });
+        this.$upload_btn.click(function() {
+            if (self.field.owner.is_changing() && !self.field.owner.read_only) {
+                self.field.upload();
+            }
+        });
+        this.$download_btn.click(function() {
+            self.field.download();
+        });
+        this.$open_btn.click(function() {
+            self.field.open();
+        });
+    }
+
+    add_events() {
+        let self = this,
+            field_type = this.field.lookup_data_type;
+
+        let field_mask = this.field.field_mask;
         if (!field_mask) {
             field_mask = this.field.get_mask()
         }
         if (field_mask) {
             try {
-                $input.mask(field_mask);
+                self.$input.mask(field_mask);
             } catch (e) {}
         }
-        this.$input = $input;
-        this.$input.addClass(field.field_name)
-        if (task.old_forms) {
-            this.$input.attr("id", field.field_name);
-        }
-        this.$input.addClass('dbinput');
-        this.$input.data('dbinput', this);
+
         this.$input.on('focus', function(e) {
             self.focus_in(e);
         });
@@ -98,6 +158,9 @@ class DBAbstractInput {
             }
             self.mouseIsDown = false;
         });
+        this.$input.on('change', function(e) {
+            console.log('change')
+        });
         this.$input.on('keydown', function(e) {
             self.keydown(e);
         });
@@ -107,310 +170,89 @@ class DBAbstractInput {
         this.$input.on('keypress', function(e) {
             self.keypress(e)
         });
-        if (field.lookup_item && !field.master_field || field.lookup_values || field_type === consts.FILE) {
-            $btnCtrls = $('<div class="input-prepend input-append"></div>');
-            $btn = $('<button class="btn' + inpit_btn_class + '"type="button"><i class="icon-remove-sign"></button>');
-            $btn.attr("tabindex", -1);
-            $btn.click(function() {
-                field.value = null;
+        if (this.field.lookup_values) {
+            this.dropdown = new DropdownList(this.field, this.$input);
+            if (this.field.filter && this.field.bool_filter) {
+                this.$input.width(36);
+            }
+        }
+        else if (this.field.lookup_item && field_type !== consts.FILE){
+            if (this.field.enable_typeahead) {
+                this.dropdown = new DropdownTypeahead(this.field,
+                    this.$input, this.field.typeahead_options());
+            }
+        }
+        if (this.field.data_type === consts.BOOLEAN) {
+            this.$input.click(function(e) {
+                self.field.value = !self.field.value;
             });
-            this.$firstBtn = $btn;
-            $btnCtrls.append($btn);
-            $btnCtrls.append($input);
-            $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i></button>');
-            $btn.attr("tabindex", -1);
-            $btn.click(function() {
-                if (field.lookup_values) {
-                    self.dropdown.enter_pressed();
-                }
-                else if (field.lookup_item){
-                    self.select_value();
-                }
-                else {
-                    if (self.field.owner.is_changing() && !self.field.owner.read_only) {
-                        self.field.upload();
-                    }
-                }
-            });
-            this.$lastBtn = $btn;
-            $btnCtrls.append($btn);
-            $controls.append($btnCtrls);
-            if (field.lookup_values) {
-                $btnCtrls.addClass("lookupvalues-input-container");
-                $input.addClass("input-lookupvalues");
-                this.$lastBtn.find('i').addClass("icon-chevron-down");
-                this.dropdown = new DropdownList(this.field, $input);
-                if (field.filter && field.bool_filter) {
-                    $input.width(36);
-                }
-            }
-            else if (field.lookup_item && field_type !== consts.FILE){
-                $btnCtrls.addClass("lookupfield-input-container");
-                $input.addClass("input-lookupitem");
-                this.$lastBtn.find('i').addClass("icon-list");
-                if (this.field.enable_typeahead) {
-                    this.dropdown = new DropdownTypeahead(this.field,
-                        $input, this.field.typeahead_options());
-                }
-            }
-            else {
-                var field_file;
-                if (this.field.data_type === consts.FILE) {
-                    field_file = this.field.field_file;
-                }
-                else {
-                    field_file = this.field.lookup_item[this.field.lookup_field].field_file;
-                }
-                $btnCtrls.addClass("lookupfield-input-container");
-                this.$lastBtn.find('i').addClass("icon-file");
-                this.$uploadBtn = this.$lastBtn
-                if (field_file.download_btn) {
-                    $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i></button>');
-                    $btn.attr("tabindex", -1);
-                    this.$downloadBtn = $btn;
-                    $btnCtrls.append($btn);
-                    $controls.append($btnCtrls);
-                    $btn.find('i').addClass("icon-download-alt");
-                    $btn.click(function() {
-                        self.field.download();
-                    });
-                    this.$lastBtn = $btn;
-                }
-
-                if (field_file.open_btn) {
-                    $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i></button>');
-                    $btn.attr("tabindex", -1);
-                    this.$openBtn = $btn;
-                    $btnCtrls.append($btn);
-                    $controls.append($btnCtrls);
-                    $btn.find('i').addClass("icon-play");
-                    $btn.click(function() {
-                        self.field.open();
-                    });
-                    this.$lastBtn = $btn;
-                }
-                if (field_file.open_btn && field_file.download_btn) {
-                    $input.addClass("input-file3");
-                }
-                else if (field_file.open_btn || field_file.download_btn) {
-                    $input.addClass("input-file2");
-                }
-                else {
-                    $input.addClass("input-file");
-                }
-            }
-        } else {
-            switch (field_type) {
-                case consts.TEXT:
-                    if (field.field_textarea) {
-                        $input.addClass("input-longtext");
-                        $controls.append($input);
+        }
+        else if (this.field.data_type === consts.FILE) {
+            this.$input.prop('disabled', true);
+        }
+        else if (this.field.data_type === consts.IMAGE) {
+            this.$input.dblclick(function(e) {
+                if (!self.field.read_only && self.field.data_type === consts.IMAGE &&
+                    self.field.owner.is_changing() && !self.field.owner.read_only) {
+                    if (e.ctrlKey || e.metaKey) {
+                        self.field.value = null;
                     }
                     else {
-                        $input.addClass("input-text");
-                        $controls.append($input);
-                    }
-                    break;
-                case consts.INTEGER:
-                    $input.addClass("input-integer");
-                    $controls.append($input);
-                    break;
-                case consts.FLOAT:
-                    $input.addClass("input-float");
-                    $controls.append($input);
-                    break;
-                case consts.CURRENCY:
-                    $input.addClass("input-currency");
-                    $controls.append($input);
-                    break;
-                case consts.DATE:
-                case consts.DATETIME:
-                    $btnCtrls = $('<div class="input-prepend input-append"></div>');
-                    $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i class="icon-remove-sign"></button>');
-                    $btn.attr("tabindex", -1);
-                    $btn.click(function() {
-                        field.value = null;
-                    });
-                    this.$firstBtn = $btn;
-                    $btnCtrls.append($btn);
-                    if (field_type === consts.DATETIME) {
-                        $btnCtrls.addClass("datetime-input-container");
-                        $input.addClass("input-datetime");
-                    }
-                    else {
-                        $btnCtrls.addClass("date-input-container");
-                        $input.addClass("input-date");
-                    }
-                    $btnCtrls.append($input);
-                    $btn = $('<button class="btn' + inpit_btn_class + '" type="button"><i class="icon-calendar"></button>');
-                    $btn.attr("tabindex", -1);
-                    $btn.click(function() {
-                        self.show_date_picker();
-                    });
-                    this.$lastBtn = $btn;
-                    $btnCtrls.append($btn);
-                    $controls.append($btnCtrls);
-                    break;
-                case consts.BOOLEAN:
-                    $controls.append($input);
-                    break;
-                case consts.LONGTEXT:
-                    $input.addClass("input-longtext");
-                    $controls.append($input);
-                    break;
-                case consts.IMAGE:
-                    $controls.append($input);
-                    $input.dblclick(function(e) {
-                        if (!self.field.read_only && self.field.data_type === consts.IMAGE && self.field.owner.is_changing() &&
-                            !self.field.owner.read_only) {
-                            if (e.ctrlKey || e.metaKey) {
-                                self.field.value = null;
-                            }
-                            else {
-                                if (self.field.field_image && self.field.field_image.camera) {
-                                    self.init_camera(true);
-                                }
-                                else {
-                                    self.field.upload_image();
-                                }
-                            }
+                        if (self.field.field_image && self.field.field_image.camera) {
+                            self.init_camera(true);
                         }
-                    })
-                    break;
-            }
-            align = field.data_type === consts.BOOLEAN ? 'center' : consts.align_value[field.alignment];
-            this.$input.css("text-align", align);
-        }
-        this.$btn_ctrls = $btnCtrls;
-
-        if (this.label_on_top) {
-            this.$control_group = $('<div class="input-container"></div>');
-        } else {
-            this.$control_group = $('<div class="control-group input-container"></div>');
-        }
-        if (this.label) {
-            this.$control_group.append($label);
-            if (!this.label_width) {
-                this.$control_group.addClass('label-size' + this.label_size);
-            }
-        }
-        this.$control_group.append($controls);
-
-        if (container) {
-            container.append(this.$control_group);
-        }
-
-        $controls.find('.add-on').css('padding-top',
-            parseInt($controls.find('.add-on').css('padding-top')) +
-            parseInt($controls.find('.add-on').css('border-top-width')) - 1 +
-            'px')
-        $controls.find('.add-on').css('padding-bottom',
-            parseInt($controls.find('.add-on').css('padding-bottom')) +
-            parseInt($controls.find('.add-on').css('border-bottom-width')) - 1 +
-            'px')
-
-        this.form = this.$input.closest('.jam-form');
-        this.field.controls.push(this);
-
-        if (field_type !== consts.IMAGE) {
-            this.$input.on('mouseenter', function() {
-                var $this = $(this);
-                if (self.error) {
-                    $this.tooltip('show');
-                }
-            });
-
-            if (!this.table && this.field.field_placeholder) {
-                this.$input.attr('placeholder', this.field.field_placeholder);
-            }
-
-            if (!this.table && this.field.field_help) {
-                $help = $('<a href="#" tabindex="-1"><span class="badge help-badge">?</span></a>');
-                this.$help = $help;
-                $help.find('span')
-                    .popover({
-                        container: 'body',
-                        placement: 'right',
-                        trigger: 'hover',
-                        html: true,
-                        title: self.field.field_caption,
-                        content: self.field.field_help
-                    })
-                    .click(function(e) {
-                        e.preventDefault();
-                    });
-                if ($btnCtrls) {
-                    $controls.append($('<span class="help-badge-divider">'));
-                    $controls.append($help);
-                    $help.find('span').addClass('btns-help-badge')
-                }
-                else {
-                    $controls.append($help);
-                }
-            }
-            this.$input.tooltip({
-                    container: 'body',
-                    placement: 'bottom',
-                    title: ''
-                })
-                .on('hide hidden show shown', function(e) {
-                    if (e.target === self.$input.get(0)) {
-                        e.stopPropagation()
+                        else {
+                            self.field.upload_image();
+                        }
                     }
-                });
+                }
+            })
         }
 
+        this.field.controls.push(this);
         this.$input.bind('destroyed', function() {
             self.field.controls.splice(self.field.controls.indexOf(self), 1);
-            try {
-                if (self.dropdown){
-                    self.dropdown.destroy();
-                }
-                if (self.$help) {
-                    self.$help.find('span').popover('destroy');
-                }
-                if (self.datepicker_shown) {
-                    self.$input.datepicker('hide');
-                }
-            }
-            catch (e) {
-                console.error(e);
-            }
+            //~ try {
+                //~ if (self.dropdown){
+                    //~ self.dropdown.destroy();
+                //~ }
+                //~ if (self.datepicker_shown) {
+                    //~ self.$input.datepicker('hide');
+                //~ }
+            //~ }
+            //~ catch (e) {
+                //~ console.error(e);
+            //~ }
         });
+    }
 
+    create_input(field, tabIndex, container) {
+        this.add_to_dom(field, tabIndex, container);
+        this.init_buttons();
+        this.add_events();
         this.update();
     }
 
     form_closing() {
-        if (this.form) {
-            return this.form.data('_closing')
+        if (this.$form) {
+            return this.$form.data('_closing')
         }
     }
 
     set_read_only(value) {
-        if (this.$firstBtn) {
-            this.$firstBtn.prop('disabled', value);
-        }
-        if (this.$lastBtn) {
-            this.$lastBtn.prop('disabled', value);
-        }
-        if (this.$uploadBtn) {
-            this.$uploadBtn.prop('disabled', value);
-        }
-        if (this.$downloadBtn) {
-            this.$downloadBtn.prop('disabled', value);
-        }
-        if (this.$input) {
-            this.$input.prop('disabled', value);
-        }
+        this.$first_btn.prop('disabled', value);
+        this.$last_btn.prop('disabled', value);
+        this.$upload_btn.prop('disabled', value);
+        this.$download_btn.prop('disabled', value);
+        this.$input.prop('disabled', value);
         if (this.field.lookup_data_type === consts.FILE) {
             this.$input.prop('disabled', true);
             if (this.field.lookup_value) {
-                if (this.$openBtn) {
-                    this.$openBtn.prop('disabled', false);
+                if (this.$open_btn) {
+                    this.$open_btn.prop('disabled', false);
                 }
-                if (this.$downloadBtn) {
-                    this.$downloadBtn.prop('disabled', false);
+                if (this.$download_btn) {
+                    this.$download_btn.prop('disabled', false);
                 }
             }
         }
@@ -642,11 +484,11 @@ class DBAbstractInput {
                 e.stopPropagation();
                 this.table.item.cancel();
                 this.table.hide_editor();
-            } else if (this.field.lookup_values) {
-                if (this.$input.parent().hasClass('open')) {
-                    this.$input.parent().removeClass('open');
-                    e.stopPropagation();
-                }
+            //~ } else if (this.field.lookup_values) {
+                //~ if (this.$input.parent().hasClass('open')) {
+                    //~ this.$input.parent().removeClass('open');
+                    //~ e.stopPropagation();
+                //~ }
             }
             else if (this.changed()) {
                 this.update();
@@ -772,7 +614,7 @@ class DBAbstractInput {
 
     focus_in(e) {
         if (!this.form_closing()) {
-            this.hideError();
+            this.hide_error();
             if (this.field.lookup_item && !this.field.enable_typeahead) {
                 this.$input.val(this.field.display_text);
             } else {
@@ -795,6 +637,7 @@ class DBAbstractInput {
 
     focus_out(e) {
         var result = false;
+        console.log('focus_out');
         if (!this.changed()) {
             if (this.field.field_kind !== consts.ITEM_FIELD || this.field.owner.rec_count) {
                 this.$input.val(this.field.display_text);
@@ -840,30 +683,17 @@ class DBAbstractInput {
 
     updateState(value) {
         if (value) {
-            if (this.$control_group) {
-                this.$control_group.removeClass('error');
-            }
             this.errorValue = undefined;
             this.error = undefined;
-            this.$input.tooltip('hide')
-                .attr('data-original-title', '')
-                .tooltip('fixTitle');
-            this.hideError();
+            this.hide_error();
         } else {
-            task.alert_error(this.error, {replace: false});
-            this.showError();
-            if (this.$control_group) {
-                this.$control_group.addClass('error');
-            }
-            this.$input.tooltip('hide')
-                .attr('data-original-title', this.error)
-                .tooltip('fixTitle');
+            this.show_error();
         }
     }
 
-    showError(value) {}
+    show_error() {}
 
-    hideError(value) {}
+    hide_error() {}
 
     focus() {
         this.$input.focus();
@@ -877,7 +707,20 @@ class DBTableInput extends DBAbstractInput {
         this.table = table;
         this.create_input(field, 0);
         this.$input.attr("autocomplete", "off");
-        this.$input.addClass('dbtableinput');
+        this.$input.data('db_table_input_data', this);
+        this.$input.addClass('db-table-input');
+    }
+
+    add_to_dom(field, tabIndex, container) {
+        this.$input = $('<input type="text" class="form-control">');
+        if (field.lookup_data_type === consts.BOOLEAN) {
+            input = $('<input class="form-check-input" type="checkbox" value="">');
+        }
+        let align = this.field.lookup_data_type === consts.BOOLEAN ? 'center' : consts.align_value[this.field.alignment];
+        this.$input.css("text-align", align);
+    }
+
+    init_buttons() {
     }
 }
 
@@ -887,7 +730,6 @@ class DBInput extends DBAbstractInput {
         super(field);
         if (this.field.owner && this.field.owner.edit_form &&
             this.field.owner.edit_form.hasClass("modal")) {
-            this.$edit_form = this.field.owner.edit_form;
         }
         this.label = label;
         this.label_width = options.label_width;
@@ -900,20 +742,20 @@ class DBInput extends DBAbstractInput {
             this.label = this.field.field_caption;
         }
         this.create_input(field, index, container);
+        this.$input.data('db_input_data', this);
+        this.$input.addClass('db-input');
     }
 
-    showError(value) {
-        if (this.$edit_form && this.$edit_form.hasClass("normal-modal-border")) {
-            this.$edit_form.removeClass("nomal-modal-border");
-            this.$edit_form.addClass("error-modal-border");
-        }
+    show_error() {
+        this.hide_error();
+        this.$input.addClass('is-invalid')
+        this.$input.parent()
+            .append('<div class="invalid-feedback">' + this.error + '</div></div>')
     }
 
-    hideError(value) {
-        if (this.$edit_form && this.$edit_form.hasClass("error-modal-border")) {
-            this.$edit_form.removeClass("error-modal-border");
-            this.$edit_form.addClass("nomal-modal-border");
-        }
+    hide_error() {
+        this.$input.removeClass('is-invalid')
+        this.$input.parent().find('div.invalid-feedback').remove();
     }
 }
 
@@ -928,8 +770,8 @@ class Dropdown {
     init() {
         var default_options =
             {
-                menu: '<ul class="typeahead dropdown-menu"></ul>',
-                item: '<li><a href="#"></a></li>',
+                menu: '<ul class="dropdown-menu typeahead"></ul>',
+                item: '<li><a class="dropdown-item" href="#"></a></li>',
                 length: 10,
                 min_length: 1
             }
@@ -1025,31 +867,32 @@ class Dropdown {
             return i[0]
         })
 
-        items.first().addClass('active')
+        items.first().find('a').addClass('active')
         this.$menu.html(items)
         return this
     }
 
     next(event) {
-        var active = this.$menu.find('li.active').removeClass('active'),
+        var active = this.$menu.find('a.active').parent(),
             next = active.next()
 
         if (!next.length) {
             next = $(this.$menu.find('li')[0])
         }
-
-        next.addClass('active')
+        active.find('a').removeClass('active')
+        next.find('a').addClass('active')
     }
 
     prev(event) {
-        var active = this.$menu.find('.active').removeClass('active'),
+        var active = this.$menu.find('a.active').parent(),
             prev = active.prev()
 
         if (!prev.length) {
             prev = this.$menu.find('li').last()
         }
 
-        prev.addClass('active')
+        active.find('a').removeClass('active')
+        prev.find('a').addClass('active')
     }
 
     listen() {
@@ -1172,8 +1015,8 @@ class Dropdown {
 
     mouseenter(e) {
         this.mousedover = true
-        this.$menu.find('li.active').removeClass('active')
-        $(e.currentTarget).addClass('active')
+        this.$menu.find('a.active').removeClass('active')
+        $(e.currentTarget).find('a').addClass('active')
     }
 
     mouseleave(e) {
@@ -1199,7 +1042,7 @@ class DropdownList extends Dropdown {
     }
 
     select() {
-        var $li = this.$menu.find('.active');
+        var $li = this.$menu.find('a.active').parent();
         if (this.field.owner && this.field.owner.is_changing && !this.field.owner.is_changing()) {
             this.field.owner.edit();
         }
@@ -1243,7 +1086,7 @@ class DropdownTypeahead extends Dropdown {
     }
 
     select() {
-        var $li = this.$menu.find('.active'),
+        var $li = this.$menu.find('a.active').parent(),
             id_value = $li.data('id-value');
         this.lookup_item.locate(this.lookup_item._primary_key, id_value);
         this.lookup_item.set_lookup_field_value();
@@ -1314,4 +1157,4 @@ function highlight(text, search) {
 }
 
 
-export {DBInput, DBTableInput}
+export {DBInput, DBTableInput, highlight}

@@ -171,12 +171,13 @@ class DBTree {
             id = node.id;
             text = node.text;
             rec = node.rec;
-            bullet = '<span class="empty-bullet"></span>',
+            bullet = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;',
                 parent_class = "",
                 collapsed_class = "",
                 children = this.child_nodes[id + ''];
             if (children && children.length) {
-                bullet = '<i class="icon-chevron-right bullet"></i>'
+                bullet = '<i class="bi bi-chevron-right"></i>'
+                //~ bullet = '&#9658;'
                 parent_class = ' parent';
                 collapsed_class = 'collapsed';
             }
@@ -252,8 +253,8 @@ class DBTree {
         }
         this.select_node($lis.eq(0));
 
-        this.$element.off('click', 'li.parent > div span.tree-bullet');
-        this.$element.on('click', 'li.parent > div span.tree-bullet', function(e) {
+        this.$element.off('mousedown', 'li.parent > div span.tree-bullet');
+        this.$element.on('mousedown', 'li.parent > div span.tree-bullet', function(e) {
             var $span = $(this),
                 $li = $span.parent().parent(),
                 $ul;
@@ -261,8 +262,8 @@ class DBTree {
             e.preventDefault();
             e.stopPropagation();
         });
-        this.$element.off('click', 'li > div span.tree-text');
-        this.$element.on('click', 'li > div span.tree-text', function(e) {
+        this.$element.off('mousedown', 'li > div span.tree-text');
+        this.$element.on('mousedown', 'li > div span.tree-text', function(e) {
             var $li = $(this).parent().parent();
             self.select_node($li);
         });
@@ -275,9 +276,9 @@ class DBTree {
             $ul = $li.find('ul:first'),
                 $li.toggleClass('collapsed');
             if ($li.hasClass('collapsed')) {
-                $span.html('<i class="icon-chevron-right bullet"></i>');
+                $span.html('<i class="bi bi-chevron-right"></i>');
             } else {
-                $span.html('<i class="icon-chevron-down bullet"></i>');
+                $span.html('<i class="bi bi-chevron-down"></i>');
             }
             $ul.slideToggle(0);
         }

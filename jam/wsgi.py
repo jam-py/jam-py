@@ -229,6 +229,8 @@ class App(object):
         try:
             if not self.under_maintenance:
                 if self.__task and self.task.on_request:
+                    if not self.production:
+                        self.check_project_modified()
                     response = self.task.on_request(self.task, request)
                     if response:
                         return response(environ, start_response)
@@ -240,9 +242,9 @@ class App(object):
                 elif prefix == 'upload':
                     return self.on_upload(request)(environ, start_response)
                 elif prefix == 'jam':
-                    return self.on_jam_file(request, suffix)(environ, start_response)
+                    return self.on_jam_file(request, environ, suffix)(environ, start_response)
                 elif prefix in ['js', 'css']:
-                    return self.on_project_file(request, suffix)(environ, start_response)
+                    return self.on_project_file(request, environ, suffix)(environ, start_response)
                 elif prefix in ['builder.html', 'builder_login.html']:
                     return self.on_builder(request, prefix)(environ, start_response)
                 elif prefix == 'ext':
@@ -307,7 +309,6 @@ class App(object):
                 'password': consts.lang['password']
             }
             login_path = os.path.join(self.work_dir, 'login.html')
-            self.check_project_modified()
             if not os.path.exists(login_path):
                 login_path = os.path.join(self.jam_dir, 'html', 'login.html')
             if request.method == 'POST':
@@ -358,19 +359,19 @@ class App(object):
             else:
                 return self.serve_page(login_path, login_params)
 
-    def serve_prog_file(self, request, file_name):
+    def serve_prog_file(self, request, environ, file_name):
         base, ext = os.path.splitext(file_name)
-        if consts.COMPRESSED_JS and ext and ext in ['.js', '.css']:
+        if consts.COMPRESSED_JS and ext and ext in ['.js', '.css'] and file_name != 'project.css':
             min_file_name = base + '.min' + ext
             environ['PATH_INFO'] = environ['PATH_INFO'].replace(file_name, min_file_name)
         return self.fileserver
 
-    def on_jam_file(self, request, file_name):
-        return self.serve_prog_file(request, file_name)
+    def on_jam_file(self, request, environ, file_name):
+        return self.serve_prog_file(request, environ, file_name)
 
-    def on_project_file(self, request, file_name):
+    def on_project_file(self, request, environ, file_name):
         if self.check_session(request, self.task):
-            return self.serve_prog_file(request, file_name)
+            return self.serve_prog_file(request, environ, file_name)
         else:
             raise Forbidden()
 
