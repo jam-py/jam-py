@@ -227,7 +227,7 @@ class ServerDataset(Dataset, SQL):
             change = changes[index]
             rec_id = change['rec_id']
             d.edit()
-            d.id.value = rec_id
+            d._primary_key_field.value = rec_id
             details = change['details']
             for detail in d.details:
                 for detail_update in details:
