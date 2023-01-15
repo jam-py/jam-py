@@ -92,7 +92,7 @@ the client utilizes `JavaScript <https://developer.mozilla.org/en/docs/Web/JavaS
 * Open framework. You can use any Javascript/Python libraries.
 
 * Rich, informative reports. Band-oriented report generation based on
-  `LibreOffice <https://www.libreoffice.org/">`_ templates.
+  `LibreOffice <https://www.libreoffice.org/>`_ templates.
 
 * Charts. You can use free `jsCharts <http://www.jscharts.com/>`_ library
   or any javascript charting library to create charts to represent and analyze your application data.
