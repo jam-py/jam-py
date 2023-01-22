@@ -239,10 +239,7 @@ class ServerDataset(Dataset, SQL):
         if not db_module:
             db_module = self.task.db_module
         sql = delta.apply_sql(params)
-        updates, error = self.task.execute(sql, None, connection=connection, db_module=db_module, autocommit=False)
-        if not error:
-            self.update_delta(delta, updates)
-        return updates, error
+        return self.task.execute(sql, None, connection=connection, db_module=db_module, autocommit=False)
 
     def apply_changes(self, data, safe, connection=None):
         result = None
