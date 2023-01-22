@@ -645,7 +645,7 @@ class Report(AbstrReport, ParamReport):
             for i in col_list:
                 ints.append(convert_str_to_int(i))
             colum_defs = self.template_content['colum_defs']
-            columns = ''
+            columns = to_bytes('')
             index = 1
             for col, repeated in colum_defs:
                 repeated = int(repeated)
@@ -654,7 +654,7 @@ class Report(AbstrReport, ParamReport):
                 for i in range(repeated):
                     cur_col = col
                     if index in ints:
-                        cur_col = cur_col[0:-2] + ' table:visibility="collapse"/>'
+                        cur_col = cur_col[0:-2] + to_bytes(' table:visibility="collapse"/>')
                     columns += cur_col
                     index += 1
             self.template_content['colum_defs'] = colum_defs
