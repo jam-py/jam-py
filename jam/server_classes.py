@@ -614,12 +614,13 @@ class Report(AbstrReport, ParamReport):
 
     def hide_columns(self, col_list):
 
-        def convert_str_to_int(string):
-            s = string.upper()
-            base = ord('A')
-            mult = ord('Z') - base + 1
-            result = s
-            if type(s) == str:
+        def convert_str_to_int(col):
+            result = col
+            if type(result) == str:
+                s = result.upper()
+                base = ord('A')
+                mult = ord('Z') - base + 1
+                result = s
                 result = 0
                 chars = []
                 for i in range(len(s)):
@@ -630,13 +631,16 @@ class Report(AbstrReport, ParamReport):
 
         def remove_repeated(col, repeated):
             result = col
-            p = self.find(col, 'table:number-columns-repeated')
+            p = self.find(col, to_bytes('table:number-columns-repeated'))
             if p != -1:
-                r = self.find(col, str(repeated), p)
+                r = self.find(col, to_bytes(str(repeated)), p)
                 if r != -1:
                     for i in range(r, 100):
-                        if col[i] in ("'", '"'):
-                            result = self.replace(col, col[p:i+1], '')
+                        ch = col[i]
+                        if type(ch) == int:
+                            ch = chr(ch)
+                        if ch in ("'", '"'):
+                            result = self.replace(col, col[p:i+1], to_bytes(''))
                             break
             return result
 
