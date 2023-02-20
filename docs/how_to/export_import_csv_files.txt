@@ -15,7 +15,7 @@ corresponding functions when you click on them:
   }
 
   function  csv_export(item) {
-      item.server('export_scv', function(file_name, error) {
+      item.server('export_csv', function(file_name, error) {
           if (error) {
               item.alert_error(error);
           }
@@ -29,7 +29,7 @@ corresponding functions when you click on them:
 
   function csv_import(item) {
       task.upload('static/files', {accept: '.csv', callback: function(file_name) {
-          item.server('import_scv', [file_name], function(error) {
+          item.server('import_csv', [file_name], function(error) {
               if (error) {
                   item.warning(error);
               }
@@ -49,7 +49,7 @@ Below is the code for Python 3:
   import os
   import csv
 
-  def export_scv(item):
+  def export_csv(item):
       copy = item.copy()
       copy.open()
       file_name = item.item_name + '.csv'
@@ -69,7 +69,7 @@ Below is the code for Python 3:
               writer.writerow(dic)
       return file_name
   
-  def import_scv(item, file_name):
+  def import_csv(item, file_name):
       copy = item.copy()
       path = os.path.join(item.task.work_dir, 'static', 'files', file_name)
       with open(path, 'r', encoding='utf-8') as csvfile:
@@ -91,7 +91,7 @@ For Python 2, this code looks like this:
   import os
   import csv
   
-  def export_scv2(item):
+  def export_csv2(item):
       copy = item.copy()
       copy.open()
       file_name = item.item_name + '.csv'
@@ -111,7 +111,7 @@ For Python 2, this code looks like this:
               writer.writerow(dic)
       return file_name
   
-  def import_scv2(item, file_name):
+  def import_csv2(item, file_name):
       copy = item.copy()
       path = os.path.join(item.task.work_dir, 'static', 'files', file_name)
       with open(path, 'rb') as csvfile:
