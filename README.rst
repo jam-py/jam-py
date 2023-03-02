@@ -53,9 +53,10 @@ More demos on PythonAnywhere:
 
 * `SAP Theme Demo <https://jampyapp.pythonanywhere.com/>`_
 * `Personal Account Ledger from MS Access template <https://msaccess.pythonanywhere.com/>`_
-* `NorthWind Traders from MS Access template <https://northwind.pythonanywhere.com/>`_
+* `NorthWind Traders from MS Access template (wip) <https://northwind.pythonanywhere.com/>`_
 * `The ERP POC Demo with Italian and English translations <https://sem.pythonanywhere.com/>`_
-* `Jam.py Assets/Parts Application (wip) <https://jampy.pythonanywhere.com>`_
+* `Assets/Parts Application (wip) <https://jampy.pythonanywhere.com>`_
+* `Machine Learning (wip) <https://mlearning.pythonanywhere.com>`_
 
 
 Jam.py alternative site:
