@@ -57,6 +57,7 @@ More demos on PythonAnywhere:
 * `The ERP POC Demo with Italian and English translations <https://sem.pythonanywhere.com/>`_
 * `Assets/Parts Application (wip) <https://jampy.pythonanywhere.com>`_
 * `Machine Learning (wip) <https://mlearning.pythonanywhere.com>`_
+* `Auto Parts Sales for Brazilian Market (Portuguese) <https://carparts.pythonanywhere.com>`_
 
 
 Jam.py alternative site:
