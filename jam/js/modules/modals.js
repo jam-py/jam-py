@@ -57,7 +57,9 @@ class ModalForm {
 
             self.$modal_dialog.css('max-width', self.options.width);
 
-            self.modal_forms.task._focus_element(self.$form_content);
+            if (task.media === 0) {
+                self.modal_forms.task._focus_element(self.$form_content);
+            }
             if (self.$form_content.on_shown) {
                 self.$form_content.on_shown();
             }
@@ -167,18 +169,6 @@ class ModalForm {
             this.$modal_dialog.addClass('modal-dialog-centered');
         }
     }
-
-    focus_element($el, last) {
-        let elements = this.modal_forms.task._focusable_elements($el);
-        if (elements.length) {
-            if (last) {
-                elements[elements.length - 1].focus();
-            }
-            else {
-                elements[0].focus();
-            }
-        }
-    }
 }
 
 class ModalForms {
@@ -222,7 +212,6 @@ class ModalForms {
             modal_form.$modal.remove();
             modal_form.$active_element.focus();
             this.stack.pop();
-            return true;
         }
     }
 }

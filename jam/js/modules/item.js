@@ -557,8 +557,14 @@ class Item extends AbsrtactItem {
             this._view_params = {0: ['', {}, [], {}, fields]};
         }
 
-        if (this._view_params[index] === undefined) {
-            index = 0;
+        index = task.media;
+        while (index > 0) {
+            if (this._view_params[index] === undefined) {
+                index -= 1;
+            }
+            else {
+                break;
+            }
         }
 
         form_template = this._view_params[index][0];
@@ -643,9 +649,16 @@ class Item extends AbsrtactItem {
             this._edit_params = { 0: ['', {}, [], [['', [[{}, fields, '']]]]] };
         }
 
-        if (this._edit_params[index] === undefined) {
-            index = 0;
+        index = task.media;
+        while (index > 0) {
+            if (this._edit_params[index] === undefined) {
+                index -= 1;
+            }
+            else {
+                break;
+            }
         }
+
         this.edit_options.fields = [];
         form_template = this._edit_params[index][0];
         form_options = this._edit_params[index][1];

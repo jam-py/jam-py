@@ -91,7 +91,7 @@ function Events1() { // demo
 		}
 		else {
 			if (!item.table_options.height) {
-				item.table_options.height = $(window).height() - $('body').height() - 10;
+				item.table_options.height = $(window).height() - $('body').height();
 			}
 		}
 		
@@ -351,8 +351,8 @@ function Events10() { // demo.catalogs.customers
 	function on_view_form_created(item) {
 		item.table_options.multiselect = false;
 		if (!item.lookup_field) {	
-			var print_btn = item.add_view_button('Print', {image: 'icon-print'}),
-				email_btn = item.add_view_button('Send email', {image: 'icon-pencil'});
+			var print_btn = item.add_view_button('Print', {image: 'bi bi-printer'}),
+				email_btn = item.add_view_button('Send email', {image: 'bi bi-envelope-paper'});
 			email_btn.click(function() { send_email() });
 			print_btn.click(function() { print(item) });
 			item.table_options.multiselect = true;
@@ -454,7 +454,15 @@ function Events16() { // demo.journals.invoices
 		});
 	}
 	
+	let old_field_values;
+	
 	function on_edit_form_created(item) {
+		old_field_values = {};
+		if (!item.is_new()) {
+			item.each_field(function(f) {
+				old_field_values[f.field_name] = f.value;
+			});
+		}
 		item.read_only = item.paid.value;
 		if (!item.invoice_table.master_applies) {
 			item.edit_form.find('.form-footer').hide();

@@ -236,12 +236,8 @@
 
                 <div class="sys_fields_editor-view">
                     <div class="form-body consistent-height">
-                        <!--<ul class="nav nav-tabs" id="media-tabs" style="display: none">-->
-                        <!--    <li class="active" data-media="0"><a href="#media0">Desktop</a></li>-->
-                            <!--<li data-media="1"><a href="#media1">Tablet</a></li>-->
-                        <!--    <li data-media="1"><a href="#media1">Phone</a></li>-->
-                        <!--</ul>-->
-                        <ul id="section-tabs" class="nav nav-tabs" style="display: none">
+                        <div class="d-flex justify-content-between">
+                        <ul id="section-tabs" class="nav nav-tabs flex-grow-1" style="display: none">
                             <li class="nav-item">
                                 <button class="nav-link active" id="layout-tab" data-bs-toggle="tab" data-bs-target="#layout" type="button">Layout</button>
                             </li>
@@ -249,6 +245,15 @@
                                 <button class="nav-link" id="form-tab" data-bs-toggle="tab" data-bs-target="#form" type="button">Form</button>
                             </li>
                         </ul>
+                        <div id="media-pills" style="display: none">
+                            <ul class="nav nav-pills text-center" id="media-tabs">
+                                <a class="nav-link active" data-media="0" id="media0">Desktop</a>
+                                <a class="nav-link" data-media="1" id="media1">Tablet</a>
+                                <a class="nav-link" data-media="2" id="media2">Phone</a>
+                                <a id="change-devices-btn" class="btn btn-outline-secondary"><i class="bi bi-phone"></i></a>
+                            </ul>
+                        </div>
+                        </div>
                         <div class="tab-content">
                             <div id="layout" class="tab-pane active show">
                                 <div id="field-tabs-container" style="display: none">

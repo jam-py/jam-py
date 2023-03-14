@@ -346,8 +346,8 @@ class Report(object):
         if hidden_columns:
             cols = []
             for col in self.columns.cols:
-                if col.repeated:
-                    parts = col.text.split()
+                if col.repeated > 1:
+                    parts = col.text.split(tobytes(' '))
                     text = tobytes(' ').join([ part for part in parts if part.find(tobytes('table:number-columns-repeated')) == -1])
                     for i in range(col.repeated):
                         new_col = Col(1)
@@ -357,13 +357,15 @@ class Report(object):
                     cols.append(col)
             hidden_ints = [ self.col_str_to_int(c) for c in hidden_columns ]
             for i, col in enumerate(cols):
-                if i in hidden_ints:
+                if i + 1 in hidden_ints:
                     col.text = col.text[0:-2] + tobytes(' table:visibility="collapse"/>')
             self.columns.cols = []
             for col in cols:
                 self.columns.cols.append(col)
 
     def col_str_to_int(self, s):
+        if type(s) == int:
+            return s
         s = s.upper()
         base = ord('A')
         mult = ord('Z') - base + 1

@@ -562,23 +562,35 @@ class Field {
                 field_image = this.lookup_item[this.lookup_field].field_image;
                 value = this.lookup_value;
             }
-            width = field_image.view_width;
-            height = field_image.view_height;
             if (edit_image) {
-                width = field_image.edit_width;
-                height = field_image.edit_height;
+                width = (field_image.edit_width + '').trim();
+                height = (field_image.edit_height + '').trim();
+                if (!width && !height) {
+                    width = '100%'
+                }
+            }
+            else {
+                width = (field_image.view_width + '').trim();
+                height = (field_image.view_height + '').trim();
+                if (!width && !height) {
+                    height = '100%'
+                }
             }
             if (!width) {
                 width = 'auto';
             }
             else {
-                width += 'px';
+                if (/^\d+$/.test(width)) {
+                    width += 'px';
+                }
             }
             if (!height) {
                 height = 'auto';
             }
             else {
-                height += 'px';
+                if (/^\d+$/.test(height)) {
+                    height += 'px';
+                }
             }
         }
         result.width = width;

@@ -62,14 +62,31 @@ class DBAbstractInput {
             this.$container = $('<div class="mb-2">' + label + input + '</div>');
         }
         else {
-            this.$container = $('<div class="mb-2 row">' +
-                '<div class="col-md-' + this.label_size + '">' +
-                    label +
-                '</div>' +
-                '<div class="col-md-' + (12 -this.label_size) + '">' +
-                    input +
-                '</div>' +
-            '</div>');
+            if (field.lookup_data_type === consts.BOOLEAN) {
+                this.$container = $('<div class="mb-2 row">' +
+                    '<div class="col-' + this.label_size + '">' +
+                        label +
+                    '</div>' +
+                    '<div class="col-' + (12 -this.label_size) + '">' +
+                        input +
+                    '</div>' +
+                '</div>');
+            }
+            else {
+                this.$container = $('<div class="mb-2 row">' +
+                    '<div class="col-md-' + this.label_size + '">' +
+                        label +
+                    '</div>' +
+                    '<div class="col-md-' + (12 -this.label_size) + '">' +
+                        input +
+                    '</div>' +
+                '</div>');
+            }
+        }
+        if (this.field.field_help) {
+            this.$container.append(
+                '<div class="form-text field-help" style="display: none;">' + this.field.field_help + '</div>'
+            );
         }
         if (container) {
             container.append(this.$container);
@@ -90,12 +107,18 @@ class DBAbstractInput {
         this.$form = this.$input.closest('.jam-form');
 
         this.$label
-            .attr("for", this.field.field_name).text(this.label)
+            .text(this.label)
             .addClass(this.field.field_name);
         if (this.field.required) {
             this.$label.addClass('required');
         }
-        this.$input.addClass(this.field.field_name)
+        this.$input.addClass(this.field.field_name);
+        if (this.field.owner && this.field.owner.item_name) {
+            let id = this.field.owner.item_name + '-' + this.field.field_name + '-id';
+            this.$label.attr("for", id);
+            this.$input.attr("id", id);
+        }
+
     }
 
     init_buttons() {
@@ -147,7 +170,7 @@ class DBAbstractInput {
             self.focus_in(e);
         });
         this.$input.on('blur', function(e) {
-            self.focus_out();
+            self.focus_out(e);
         });
         this.$input.on('mousedown', function(e) {
             self.mouseIsDown = true;
@@ -157,9 +180,6 @@ class DBAbstractInput {
                 self.$input.select();
             }
             self.mouseIsDown = false;
-        });
-        this.$input.on('change', function(e) {
-            console.log('change')
         });
         this.$input.on('keydown', function(e) {
             self.keydown(e);
@@ -637,17 +657,12 @@ class DBAbstractInput {
 
     focus_out(e) {
         var result = false;
-        console.log('focus_out');
         if (!this.changed()) {
             if (this.field.field_kind !== consts.ITEM_FIELD || this.field.owner.rec_count) {
                 this.$input.val(this.field.display_text);
             }
-            return;
         }
         if (this.table && this.table.edit_mode) {
-            if (this.dropdown && this.dropdown.shown) {
-                return;
-            }
             this.table.close_editor();
             result = true;
         }
@@ -718,6 +733,7 @@ class DBTableInput extends DBAbstractInput {
         }
         let align = this.field.lookup_data_type === consts.BOOLEAN ? 'center' : consts.align_value[this.field.alignment];
         this.$input.css("text-align", align);
+        this.$form = this.$input.closest('.jam-form');
     }
 
     init_buttons() {

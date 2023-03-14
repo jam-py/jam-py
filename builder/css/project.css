@@ -79,10 +79,40 @@ html {
 
 .card.jam-form.sys_fields_editor .tab-pane form {
     border-width: 0;    
+    padding: 0.5rem 0rem 0.5rem 0.75rem;
 }
 
 #section-tabs {
     margin-bottom: 0.5rem;
+}
+
+#tab-btns,
+#media-pills {
+    position: absolute;    
+    right: 0;
+    margin-right: 1rem;
+}
+
+.sys_fields_editor .media-item:not(:first-child) {
+    margin-left: 0.25rem;
+}
+
+#media-tabs a.nav-link {
+    width: 7rem;
+    /*border: 1px solid var(--bs-nav-pills-link-active-bg);*/
+    border: 1px solid var(--bs-border-color);
+    padding: 0.375rem;
+    margin-right: 0.25rem;
+    cursor: pointer;
+}
+
+/*#media-tabs a.nav-link:not(:first-child) {*/
+/*    margin-left: 0.25rem;*/
+/*}*/
+
+.media-form-check {
+    padding-left: 1.75em;
+    margin-bottom: 0;
 }
 
 #form_options-box {

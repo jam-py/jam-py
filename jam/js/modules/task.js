@@ -10,6 +10,7 @@ class Task extends AbsrtactItem {
         super(undefined, 0, item_name, caption, true);
         this.consts = consts;
         this.task = this;
+        this.media = 0;
         this.user_info = {};
         this._grid_id = 0;
         this._edited_items = [];
@@ -27,7 +28,8 @@ class Task extends AbsrtactItem {
             close_focusout: false,
             print: false,
             width: 0,
-            tab_id: ''
+            tab_id: '',
+            minimize_buttons: false
         };
         this.edit_options = $.extend({}, this.form_options, {
             history_button: true,
@@ -67,10 +69,25 @@ class Task extends AbsrtactItem {
             group: Group,
             item: Item
         };
+        let self = this;
+        this.detect_device();
     }
 
     getChildClass() {
         return Group;
+    }
+
+    detect_device() {
+        let width = window.screen.availWidth;
+        if (width < 768) {
+            this.media = 2;
+        }
+        else if (width >= 768 && width < 992) {
+            this.media = 1;
+        }
+        else {
+            this.media = 0;
+        }
     }
 
     process_request(request, item, params, callback) {
@@ -758,6 +775,10 @@ class Task extends AbsrtactItem {
         }
         $menu.find('.item-menu').on('click', (function(e) {
             e.preventDefault();
+            let navbar_content = $menu.parent();
+            if (navbar_content.hasClass('show')) {
+                navbar_content.removeClass('show');
+            }
             let action = $(this).data('action');
             if (action) {
                 action.call(self);
@@ -790,8 +811,11 @@ class Task extends AbsrtactItem {
     }
 
     _focus_element($element) {
-        let focusable_elements = this._focusable_elements($element, true);
-        if (focusable_elements.length) {
+        let focusable_elements;
+        if (this.media === 0) {
+            focusable_elements = this._focusable_elements($element, true);
+        }
+        if (focusable_elements && focusable_elements.length) {
             focusable_elements[0].focus();
         }
         else {

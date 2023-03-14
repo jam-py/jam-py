@@ -822,7 +822,7 @@ class App(object):
                             file_name = secure_filename(file_name)
                             file_name = file_name.replace('?', '')
                             base, ext = os.path.splitext(file_name)
-                            date_suffix = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
+                            date_suffix = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S_%f')
                             file_name = ('%s_%s%s') % (base, date_suffix, ext)
                             if len(file_name) > 255:
                                 base = base[:len(base) - (len(file_name) - 255)]

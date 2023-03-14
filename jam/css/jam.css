@@ -1,4 +1,5 @@
 
+
 /*
 html {
    font-size: 14px;
@@ -21,30 +22,6 @@ html {
 .jam-modal .modal-content {
     box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
     border: 0;
-}
-
-.tab-pane > .card.jam-form {
-    border-top-width: 0;
-    border-radius: 0 0 var(--bs-card-border-radius) var(--bs-card-border-radius);
-}
-
-
-.card.jam-form form.well   {
-    border: var(--bs-border-width) var(--bs-border-style) var(--bs-border-color);
-    border-radius: var(--bs-card-border-radius)
-}
-
-
-.card.jam-form .tab-pane form   {
-    border-width: 0 var(--bs-border-width) var(--bs-border-width) var(--bs-border-width);
-    border-style: var(--bs-border-style);
-    border-color: var(--bs-border-color);
-    border-radius: 0 0 var(--bs-card-border-radius) var(--bs-card-border-radius)
-}
-
-
-.tabs-div .nav-link {
-    color: var(--bs-nav-tabs-link-active-color)
 }
 
 .dropdown-menu li {
@@ -74,12 +51,6 @@ html {
 .outer-table > tbody > tr {
     border-width: 0 0;
 }
-
-/*
-.outer-table > tfoot tr {
-    border-top-width: 0;
-}
-*/
 
 .outer-table > tfoot th {
     padding: 0.5rem 0.125rem;
@@ -197,6 +168,30 @@ div.th-text {
     outline: none;
 }
 
+.tab-pane > .card.jam-form {
+    border-top-width: 0;
+    border-radius: 0 0 var(--bs-card-border-radius) var(--bs-card-border-radius);
+}
+
+
+.card.jam-form form.well   {
+    border: var(--bs-border-width) var(--bs-border-style) var(--bs-border-color);
+    border-radius: var(--bs-card-border-radius)
+}
+
+
+.card.jam-form .tab-pane form   {
+    border-width: 0 var(--bs-border-width) var(--bs-border-width) var(--bs-border-width);
+    border-style: var(--bs-border-style);
+    border-color: var(--bs-border-color);
+    border-radius: 0 0 var(--bs-card-border-radius) var(--bs-card-border-radius)
+}
+
+
+.tabs-div .nav-link {
+    color: var(--bs-nav-tabs-link-active-color)
+}
+
 .card .form-header {
     display: flex;
     flex-shrink: 0;
@@ -215,13 +210,16 @@ div.th-text {
     margin: calc(var(--bs-card-cap-padding-x) * 0.3);
 }
 
-.card .form-header:first-child {
+.tab-pane > .card .form-header:first-child {
   border-radius: var(--bs-card-inner-border-radius) var(--bs-card-inner-border-radius) 0 0;
 }
 
 .card .form-body {
     flex: 1 1 auto;
+    padding: 0.25rem 0.25rem;
+/*
     padding: var(--bs-card-spacer-y) var(--bs-card-spacer-x);
+*/
     color: var(--bs-card-color);
     outline: none;
 }
@@ -239,18 +237,24 @@ div.th-text {
 }
 
 .form-header-filters {
-/*
-    margin-right: 20px;
-*/
     flex-grow: 5;
     flex-shrink: 1;
     display: flex;
     align-items: center;
-    font-weight: bold;
 }
 
 .form-header-filters .filters-text {
     margin-left: 1rem;
+}
+
+.form-header-filters-btn {
+    position: relative;
+}
+
+.form-header-filters .filtered_sign {
+    position: absolute;
+    top: 10%;
+    right: 0.25rem;
 }
 
 h5.form-title {
@@ -311,22 +315,6 @@ h5.form-title {
 .jam-modal .card .form-header,
  jam-modal .card .form-body {
     background-color: rgba(0, 0, 0, 0);
-}
-
-/*
-border: var(--bs-card-border-width) solid var(--bs-card-border-color);
-.jam-modal .card.no-border,
-.jam-modal .card.no-border .form-header,
-.jam-modal .card.no-border .form-footer {
-    border-width: 1px;
-}
-*/
-
-.modal .card {
-    border: 1px solid rgba(0,0,0,.2);
-/*
-    border-color: var(--bs-modal-border-color);
-*/
 }
 
 .selection-box {
@@ -406,9 +394,6 @@ th .title-search-input-form {
 
 th .title-search-input-form input {
     padding: 0 0.375rem 0 0.375rem;
-/*
-    margin: -4px 0 0 0;
-*/
     margin: -0.25rem 0 0 0;
     border-radius: 0;
     transition: none;
@@ -423,6 +408,20 @@ th .title-search-input-form .title-search-input-label {
     margin-top: -0.25rem;
     color: var(--bs-primary);
     text-align: center;
+    overflow: hidden;
+}
+
+td .hint-btn {
+    position: absolute;
+    padding: 0.375rem 0.5rem 0.275rem 0.5rem;
+    top: 50%;
+    transform: translate(0, -50%);
+    right: 0;
+    margin: 0 0.125rem 0 0;
+    border: 0;
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--bs-dark);
+    font-size: 8px;
 }
 
 form.input-form {
@@ -481,20 +480,6 @@ form.input-form {
     visibility: visible;
 }
 
-/*
-.check-box-centered-input {
-    margin-top: 0.725rem;
-}
-
-.checkbox-centered-label {
-    margin: 0.438rem 0;
-}
-
-.input-centered-label {
-    margin: 0.425rem 0;
-}
-*/
-
 .checkbox-centered-label {
     margin-bottom: 0.925rem;
 }
@@ -531,4 +516,11 @@ form.input-form {
     margin-left: 0px;
 }
 
+#navbar-toggler-btn {
+    transition: none;
+}
 
+.paginate-scroll {
+    opacity: 0.3;
+    filter: alpha(opacity=30);
+}

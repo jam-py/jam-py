@@ -48,16 +48,19 @@ class DBTable {
         this.$element.data('dbtable', this);
         this.item.controls.push(this);
 
-        this.resize_id = 'resize.dbtable-' + this.item.item_name + this.id;
         if (this.master_table) {
             this.$element.addClass('freezed');
-            this.resize_id = 'resize.dbtable.freezed-' + this.item.item_name + this.id;
         }
-        $(window).on(this.resize_id, function() {
-            self.resize();
-        });
+        else {
+            let observer = new ResizeObserver(entries => {
+                entries.forEach(entry => {
+                    self.resize();
+                });
+            });
+            observer.observe(this.$container.get(0));
+        }
         this.$element.bind('destroyed', function() {
-            $(window).off(self.resize_id);
+
             self.item.controls.splice(self.item.controls.indexOf(self), 1);
         });
 
@@ -151,7 +154,12 @@ class DBTable {
     }
 
     resize() {
-        var self = this;
+        if (this.$container.width() === 0 ||
+            (this.cur_width === this.$container.width() &&
+            this.cur_height === this.$container.height())) {
+                return;
+        }
+        let self = this;
         clearTimeout(this.timeOut);
         self.timeOut = setTimeout(
             function() {
@@ -550,7 +558,7 @@ class DBTable {
             timeout;
         this.$table.on('keydown', function(e) {
             let code = (e.keyCode ? e.keyCode : e.which);
-            if (self.selected_field && (code === 37 || code === 39)) {
+            if (self.selected_field && !self.editing && (code === 37 || code === 39)) {
                 e.preventDefault();
                 e.stopPropagation();
             }
@@ -582,7 +590,7 @@ class DBTable {
             this.colspan += 1;
         }
         this.$element.find('.table-container').append($(
-            '<table class="outer-table table table-condensed table-bordered mb-1" style="width: 100%;">' +
+            '<table class="outer-table table table-condensed table-bordered caption-top" style="width: 100%;">' +
             '   <thead>' +
             '       <tr><th>&nbsp</th></tr>' +
             '   </thead>' +
@@ -651,7 +659,7 @@ class DBTable {
             if (!(self.editing && td.find('input').length)) {
                 e.preventDefault();
                 //~ e.stopPropagation();
-                self.clicked(e, td);
+                self.clicked(e.type, td);
             }
         });
 
@@ -671,54 +679,18 @@ class DBTable {
             }
         });
 
-        this.$outer_table.on('mouseenter', 'th', function(e) {
-
-            function hide_input_form($form) {
-                $form.hide();
-                $form.parent().find('*').show();
-                $form.remove();
+        let is_touchstart_event;
+        this.$outer_table.on('touchstart mouseenter', 'th', function(e) {
+            if (e.type === "touchstart") {
+                is_touchstart_event = true;
+                return;
             }
-
-            function create_input_form($th, $btn, field_name) {
-                $btn.remove();
-                $th.find('*').hide();
-                let $search_input_form = $(
-                    '<form class="title-search-input-form">' +
-                        '<label for="title-search-input" class="form-label title-search-input-label"></label>' +
-                        '<input class="form-control" id="title-search-input">' +
-                    '</form>'
-                );
-                $th.append($search_input_form);
-                let $label = $th.find('label').text(field.field_caption),
-                    $input = $th.find('input');
-                self.item._init_column_title_search(field, $input);
-                $input.blur(function() {
-                    $input = $search_input_form.find('input');
-                    if ($search_input_form.is(":visible") && !$input.val().trim().length) {
-                        hide_input_form($search_input_form);
-                    }
-                });
-                $input.focus();
-                $input.keyup(function(e) {
-                    var code = e.which;
-                    if (code === 27) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (!self.item.paginate && self.item.master) {
-                            hide_input_form($search_input_form);
-                        }
-                        else {
-                            if (!$input.val().trim().length) {
-                                hide_input_form($search_input_form);
-                            }
-                        }
-                    }
-                    else if (code === 40) {
-                        self.$table.focus();
-                    }
-                });
+            if (e.type === "mouseenter") {
+                if (is_touchstart_event) {
+                    is_touchstart_event = false;
+                    return;
+                }
             }
-
             let $th = $(this),
                 field_name = $th.data('field_name'),
                 field = self.item.field_by_name(field_name);
@@ -741,15 +713,15 @@ class DBTable {
                     if ($active_input.length && $active_input.val()) {
                         let $form = $active_input.parent(),
                             active_field_name = $form.parent().data('field_name');
-                        hide_input_form($form);
+                        self.hide_search_input_form($form);
                         self.item.search(active_field_name, '', 'contains_all', true, function() {
                             let $th = self.$outer_table.find('thead th.' + field_name)
                             $th.css('position', 'relative');
-                            create_input_form($th, $btn, field_name)
+                            self.create_search_input_form(field, $th, $btn)
                         });
                     }
                     else {
-                        create_input_form($th, $btn, field_name)
+                        self.create_search_input_form(field, $th, $btn)
                     }
                 });
             }
@@ -759,54 +731,10 @@ class DBTable {
             $(this).find('.title-search-btn').remove();
         });
 
-        this.$table.on('mouseenter', 'td div', function() {
-            let $this = $(this),
-                $td = $this.parent(),
-                field_name = $td.data('field_name'),
-                show = self.options.show_hints,
-                placement = 'right',
-                container;
-            if ($.isArray(self.options.hint_fields)) {
-                 show = $.inArray(field_name, self.options.hint_fields) > -1;
-            }
-            if (show) {
-                if ($td.hasClass('tooltiped')) {
-                    return;
-                }
-                container = self.$element[0];
-                if (Math.abs(this.offsetHeight - this.scrollHeight) > 1 ||
-                    Math.abs(this.offsetWidth - this.scrollWidth) > 1) {
-                    let table_width = self.$table.width();
-                    container = self.$table;
-                    if (self.master_table) {
-                        table_width = self.master_table.$table.width();
-                        container = self.master_table;
-                    }
-                    if (table_width - ($this.offset().left + $this.width()) < 200) {
-                        placement = 'left';
-                    }
-                    $td.tooltip({
-                            placement: placement,
-                            container: container,
-                            trigger: 'hover',
-                            title: $this.text(),
-                            delay: { "show": 100, "hide": 0 }
-                        })
-                        .on('hide hidden show shown', function(e) {
-                            if (e.target === $this.get(0)) {
-                                e.stopPropagation()
-                            }
-                        })
-                        .eq(0).tooltip('show');
-                    $td.addClass('tooltiped');
-                }
-            }
-        });
-
         this.$table.on('mousedown', 'td input.multi-select', function(e) {
             var $this = $(this),
                 checked = $this.is(':checked');
-            self.clicked(e, $this.closest('td'));
+            self.clicked(e.type, $this.closest('td'));
             self.selections_set_selected(!checked);
             $this.prop('checked', self.selections_get_selected());
             if (e.shiftKey && self.prev_selected_rec_no !== undefined) {
@@ -1029,6 +957,89 @@ class DBTable {
         this.sync_freezed();
     }
 
+    init_search_inputs() {
+        let self = this;
+        this.fields.forEach(function(field) {
+            if (self.item._can_search_on_field(field)) {
+                self.create_search_input_form(field);
+            }
+        });
+        this.$table.on('focus.search', function() {
+            self.hide_search_inputs();
+        });
+    }
+
+    hide_search_inputs($exclude_form) {
+        let self = this,
+            forms = this.$outer_table.find('thead th .title-search-input-form');
+        forms.each(function() {
+            let $form = $(this);
+            if (!$exclude_form || $exclude_form.get(0) !== $form.get(0)) {
+                self.hide_search_input_form($form);
+            }
+        });
+    }
+
+    hide_search_input_form($form) {
+        let $input = $form.find('input');
+        if ($form.is(":visible") && !$input.val().trim().length) {
+            $form.hide();
+            $form.parent().find('*').show();
+            $form.remove();
+        }
+    }
+
+    create_search_input_form(field, $th, $btn) {
+        let self = this;
+        if (!$th) {
+            $th = this.$outer_table.find('thead th.' + field.field_name)
+            $th.css('position', 'relative');
+        }
+        if ($btn) {
+            $btn.remove();
+        }
+        $th.find('div *').hide();
+        let $search_input_form = $(
+            '<form class="title-search-input-form">' +
+                '<label for="title-search-input" class="form-label title-search-input-label"></label>' +
+                '<input class="form-control" id="title-search-input">' +
+            '</form>'
+        );
+        $th.append($search_input_form);
+        let $label = $th.find('label').text(field.field_caption),
+            $input = $th.find('input');
+        this.item._init_column_title_search(field, $input);
+        $input.blur(function() {
+            self.hide_search_input_form($search_input_form);
+        });
+        if ($btn) {
+            $input.focus();
+        }
+        else {
+            $input.focus(function() {
+                self.hide_search_inputs($search_input_form);
+            });
+        }
+        $input.keyup(function(e) {
+            var code = e.which;
+            if (code === 27) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!self.item.paginate && self.item.master) {
+                    self.hide_search_input_form($search_input_form);
+                }
+                else {
+                    if (!$input.val().trim().length) {
+                        self.hide_search_input_form($search_input_form);
+                    }
+                }
+            }
+            else if (code === 40) {
+                self.$table.focus();
+            }
+        });
+    }
+
     calculate() {
         var self = this,
             i,
@@ -1167,44 +1178,54 @@ class DBTable {
             tabindex = -1;
             if (this.options.show_paginator) {
                 $pagination = $(
-                    '<div class="btn-toolbar mb-1 d-flex justify-content-center" role="toolbar" aria-label="Toolbar with button groups">' +
+                    '<div class="btn-toolbar my-1 d-flex justify-content-center" role="toolbar" aria-label="Toolbar with button groups">' +
                         '<div class="btn-group me-1" >' +
-                            '<button type="button" id="pg-btn-first" class="btn btn-outline-secondary"><i class="bi bi-skip-backward-fill"></i></button>' +
-                            '<button type="button" id="pg-btn-prior" class="btn btn-outline-secondary"><i class="bi bi-caret-left-fill"></i></button>' +
+                            '<button type="button" class="pg-btn-first btn btn-outline-secondary"><i class="bi bi-skip-backward-fill"></i></button>' +
+                            '<button type="button" class="pg-btn-prior btn btn-outline-secondary"><i class="bi bi-caret-left-fill"></i></button>' +
                         '</div>' +
                         '<div class="input-group me-1">' +
-                            '<div class="input-group-text">' + task.language.page + '</div>' +
-                            '<input type="text" class="form-control" style="width: 100px; text-align: center;">' +
-                            '<div id="pg-page-count" class="input-group-text">' + task.language.of + ' 1000000</div>' +
+                            '<div class="pg-page input-group-text">' + task.language.page + '</div>' +
+                            '<input type="text" class="form-control pagination-input text-center" style="width: 100px;">' +
+                            '<div class="input-group-text"><span>' + task.language.of + '</span><span class="page-count ms-1"></span></div>' +
+                        '</div>' +
+                        '<div class="page-count-text m-2"  style="min-width: 80px;">' +
+                            '<span class="page-number"></span>' + '/ ' +
+                            '<span class="page-count"></span>' +
                         '</div>' +
                         '<div class="btn-group">' +
-                            '<button type="button" id="pg-btn-next" class="btn btn-outline-secondary"><i class="bi bi-caret-right-fill"></i></button>' +
-                            '<button type="button" id="pg-btn-last" class="btn btn-outline-secondary"><i class="bi bi-skip-forward-fill"></i></button>' +
+                            '<button type="button"class="pg-btn-next btn btn-outline-secondary"><i class="bi bi-caret-right-fill"></i></button>' +
+                            '<button type="button" class="pg-btn-last btn btn-outline-secondary"><i class="bi bi-skip-forward-fill"></i></button>' +
                         '</div>' +
                     '</div>'
                 );
 
-                this.$fistPageBtn = $pagination.find('button#pg-btn-first');
+                if (task.media === 2) {
+                    $pagination.find('.input-group *').hide();
+                }
+                else {
+                    $pagination.find('.page-count-text').hide();
+                }
+                this.$fistPageBtn = $pagination.find('button.pg-btn-first');
                 this.$fistPageBtn.on("click", function(e) {
                     self.first_page(true);
                     e.preventDefault();
                 });
                 this.$fistPageBtn.addClass("disabled");
 
-                this.$priorPageBtn = $pagination.find('button#pg-btn-prior');
+                this.$priorPageBtn = $pagination.find('button.pg-btn-prior');
                 this.$priorPageBtn.on("click", function(e) {
                     self.prior_page(true);
                     e.preventDefault();
                 });
                 this.$priorPageBtn.addClass("disabled");
 
-                this.$nextPageBtn = $pagination.find('button#pg-btn-next');
+                this.$nextPageBtn = $pagination.find('button.pg-btn-next');
                 this.$nextPageBtn.on("click", function(e) {
                     self.next_page(true);
                     e.preventDefault();
                 });
 
-                this.$lastPageBtn = $pagination.find('button#pg-btn-last');
+                this.$lastPageBtn = $pagination.find('button.pg-btn-last');
                 this.$lastPageBtn.on("click", function(e) {
                     self.last_page(true);
                     e.preventDefault();
@@ -1223,8 +1244,6 @@ class DBTable {
                         }
                     }
                 });
-                this.$page_count = $pagination.find('#pg-page-count');
-                this.$page_count.text(task.language.of + '1000000');
                 $pager = $pagination.find('#pager').clone()
                     .css("float", "left")
                     .css("position", "absolute")
@@ -1236,17 +1255,17 @@ class DBTable {
             else if (this.options.show_scrollbar) {
                 $pagination = $(
                     '<div class="text-right" style="line-height: normal;">' +
-                        //~ '<span class="label">' +
                         '<span class="small-pager">' +
                             '<span>' + task.language.page + ' </span>' +
-                            '<span id="page-number"></span>' +
-                            '<span id="page-count"></span>' +
+                            '<span class="page-number"></span>' +
+                            '<span>' + task.language.of + ' </span>' +
+                            '<span class="page-count"></span>' +
                         '</span>' +
                     '</div>'
                 )
-                this.$page_count = $pagination.find('#page-count');
-                this.$page_number = $pagination.find('#page-number');
             }
+            this.$page_count = $pagination.find('.page-count');
+            this.$page_number = $pagination.find('.page-number');
             if ($pagination) {
                 if (this.options.paginator_container) {
                     this.options.paginator_container.empty();
@@ -1258,11 +1277,13 @@ class DBTable {
                         this.$element.find('.paginator').append($pagination);
                     }
                 }
-                this.$page_count.text(task.language.of + ' ');
+                this.$page_count.text('');
                 if (pagerWidth) {
                     $pagination.find('#pager').width(pagerWidth);
                 }
             }
+        }
+        else {
         }
     }
 
@@ -1408,6 +1429,7 @@ class DBTable {
             this.edit_mode = true;
             this.editor = new DBTableInput(this, field);
             this.editor.old_data = field.data;
+            this.editor.window_width = $(window).width();
             this.editor.$input.addClass('inline-editor')
 
             $td = $row.find('td.' + field.field_name);
@@ -1906,7 +1928,7 @@ class DBTable {
         }
     }
 
-    clicked(e, td) {
+    clicked(type, td) {
         var rec,
             field = this.item.field_by_name(td.data('field_name')),
             $row = td.parent();
@@ -1922,7 +1944,7 @@ class DBTable {
             if (field) {
                 this.set_selected_field(field);
             }
-            if (e.type === "dblclick") {
+            if (type === "dblclick") {
                 this.do_on_edit(field);
             }
         }
@@ -1983,6 +2005,7 @@ class DBTable {
         if (this.options.row_line_count && this.selected_row && this.options.expand_selected_row) {
             divs = this.selected_row.find('tr, div')
             divs.css('height', this.options.row_line_count * textHeight);
+            this.update_ellipse_btn(this.selected_row);
         }
         this.selected_row = $row;
         this.show_selection();
@@ -1990,6 +2013,7 @@ class DBTable {
             divs = this.selected_row.find('tr, div')
             divs.css('height', '');
             divs.css('height', this.options.expand_selected_row * textHeight);
+            this.update_ellipse_btn(this.selected_row);
         }
     }
 
@@ -2056,10 +2080,10 @@ class DBTable {
                 try {
                     this.select_row(this.row_by_record());
                 } catch (e) {}
-                if (!noscroll) {
-                    this.table_scroll = true;
-                    this.$overlay_div.scrollTop(this.scroll_pos_by_rec());
-                }
+                //~ if (!noscroll) {
+                    //~ this.table_scroll = true;
+                    //~ this.$overlay_div.scrollTop(this.scroll_pos_by_rec());
+                //~ }
             }
             finally {
                 this.syncronizing = false;
@@ -2125,21 +2149,44 @@ class DBTable {
         }
         if (this.table_scroll) {
             this.table_scroll = false;
+            this.$table.css({'top': this.$overlay_div.scrollTop() + 'px'});
         }
         else {
             this.scroll_table(e);
+            if (this.item.paginate) {
+                this.$table.css({'top': this.$overlay_div.scrollTop() + 'px'});
+            }
+            else {
+                this.$table.css({'top': (this.$overlay_div.scrollTop() - this.scroll_delta) + 'px'});
+                //~ clearTimeout(this.scrolling);
+                //~ this.scrolling = setTimeout(function () {
+                    //~ let rec_no = self.record_by_row(self.$table.find('tr').eq(0))
+                    //~ if (rec_no !== undefined) {
+                        //~ self.item.rec_no = rec_no;
+                    //~ }
+                //~ }, 100);
+            }
         }
-        this.$table.css({'top': this.$overlay_div.scrollTop() + 'px'});
     }
 
     scroll_datasource(page_rec) {
         this.datasource = [];
-        this.fill_datasource(page_rec)
+        this.fill_datasource(page_rec, 1);
     }
 
     scroll_table(e) {
         var self = this,
-            page_rec = Math.round(this.$overlay_div.scrollTop() / this.row_height);
+            scroll_top = this.$overlay_div.scrollTop(),
+            page_rec = scroll_top / this.row_height;
+        page_rec = Math.floor(page_rec);
+        this.scroll_delta = (scroll_top / this.row_height - page_rec) * this.row_height;
+        //~ if (scroll_top > this.prev_scroll_top) {
+            //~ page_rec = Math.ceil(page_rec);
+        //~ }
+        //~ else {
+            //~ page_rec = Math.floor(page_rec);
+        //~ }
+        this.prev_scroll_top = this.$overlay_div.scrollTop();
         if (this.item.paginate) {
             var page = Math.round(page_rec / this.row_count);
             this.$table.addClass('paginate-scroll');
@@ -2367,7 +2414,7 @@ class DBTable {
                 }
             }
         }
-        else if (this.options.show_scrollbar) {
+        if (this.$page_number) {
             this.$page_number.text(cur_page + 1 + ' ');
         }
 
@@ -2392,12 +2439,9 @@ class DBTable {
             this.$scroll_div.height(this.scroll_height())
             this.page_count = Math.ceil(count / this.row_count);
             if (this.$page_count) {
-                this.$page_count.text(task.language.of + ' 1');
+                this.$page_count.text('1');
                 if (this.page_count) {
-                    this.$page_count.text(task.language.of + ' ' + this.page_count);
-                }
-                else {
-                    this.$page_count.text(task.language.of + ' ' + 1);
+                    this.$page_count.text(this.page_count);
                 }
             }
             if (this.options.on_pagecount_update) {
@@ -2422,6 +2466,7 @@ class DBTable {
             }
             this.$table.append(row);
             this.datasource.push([this.item.rec_no, row[0]]);
+            this.update_ellipse_btn(row);
         }
 
     }
@@ -2477,6 +2522,7 @@ class DBTable {
                 }
                 this.$table.prepend(row);
                 this.datasource.splice(0, 0, [this.item.rec_no, row[0]]);
+                this.update_ellipse_btn(row);
             }
         }
     }
@@ -2735,7 +2781,7 @@ class DBTable {
         this.$table.prepend(body_col_group);
     }
 
-    fill_datasource(start_rec) {
+    fill_datasource(start_rec, add_rec) {
         var self = this,
             counter = 0,
             clone = this.item.clone(true);
@@ -2744,12 +2790,15 @@ class DBTable {
             if (start_rec === undefined) {
                 start_rec = 0;
             }
+            if (add_rec == undefined) {
+                add_rec = 0
+            }
             clone.rec_no = start_rec;
             while (!clone.eof()) {
                 self.datasource.push([clone.rec_no, null]);
                 clone.next();
                 counter += 1;
-                if (counter >= self.row_count) {
+                if (counter >= self.row_count + add_rec) {
                     break;
                 }
             }
@@ -2811,13 +2860,16 @@ class DBTable {
             search_field_name,
             search_input_focused,
             self = this;
-
         is_focused = this.is_focused();
-        if (search_form.length) {
+        if (search_form.length === 1) {
             search_field_name = search_form.parent().data('field_name');
             search_input_focused = search_form.find('input').is(":focus");
             search_form.hide();
             search_form.detach();
+        }
+        else {
+            search_form = undefined;
+            this.hide_search_inputs();
         }
         if (this.options.editable && this.edit_mode && this.editor) {
             if (!is_focused) {
@@ -2923,7 +2975,7 @@ class DBTable {
                 .css('borderBottomStyle', this.$outer_table.css('borderTopStyle'))
                 .css('borderBottomColor', this.$outer_table.css('borderTopColor'));
         }
-        if (search_form.length) {
+        if (search_form && search_form.length) {
             let $th = this.$outer_table.find('thead th.' + search_field_name);
             if ($th.length) {
                 $th.find('*').hide();
@@ -2935,6 +2987,44 @@ class DBTable {
                 }
             }
         }
+        this.prev_scroll_top = this.$overlay_div.scrollTop();
+        this.update_ellipse_btn(this.$table);
+        this.cur_width = this.$container.width()
+        this.cur_height = this.$container.height()
+    }
+
+    update_ellipse_btn($parent) {
+        let self = this;
+        $parent.find('td > div').each(function() {
+            let $td = $(this).parent(),
+                $btn = $td.find('.hint-btn');
+            $btn.eq(0).tooltip('hide');
+            $btn.remove();
+            if (Math.abs(this.offsetHeight - this.scrollHeight) > 1 ||
+                Math.abs(this.offsetWidth - this.scrollWidth) > 1) {
+                $td.css('position', 'relative');
+                let $btn = $(
+                    '<button type="button" class="btn btn-secondary hint-btn">' +
+                        '<i class="bi bi-three-dots"></i>' +
+                    '</button>'
+                );
+                $td.append($btn);
+                let placement = 'right',
+                    table_width = self.$table.width(),
+                    container = self.$table;
+                if (self.master_table) {
+                    table_width = self.master_table.$table.width();
+                    container = self.master_table;
+                }
+                if (table_width - ($(this).offset().left + $(this).width()) < 200) {
+                    placement = 'left';
+                }
+                $btn.tooltip({container: container.get(0), placement: placement, title: $(this).text(), trigger: 'hover'});
+                $btn.on('mousedown dblclick click', function(e) {
+                    e.stopPropagation();
+                });
+            }
+        });
     }
 
     check_datasource() {
@@ -2972,7 +3062,7 @@ class DBTable {
 
     focus() {
         if (!this.is_focused()) {
-            this.$table.focus();
+            this.$table.get(0).focus();
         }
     }
 }

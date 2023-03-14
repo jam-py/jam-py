@@ -503,7 +503,7 @@ function Events0() { // app_builder
 		if (item.item_name === 'sys_items') {
 			resize_elements(task);
 		}
-		if (item.active) {
+		if (item.active && item.view_table) {
 			item.view_table.focus();
 		}
 	}
@@ -534,7 +534,7 @@ function Events0() { // app_builder
 			let btn = $(this).clone();
 			btn.find('i', 'small').remove()
 			let text = btn.text().trim();
-			text = text.split()[0].split('[')[0]		
+			text = text.split()[0].split('[')[0];
 			text = text.trim();
 			let translation = task.language[text.toLowerCase()];
 			if (translation) {
@@ -4196,7 +4196,6 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 			$tab,
 			tabs;
 		save_layout(item);
-		//~ save_actions(item);
 		if (item.dest_object[media] === undefined) {
 			if (item.type === 'view') {
 				item.dest_object[media] = ['', {}, [], {}, []];
@@ -4219,7 +4218,7 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 				item.view_form.find('#field-tabs').append($tab);
 			}
 			if (tabs.length === 1 && tabs[0][TAB_NAME] === '') {
-				item.view_form.find('#field-tabs > li').hide();
+				item.view_form.find('#field-tabs > li a').html('&nbsp');
 			}
 			else {
 				item.view_form.find('#field-tabs > li').show();
@@ -4228,7 +4227,6 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 			item.set_cur_tab(item, 0);
 		}
 		update_lists(item);
-		//~ update_actions(item);
 	}
 	
 	function set_cur_tab(item, tab) {
@@ -4264,21 +4262,103 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 		update_lists(item);
 	} 
 	
+	function update_devices(item) {
+		for (let i = 0; i < 3; i++) {
+			let a = item.view_form.find('#media-tabs #media' + i);
+			if (item.dest_object[i] === undefined) {
+				a.hide();
+			}		
+			else {
+				a.show();
+			}
+			item.view_form.find('#media-tabs a').removeClass('active');
+			item.view_form.find('#media-tabs #media0').addClass('active');
+		}
+	}
+	
+	function update_media(item, media, selected) {
+		if (selected) {
+			if (item.dest_object[media] === undefined) {
+				let source_media = media - 1;
+				if (item.dest_object[source_media] === undefined)  {
+					source_media = 0;
+				}
+				item.dest_object[media] = $.extend(true, {}, item.dest_object[source_media]);
+				// if (item.type === 'view') { 
+				//	 item.dest_object[media] = ['', {}, [], {}, []];
+				// } else if (item.type === 'edit') { 
+				//	 item.dest_object[media] = ['', {}, [], [['', [[{}, [], '']]]]];
+				// }
+			}		
+		}
+		else {
+			item.dest_object[media] = undefined;
+		}
+	}
+	
+	function select_media(item) {
+		let copy = item.copy({handlers: false});
+		copy.set_fields(['id', 'name']);	
+		copy.name.field_caption = 'Device';
+		copy.view_options.title = 'Select devices';
+		copy.view_options.template_class = "journals-view";
+		copy.view_options.history_button = false;
+		copy.view_options.enable_search = false;
+		copy.view_options.width = '20rem';
+		copy.table_options.multiselect = true;	
+		copy.table_options.fields= ['name'];
+		copy.table_options.height = '12rem';
+		copy.table_options.dblclick_edit = false;
+		copy.paginate = false;
+		copy.on_view_form_created = function(c) {
+			c.view_table = c.create_table(c.view_form.find(".view-table"));
+			c.view_form.find('.form-footer').hide();
+		};
+		copy.on_view_form_closed = function(c) {
+			update_media(item, 1, c.selections.includes(1));
+			update_media(item, 2, c.selections.includes(2));
+			update_devices(item);
+		};
+		copy.open({open_empty: true});
+		copy.append();
+		copy.id.value = 1;
+		copy.name.value = 'Tablet';
+		copy.append();
+		copy.id.value = 2;
+		copy.name.value = 'Phone';
+		copy.first();
+		let selections = [];
+		if (item.dest_object[1] !== undefined) {
+			selections.push(1); 
+		}
+		if (item.dest_object[2] !== undefined) {
+			selections.push(2); 
+		}
+		copy.selections = selections;
+		copy.view();	
+	}
+	
 	function set_editor_type(item) {
-		var i, 
+		let i, 
 			tab;
 		if (item.type === 'edit' || item.type === 'view') {
 			item.view_form.find('#section-tabs').show();
+			item.view_form.find('#media-pills').show();
 			set_cur_media(item, 0);
 			item.view_form.find('#media-tabs').show();
-			item.view_form.on('click', '#media-tabs > li > a',
+			item.view_form.on('click', '#media-tabs > a.nav-link',
 				function(e) {
 					e.preventDefault();
-					$('#media-tabs > li').removeClass('active');
-					$(this).parent().addClass('active');
-					set_cur_media(item, $(this).parent().data('media'));
+					$('#media-tabs > a').removeClass('active');
+					$(this).addClass('active');
+					set_cur_media(item, $(this).data('media'));
 				}
 			);
+			item.view_form.find('#change-devices-btn').click(function(e) {
+			   e.preventDefault();
+			   select_media(item);
+			});
+			update_devices(item);
 			if (item.type === 'edit') {
 				item.view_form.find('#media-tabs').show();
 				item.view_form.find('#field-tabs-container').show();
@@ -4346,7 +4426,7 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 		if (op === 'del_tab') {
 			if (item.cur_media[TABS].length === 1) {
 				item.cur_media[TABS][0][TAB_NAME] = '';
-				item.view_form.find('#field-tabs > li > a.active').hide();
+				item.view_form.find('#field-tabs > li a').html('&nbsp').removeClass('active');
 			}
 			else {
 				index = item.cur_media[TABS].indexOf(item.cur_tab);
@@ -4406,11 +4486,11 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 								if (item.cur_media[TABS].length === 1 && item.cur_media[TABS][0][TAB_NAME] === '') {
 									item.cur_media[TABS][0][TAB_NAME] = it.name.value;
 									item.view_form.find('#field-tabs > li > a').text(it.name.value);
-									item.view_form.find('#field-tabs > li').addClass('active').show();
+									item.view_form.find('#field-tabs > li > a').addClass('active').show();
 								}
 								else {
 									tab = [it.name.value, [[{}, [], '']]];
-									item.view_form.find('#field-tabs > li').removeClass('active');
+									item.view_form.find('#field-tabs > li > a').removeClass('active');
 									item.cur_media[TABS].push(tab)
 									$tab = $('<li class="nav-item"><a class="nav-link active" href="#tab' + (item.cur_media[TABS].length + 1) + '">' + tab[TAB_NAME] +  '</a></li>');
 									$tab.data('tab', item.cur_media[TABS].length - 1);
@@ -4630,7 +4710,7 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 			item.view_options.width = '78rem';
 		}
 		else if (item.type === 'view') {
-			item.view_options.width = '74rem';
+			item.view_options.width = '73rem';
 		}
 		else {
 			item.view_options.width = '54rem';
@@ -4993,6 +5073,9 @@ function Events05() { // app_builder.catalogs.sys_fields_editor
 	this.set_cur_media = set_cur_media;
 	this.set_cur_tab = set_cur_tab;
 	this.set_cur_band = set_cur_band;
+	this.update_devices = update_devices;
+	this.update_media = update_media;
+	this.select_media = select_media;
 	this.set_editor_type = set_editor_type;
 	this.change_ed = change_ed;
 	this.set_form_options = set_form_options;
@@ -5790,9 +5873,9 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 				if (!item.f_image_view_width.value && !item.f_image_view_height.value) {
 					item.f_image_view_width.value = 100;
 				}
-				if (!item.f_image_edit_width.value && !item.f_image_edit_height.value) {
-					item.f_image_edit_width.value = 200;
-				}
+	// 			if (!item.f_image_edit_width.value && !item.f_image_edit_height.value) {
+	// 				item.f_image_edit_width.value = 200;
+	// 			}
 			}
 		}
 		else {

@@ -408,10 +408,6 @@ class AbsrtactItem {
         }
     }
 
-    _focus_form(form) {
-        this.task._focus_element(form);
-    }
-
     _create_form_header(form, options, form_type, container) {
         let form_header,
             item_class;
@@ -419,9 +415,10 @@ class AbsrtactItem {
             form_header = $(
                 '<div class="card-header form-header">' +
                     '<div class="form-header-title"></div>' +
-                    '<div class="form-header-info" style="display: none"></div>' +
                     '<div class="form-header-refresh-btn"></div>' +
                     '<div class="form-header-history-btn"></div>' +
+                    '<div class="form-header-search-btn" style="display: none"></div>' +
+                    '<div class="form-header-info-btn" style="display: none"></div>' +
                     '<div class="form-header-filters"></div>' +
                     //~ '<div class="form-header-print-btn"></div>' +
                     '<div class="form-header-close-btn"></div>' +
@@ -480,9 +477,6 @@ class AbsrtactItem {
         }
 
         if (options.close_button) {
-            if (task.language && options.close_on_escape) {
-                close_caption = task.language.close + ' - [Esc] <i class="bi bi-x"></i>';
-            }
             close_button = '<button type="button" class="btn-close close-form-btn" tabindex="-1"></button>';
             header.find('.form-header-close-btn').html(close_button);
         }
@@ -500,12 +494,49 @@ class AbsrtactItem {
             });
         }
         else {
-            header.find('.form-header-history-btn').hide();
+            header.find('.history-btn').hide();
+        }
+
+        if (form_type !== 'view') {
+            let $info = form.find('.field-help');
+            if ($info.length) {
+                header.find('.form-header-info-btn')
+                    .show()
+                    .html('<button type="button" class="btn btn-secondary info-btn" data-bs-toggle="button"><i class="bi bi-question-lg"></i></button>')
+                    .tooltip({placement: 'bottom', title: task.language.info, trigger: 'hover'});
+                header.find('.info-btn').css('cursor', 'default').click(function(e) {
+                    e.preventDefault();
+                    $info.toggleClass('active');
+                    if ($info.hasClass('active')) {
+                        $info.show();
+                    }
+                    else {
+                        $info.hide();
+                    }
+                });
+            }
+        }
+
+        if (form_type === 'view') {
+            let $dbtable = form.find('.dbtable.' + this.item_name);
+            if (options.enable_search && $dbtable.length) {
+                header.find('.form-header-search-btn')
+                    .html('<button type="button" class="btn btn-secondary search-btn">' +
+                        '<i class="bi bi-search"></i>' +
+                        '</button>')
+                    .tooltip({placement: 'bottom', title: task.language.find, trigger: 'hover'})
+                    .show()
+                    .click(function(e) {
+                        $dbtable.data('dbtable').init_search_inputs();
+                    })
+            }
         }
 
         if (!this.virtual_table && options.refresh_button) {
             header.find('.form-header-refresh-btn')
-                .html('<button type="button" class="btn btn-secondary refresh-btn"><i class="bi bi-arrow-clockwise"></i></button>')
+                .html('<button type="button" class="btn btn-secondary refresh-btn">' +
+                    '<i class="bi bi-arrow-clockwise"></i>' +
+                    '</button>')
                 .tooltip({placement: 'bottom', title: task.language.refresh_page, trigger: 'hover'});
             header.find(".refresh-btn").css('cursor', 'default').click(function(e) {
                 e.preventDefault();
@@ -524,20 +555,22 @@ class AbsrtactItem {
             })
         }
         if (options.enable_filters && filter_count) {
+            let filtered_sign = $('<span class="filtered_sign"></span>')
             header.find('.form-header-filters')
                 .html(
                     '<button type="button" class="btn btn-secondary form-header-filters-btn">' +
-                    //~ '<i class="bi bi-filter"></i>' + '</button>' +
-                    task.language.filters + '</button>' +
+                    '<i class="bi bi-funnel"></i>' + '</button>' +
+                    //~ task.language.filters + '</button>' +
                     '<span class="filters-text"></span>'
-                )
+                );
             header.find('.form-header-filters-btn')
                 .tooltip({placement: 'bottom', title: task.language.set_filters, trigger: 'hover'})
                 .css('cursor', 'default')
                 .click(function(e) {
                     e.preventDefault();
                     self.create_filter_form();
-                });
+                })
+                .append(filtered_sign);
         }
 
         header.find('.form-header-title').html('<h5 class="form-title">' + title + '</h5>')
@@ -563,13 +596,34 @@ class AbsrtactItem {
         else {
             header.remove();
         }
+        if (task.media > 0) {
+            form.find('.form-header .btn small,  .form-footer .btn small').hide();
+        }
+        if (task.media === 2 && form_type === 'view') {
+            form.find('.form-header button.btn,  .form-footer button.btn, .form-header a.btn,  .form-footer a.btn').each(function() {
+                let image = $(this).find('i');
+                if (image.length) {
+                    $(this).html(image.get(0));
+                }
+            });
+        }
     }
 
     init_filters() {
         var self = this;
         this._on_filters_applied_internal = function() {
             if (self.view_form) {
-                self.view_form.find(".filters-text").html(self.get_filter_html());
+                let filter_text = self.get_filter_html();
+                if (task.media < 2) {
+                    self.view_form.find(".filters-text").html(filter_text);
+                }
+                else {
+                    let filtered_sign = '';
+                    if (filter_text) {
+                        filtered_sign = '*';
+                    }
+                    self.view_form.find('.filtered_sign').text(filtered_sign);
+                }
             }
         };
     }
@@ -782,9 +836,10 @@ class AbsrtactItem {
                 this[form_name].bind('destroyed', function() {
                     self._close_modeless_form(form_name);
                 });
+                this._set_form_options(form, item_options, form_type);
                 this._process_event(form_type, 'created');
                 this._set_form_options(form, item_options, form_type);
-                this._focus_form(form);
+                task._focus_element(form);
                 this._process_event(form_type, 'shown');
             } else {
                 task.modals.create_modal_form(form, item_options, this, form_type);
@@ -826,10 +881,9 @@ class AbsrtactItem {
                 if (form.hasClass('modal-form')) {
                     setTimeout(
                         function() {
-                            if (self['modal_' + form_type + '_object'].close_form()) {
-                                this[form_name] = undefined;
-                                self._process_event(options.form_type, 'closed');
-                            }
+                            self['modal_' + form_type + '_object'].close_form();
+                            this[form_name] = undefined;
+                            self._process_event(options.form_type, 'closed');
                             form.data('_closing', false);
                         },
                         100
