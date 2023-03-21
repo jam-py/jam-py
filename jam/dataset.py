@@ -1937,7 +1937,7 @@ class MasterDetailDataset(MasterDataSet):
                 params['__master_id'] = None
                 if self._master_id:
                     params['__master_id'] = self.master.ID
-                params['__master_rec_id'] = self.master.field_by_name(self.master._primary_key).value
+                    params['__master_rec_id'] = self.master.field_by_name(self.master._primary_key).value
                 dataset = None
                 if self.master.is_new():
                     self.change_log = ChangeLog(self)

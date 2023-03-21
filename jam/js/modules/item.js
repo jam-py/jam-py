@@ -1675,8 +1675,8 @@ class Item extends AbsrtactItem {
                 options.params.__master_id = null
                 if (this._master_id) {
                     options.params.__master_id = this.master.ID;
+                    options.params.__master_rec_id = this.master.field_by_name(this.master._primary_key).value;
                 }
-                options.params.__master_rec_id = this.master.field_by_name(this.master._primary_key).value;
                 if (this.master.is_new()) {
                     dataset = [];
                     this.change_log = new ChangeLog(this);

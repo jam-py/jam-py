@@ -1,11 +1,9 @@
 
 
-/*
+
 html {
    font-size: 14px;
 }
-*/
-
 
 .modal-dialog-centered-horizontally {
     display: flex;
@@ -217,9 +215,7 @@ div.th-text {
 .card .form-body {
     flex: 1 1 auto;
     padding: 0.25rem 0.25rem;
-/*
     padding: var(--bs-card-spacer-y) var(--bs-card-spacer-x);
-*/
     color: var(--bs-card-color);
     outline: none;
 }

@@ -1485,7 +1485,7 @@ class AbsrtactItem {
     }
 
     str_to_datetime(str) {
-        return this.format_string_to_date(str, tasl.locale.D_T_FMT);
+        return this.format_string_to_date(str, task.locale.D_T_FMT);
     }
 
     str_to_float(text) {
