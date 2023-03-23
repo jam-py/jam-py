@@ -985,7 +985,7 @@ class AbsrtactItem {
             options.show_header = false;
         }
         $alert = $(
-        '<div class="alert alert-dismissible alert-absolute alert-danger fade show">' +
+        '<div class="alert alert-dismissible alert-absolute fade show">' +
           '<h4>' + options.header + '</h4>' +
           '<p>' + message + '</p>' +
           '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +

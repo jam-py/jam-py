@@ -75,7 +75,7 @@ function Events1() { // demo
 		var table_options_height = item.table_options.height,
 			table_container;
 	
-		// item.paginate = false; 
+		item.paginate = false; 
 		// item.table_options.show_paginator = false;
 		// item.table_options.show_scrollbar = true;
 		
