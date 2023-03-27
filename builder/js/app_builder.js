@@ -439,7 +439,7 @@ function Events1() { // app_builder
 					item.task.sys_params.init_lookup_form(item);
 				}
 				else {
-					item.view_form.find('.modal-footer').hide();
+					item.view_form.find('.form-footer').hide();
 				}
 				column_width = {id: '10%'};
 			}
@@ -4595,6 +4595,7 @@ function Events15() { // app_builder.catalogs.sys_fields_editor
 				{fields: opt_fields, in_well: false, label_size: 5, col_count: col_count, row_count: row_count});
 			item.on_field_changed = update_option;
 			item.on_field_select_value = function(field, lookup_item) {
+				// lookup_item.view_form.find('.form-footer').hide();
 				if (field.field_name === 'edit_details' || field.field_name === 'view_detail') {
 					lookup_item.set_where({parent: item.item.id.value});
 					lookup_item.view_options.fields = ['f_item_name'];

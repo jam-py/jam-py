@@ -651,15 +651,31 @@ class DBTable {
             this.$table.addClass("striped");
         }
 
-        this.$table.on('mousedown dblclick', 'td', function(e) {
-            var td = $(this);
+        let clicked_touchstart;
+
+        this.$table.on('touchstart mousedown dblclick', 'td', function(e) {
+            if (e.type === 'touchstart') {
+                clicked_touchstart = true;
+                return;
+            }
+            let syncronize = false;
+            if (!clicked_touchstart) {
+                syncronize = true;
+            }
+            let td = $(this);
             if (this.nodeName !== 'TD') {
                 td = $(this).closest('td');
             }
             if (!(self.editing && td.find('input').length)) {
                 e.preventDefault();
-                //~ e.stopPropagation();
-                self.clicked(e.type, td);
+                self.clicked(e, td);
+                if (syncronize) {
+                    self.syncronize();
+                    if (self.datasource.length > self.row_count) {
+                        self.datasource.length = self.row_count;
+                        self.$table.find('tr:last-child').remove();
+                    }
+                }
             }
         });
 
@@ -734,7 +750,7 @@ class DBTable {
         this.$table.on('mousedown', 'td input.multi-select', function(e) {
             var $this = $(this),
                 checked = $this.is(':checked');
-            self.clicked(e.type, $this.closest('td'));
+            self.clicked(e, $this.closest('td'));
             self.selections_set_selected(!checked);
             $this.prop('checked', self.selections_get_selected());
             if (e.shiftKey && self.prev_selected_rec_no !== undefined) {
@@ -1157,6 +1173,11 @@ class DBTable {
         if (this.row_count <= 0) {
             this.row_count = 1;
         }
+        this.calc_overlay_div_height();
+        return this.row_count;
+    }
+
+    calc_overlay_div_height() {
         //~ this.options.exact_height = false;
         if (this.options.exact_height) {
             let height = this.row_height * this.row_count;
@@ -1165,7 +1186,6 @@ class DBTable {
             }
             this.$overlay_div.height(height + this.row_margin);
         }
-        return this.row_count;
     }
 
     create_pager($element) {
@@ -1254,7 +1274,7 @@ class DBTable {
             }
             else if (this.options.show_scrollbar) {
                 $pagination = $(
-                    '<div class="text-right" style="line-height: normal;">' +
+                    '<div class="text-right" style="line-height: normal; padding-top: 0.5rem">' +
                         '<span class="small-pager">' +
                             '<span>' + task.language.page + ' </span>' +
                             '<span class="page-number"></span>' +
@@ -1264,9 +1284,9 @@ class DBTable {
                     '</div>'
                 )
             }
-            this.$page_count = $pagination.find('.page-count');
-            this.$page_number = $pagination.find('.page-number');
             if ($pagination) {
+                this.$page_count = $pagination.find('.page-count');
+                this.$page_number = $pagination.find('.page-number');
                 if (this.options.paginator_container) {
                     this.options.paginator_container.empty();
                     this.options.paginator_container.append($pagination);
@@ -1703,10 +1723,10 @@ class DBTable {
                 this.refresh_row();
                 break;
             case consts.UPDATE_SCROLLED:
-                this.syncronize();
+                this.syncronize(true);
                 break;
             case consts.UPDATE_CONTROLS:
-                this.syncronize();
+                this.syncronize(true);
                 this.build(true);
                 break;
             case consts.UPDATE_CLOSE:
@@ -1928,7 +1948,8 @@ class DBTable {
         }
     }
 
-    clicked(type, td) {
+    clicked(e, td) {
+        console.log(e.type)
         var rec,
             field = this.item.field_by_name(td.data('field_name')),
             $row = td.parent();
@@ -1944,7 +1965,7 @@ class DBTable {
             if (field) {
                 this.set_selected_field(field);
             }
-            if (type === "dblclick") {
+            if (e.type === "dblclick") {
                 this.do_on_edit(field);
             }
         }
@@ -2080,10 +2101,10 @@ class DBTable {
                 try {
                     this.select_row(this.row_by_record());
                 } catch (e) {}
-                //~ if (!noscroll) {
-                    //~ this.table_scroll = true;
-                    //~ this.$overlay_div.scrollTop(this.scroll_pos_by_rec());
-                //~ }
+                if (!noscroll) {
+                    this.table_scroll = true;
+                    this.$overlay_div.scrollTop(this.scroll_pos_by_rec());
+                }
             }
             finally {
                 this.syncronizing = false;
@@ -2498,6 +2519,10 @@ class DBTable {
         finally {
             this.resume_sync();
         }
+        this.syncronize_tables();
+    }
+
+    syncronize_tables() {
         this.syncronize();
         if (this.master_table) {
             this.master_table.syncronize();
@@ -2555,13 +2580,7 @@ class DBTable {
         finally {
             this.resume_sync();
         }
-        this.syncronize();
-        if (this.master_table) {
-            this.master_table.syncronize();
-        }
-        if (this.freezed_table) {
-            this.freezed_table.syncronize();
-        }
+        this.syncronize_tables();
     }
 
     first_page() {
@@ -2573,6 +2592,7 @@ class DBTable {
             this.set_page_number(0, callback);
         } else {
             this.item.first();
+            this.syncronize_tables();
         }
     }
 
@@ -2596,6 +2616,7 @@ class DBTable {
                 }
             }
             this.item.rec_no = clone.rec_no;
+            this.syncronize_tables();
         }
     }
 
@@ -2623,6 +2644,7 @@ class DBTable {
                 }
             }
             this.item.rec_no = clone.rec_no;
+            this.syncronize_tables();
         }
     }
 
@@ -2636,6 +2658,7 @@ class DBTable {
             this.set_page_number(this.page_count - 1, callback);
         } else {
             this.item.last();
+            this.syncronize_tables();
         }
     }
 
@@ -2881,7 +2904,7 @@ class DBTable {
 
         if (!this.item.paginate) {
             if (this.options.row_count !== this.row_count) {
-                this.calc_row_count();
+                this.calc_overlay_div_height();
             }
             this.$scroll_div.height(this.scroll_height());
         }
