@@ -55,7 +55,7 @@ More demos on PythonAnywhere:
 * `Personal Account Ledger from MS Access template <https://msaccess.pythonanywhere.com/>`_
 * `NorthWind Traders from MS Access template (wip) <https://northwind.pythonanywhere.com/>`_
 * `The ERP POC Demo with Italian and English translations <https://sem.pythonanywhere.com/>`_
-* `Assets/Parts Application (wip) <https://jampy.pythonanywhere.com>`_
+* `Assets/Parts Application (wip, currently Jam V7 Demo) <https://jampy.pythonanywhere.com>`_
 * `Machine Learning (wip) <https://mlearning.pythonanywhere.com>`_
 * `Auto Parts Sales for Brazilian Market (Portuguese) <https://carparts.pythonanywhere.com>`_
 
