@@ -11,49 +11,46 @@ Go into the directory and run from command line:
     $ jam-project.py
 
 
-The following files and folders will be created in the directory::
+The following files and subdirectories will be created in the directory::
 
-    /
-        css/
-        js/
-        img/
-        reports/
-        static/
-        admin.sqlite
-        server.py
-        index.html
-        wsgi.py
+    admin.sqlite
+    css/
+    index.html
+    js/
+    __pycache__/
+    reports/
+    server.py*
+    static/
+    tmp
+    wsgi.py
 
 
-To start Jam.py web server run **server.py** script.
+To start the Jam.py web server run the **server.py** script.
 
 
 .. code-block:: console
 
     $ ./server.py
+     * Running on http://0.0.0.0:8080/ (Press CTRL+C to quit)
 
+
+By default, the port is 8080. 
 
 .. note::
-    You can specify a port as parameter, for example 
+    You can specify a different port as an argument, for example 
     
     .. code-block:: console
     
-        $ ./server.py 8081. 
+        $ ./server.py 8081
+	 * Running on http://0.0.0.0:8081/ (Press CTRL+C to quit)
         
-    By default, the port is 8080. If you will specify another port, you need to 
-    use it in a browser in the next steps.
+    If you do specify a different port, you will need to use it in your browser in the succeeding steps.
 
 
 Open a Web browser and go to “/builder.html” on your local domain – e.g., 
 http://127.0.0.1:8080/builder.html. You should see the select language dialog. 
 
-
-.. code-block:: console
-
-    127.0.0.1:8080/builder.html
-    
-    
-In the dialog that will appear, select the language and press OK button.
+In this dialog, press the 'folder' button, which will show a list of languages.  Select one of the languages and press OK.
 
 .. image:: _images/lang.png
 	:alt: Jam.py language dialog
