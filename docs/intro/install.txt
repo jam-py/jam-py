@@ -12,13 +12,12 @@ You can use the following versions of Python with Jam.py:
 
 Python 2
 
-* Python 2.7
+* Python 2.7 and newer
 
 Python 3
 
-* Python 3.4
-* Python 3.5
-* Python 3.6
+* Python 3.4 and newer
+
 
 You can verify that Python is installed by typing python from your shell; 
 you should see something like::
