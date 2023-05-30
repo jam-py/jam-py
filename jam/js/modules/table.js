@@ -1949,7 +1949,6 @@ class DBTable {
     }
 
     clicked(e, td) {
-        console.log(e.type)
         var rec,
             field = this.item.field_by_name(td.data('field_name')),
             $row = td.parent();

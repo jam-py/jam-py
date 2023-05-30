@@ -41,8 +41,12 @@ class ModalForm {
         form.addEventListener('show.bs.modal', function(event) {
             event.stopPropagation();
             if (self.item) {
-                self.item._process_event(self.form_type, 'created');
-                self.item._set_form_options(self.$form_content, self.options, self.form_type);
+                try {
+                    self.item._process_event(self.form_type, 'created');
+                }
+                finally {
+                    self.item._set_form_options(self.$form_content, self.options, self.form_type);
+                }
             }
             self.$modal_dialog.css('max-width', self.options.width);
         });

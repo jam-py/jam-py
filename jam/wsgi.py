@@ -14,7 +14,7 @@ from werkzeug.wrappers import Request, Response
 from werkzeug.routing import Map, Rule
 from werkzeug.exceptions import HTTPException, NotFound, Forbidden
 from werkzeug.middleware.shared_data import SharedDataMiddleware
-from werkzeug.wsgi import peek_path_info, get_path_info
+from werkzeug.wsgi import get_path_info
 from werkzeug.local import Local, LocalManager
 from werkzeug.http import parse_date, http_date
 from werkzeug.utils import cached_property, secure_filename, redirect
