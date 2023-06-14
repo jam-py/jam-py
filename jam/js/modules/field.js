@@ -723,7 +723,7 @@ class Field {
     }
 
     assign_default_value() {
-        if (this.default_value !== null) {
+        if (this.default_value) {
             try {
                 switch (this.data_type) {
                     case consts.INTEGER:

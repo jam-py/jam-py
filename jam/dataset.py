@@ -482,7 +482,7 @@ class DBField(object):
 
     def get_default_value(self):
         result = None
-        if not self.default_value is None:
+        if self.default_value:
             try:
                 if self.data_type == consts.INTEGER:
                     result = int(self.default_value)
@@ -509,8 +509,7 @@ class DBField(object):
         return result
 
     def assign_default_value(self):
-        if not self.default_value is None:
-            self.value = self.get_default_value()
+        self.data = self.get_default_value()
 
     def check_type(self):
         if (self.data_type == consts.TEXT) and (self.field_size != 0) and \
