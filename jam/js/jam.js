@@ -4057,8 +4057,15 @@
                             break;
                         case 'lookup_item':
                             if (val) {
-                                lookup_item = val;
+                                //~ lookup_item = val;
                                 val = val.ID
+                            }
+                            break;
+                        case 'field_interface':
+                            val = {
+                                do_not_sanitize: false,
+                                field_mask: "",
+                                textarea: false
                             }
                             break;
                     }
