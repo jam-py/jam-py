@@ -702,6 +702,7 @@ class DBAbstractInput {
             this.error = undefined;
             this.hide_error();
         } else {
+            task.alert_error(this.error, {replace: false});
             this.show_error();
         }
     }

@@ -6382,9 +6382,9 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 					if ([task.consts.TEXT, task.consts.FILE, task.consts.IMAGE].includes(item.f_data_type.value)) {
 						item.f_default_value.value = '';
 					}
-					else if (item.f_object.value || item.f_lookup_values.value) {
-						item.f_default_value.value = '0';
-					}
+					// else if (item.f_object.value || item.f_lookup_values.value) {
+					// 	item.f_default_value.value = '0';
+					// }
 				}
 			}
 			let default_read_only = item.f_object.value || !item.f_data_type.value || item.f_master_field.value;
