@@ -7341,20 +7341,6 @@
                 if (detail._summary === undefined) {
                     this.calc_summary(detail);
                 }
-                //~ var self = this;
-                //~ clearTimeout(this._detail_changed_time_out);
-                //~ this._detail_changed_time_out = setTimeout(
-                    //~ function() {
-                        //~ detail._summary = undefined;
-                        //~ if (modified && self.on_detail_changed) {
-                            //~ self.on_detail_changed.call(self, self, detail);
-                        //~ }
-                        //~ if (detail._summary === undefined) {
-                            //~ self.calc_summary(detail);
-                        //~ }
-                    //~ },
-                    //~ 0
-                //~ );
             }
         },
 
@@ -7445,7 +7431,7 @@
                             else if (field.data_type === consts.FLOAT) {
                                 text = field.float_to_str(value)
                             }
-                            detail._summary[field_name] = text;
+                            detail._summary[field_name] = {text: text, value: value};
                         }
                     }
                 }
@@ -11664,9 +11650,21 @@
         update_summary: function() {
             var field_name;
             for (field_name in this.item._summary) {
-                this.$foot.find('div.' + field_name).text(this.item._summary[field_name]);
+                let field = this.item.field_by_name(field_name),
+                    text = this.item._summary[field_name].text,
+                    value = this.item._summary[field_name].value,
+                    new_text = '';
+                if (this.item.on_field_get_summary) {
+                    if (field.data_type === consts.CURRENCY) {
+                        value = task.round(value, task.locale.FRAC_DIGITS);
+                    }
+                    new_text = this.item.on_field_get_summary.call(this.item, field, value);
+                }
+                if (!new_text) {
+                    new_text = text;
+                }
+                this.$foot.find('div.' + field_name).html(new_text);
             }
-
         },
 
         calc_summary: function(callback) {
@@ -11745,6 +11743,7 @@
                     params.__master_id = this.item.master.ID;
                     params.__master_rec_id = this.item.master.field_by_name(this.item.master._primary_key).value;
                 }
+                this.item._summary = {};
                 copy.open({expanded: expanded, fields: sum_fields, funcs: funcs, params: params},
                     function() {
                         var i,
@@ -11754,12 +11753,13 @@
                                 total_records = f.data;
                             }
                             else if (f.field_name !== search_field) {
-                                self.$foot.find('div.' + f.field_name).text(f.display_text);
+                                self.item._summary[f.field_name] = {text: f.display_text, value: f.value};
                             }
                         });
                         for (i = 0; i < count_fields.length; i++) {
-                            self.$foot.find('div.' + count_fields[i]).text(total_records);
+                            self.item._summary[count_fields[i]] = {text: total_records + '', value: total_records};
                         }
+                        self.update_summary();
                         if (callback) {
                             callback.call(this, total_records);
                         }
