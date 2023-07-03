@@ -58,8 +58,9 @@ More demos on PythonAnywhere:
 * `Assets/Parts Application (wip, currently Jam V7 Demo) <https://jampy.pythonanywhere.com>`_
 * `Machine Learning (wip) <https://mlearning.pythonanywhere.com>`_
 * `Auto Parts Sales for Brazilian Market (Portuguese) <https://carparts.pythonanywhere.com>`_
-* `Financial System on Arabic (wip) <https://arabic.pythonanywhere.com>`_
+* `Financial System on Arabic (wip, V7) <https://arabic.pythonanywhere.com>`_
 
+V7 is mobile devices ready, with Boostrap 5. Please see the Demos.
 
 Jam.py alternative site:
 
