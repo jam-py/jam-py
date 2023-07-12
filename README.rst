@@ -103,7 +103,7 @@ the client utilizes `JavaScript <https://developer.mozilla.org/en/docs/Web/JavaS
 
 * Allows to save audit trail/change history made by users
 
-* Predifined css themes.
+* Predefined css themes.
 
 * Develop and test locally update remotely. Jam.py has Export and Import
   utilities that allow developer to store all metadata (database structures,
