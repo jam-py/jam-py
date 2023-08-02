@@ -1158,6 +1158,8 @@ class Detail(AbstrDetail, ServerDataset):
         self._deleted_flag = self.prototype._deleted_flag
         self._master_id = self.prototype._master_id
         self._master_rec_id = self.prototype._master_rec_id
+        self._master_rec_id = self.prototype._master_rec_id
+        self._virtual_table = self.prototype._virtual_table
 
     def do_internal_post(self):
         return {'success': True, 'id': None, 'message': '', 'detail_ids': None}

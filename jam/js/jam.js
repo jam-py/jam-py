@@ -3810,7 +3810,7 @@
         });
         Object.defineProperty(this, "virtual_table", {
             get: function() {
-                return this._virtual_table;
+                return this.get_virtual_table();
             },
         });
         Object.defineProperty(this, "read_only", {
@@ -4417,6 +4417,15 @@
             }
             else {
                 return this._keep_history;
+            }
+        },
+
+        get_virtual_table: function() {
+            if (this.master) {
+                return task.item_by_ID(this.prototype_ID).virtual_table;
+            }
+            else {
+                return this._virtual_table;
             }
         },
 
@@ -5160,7 +5169,7 @@
                 async = callback ? true : false;
             }
             if (this.master) {
-                if (!this.disabled && this.master.record_count() > 0) {
+                if (!this.disabled && this.master.rec_count > 0) {
                     params.__master_id = this.master.ID;
                     params.__master_rec_id = this.master.field_by_name(this.master._primary_key).value;
                     if (this.master.is_new()) {
@@ -5171,6 +5180,9 @@
                             records = log['records']
                             fields = log['fields']
                             expanded = log['expanded']
+                        }
+                        else if (this.virtual_table) {
+                            records = [];
                         }
                     }
                     if (records !== undefined) {
@@ -8560,6 +8572,11 @@
                     this.filter.owner.on_filter_changed.call(this.filter.owner, this.filter);
                 }
             }
+            else if (this.report) {
+                if (this.report.on_param_changed) {
+                    this.owner.on_param_changed.call(this.owner, this, lookup_item);
+                }
+            }
         },
 
         _check_system_field_value: function(value) {
@@ -10489,24 +10506,30 @@
                     }
                 }
                 copy.open({fields: fields, limit: limit}, function() {
-                    var dict = {}, sel = [];
-                    for (i = 0; i < self.item.selections.length; i++) {
-                        dict[self.item.selections[i]] = true;
+                    let dict = {};
+                    if (value) {
+                        for (i = 0; i < self.item.selections.length; i++) {
+                            dict[self.item.selections[i]] = true;
+                        }
+                        copy.each(function(c) {
+                            if (!dict[c._primary_key_field.value]) {
+                                self.item.selections.add(c._primary_key_field.value);
+                            }
+                        });
                     }
-                    self.item.selections.length = 0;
-                    copy.each(function(c) {
-                        if (value) {
+                    else {
+                        copy.each(function(c) {
                             dict[c._primary_key_field.value] = true;
+                        });
+                        let selections = []
+                        for (i = 0; i < self.item.selections.length; i++) {
+                            let sel = self.item.selections[i];
+                            if (!dict[sel]) {
+                                selections.push(sel);
+                            }
                         }
-                        else {
-                            delete dict[c._primary_key_field.value];
-                        }
-                    });
-                    for (var id in dict) {
-                        sel.push(parseInt(id, 10))
-                        //~ self.item.selections.add(parseInt(id, 10));
+                        self.item.selections = selections;
                     }
-                    self.item.selections = sel;
                     self.$table.find('td input.multi-select').prop('checked', value);
                     self.$element.find('input.multi-select-header').prop('checked',
                         self.selections_get_all_selected());

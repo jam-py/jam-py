@@ -117,6 +117,7 @@ report_client_events = \
         'on_param_form_close_query': 'report',
         'on_before_print_report': 'report',
         'on_open_report': 'report, url',
+        'on_param_changed': 'param, lookup_item',
         'on_param_select_value': 'param, lookup_item'
     }
 
