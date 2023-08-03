@@ -443,8 +443,8 @@ class Item extends AbsrtactItem {
         this.field_defs = [];
         for (var i = 0; i < fields.length; i++) {
             field_def = []
-            for (var j = 0; j < consts.field_attr.length; j++) {
-                attr = consts.field_attr[j];
+            for (var j = 0; j < field_attr.length; j++) {
+                attr = field_attr[j];
                 if (attr.charAt(0) === '_') {
                     attr = attr.substr(1);
                 }
@@ -458,7 +458,7 @@ class Item extends AbsrtactItem {
                         break;
                     case 'field_type':
                         field_type = fields[i]['field_type']
-                        val = consts.field_type_names.indexOf(field_type);
+                        val = field_type_names.indexOf(field_type);
                         if (val < 1) {
                             val = 1;
                         }
@@ -471,8 +471,15 @@ class Item extends AbsrtactItem {
                         break;
                     case 'lookup_item':
                         if (val) {
-                            lookup_item = val;
+                            //~ lookup_item = val;
                             val = val.ID
+                        }
+                        break;
+                    case 'field_interface':
+                        val = {
+                            do_not_sanitize: false,
+                            field_mask: "",
+                            textarea: false
                         }
                         break;
                 }
@@ -1687,6 +1694,9 @@ class Item extends AbsrtactItem {
                         dataset = this.change_log.dataset;
                         fields = this.change_log.fields;
                     }
+                    else if (this.virtual_table) {
+                        records = [];
+                    }
                 }
                 if (dataset !== undefined) {
                     this._do_before_open(options)
@@ -2185,6 +2195,7 @@ class Item extends AbsrtactItem {
             prev_state = this.item_state;
             this.item_state = consts.STATE_BROWSE;
             this.skip(this._old_row, false);
+            this._modified = false;
             if (prev_state === consts.STATE_EDIT) {
                 this._restore_modified(this._modified_buffer);
             }
@@ -2526,7 +2537,12 @@ class Item extends AbsrtactItem {
     }
 
     get virtual_table() {
-        return this._virtual_table;
+        if (this.master) {
+            return task.item_by_ID(this.prototype_ID).virtual_table;
+        }
+        else {
+            return this._virtual_table;
+        }
     }
 
     get paginate() {

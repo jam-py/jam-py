@@ -345,6 +345,11 @@ class Field {
                 this.filter.owner.on_filter_changed.call(this.filter.owner, this.filter);
             }
         }
+        else if (this.report) {
+            if (this.report.on_param_changed) {
+                this.owner.on_param_changed.call(this.owner, this, lookup_item);
+            }
+        }
     }
 
     _check_system_field_value(value) {

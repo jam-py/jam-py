@@ -494,9 +494,17 @@ function Events1() { // app_builder
 				resize_elements(task);
 			}
 		}
+		if (!item.master && item.owner.on_view_form_created) {
+			item.owner.on_view_form_created(item);
+		}
+	
+		if (item.on_view_form_created) {
+			item.on_view_form_created(item);
+		}
 		open_item(item);
 		create_print_btns(item);
 		translate_btns(item.view_form.find('.form-footer'));
+		return true;
 	}
 	
 	function on_view_form_shown(item) {

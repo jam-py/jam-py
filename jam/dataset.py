@@ -1948,6 +1948,8 @@ class MasterDetailDataset(MasterDataSet):
                         dataset = self.change_log.dataset
                         fields = self.change_log.fields
                         expanded = self.change_log.expanded
+                    elif self.virtual_table:
+                        records = []
                     elif self._is_delta:
                         self.change_log = None
                         dataset = []

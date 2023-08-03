@@ -494,25 +494,32 @@ class DBTable {
                 }
             }
             copy.open({fields: fields, limit: limit}, function() {
-                var dict = {}, sel = [];
-                for (i = 0; i < self.item.selections.length; i++) {
-                    dict[self.item.selections[i]] = true;
+                let dict = {};
+                if (value) {
+                    for (i = 0; i < self.item.selections.length; i++) {
+                        dict[self.item.selections[i]] = true;
+                    }
+                    copy.each(function(c) {
+                        if (!dict[c._primary_key_field.value]) {
+                            self.item.selections.add(c._primary_key_field.value);
+                        }
+                    });
                 }
-                self.item.selections.length = 0;
-                copy.each(function(c) {
-                    if (value) {
+                else {
+                    copy.each(function(c) {
                         dict[c._primary_key_field.value] = true;
+                    });
+                    let selections = []
+                    for (i = 0; i < self.item.selections.length; i++) {
+                        let sel = self.item.selections[i];
+                        if (!dict[sel]) {
+                            selections.push(sel);
+                        }
                     }
-                    else {
-                        delete dict[c._primary_key_field.value];
-                    }
-                });
-                for (var id in dict) {
-                    sel.push(parseInt(id, 10))
+                    self.item.selections = selections;
                 }
-                self.item.selections = sel;
                 self.$table.find('td input.multi-select').prop('checked', value);
-                self.$element.find('input.multi-select-checkbox').prop('checked',
+                self.$element.find('input.multi-select-header').prop('checked',
                     self.selections_get_all_selected());
                 self.selections_update_selected();
             })
@@ -1756,12 +1763,12 @@ class DBTable {
                 if (field.data_type === consts.CURRENCY) {
                     value = task.round(value, task.locale.FRAC_DIGITS);//.toFixed(task.locale.FRAC_DIGITS);
                 }
-                new_text = this.item.on_field_get_summary.call(this.item, field, text);
+                new_text = this.item.on_field_get_summary.call(this.item, field, value);
             }
             if (!new_text) {
                 new_text = text;
             }
-            this.$foot.find('div.' + field_name).text(new_text);
+            this.$foot.find('div.' + field_name).html(new_text);
         }
 
     }
