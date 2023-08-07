@@ -64,7 +64,7 @@ class DBAbstractInput {
         else {
             if (field.lookup_data_type === consts.BOOLEAN) {
                 this.$container = $('<div class="mb-2 row">' +
-                    '<div class="col-' + this.label_size + '">' +
+                    '<div class="overflow-hidden col-' + this.label_size + '">' +
                         label +
                     '</div>' +
                     '<div class="col-' + (12 -this.label_size) + '">' +
@@ -74,7 +74,7 @@ class DBAbstractInput {
             }
             else {
                 this.$container = $('<div class="mb-2 row">' +
-                    '<div class="col-md-' + this.label_size + '">' +
+                    '<div class="overflow-hidden col-md-' + this.label_size + '">' +
                         label +
                     '</div>' +
                     '<div class="col-md-' + (12 -this.label_size) + '">' +

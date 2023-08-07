@@ -589,6 +589,7 @@ class AbstractServerTask(AbstrTask):
                         self.execute_query(cursor, query)
 
     def execute(self, query, params=None, connection=None, db=None):
+        # ~ print (query, params)
         error = None
         con = connection
         if not connection:

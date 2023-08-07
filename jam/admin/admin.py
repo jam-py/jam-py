@@ -206,12 +206,14 @@ def recreate_table(delta, old_fields, new_fields, comp=None, fk_delta=None):
         cursor.execute('DROP TABLE IF EXISTS "%s"' % table_name)
         cursor.execute('ALTER TABLE Temp RENAME TO "%s"' % table_name)
         cursor.execute('PRAGMA foreign_keys=on')
+        connection.commit()
         raise
     cursor.execute('DROP TABLE Temp')
     cursor.execute('PRAGMA foreign_keys=on')
     ind_sql = create_indices_sql()
     for sql in ind_sql:
         cursor.execute(sql)
+    connection.commit()
     return result
 
 def change_item_query(delta, old_fields, new_fields):
