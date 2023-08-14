@@ -1440,7 +1440,7 @@ def server_update_details(item, item_id, dest_list):
         except:
             pass
         return i_list
-        
+
     def do_on_apply(item, delta, params, connection):
         for d in delta:
             if d.rec_deleted():
@@ -1453,7 +1453,10 @@ def server_update_details(item, item_id, dest_list):
     items.set_where(parent=item_id)
     items.open()
     while not items.eof():
-        cur_row = [row for row in dest_list if row[0] == items.table_id.value and row[1] == items.f_master_field.value]
+        if items.f_master_field.value:
+            cur_row = [row for row in dest_list if row[0] == items.table_id.value and row[2] == items.f_master_field.value]
+        else:
+            cur_row = [row for row in dest_list if row[0] == items.table_id.value]
         if len(cur_row) == 1:
             dest_list.remove(cur_row[0])
             items.next()
@@ -1464,16 +1467,15 @@ def server_update_details(item, item_id, dest_list):
     item = item.copy(handlers=False)
     item.set_where(id=item_id)
     item.open()
-    for row in detail_list:
+    for row in dest_list:
         table_id = row[0]
-        master_field = row[1]
+        master_field = row[2]
         name, obj_name, table_name = get_table_info(table_id)
         items.append()
         items.task_id.value = item.task_id.value
         items.type_id.value = consts.DETAIL_TYPE
         items.table_id.value = table_id
         items.f_master_field.value = master_field
-        # items.f_master_applies.value = True
         items.parent.value = item.id.value
         items.f_name.value = name
         items.f_item_name.value = obj_name
@@ -1496,13 +1498,14 @@ def server_update_details(item, item_id, dest_list):
             create_detail_index(items.task, table_id, master_field)
         except Exception as e:
             item.log.exception(error_message(e))
+    items.apply()
     set_server_modified(item.task)
 
     items.set_order_by(['f_index'])
     items.set_where(parent=item_id)
     items.open()
     for it in items:
-        cur_row = [i for i, row in enumerate(detail_list) if row == items.table_id.value]
+        cur_row = [i for i, row in enumerate(detail_list) if row[0] == items.table_id.value]
         if len(cur_row) == 1:
             it.edit()
             it.f_index.value = cur_row[0]

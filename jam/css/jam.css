@@ -466,7 +466,7 @@ form.input-form {
 .consistent-height .tab-content > .tab-pane {
     display: block;
     visibility: hidden;
-    margin-right: -100%;
+    margin-inline-end: -100%;
     width: 100%;
 }
 

@@ -797,17 +797,22 @@ class Task extends AbsrtactItem {
     }
 
     _focusable_elements($element, inputs_only) {
-        let tags;
-        if (inputs_only) {
-            tags = ['input', 'textarea', 'select'];
+        let el = $element.get(0),
+            tags;
+        if (el) {
+            if (inputs_only) {
+                tags = ['input', 'textarea', 'select'];
+            }
+            else {
+                tags = ['a', 'button', 'input', 'textarea', 'select', 'details', '[tabindex]', '[contenteditable="true"]'];
+            }
+            const focusables = tags.map(selector => selector + ':not([tabindex^="-"]:not(hidden))').join(',');
+            return [...el.querySelectorAll(focusables)
+                ].filter(el => el.offsetParent !== null)
         }
         else {
-            tags = ['a', 'button', 'input', 'textarea', 'select', 'details', '[tabindex]', '[contenteditable="true"]'];
+            return [];
         }
-        //~ const focusables = tags.map(selector => `${selector}:not([tabindex^="-"]:not(hidden))`).join(',');
-        const focusables = tags.map(selector => selector + ':not([tabindex^="-"]:not(hidden))').join(',');
-        return [...$element.get(0).querySelectorAll(focusables)
-            ].filter(el => el.offsetParent !== null)
     }
 
     _focus_element($element) {

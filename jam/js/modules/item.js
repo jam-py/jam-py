@@ -3599,47 +3599,40 @@ class Item extends AbsrtactItem {
 
     create_detail_table(container, options) {
         var self = this,
-            i,
-            detail,
-            detail_container,
-            content,
             details = this.view_options.view_details,
-            after_scroll = this.on_after_scroll,
-            scroll_timeout,
-            tab_changed = function(index) {
-                var table_options = {
-                    editable_fields: [],
-                    multiselect: false,
-                    height: options.height
-                }
-                if (details.length > 1) {
-                    table_options.height -= 38;
-                }
+            tab_changed = function(tab_index) {
+                let index = +tab_index.replace('tab', '');
                 if (self._visible_detail) {
                     self._visible_detail.close();
                 }
                 self._visible_detail = self.find(details[index]);
-                self._visible_detail.create_table(detail_container, table_options);
+                self._visible_detail.set_order_by(self._visible_detail.view_options.default_order);
                 self._visible_detail.open(true);
-                detail_container.show();
             };
         if (details && details.length && container && container.length) {
-            detail_container = container;
+            let i,
+                detail_container = container;
             if (details.length > 1) {
                 this.task.init_tabs(container)
             }
             for (i = 0; i < details.length; i++) {
-                detail = this.find(details[i]);
+                let detail = this.find(details[i]),
+                    detail_container = container,
+                    height_delta = 0;
                 if (details.length > 1) {
-                    content = task.add_tab(container, detail.item_caption, {tab_id: i, on_click: tab_changed});
-                    if (i === 0) {
-                        detail_container = content;
-                    }
-                    else {
-                        content.remove();
-                    }
+                    detail_container = task.add_tab(container, detail.item_caption,
+                        {tab_id: 'tab' + i, on_click: tab_changed});
+                    height_delta = 38;
                 }
+                detail.create_table(detail_container,
+                    {
+                        editable_fields: [],
+                        multiselect: false,
+                        height: options.height - height_delta
+                    }
+                );
             }
+            let scroll_timeout;
             this._on_after_scroll_internal = function() {
                 if (self.view_form) {
                     clearTimeout(scroll_timeout);
@@ -3653,7 +3646,7 @@ class Item extends AbsrtactItem {
                     );
                 }
             }
-            tab_changed(0);
+            tab_changed('tab0');
         }
     }
 
