@@ -1828,6 +1828,8 @@ class MasterDetailDataset(MasterDataSet):
                         records = log['records']
                         fields = log['fields']
                         expanded = log['expanded']
+                    elif self.virtual_table:
+                        records = []
                 if not records is None:
                     self._do_before_open(expanded, fields, where, order_by,
                         open_empty, params, offset, limit, funcs, group_by)
