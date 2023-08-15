@@ -3120,7 +3120,9 @@ function Events10() { // app_builder.catalogs.sys_tasks
 	function on_edit_form_created(item) {
 		update_db_type(item, item.f_db_type.value);
 	}
-	
+	function on_edit_form_shown(item) {
+	    $('input.f_password').prop("type", "password");  
+	}
 	function on_field_changed(field, lookup_item) {
 		var item = field.owner,
 			res,
