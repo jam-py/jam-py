@@ -154,7 +154,7 @@ class DBTable {
     }
 
     resize() {
-        if (this.$container.width() === 0 ||
+        if (this.column_resizing || this.$container.width() === 0 ||
             (this.cur_width === this.$container.width() &&
             this.cur_height === this.$container.height())) {
                 return;
@@ -839,7 +839,17 @@ class DBTable {
             $doc.off("mousemove.table-title");
             $doc.off("mouseup.table-title");
 
-            change_field_width($th, delta);
+            self.column_resizing = true;
+            try {
+                change_field_width($th, delta);
+                self.update_ellipse_btn(self.$table);
+            }
+            finally {
+                setTimeout(
+                    function() {
+                        self.column_resizing = false
+                    }, 100);
+            }
 
             mouseX = undefined;
             $selection.remove()

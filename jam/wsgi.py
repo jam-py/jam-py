@@ -216,7 +216,7 @@ class App(object):
         else:
             self.__is_locked -= 1
 
-    @property
+    @cached_property
     def production(self):
         return os.path.exists(os.path.join(self.work_dir, 'builder.html'))
 
@@ -671,6 +671,8 @@ class App(object):
                     data = to_str(data, 'utf-8')
                 method, task_id, item_id, params, modification = json.loads(data)
                 if task_id == 0:
+                    if self.production:
+                        raise Exception('Server is in production mode.')
                     task = self.admin
                 else:
                     task = self.task

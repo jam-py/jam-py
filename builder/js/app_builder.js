@@ -6355,16 +6355,15 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	
 	function update_default_value(item, field) {
 		if (item.edit_form && item.f_default_value) {
-			item.edit_form.find('input.f_default_value').width('55%');
 			if (item.f_data_type.value === task.consts.DATE ||
 				item.f_data_type.value === task.consts.DATETIME ||
 				item.f_data_type.value === task.consts.BOOLEAN || item.f_lookup_values.value) {
-				item.edit_form.find('input.f_default_value').closest('.control-group.input-container').hide();
-				item.edit_form.find('input.f_default_lookup_value').closest('.control-group.input-container').show();
+				item.edit_form.find('input.f_default_value').closest('div.row').hide();
+				item.edit_form.find('input.f_default_lookup_value').closest('div.row').show();
 			}
 			else {
-				item.edit_form.find('input.f_default_value').closest('.control-group.input-container').show();
-				item.edit_form.find('input.f_default_lookup_value').closest('.control-group.input-container').hide();
+				item.edit_form.find('input.f_default_value').closest('div.row').show();
+				item.edit_form.find('input.f_default_lookup_value').closest('div.row').hide();
 			}
 	
 			if (item.f_data_type.value === task.consts.DATE) {
@@ -6390,9 +6389,6 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 					if ([task.consts.TEXT, task.consts.FILE, task.consts.IMAGE].includes(item.f_data_type.value)) {
 						item.f_default_value.value = '';
 					}
-					// else if (item.f_object.value || item.f_lookup_values.value) {
-					// 	item.f_default_value.value = '0';
-					// }
 				}
 			}
 			let default_read_only = item.f_object.value || !item.f_data_type.value || item.f_master_field.value;
