@@ -27,20 +27,6 @@ function Events1() { // demo
 	
 		$('#container').show();
 	
-		// let menu = [ 
-		//	 ['First',  [task.invoices, task.customers]],
-		//	 {'Second': [task.catalogs, '', task.reports]},
-		//	 {Third: [task.tracks, {Params: function() {alert('params clicked')}}]},
-		//	 {Fourth: [task.task.analytics, {'Artists list': [task.artists]}]},
-		//	 task.reports,
-		//	 {Params: function() {alert('params clicked')}},
-		// ];
-		// task.create_menu($("#menu"), $("#content"), {
-		//	 custom_menu: menu,
-		//	 splash_screen: '<h1 class="text-center">Jam.py Demo Application</h1>',
-		//	 view_first: true
-		// });
-	
 		task.create_menu($("#menu"), $("#content"), {
 			splash_screen: '<h1 class="text-center">Jam.py Demo Application</h1>',
 			view_first: true
@@ -229,26 +215,40 @@ function Events1() { // demo
 	
 	function on_filter_form_created(item) {
 		item.filter_options.title = item.item_caption + ' - filters';
-		item.create_filter_inputs(item.filter_form.find(".edit-body"));
 		item.filter_form.find("#cancel-btn").on('click.task', function() {
-			item.close_filter_form(); 
+			item.close_filter_form();
 		});
-		item.filter_form.find("#ok-btn").on('click.task', function() { 
+		item.filter_form.find("#ok-btn").on('click.task', function() {
 			item.set_order_by(item.view_options.default_order);
-			item.apply_filters(item._search_params); 
+			item.apply_filters(item._search_params);
 		});
-		translate_btns(item.filter_form.find('.form-footer'));
+		if (!item.master && item.owner.on_filter_form_created) {
+			item.owner.on_filter_form_created(item);
+		}
+		if (item.on_filter_form_created) {
+			item.on_filter_form_created(item);
+		}
+		item.create_filter_inputs(item.filter_form.find(".edit-body"));	
+		translate_btns(item.filter_form.find('.form-footer'));	
+		return true;
 	}
 	
 	function on_param_form_created(item) {
-		item.create_param_inputs(item.param_form.find(".edit-body"));
 		item.param_form.find("#cancel-btn").on('click.task', function() { 
 			item.close_param_form();
 		});
 		item.param_form.find("#ok-btn").on('click.task', function() { 
 			item.process_report();
 		});
-		translate_btns(item.param_form.find('.form-footer'));
+		if (item.owner.on_param_form_created) {
+			item.owner.on_param_form_created(item);
+		}
+		if (item.on_param_form_created) {
+			item.on_param_form_created(item);
+		}
+		item.create_param_inputs(item.param_form.find(".edit-body"));	
+		translate_btns(item.filter_form.find('.form-footer'));
+		return true;
 	}
 	
 	function on_before_print_report(report) {
@@ -510,18 +510,15 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function calc_invoice(item) {
-		let clone = item.invoice_table.clone(),
-			subtotal = 0,
-			tax = 0,
-			total = 0;
+		let clone = item.invoice_table.clone();
+		item.subtotal.value = 0;
+		item.tax.value = 0;
+		item.total.value = 0;
 		clone.each(function(c) {
-			subtotal += c.amount.value;
-			tax += c.tax.value;
-			total += c.total.value;
+			item.subtotal.value += c.amount.value;
+			item.tax.value += c.tax.value;
+			item.total.value += c.total.value;
 		});
-		item.subtotal.value = subtotal;
-		item.tax.value = tax;
-		item.total.value = total;
 	}
 	
 	function on_detail_changed(item, detail) {

@@ -518,3 +518,7 @@ form.input-form {
     opacity: 0.3;
     filter: alpha(opacity=30);
 }
+
+.error-modal-border {
+    border: 1px solid red;
+}
