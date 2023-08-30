@@ -218,10 +218,10 @@ class ServerDataset(Dataset):
 
         dataset = None
         if self.on_after_open:
-            self = init_open_dataset(query_data, dataset, result)
+            self.init_open_dataset(query_data, dataset, result)
             self.on_after_open(self, query_data, params, connection, dataset)
         if self.task.on_after_open:
-            self = init_open_dataset(query_data, dataset, result)
+            self.init_open_dataset(query_data, dataset, result)
             self.task.on_after_open(self, query_data, params, connection, dataset)
         if dataset:
             result = dataset._dataset, ''

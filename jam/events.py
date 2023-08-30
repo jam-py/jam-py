@@ -146,8 +146,8 @@ reports_server_events = \
 
 detail_server_events = \
     {
-        'on_before_open': 'item, query_data, params',
-        'on_after_open': 'item, query_data, params, ds',
+        'on_before_open': 'item, query_data, params, connection',
+        'on_after_open': 'item, query_data, params, connection, ds',
     }
 
 item_server_events = detail_server_events
