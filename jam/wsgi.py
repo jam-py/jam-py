@@ -305,8 +305,10 @@ class App(object):
                 'title': self.task.item_name,
                 'error': '',
                 'form_title': consts.lang['log_in'],
-                'login': consts.lang['login'],
-                'password': consts.lang['password']
+                'login_text': consts.lang['login'],
+                'password_text': consts.lang['password'],
+                'login': '',
+                'password': ''
             }
             login_path = os.path.join(self.work_dir, 'login.html')
             if not os.path.exists(login_path):
@@ -316,7 +318,10 @@ class App(object):
                 if response:
                     return response
                 else:
+                    form = request.form.to_dict()
                     login_params['error'] = 'error-modal-border'
+                    login_params['login'] = form['login']
+                    login_params['password'] = form['password']
                     return self.serve_page(login_path, login_params)
             else:
                 return self.serve_page(login_path, login_params)
@@ -345,8 +350,10 @@ class App(object):
                 'title': 'Jam.py Application Builder',
                 'error': '',
                 'form_title': consts.lang['log_in'],
-                'login': consts.lang['login'],
-                'password': consts.lang['password']
+                'login_text': consts.lang['login'],
+                'password_text': consts.lang['password'],
+                'login': '',
+                'password': ''
             }
             login_path = os.path.join(self.jam_dir, 'html', 'login.html')
             if request.method == 'POST':
@@ -354,7 +361,10 @@ class App(object):
                 if response:
                     return response
                 else:
+                    form = request.form.to_dict()
                     login_params['error'] = 'error-modal-border'
+                    login_params['login'] = form['login']
+                    login_params['password'] = form['password']
                     return self.serve_page(login_path, login_params)
             else:
                 return self.serve_page(login_path, login_params)

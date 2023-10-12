@@ -1,7 +1,7 @@
 import consts from "./consts.js";
 import AbsrtactItem from "./abstr_item.js";
 import Group from "./group.js";
-import Item from "./item.js";
+import {Item, Detail} from "./item.js";
 import ModalForms from "./modals.js";
 import Report from "./report.js";
 
@@ -67,7 +67,8 @@ class Task extends AbsrtactItem {
         this.constructors = {
             task: Task,
             group: Group,
-            item: Item
+            item: Item,
+            detail: Detail
         };
         let self = this;
         this.detect_device();

@@ -489,7 +489,7 @@ class DBField(object):
                 elif self.data_type == consts.FLOAT:
                     result = float(self.default_value)
                 elif self.data_type == consts.CURRENCY:
-                    result = consts.round(value, consts.FRAC_DIGITS)
+                    result = consts.round(self.default_value, consts.FRAC_DIGITS)
                 elif self.data_type == consts.DATE:
                     if self.default_value == 'current date':
                         result = datetime.date.today()

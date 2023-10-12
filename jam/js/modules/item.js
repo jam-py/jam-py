@@ -4499,3 +4499,4 @@ class Detail extends Item {
 }
 
 export default Item
+export {Item, Detail}
