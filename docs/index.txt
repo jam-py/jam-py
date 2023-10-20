@@ -5,11 +5,11 @@ Jam.py documentation
 How the documentation is organized
 ==================================
 
-Here is an overview of how the documentation is organized, that 
-will help you know where to look for certain things:
+Here is an overview of how the documentation is organized, to
+help you find out where to look for specific things:
 
 :doc:`Getting started <intro/index>` topics describe how to install the framework, create 
-a new project, take you through a series of steps to develop a Web application and explains how to deploy it. 
+a new project, develop a web application step-by-step, and deploy it.
 
 :doc:`Programming guides<programming/index>`
 discuss key topics and concepts at a fairly high level and provide useful 
@@ -20,22 +20,22 @@ the Application Builder used for application development and database
 administration.
 
 :doc:`Class reference guides <refs/index>` contain technical reference for 
-Jam.py classes APIs
+Jam.py classes APIs.
 
 :doc:`FAQ <faq/index>` topics covers most frequently asked questions.
 
 :doc:`How to <how_to/index>` contains code examples that can be useful to quickly
-accomplish common tasks
+accomplish common tasks.
 
 Or you can go to the
-:doc:`table of contents <contents>`
+:doc:`table of contents <contents>`.
 
 Video Tutorials
 ===============
 
-If you are new to Jam.py, we highly recommend that you watch these video tutorials
+If you are new to Jam.py, we highly recommend that you watch these video tutorials.
 
-It is recommended to watch these videos with a resolution of 1080p
+It is recommended to watch these videos with a resolution of 1080p.
 
 
 Tutorial 1 - `Working with files and images`_ 
