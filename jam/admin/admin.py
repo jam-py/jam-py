@@ -191,6 +191,7 @@ def recreate_table(delta, old_fields, new_fields, comp=None, fk_delta=None):
     table_name = delta.f_table_name.value
     result = []
     cursor.execute('PRAGMA foreign_keys=off')
+    print('ALTER TABLE "%s" RENAME TO Temp' % table_name)
     cursor.execute('ALTER TABLE "%s" RENAME TO Temp' % table_name)
     try:
         foreign_fields = get_foreign_fields()

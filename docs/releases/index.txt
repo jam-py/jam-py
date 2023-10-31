@@ -8,7 +8,6 @@ Release notes
    version_1
    version_2
    version_3
-   version 4/index
+   version_4/index
    version 5/index
-   version 7/index
    roadmap

@@ -35,12 +35,12 @@ You can use Jam.py with existing database, that is supported by the framework.
 * After saving the imported item, go to the project page and check how it is 
   displayed.
    
-* After importing serveral tables, you can specify lookup fields (in DB manual mode).     
+* After importing several tables, you can specify lookup fields (in DB manual mode).     
 
 
 .. note::
 
-    Please, do be very carefull when performing this operations.
+    Please, do be very careful when performing this operations.
     
     When DB manual mode is removed any changes to the item will be reflected in
     the corresponding DB table. If you delete the item, the table will be dropped

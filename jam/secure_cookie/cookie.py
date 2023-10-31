@@ -107,8 +107,10 @@ from hmac import new as hmac
 from numbers import Number
 from time import time
 
-from werkzeug.urls import url_quote_plus
-from werkzeug.urls import url_unquote_plus
+# ~ from werkzeug.urls import url_quote_plus
+# ~ from werkzeug.urls import url_unquote_plus
+from urllib.parse import quote_plus as url_quote_plus
+from urllib.parse import unquote_plus as url_unquote_plus
 
 from ._compat import to_bytes
 from ._compat import to_native

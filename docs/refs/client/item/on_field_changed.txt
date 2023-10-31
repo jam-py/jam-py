@@ -25,7 +25,7 @@ The ``lookup_item`` parameter is not ``undefined`` when
 the field is a 
 :doc:`lookup field </programming/data/lookup_fields>` 
 and a change has occured 
-when a used selected a record from a lookup item dataset.
+when a user selected a record from a lookup item dataset.
 
 Example
 =======

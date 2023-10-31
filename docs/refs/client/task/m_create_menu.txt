@@ -42,6 +42,8 @@ The following parameters could be passed to the method:
   
 * ``options`` - an object that can have the following attributes:
 
+  * ``custom_menu`` - use this option to create a custom menu, see below for details
+
   * ``view_first`` - if it is true the view form of the first item in the menu will
     be displayed after menu is created, the default value is ``false``
   
@@ -52,8 +54,28 @@ The following parameters could be passed to the method:
 
   * ``splash_screen`` - an html that will be displayed in the forms_container when
     all tabs are closed
-  
-  
+    
+Custom menu option
+------------------
+
+To create your own custom menu you must set a custom_menu option.
+
+This option is a list of menu objects, each object can be:
+
+* Jam.py item or item group
+
+* array: the first element of the array is the name of the menu item, and 
+  the second is the list of menu objects
+
+* object with one attribute: the key of the attribute is the name of menu item 
+  and the value - a list of menu objects
+
+* object with one attribute: the key of the attribute is the name of menu item 
+  and the value - function to be executed when the menu item is clicked
+    
+To add a separator, an empty string ('') can be added to the list of menu objects
+
+
 Example
 =======
 
@@ -64,5 +86,22 @@ Example
         view_first: true
     });
 
+An example with custom menu:
+
+.. code-block:: js
+
+    let menu = [
+            ['First',  [task.invoices, task.customers]],
+            {'Second': [task.catalogs, '', task.reports]},
+            {Third: [task.tracks, {Params: function() {alert('params clicked')}}]},
+            {Fourth: [task.task.analytics, {'Artists list': [task.artists]}]},
+            task.reports,
+            {Params: function() {alert('params clicked')}},
+        ];
+    task.create_menu($("#menu"), $("#content"), {
+        custom_menu: menu,
+        splash_screen: '<h1 class="text-center">Jam.py Demo Application</h1>',
+        view_first: true
+    });
 
 

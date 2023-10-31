@@ -24,7 +24,7 @@ On the General tab, you can specify general parameters of the project:
   :doc:`Roles </admin/roles>`
   ). 
   
-* **Debugging** - if this checkbox is checked, the Werkzeug libarary bebugger will
+* **Debugging** - if this checkbox is checked, the Werkzeug library debugger will
   be invoked when an error on the server occurs.
 
 * **Language** - use it to open Language Dialog. See 
@@ -72,7 +72,7 @@ On the General tab, you can specify general parameters of the project:
   :doc:`importing project metadata <metadata_file>`
   , 
   otherwise it waits for 5 minutes or until all previous request 
-  to the serverin the current process will be processed.
+  to the server in the current process will be processed.
   
 * **Delete reports after (hours)** - if a value is specified the generated 
   reports that are located in the static/reports folder will be deleted after
@@ -87,7 +87,7 @@ On the General tab, you can specify general parameters of the project:
 
 .. note::
    When **Connection pool size** or **Persistent connection** parameters are 
-   changed, the server applicaton must be restarted for changes to take effect.
+   changed, the server application must be restarted for changes to take effect.
 
 
 Interface tab

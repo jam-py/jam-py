@@ -17,7 +17,7 @@ To run the Application builder go to a Web browser and type in the browser addre
     
 On the left side of the Application builder page there is a panel that contains the 
 project tree. When you select any node of the project tree, as a rule, its 
-content will be opend in the central part of the page, and the bottom and right 
+content will be opened in the central part of the page, and the bottom and right 
 side of the page may have buttons that allow you to modify the content.
 
 To see the changes made in Application builder go to the Project page and reload it. 

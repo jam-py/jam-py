@@ -3,9 +3,10 @@ New catalog
 ===========
 
 Let's go back to the Application builder page and create a "Customers" catalog.
+A catalog corresponds to a new table in the database.
 
-Now we select the "Catalogs" group in the project tree and and click the **New** 
-button at the bottom right corner of the page
+To do this, select the "Catalogs" group in the project tree and click the **New**
+button on the bottom right corner of the page
 
 .. image:: /intro/_images/catalogs.png
 	:align: center
@@ -13,38 +14,49 @@ button at the bottom right corner of the page
 
 In the 
 :doc:`Item Editor </admin/items/item_editor_dialog>`
-dialog, fill in the caption and name of the new catalog 
+dialog that appears, fill in the caption and name of the new catalog. The caption
+is the name that will be displayed to users, and the name is the variable name that
+will be used in code (Python or JS) to refer to this catalog. The name must be a
+valid Python identifier.
 
 .. image:: /intro/_images/customers_new.png
 	:align: center
-	:alt: New customes catalog
+	:alt: New customers catalog
 
-and click the **New** button in the bottom right corner of the dialog to add a new field.
-The 
+Then, click the **New** button on the bottom right corner of the dialog to add a
+new field. The
 :doc:`Field Editor </admin/items/field_editor_dialog>`
 dialog appears. Type the caption and name of the 
-"Firstname" field, select its type and click **OK** button.
+"Firstname" field, select its type (here ``TEXT`` with 30 characters)
+and click the **OK** button.
 
 .. image:: /intro/_images/firstname.png
 	:align: center
 	:alt: New journal tasks
 
-Similarly, we added the "Lastname" and "Phone" fields. When adding the "Lastname" 
-field, we checked the **Required** attribute. 
+Similarly, add the "Lastname" and "Phone" fields. When adding the "Lastname"
+field, check the **Required** attribute. This requires that the field is set
+when creating a new item.
 
 .. image:: /intro/_images/customers_fields.png
 	:align: center
 	:alt: Customers fields
 	
 Now, to save the changes, click the **OK** button. When saving, the Application 
-builder created the CRM_CUSTOMERS table in the ctm.sqlite database:
+builder created the ``CRM_CUSTOMERS`` table in the ``ctm.sqlite`` database:
 
 .. image:: /intro/_images/customer_sql.png
 	:align: left
 	:alt: Table created
 	
-Go to the Project page, refresh it and click the **New** 
-button and then **OK** button:
+Go to the Project page and make sure it is refreshed
+
+.. code-block:: console
+
+    127.0.0.1:8080
+
+Then, click the **New** button to create a new customer.
+Fill in the dialog, then click the **OK** button:
 
 .. image:: /intro/_images/customers_refresh.png
 	:align: center

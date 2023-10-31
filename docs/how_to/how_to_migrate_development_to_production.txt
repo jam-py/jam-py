@@ -13,7 +13,7 @@ The process of importing metadata depends on the type of project database.
 New project migration
 =====================
 
-* Create an empty database in the production enviroment
+* Create an empty database in the production envirnoment
 
 * Run *jam-project.py* script to create a new project
 
@@ -44,7 +44,7 @@ New project migration
 .. note::
 
     For projects with **SQLite** database you can simply copy the development 
-    project folder to the production enviroment.
+    project folder to the production environment.
 
 Existing project migration
 ==========================

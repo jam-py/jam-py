@@ -18,7 +18,7 @@ By clicking on these buttons the Code Editor for the client or server
 module of the item will be opened. 
 (See :doc:`Working with modules </programming/modules>`)
 
-To the left of the **Edior** there is an information pane with four tabs: 
+To the left of the **Editor** there is an information pane with four tabs: 
 
 * **Module** - this tab displays all events and functions defined in the editor, 
   double-click on one of them to move the cursor to the proper function. 

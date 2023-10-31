@@ -12,14 +12,14 @@ You can do it the following way:
 * Set DB manual mode and specify the database connection attributes.
 
 * Import tables information as described in the
-  :doc:`Intergation with existing database </admin/intergation_with_existing_database>`
+  :doc:`Integration with existing database </admin/intergation_with_existing_database>`
   
-* Select project node in the task tree, click **Database** button restore previos values.
+* Select project node in the task tree, click **Database** button restore previous values.
 
 Then in the server module of the new items you must add code to read and write 
 the data to the database
 
-Below is the code for MySQL database (auto increameted primary field):
+Below is the code for MySQL database (auto incremented primary field):
 
 .. code-block:: py
 

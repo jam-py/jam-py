@@ -7,6 +7,7 @@ Here is a useful code that you can use in your applications:
 .. toctree::
     :maxdepth: 2
 
+    how_to_install_on_windows
     how_to_migrate_development_to_production
     how_to_migrate_to_another_database
     deploy/index
@@ -15,6 +16,7 @@ Here is a useful code that you can use in your applications:
     how_to_add_a_button_to_a_form
     how_to_execute_script_from_client
     how_to_change_style_and_attributes_of_elements
+    how_to_create_a_custom_menu
     to_append_a_record_without_view_form
     how_to_prohibit_changing_record
     how_to_link_two_tables

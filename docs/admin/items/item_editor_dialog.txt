@@ -80,7 +80,7 @@ In the bottom-right corner of the Dialog form there are two buttons:
 * **OK** - click this button to save change you made. If the **Virtual table** 
   checkbox is not checked and **DB manual update** parameter in the project 
   :doc:`Database Dialog</admin/project/database>` is not set, the application
-  will generate and execute SQL quesry to update the item table in the project
+  will generate and execute SQL query to update the item table in the project
   Database (changes made to the fields will be applied to the table). 
 
 * **Cancel** - click this buttons to cancel the operation.

@@ -53,5 +53,5 @@ method
 .. note::
 
     These changes can significantly increase the size of the database.
-    Please be carefull.
+    Please be careful.
     
