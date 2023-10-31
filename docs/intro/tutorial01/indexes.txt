@@ -3,19 +3,26 @@ Indexes
 =======
 
 Let's set the default sorting of records of the "Contacts" journal.
-To do so click the 
+To do so, click the
 :doc:`Order </admin/items/order_dialog>`
-button:
+button.
+
+By default the records are displayed in the order they were created. To change this,
+move some of the column headers from the list on the right to the list on the left
+using the **left** button, and change their priority using the **up** and **down**
+buttons (higher priority on the top).
 
 .. image:: /intro/_images/order_dlg.png
 	:align: center
 	:alt: Contacts order
 
+In the example above, we set the default sorting to be
+descending contact date.
 
-And now we create a corresponding index for the “Contacts” journal database table. 
+We can create a corresponding index for the “Contacts” journal database table.
 Click the **Indices** button to open
 :doc:`Indices Dialog </admin/items/indices_dialog>` 
-and then click the **New** button and specify the index:
+and then click the **New** button and specify the index in a similar way:
 
 .. image:: /intro/_images/index_dlg.png
 	:align: center

@@ -6,20 +6,20 @@ Install python
 ==============
 
 Jam.py requires python. If it is not installed you can get the latest 
-version of Python at https://www.python.org/download/ 
+version of Python at https://www.python.org/download/.
 
 You can use the following versions of Python with Jam.py:
 
-Python 2
+Python 2:
 
 * Python 2.7 and newer
 
-Python 3
+Python 3:
 
 * Python 3.4 and newer
 
 
-You can verify that Python is installed by typing python from your shell; 
+You can verify that Python is installed by typing ``python`` from your shell;
 you should see something like::
 
     Python 2.7.12 (default, Nov 19 2016, 06:48:10) 
@@ -27,7 +27,7 @@ you should see something like::
     Type "help", "copyright", "credits" or "license" for more information.
     >>> 
     
-If Python 2 and Python 3 are installed try to type python3::
+If Python 2 and Python 3 are installed try to type ``python3``::
 
     Python 3.5.2 (default, Nov 17 2016, 17:05:23) 
     [GCC 5.4.0 20160609] on linux
@@ -86,8 +86,8 @@ Installing an official release manually
 This will install Jam.py in your Python installation’s site-packages directory.
 
 .. note::
-	on some unix like systems you may need to switch to root or run: 
-	sudo python setup.py install
+	On some unix like systems you may need to switch to root or run:
+	``sudo python setup.py install``.
 	
 	
 Setting up a virtual environment
@@ -159,7 +159,7 @@ Common pitfalls
 
     ...\> python -m site --user-site
 
-  The output might be similar to below::
+  The output might be similar to the following::
 
     C:\Users\youruser\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.9_qbz5n2kfra8p0\LocalCache\local-packages\Python39\site-packages
 
@@ -170,7 +170,7 @@ Common pitfalls
     ...\> dir C:\Users\youruser\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.9_qbz5n2kfra8p0\LocalCache\local-packages\Python39\Scripts
 
 
-  The output might be similar to below::
+  The output might be similar to the following::
 
     ...\> Directory of C:\Users\yourser\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.9_qbz5n2kfra8p0\LocalCache\local-packages\Python39\Scripts
 

@@ -25,7 +25,7 @@ The following files and folders will be created in the directory::
         wsgi.py
 
 
-To start Jam.py web server run **server.py** script.
+To start the Jam.py web server, run the ``server.py`` script.
 
 
 .. code-block:: console
@@ -38,33 +38,34 @@ To start Jam.py web server run **server.py** script.
     
     .. code-block:: console
     
-        $ ./server.py 8081. 
+        $ ./server.py 8081
         
-    By default, the port is 8080. If you will specify another port, you need to 
-    use it in a browser in the next steps.
+    By default, the port is 8080. If you specify another port, you need to
+    use it in your browser in the next steps.
 
 
-Open a Web browser and go to “/builder.html” on your local domain – e.g., 
-http://127.0.0.1:8080/builder.html. You should see the select language dialog. 
-
+Open a Web browser and go to “/builder.html” on your local domain – e.g.:
 
 .. code-block:: console
 
     127.0.0.1:8080/builder.html
     
-    
-In the dialog that will appear, select the language and press OK button.
+You should see the language selection dialog. This defines the language used for the
+user interface. You can select the language from the list of default languages, or
+import your own, using the "folder" icon to the right of the input field. See the
+:doc:`Language support </admin/language_support>` page for more information.
+Select your language and press the OK button.
 
 .. image:: _images/lang.png
 	:alt: Jam.py language dialog
 
-In the New project dialog box fill in:
+Next is the new project dialog. Fill in:
 
-* **Caption** - the project name that appears to users
-* **Name** - name of project (task) that will be used in programming code to 
-  get access to the task object. Should be a short valid python identifier.
-  This name is used as a prefix when creating a table in the project database.
-* **DB type** — select database type. If database is not Sqlite, it must be 
+* **Caption** - the project name that will appear to users.
+* **Name** - the name of project (task) that will be used in the code (Python or JS)
+  to get access to the task object. This should be a short and valid python identifier.
+  This name is also used as a prefix when creating a table in the project database.
+* **DB type** - select a database type. If the database is not Sqlite, it must be
   created in advance and its attributes should be entered in the 
   corresponding form fields. 
   To see examples of Database setup, follow the :doc:`link </admin/project/database>`.
@@ -80,16 +81,16 @@ of failure 	an error message will be displayed.
 
     Please note the following requirements:
     
-    * to use **FireBird** database, the python ``fdb`` library must be installed 
-    * **PostgreSQL** requires ``psycopg2`` library 
-    * **MySQL** requires ``MySQLdb`` library
-    * **Oracle** requires ``cx_Oracle`` library     
-    * **MSSQL** requires ``pymssql`` library
-    * to generate reports **LibreOffice** must be installed
+    * To use a **FireBird** database, the python ``fdb`` library must be installed.
+    * **PostgreSQL** requires the ``psycopg2`` library.
+    * **MySQL** requires the ``MySQLdb`` library.
+    * **Oracle** requires the ``cx_Oracle`` library.
+    * **MSSQL** requires the ``pymssql`` library.
+    * To generate reports, **LibreOffice** must be installed.
     
 .. note::
 
-    For **SQLite** database, when an item field is deleted or renamed, or foreign 
+    For a **SQLite** database, when an item field is deleted or renamed, or foreign
     key is created, 
     :doc:`Application builder </admin/index>`,
     creates a new table and copies records from the old one into it.
