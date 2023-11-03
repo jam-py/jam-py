@@ -1,0 +1,55 @@
+================
+New in version 7
+================
+
+There are now permissions for fields. You can declare some fields as hidden or read only for a role.
+Hidden fields are not available on the client and couldn't be changed by the user with this role from the browser. 
+Read only fields are disabled in the browser and if changed won't be saved on the server.
+
+There won't be details as a special type. Any item can be a detail of the other if they are linked by a lookup field.
+For example, invoices can be a detail of customers because invoices has the customer lookup field whose lookup item is customers.
+This way you don't need to write the code to make an invoice_table a detail of tracks as in the current demo.
+There are calculated fields that are also based on lookup fields.
+For example, you can have a field that will display the number of sold tracks of the tracks record without writing code.
+The unlimited level of nested details is supported.
+
+Reading and writing of the data are changed.
+The on_open and on_apply events are deprecated.
+Instead of them on_before_open,  on_after_open and on_before_apply_record, on_after_apply_record events are introduced.
+
+The on_before_open event is triggered before the sql request is executed and can be used to validate the request and
+add additional filters,  on_after_open is triggered after the sql request is executed and has a dataset as a parameter 
+that can be modified before it is sent to the client.
+
+The on_before_apply_record is triggered before the sql query to save the record changes to the database table is executed
+and can be used for data validation and calculations almost in the same way as it is done on the client now.
+The on_after_apply_record is triggered after the sql query to save the record changes is executed and the primary key field is set
+and can be used to perform other additional changes to the database in the same connection.
+After the data is saved the delta is sent to the client and all changes made to it on the server are updated on the client.
+
+Changes to a record that have details are processed on the server the following way:
+First the on_before_apply_record event of the master is triggered, then
+for each detail that has been changed the on_before_apply_record event is triggered
+then that event is triggered for sub detail changes and so on.
+After that in the reverse order the on_after_apply_record events are triggered for sub details, details and master.
+That is true even if changes were made to the detail only.
+That is the changes to the document (record and its details) are saved as a hole.
+
+The code that works with database data is rewritten. For MSSQL and MYSQL alternative drivers are supported.
+The text field size can be changed for databases that have text fields with a specified length. 
+If the new size is bigger, the length of the field is changed, otherwise, the field length remains the same but 
+the app checks that the length text is less than the size value.
+
+The edit and post methods when charging a record can be omitted. They are implemented internally.  
+
+In App builder copies (clones) of items could be created.
+It is possible to move items to other groups. 
+
+The concept of Jam.py is now as follows:
+You can use Jam.py for the development of interface loaded applications.
+These applications can be developed in the same way as desktop applications, 
+regardless of the availability of code on the client (in the browser debugger).
+This is possible due to the full control over what data the user on the client can access and 
+what changes he can make to the data that can be implemented on the server.
+This control is available due to setting roles to the elements and fields of the project and
+very simple way of implementing restrictions with the server event handlers.

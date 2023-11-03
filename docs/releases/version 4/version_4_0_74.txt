@@ -1,0 +1,24 @@
+==============
+Version 4.0.74
+==============
+
+Jam.py:
+
+* Bug with 
+  :doc:`open </refs/server/item/m_open>` 
+  method, when order_by parameter is an empty list fixed
+  
+* Bug with sql generated when default order is set and fields parameter do not 
+  contain any of field of default order in the
+  :doc:`open </refs/server/item/m_open>` method fixed
+
+* The exception handling of errors occuring in the code, when inplace editor 
+  is used reworked so developer can find the reson of an error
+
+Administrator:
+
+* Tabs are now created for opened modules.
+
+Demo application:
+
+* Search for catalogs reworked.

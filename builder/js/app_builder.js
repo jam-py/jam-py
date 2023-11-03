@@ -217,7 +217,7 @@ function Events1() { // app_builder
 	
 	function resize_elements(task) {
 		var height = $(window).height() -
-			($('#task-tabs').offset().top + $('#task-tabs').outerHeight(true)) - 30;
+			($('#task-tabs').offset().top + $('#task-tabs').outerHeight(true)) - 32;
 		resize_panels(task, height);
 		resize_editor(task, height);
 		if ($('ul#task-tabs li button.active').attr('id') === 'admin') {

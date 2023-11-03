@@ -1,0 +1,15 @@
+==============
+Version 4.0.71
+==============
+
+Jam library:
+
+* Tables are now responsive
+* Fixed header columns and table columns mismatch
+* Several themes added
+
+Demo application:
+
+* Dashboard added
+* Theme selections added
+* Resize function from Task client module removed

@@ -288,7 +288,7 @@ class SecureCookie(ModificationTrackingDict):
             )
             mac.update(b"|" + result[-1])
 
-        return b"?".join([base64.b64encode(mac.digest()).strip(), b"&".join(result)])
+        return b"?".join([base64.b64encode(mac.digest()).strip(), b"&".join(result)]).decode()
 
     @classmethod
     def unserialize(cls, string, secret_key):

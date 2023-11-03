@@ -1,0 +1,38 @@
+==============
+Version 4.0.70
+==============
+
+Jam.py library:
+
+* Bug, related to last column disappearance when table content is larger than its container, fixed.
+
+* Bug, related to table footer, fixed.
+ 
+* :doc:`lookup_type </refs/client/field/at_lookup_type>` 
+  property of 
+  :doc:`Field class </refs/client/field_api>` 
+  added
+    
+* Exception is now raised when developer forgets to add a value attribute to a field,
+  when specifing a value for programmable cell.
+
+* Bug, related to date and datetime fields in when clause for SQlite database, fixed.
+
+* Administrator now shows project version / jam.py version information.
+
+Demo application:
+
+* Filter text bug in demo application fixed.
+
+* Selection of search field for catalogs in demo applcation is added.
+
+* Multiple record selection in invoices journal in demo application is added 
+  (used when delete button is clicked)
+
+* Menu in demo application is changed.
+
+* blue-theme.css file added
+
+Twitter account created: https://twitter.com/jampy_framework
+
+Jam.py Users Mailing List created: https://groups.google.com/forum/#!forum/jam-py
