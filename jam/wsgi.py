@@ -471,6 +471,8 @@ class App(object):
                         reload_task(self)
                         update_events_code(self.admin)
                         self.privileges = None
+                except:
+                    self.log.exception('wsgi.py create_post_response error')
                 finally:
                     self.__task_locked = True
                     consts.MAINTENANCE = False

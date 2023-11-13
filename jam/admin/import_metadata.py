@@ -4,8 +4,11 @@ import datetime
 import time
 import zipfile
 import tempfile
+try:
+    from distutils import dir_util
+except:
+    pass
 import shutil
-from distutils import dir_util
 import json
 import traceback
 
@@ -414,7 +417,7 @@ class MetaDataImport(object):
                     admin_name = os.path.join(self.task.work_dir, 'admin.sqlite')
                     tmp_admin_name = os.path.join(self.task.work_dir, '_admin.sqlite')
                     if self.db_module.DDL_ROLLBACK:
-                        shutil.copy2(admin_name, tmp_admin_name)
+                        shutil.copyfile(admin_name, tmp_admin_name)
                     self.show_progress(self.task.language('import_changing_admin'))
                     result, error = self.task.execute(self.adm_sql)
                     self.error = error
@@ -506,8 +509,11 @@ class MetaDataImport(object):
     def copy_files(self):
         if self.success:
             self.show_progress(self.task.language('import_copying'))
-            dir_util.copy_tree(self.tmpdir, self.task.work_dir)
-
+            try:
+                shutil.copytree(self.tmpdir, self.task.work_dir,
+                    copy_function=shutil.copyfile, dirs_exist_ok=True)
+            except:
+                dir_util.copy_tree(self.tmpdir, self.task.work_dir)
 
     def tidy_up(self):
         self.show_progress(self.task.language('import_deleteing_files'))
