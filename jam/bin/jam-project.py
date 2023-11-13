@@ -9,7 +9,7 @@ from base64 import b64encode
 
 project_dir = os.getcwd()
 jam_project_dir = os.path.join(os.path.dirname(jam.__file__), 'project')
-shutil.copytree(jam_project_dir, project_dir, dirs_exist_ok=True)
+shutil.copytree(jam_project_dir, project_dir, copy_function=shutil.copyfile, dirs_exist_ok=True)
 os.chmod(os.path.join(project_dir, 'server.py'), 0o777)
 
 dirs = ['js', 'reports', os.path.join('static', 'reports')]

@@ -5,7 +5,6 @@ import time
 import zipfile
 import tempfile
 import shutil
-from distutils import dir_util
 import json
 import traceback
 
@@ -549,12 +548,11 @@ class MetaDataImport(object):
         self.client_log = '%s<h4 class="text-info">%s</h4><div>%s</div>' % \
             (message, self.task.language('import_log'), self.client_log)
 
-
     def copy_files(self):
         if self.success:
             self.show_progress(self.task.language('import_copying'))
-            dir_util.copy_tree(self.tmpdir, self.task.work_dir)
-
+            shutil.copytree(self.tmpdir, self.task.work_dir,
+                copy_function=shutil.copyfile, dirs_exist_ok=True)
 
     def tidy_up(self):
         self.show_progress(self.task.language('import_deleteing_files'))
@@ -566,7 +564,6 @@ class MetaDataImport(object):
         except Exception as e:
             self.task.log.exception(e)
             self.show_error(e)
-
 
     def show_progress(self, string):
         self.task.log.info(string)
