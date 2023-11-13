@@ -10876,5 +10876,8 @@ textarea.form-control-lg {
     display: none !important;
   }
 }
-
+/*custom movable*/
+.jam-modal .card-header {
+	cursor: move;
+}
 /*# sourceMappingURL=bootstrap.css.map */
