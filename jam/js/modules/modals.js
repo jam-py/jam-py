@@ -127,6 +127,29 @@ class ModalForm {
         this.$modal.on('keypress.modalform', function(e) {
             e.stopPropagation();
         });
+        //custom movable start
+		var isDragging = false;
+		var modal = document.querySelector('.jam-modal');
+		var offset = { x: 0, y: 0 };
+
+		modal.addEventListener('mousedown', function (e) {
+			isDragging = true;
+			offset = {
+				x: e.clientX - modal.getBoundingClientRect().left,
+				y: e.clientY - modal.getBoundingClientRect().top
+			};
+		 });
+
+		document.addEventListener('mousemove', function (e) {
+			if(!isDragging) return;
+			modal.style.left = e.pageX - offset.x + 'px';
+			modal.style.top = e.pageY - offset.y + 'px';
+		 });
+
+		document.addEventListener('mouseup', function () {
+			isDragging = false;
+		});
+		//custom movable end
     }
 
     create_form() {
