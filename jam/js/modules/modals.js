@@ -127,29 +127,35 @@ class ModalForm {
         this.$modal.on('keypress.modalform', function(e) {
             e.stopPropagation();
         });
-        //custom movable start
-		var isDragging = false;
-		var modal = document.querySelector('.jam-modal');
-		var offset = { x: 0, y: 0 };
 
-		modal.addEventListener('mousedown', function (e) {
-			isDragging = true;
-			offset = {
-				x: e.clientX - modal.getBoundingClientRect().left,
-				y: e.clientY - modal.getBoundingClientRect().top
-			};
-		 });
 
-		document.addEventListener('mousemove', function (e) {
-			if(!isDragging) return;
-			modal.style.left = e.pageX - offset.x + 'px';
-			modal.style.top = e.pageY - offset.y + 'px';
-		 });
+        let header = this.$modal.find('.card-header').get(0);
+        if (header) {
+            let modal = this.$modal.get(0),
+                isDragging = false,
+                offset = { x: 0, y: 0 };
 
-		document.addEventListener('mouseup', function () {
-			isDragging = false;
-		});
-		//custom movable end
+            header.style.cursor = "grab";
+            header.addEventListener('mousedown', function (e) {
+                isDragging = true;
+                offset = {
+                    x: e.clientX - modal.getBoundingClientRect().left,
+                    y: e.clientY - modal.getBoundingClientRect().top
+                };
+             });
+
+            document.addEventListener('mousemove', function (e) {
+                if (!isDragging) return;
+                modal.style.left = e.pageX - offset.x + 'px';
+                modal.style.top = e.pageY - offset.y + 'px';
+                header.style.cursor = "move";
+             });
+
+            document.addEventListener('mouseup', function () {
+                isDragging = false;
+                header.style.cursor = "grab";
+            });
+        }
     }
 
     create_form() {
