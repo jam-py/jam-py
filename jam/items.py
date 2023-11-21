@@ -184,7 +184,10 @@ class ServerDataset(Dataset):
 
     def init_open_dataset(self, query_data, dataset, result):
         if not dataset:
-            dataset = self.copy(filters=False, details=False, handlers=False)
+            if self.master:
+                dataset = self.prototype.copy(filters=False, details=False, handlers=False)
+            else:
+                dataset = self.copy(filters=False, details=False, handlers=False)
             dataset.log_changes = False
             dataset.open(expanded = query_data.expanded, fields=query_data.fields, open_empty=True)
             dataset._dataset = result
@@ -214,17 +217,20 @@ class ServerDataset(Dataset):
             exec_query = self.on_before_open(self, query_data, params, connection)
 
         if exec_query != False:
-            result, error = self.execute_open(params, connection)
+            if self.virtual_table:
+                result = []
+            else:
+                result, error = self.execute_open(params, connection)
 
         dataset = None
         if self.on_after_open:
-            self.init_open_dataset(query_data, dataset, result)
+            dataset = self.init_open_dataset(query_data, dataset, result)
             self.on_after_open(self, query_data, params, connection, dataset)
-        if self.task.on_after_open:
-            self.init_open_dataset(query_data, dataset, result)
+        elif self.task.on_after_open:
+            dataset = self.init_open_dataset(query_data, dataset, result)
             self.task.on_after_open(self, query_data, params, connection, dataset)
         if dataset:
-            result = dataset._dataset, ''
+            result = dataset._dataset
         return result, error
 
     def apply_delta(self, delta, params, connection, db=None):

@@ -1568,9 +1568,9 @@ class AbstractDataSet(object):
             raise DatasetException(consts.language('append_not_active') % self.item_name)
         if self.master_field and not self.owner._primary_key_field.value:
             raise DatasetException('Master primary key field value is not defined.')
+        self._do_before_scroll()
         if self.item_state != consts.STATE_BROWSE:
             raise DatasetInvalidState(consts.language('append_not_browse') % self.item_name)
-        self._do_before_scroll()
         self.item_state = consts.STATE_INSERT
         if index == 0:
             self._dataset.insert(0, self.new_record())
@@ -1793,7 +1793,7 @@ class MasterDataSet(AbstractDataSet):
     def apply(self, connection=None, params=None, safe=False, caller=None):
         result = None
         if self.master:
-            if self.master_applies or self.master or self.virtual_table:
+            if self.master_applies or self.master:
                 return
             item = self
             while item.master:
@@ -1865,6 +1865,9 @@ class MasterDataSet(AbstractDataSet):
             detail.init_delta_details(client_changes)
 
     def delta(self, changes=None, client_changes=False):
+        if not changes:
+            changes = {}
+            self.change_log.get_changes(changes)
         result = self.copy(filters=False, details=True, handlers=False)
         result.change_log = ChangeLog(result)
         result._lookup_refs = self._lookup_refs
@@ -1921,8 +1924,6 @@ class MasterDetailDataset(MasterDataSet):
             expanded = self.expanded
         else:
             self.expanded = expanded
-        if self.virtual_table:
-            open_empty = True
         group_by
         if not params:
             params = {}
@@ -1948,8 +1949,6 @@ class MasterDetailDataset(MasterDataSet):
                         dataset = self.change_log.dataset
                         fields = self.change_log.fields
                         expanded = self.change_log.expanded
-                    elif self.virtual_table:
-                        records = []
                     elif self._is_delta:
                         self.change_log = None
                         dataset = []

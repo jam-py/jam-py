@@ -402,7 +402,7 @@ class MetaDataImport(object):
 
     def check_generator(self, item, delta):
         for d in delta:
-            module = get_db_module(self.db_type)
+            module = get_database(self.task.app, self.db_type, self.task.task_db_info.lib)
             if d.rec_inserted() and module.NEED_GENERATOR and \
                 d.f_primary_key.value and not d.f_gen_name.value and \
                 not d.f_virtual_table.value:

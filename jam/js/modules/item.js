@@ -1660,9 +1660,6 @@ class Item extends AbsrtactItem {
         if (!options.params) {
             options.params = {};
         }
-        if (this.virtual_table) {
-            options.open_empty = true;
-        }
         if (options.expanded === undefined) {
             options.expanded = this.expanded;
         } else {
@@ -1694,15 +1691,14 @@ class Item extends AbsrtactItem {
                         dataset = this.change_log.dataset;
                         fields = this.change_log.fields;
                     }
-                    else if (this.virtual_table) {
-                        records = [];
-                    }
                 }
                 if (dataset !== undefined) {
                     this._do_before_open(options)
                     this._bind_fields(options.expanded);
                     this._dataset = dataset;
-                    this.change_log.dataset = dataset;
+                    if (this.change_log) {
+                        this.change_log.dataset = dataset;
+                    }
                     this._active = true;
                     this.item_state = consts.STATE_BROWSE;
                     this.first();
@@ -2321,7 +2317,9 @@ class Item extends AbsrtactItem {
             }
         }
         if (this.is_modified() || this.is_new()) {
-            this.change_log.log_change();
+            if (this.change_log) {
+                this.change_log.log_change();
+            }
         }
         this._modified = false;
         this.item_state = consts.STATE_BROWSE;
@@ -2401,12 +2399,6 @@ class Item extends AbsrtactItem {
         }
         if (!caller) {
             caller = this;
-        }
-        if(this.virtual_table) {
-            if (callback) {
-                callback.call(caller);
-            }
-            return;
         }
         if (this._applying) {
             if (callback) {

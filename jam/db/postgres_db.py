@@ -11,6 +11,7 @@ class PostgresDB(AbstractDB):
         self.DDL_ROLLBACK = True
         self.DESC_NULLS = 'NULLS LAST'
         self.ASC_NULLS = 'NULLS FIRST'
+        self.LIKE = 'ILIKE'
         self.FIELD_TYPES = {
             consts.INTEGER: 'INTEGER',
             consts.TEXT: 'TEXT',

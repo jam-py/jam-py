@@ -34,6 +34,7 @@ class AbstractDB(object):
         self.DDL_ROLLBACK = False
         self.NEED_GENERATOR = False
         self.FROM = '"%s" AS %s'
+        self.LIKE = 'LIKE'
         self.LEFT_OUTER_JOIN = 'LEFT OUTER JOIN "%s" AS %s'
         self.IS_DISTINCT_FROM = '%s IS DISTINCT FROM %s'
         self.FIELD_AS = 'AS'
@@ -374,7 +375,7 @@ class AbstractDB(object):
         for d in delta:
             res = self.do_before_apply(delta, connection, params)
             details = []
-            if res != False:
+            if res != False and not d.virtual_table:
                 self.process_record(d, connection, cursor, safe)
             for detail in d.details:
                 if d.change_log.record_status == consts.RECORD_DELETED:
@@ -548,6 +549,8 @@ class AbstractDB(object):
                 result = 'IS NULL'
             else:
                 result = 'IS NOT NULL'
+        if (result == 'LIKE'):
+            result = self.LIKE
         return result
 
     def convert_field_value(self, field, value):
