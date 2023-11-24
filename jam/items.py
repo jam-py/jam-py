@@ -189,7 +189,7 @@ class ServerDataset(Dataset):
             else:
                 dataset = self.copy(filters=False, details=False, handlers=False)
             dataset.log_changes = False
-            dataset.open(expanded = query_data.expanded, fields=query_data.fields, open_empty=True)
+            dataset.open(expanded=query_data.expanded, fields=query_data.fields, open_empty=True)
             dataset._dataset = result
             dataset.first();
         return dataset

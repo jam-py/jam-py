@@ -128,8 +128,8 @@ task_server_events = \
         'on_created': 'task',
         'on_login': 'task, form_data, info',
         'on_logout': 'task, request',
-        'on_before_open': 'item, query_data, params, connection',
-        'on_after_open': 'item, query_data, params, connection, ds',
+        'on_before_open': 'item, query, params, connection',
+        'on_after_open': 'item, query, params, connection, dataset',
         'on_before_apply_record': 'item, delta, params, connection',
         'on_after_apply_record': 'item, delta, params, connection',
         'on_request': 'task, request'
@@ -146,8 +146,8 @@ reports_server_events = \
 
 detail_server_events = \
     {
-        'on_before_open': 'item, query_data, params, connection',
-        'on_after_open': 'item, query_data, params, connection, ds',
+        'on_before_open': 'item, query, params, connection',
+        'on_after_open': 'item, query, params, connection, dataset',
     }
 
 item_server_events = detail_server_events

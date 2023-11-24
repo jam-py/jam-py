@@ -3613,7 +3613,7 @@ class Item extends AbsrtactItem {
                     height_delta = 0;
                 if (details.length > 1) {
                     detail_container = task.add_tab(container, detail.item_caption,
-                        {tab_id: 'tab' + i, on_click: tab_changed});
+                        {tab_id: detail.item_name + '_detail_tab' + i, on_click: tab_changed});
                     height_delta = 38;
                 }
                 detail.create_table(detail_container,
@@ -3668,7 +3668,8 @@ class Item extends AbsrtactItem {
                 detail = this.find(details[i]);
                 detail_container = container;
                 if (details.length > 1) {
-                    detail_container = task.add_tab(container, detail.item_caption);
+                    detail_container = task.add_tab(container, detail.item_caption,
+                        {tab_id: detail.item_name + '_detail_view_tab' + i});
                 }
                 detail.view_options.form_header = false;
                 detail.view_options.form_border = false;

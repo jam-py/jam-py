@@ -1794,7 +1794,6 @@ class DBTable {
             sum_fields,
             count_fields,
             total_records = 0,
-            search_field,
             funcs,
             params = {};
         if (!this.item._paginate || this.item.virtual_table) {
@@ -1828,20 +1827,6 @@ class DBTable {
                     }
                 }
             }
-            if (self.item._open_params.__search) {
-                search_field = this.item._open_params.__search[0];
-                field = this.item.field_by_name(search_field);
-                //~ if (field.lookup_item) {
-                    //~ expanded = true;
-                //~ }
-                if (sum_fields.indexOf(search_field) === -1) {
-                    sum_fields.push(search_field);
-                    funcs[search_field] = 'count';
-                }
-                else {
-                    search_field = '';
-                }
-            }
             for (var key in self.item._open_params) {
                 if (self.item._open_params.hasOwnProperty(key)) {
                     if (key.substring(0, 2) !== '__') {
@@ -1867,7 +1852,7 @@ class DBTable {
                         if (i == 0) {
                             total_records = f.data;
                         }
-                        else if (f.field_name !== search_field) {
+                        else {
                             self.item._fields_summary_info[f.field_name] =
                                 {text: f.display_text, value: f.value};
                         }

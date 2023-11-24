@@ -79,6 +79,7 @@ class DBField(object):
         self.filter = None
         self.calculated = field_def[FIELD_CALC]
         self.on_field_get_text_called = None
+        # ~ self.bind_index = None
 
     def __setattr__(self, name, value):
         if name != 'owner' and self.owner and self.owner.task_locked():
@@ -1369,7 +1370,8 @@ class AbstractDataSet(object):
                 j += 1
         for field in self.fields:
             if field.master_field:
-                field.bind_index = field.master_field.bind_index
+                if field.master_field.bind_index:
+                    field.bind_index = field.master_field.bind_index
         self._record_lookup_index = j
         if expanded:
             for field in self.fields:
