@@ -1322,44 +1322,46 @@ class Item extends AbsrtactItem {
     get_where_list(whereDef) {
         var field,
             field_name,
-            field_arg,
             filter_type,
             filter_str,
-            value,
-            pos,
             result = [];
         for (field_name in whereDef) {
             if (whereDef.hasOwnProperty(field_name)) {
-                field_arg = field_name
-                value = whereDef[field_name];
-                pos = field_name.indexOf('__');
-                if (pos > -1) {
-                    filter_str = field_name.substring(pos + 2);
-                    field_name = field_name.substring(0, pos);
-                } else {
-                    filter_str = 'eq';
+                let field_arg = field_name,
+                    value = whereDef[field_name],
+                    arr = field_name.split('__');
+                if (typeof value === 'object' &&  value !== null) {
+                    result.push(this.get_where_list(value));
                 }
-                filter_type = consts.filter_value.indexOf(filter_str);
-                if (filter_type !== -1) {
-                    filter_type += 1
-                } else {
-                    throw new Error(this.item_name + ': set_where method argument error - ' + field_arg);
-                }
-                field = this._field_by_name(field_name);
-                if (!field) {
-                    console.trace();
-                    throw new Error(this.item_name + ': set_where method argument error - ' + field_arg);
-                }
-                if (value !== null) {
-                    if (value instanceof Date) {
-                        if (field.data_type === consts.DATE) {
-                            value = task.format_date_to_string(value, '%Y-%m-%d')
-                        }
-                        else if (field.data_type === consts.DATETIME) {
-                            value = task.format_date_to_string(value, '%Y-%m-%d %H:%M:%S')
-                        }
+                else {
+                    field_name = arr[0]
+                    if (arr.length === 2) {
+                        filter_str = arr[1]
+                    } else {
+                        filter_str = 'eq';
                     }
-                    result.push([field_name, filter_type, value, -1])
+                    filter_type = consts.filter_value.indexOf(filter_str);
+                    if (filter_type !== -1) {
+                        filter_type += 1
+                    } else {
+                        throw new Error(this.item_name + ': set_where method argument error - ' + field_arg);
+                    }
+                    field = this._field_by_name(field_name);
+                    if (!field) {
+                        console.trace();
+                        throw new Error(this.item_name + ': set_where method argument error - ' + field_arg);
+                    }
+                    if (value !== null) {
+                        if (value instanceof Date) {
+                            if (field.data_type === consts.DATE) {
+                                value = task.format_date_to_string(value, '%Y-%m-%d')
+                            }
+                            else if (field.data_type === consts.DATETIME) {
+                                value = task.format_date_to_string(value, '%Y-%m-%d %H:%M:%S')
+                            }
+                        }
+                        result.push([field_name, filter_type, value, -1])
+                    }
                 }
             }
         }
@@ -1740,7 +1742,15 @@ class Item extends AbsrtactItem {
             data;
         params = $.extend(true, {}, params);
         for (i = 0; i < params.__filters.length; i++) {
-            params.__filters[i].length = 3;
+            let filter = params.__filters[i];
+            if (filter[0] instanceof Array) {
+                filter.forEach(function(or_filter) {
+                    or_filter.length = 3;
+                });
+            }
+            else {
+                filter.length = 3;
+            }
         }
         if (open_empty) {
             data = [[], ''];

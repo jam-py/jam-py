@@ -19,12 +19,21 @@ class WhereCondition(object):
         if not param is None:
             self.params.append(param)
 
+    def add_or(self, query, param):
+        self.queries.append(query)
+        self.params += param
+
     @property
     def where_query(self):
         result = ' AND '.join(self.queries)
         if result:
             result = ' WHERE ' + result
         return result, self.params
+
+    @property
+    def or_query(self):
+        result = ' OR '.join(self.queries)
+        return '(%s)' % result, self.params
 
 
 class AbstractDB(object):
@@ -525,11 +534,13 @@ class AbstractDB(object):
         fields = list(fields)
         filters = query.filters
         if filters:
-            for field_name, filter_type, value in filters:
-                if not value is None:
-                    field = item._field_by_name(field_name)
-                    if not field in fields:
-                        fields.append(field)
+            for f in filters:
+                if type(f[0]) != list:
+                    field_name, filter_type, value = f
+                    if not value is None:
+                        field = item._field_by_name(field_name)
+                        if not field in fields:
+                            fields.append(field)
         if query.expanded:
             joins = {}
             for field in fields:
@@ -583,7 +594,7 @@ class AbstractDB(object):
             result += ch
         return result, found
 
-    def get_condition(self, item, field, filter_type, value):
+    def get_condition(self, item, conditions, field, filter_type, value):
         esc_char = '/'
         cond_field_name = '%s."%s"' % (self.table_alias(item), field.db_field_name)
         if filter_type > consts.FILTER_CONTAINS:
@@ -597,7 +608,7 @@ class AbstractDB(object):
                         cond_field_name = '%s."%s"' % (self.lookup_table_alias(item, field), field.lookup_db_field)
         if filter_type > consts.FILTER_CONTAINS_ALL:
             filter_type -= consts.FILTER_CONTAINS_ALL
-        sql_literal = self.conditions.next_literal
+        sql_literal = conditions.next_literal
         filter_sign = self.get_filter_sign(item, filter_type, value)
         if filter_type in (consts.FILTER_IN, consts.FILTER_NOT_IN):
             values = [to_str(v) for v in value if v is not None]
@@ -605,8 +616,8 @@ class AbstractDB(object):
             value = None
         elif filter_type == consts.FILTER_RANGE:
             param1 = self.convert_field_value(field, value[0])
-            self.conditions.params.append(param1)
-            sql_literal2 = self.conditions.next_literal
+            conditions.params.append(param1)
+            sql_literal2 = conditions.next_literal
             param2 = self.convert_field_value(field, value[1])
             sql_literal = ' %s AND %s ' % (sql_literal, sql_literal2)
             value = param2
@@ -644,47 +655,58 @@ class AbstractDB(object):
             sql = self.IS_DISTINCT_FROM % (cond_field_name, sql_literal)
         return sql, value
 
-    def add_master_conditions(self, item, query):
+    def add_master_conditions(self, item, conditions, query):
         if query.master_field:
-            self.conditions.add('%s."%s" = %s' % \
+            conditions.add('%s."%s" = %s' % \
                 (self.table_alias(item), item._master_field_db_field_name,
-                self.conditions.next_literal), query.master_field)
+                conditions.next_literal), query.master_field)
         else:
             if query.master_id:
-                self.conditions.add('%s."%s" = %s' % \
+                conditions.add('%s."%s" = %s' % \
                     (self.table_alias(item), item._master_id_db_field_name,
-                    self.conditions.next_literal), query.master_id)
+                    conditions.next_literal), query.master_id)
             if query.master_rec_id:
-                self.conditions.add('%s."%s" = %s' % \
+                conditions.add('%s."%s" = %s' % \
                     (self.table_alias(item), item._master_rec_id_db_field_name,
-                    self.conditions.next_literal), query.master_rec_id)
+                    conditions.next_literal), query.master_rec_id)
 
-    def where_clause(self, item, query):
-        self.conditions = WhereCondition(self)
-        if item.master:
-            self.add_master_conditions(item, query)
-        filters = query.filters
+    def where_clause(self, item, query, or_clause=False):
+        conditions = WhereCondition(self)
+        if or_clause:
+            filters = query
+        else:
+            filters = query.filters
+            if item.master:
+                self.add_master_conditions(item, conditions, query)
         deleted_in_filters = False
         if filters:
-            for field_name, filter_type, value in filters:
-                if not value is None:
-                    field = item._field_by_name(field_name)
-                    if field_name == item._deleted_flag:
-                        deleted_in_filters = True
-                    if filter_type == consts.FILTER_CONTAINS_ALL:
-                        values = value.split()
-                        for val in values:
-                            query, param = self.get_condition(item, field, consts.FILTER_CONTAINS, val)
-                            self.conditions.add(query, param)
-                    elif filter_type in [consts.FILTER_IN, consts.FILTER_NOT_IN] and \
-                        type(value) in [tuple, list] and len(value) == 0:
-                        self.conditions.add('%s."%s" IN (NULL)' % (self.table_alias(item), item._primary_key_db_field_name))
-                    else:
-                        query, param = self.get_condition(item, field, filter_type, value)
-                        self.conditions.add(query, param)
-        if not deleted_in_filters and item._deleted_flag:
-            self.conditions.add('%s."%s" = 0' % (self.table_alias(item), item._deleted_flag_db_field_name))
-        return self.conditions.where_query
+            for f in filters:
+                if type(f[0]) == list:
+                    query, param = self.where_clause(item, f, True)
+                    conditions.add_or(query, param)
+                else:
+                    field_name, filter_type, value = f
+                    if not value is None:
+                        field = item._field_by_name(field_name)
+                        if field_name == item._deleted_flag:
+                            deleted_in_filters = True
+                        if filter_type == consts.FILTER_CONTAINS_ALL:
+                            values = value.split()
+                            for val in values:
+                                query, param = self.get_condition(item, conditions, field, consts.FILTER_CONTAINS, val)
+                                conditions.add(query, param)
+                        elif filter_type in [consts.FILTER_IN, consts.FILTER_NOT_IN] and \
+                            type(value) in [tuple, list] and len(value) == 0:
+                            conditions.add('%s."%s" IN (NULL)' % (self.table_alias(item), item._primary_key_db_field_name))
+                        else:
+                            query, param = self.get_condition(item, conditions, field, filter_type, value)
+                            conditions.add(query, param)
+        if or_clause:
+            return conditions.or_query
+        else:
+            if not deleted_in_filters and item._deleted_flag:
+                conditions.add('%s."%s" = 0' % (self.table_alias(item), item._deleted_flag_db_field_name))
+            return conditions.where_query
 
     def group_clause(self, item, query, fields):
         group_fields = query.group_by
@@ -771,12 +793,13 @@ class AbstractDB(object):
         max_list = 0
         if filters:
             for i, f in enumerate(filters):
-                field_name, filter_type, value = f
-                if filter_type in [consts.FILTER_IN, consts.FILTER_NOT_IN]:
-                    length = len(value)
-                    if length > MAX_IN_LIST and length > max_list:
-                        max_list = length
-                        filter_index = i
+                if type(f[0]) != list: # not or filter
+                    field_name, filter_type, value = f
+                    if filter_type in [consts.FILTER_IN, consts.FILTER_NOT_IN]:
+                        length = len(value)
+                        if length > MAX_IN_LIST and length > max_list:
+                            max_list = length
+                            filter_index = i
         if filter_index != -1:
             lists = []
             value_list = filters[filter_index][2]
