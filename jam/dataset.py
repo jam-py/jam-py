@@ -1370,8 +1370,7 @@ class AbstractDataSet(object):
                 j += 1
         for field in self.fields:
             if field.master_field:
-                if field.master_field.bind_index:
-                    field.bind_index = field.master_field.bind_index
+                field.bind_index = field.master_field.bind_index
         self._record_lookup_index = j
         if expanded:
             for field in self.fields:
@@ -1587,7 +1586,8 @@ class AbstractDataSet(object):
         if self.master_field:
             self._master_field_field.data = self.owner._primary_key_field.value;
         for field in self.fields:
-            field.assign_default_value()
+            if not field.master_field:
+                field.assign_default_value()
         self._modified = False
         self._do_after_scroll()
 
