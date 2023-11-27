@@ -1390,25 +1390,25 @@ class AbstractDataSet(object):
             field_name = field_arg
             value = field_dict[field_name]
             arr = field_name.split('__');
-            if type(value) == dict:
-                result.append(self.get_where_list(value))
+            field_name = arr[0]
+            if len(arr) == 2:
+                filter_str = arr[1]
             else:
-                field_name = arr[0]
-                if len(arr) == 2:
-                    filter_str = arr[1]
-                else:
-                    filter_str = 'eq';
-                filter_type = consts.FILTER_STR.index(filter_str)
-                if filter_type != -1:
-                    filter_type += 1
-                else:
-                    raise RuntimeError('%s: set_where method argument error %s' % (self.item_name, field_arg))
-                field = self._field_by_name(field_name)
-                if not field:
-                    raise RuntimeError('%s: set_where method argument error %s: ' % (self.item_name, field_arg))
-                value = field_dict[field_arg]
-                if not value is None:
-                    result.append([field_name, filter_type, value])
+                filter_str = 'eq';
+            filter_type = consts.FILTER_STR.index(filter_str)
+            if filter_type != -1:
+                filter_type += 1
+            else:
+                raise RuntimeError('%s: set_where method argument error %s' % (self.item_name, field_arg))
+            field = self._field_by_name(field_name)
+            if not field:
+                if type(value) == dict:
+                    result.append(self.get_where_list(value))
+                    continue
+                raise RuntimeError('%s: set_where method argument error %s: ' % (self.item_name, field_arg))
+            value = field_dict[field_arg]
+            if not value is None:
+                result.append([field_name, filter_type, value])
         return result
 
     def set_fields(self, lst=None, *fields):

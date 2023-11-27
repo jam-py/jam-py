@@ -1330,38 +1330,39 @@ class Item extends AbsrtactItem {
                 let field_arg = field_name,
                     value = whereDef[field_name],
                     arr = field_name.split('__');
-                if (typeof value === 'object' &&  value !== null) {
-                    result.push(this.get_where_list(value));
+                field_name = arr[0]
+                if (arr.length === 2) {
+                    filter_str = arr[1]
+                } else {
+                    filter_str = 'eq';
                 }
-                else {
-                    field_name = arr[0]
-                    if (arr.length === 2) {
-                        filter_str = arr[1]
-                    } else {
-                        filter_str = 'eq';
+                filter_type = consts.filter_value.indexOf(filter_str);
+                if (filter_type !== -1) {
+                    filter_type += 1
+                } else {
+                    throw new Error(this.item_name + ': set_where method argument error - ' + field_arg);
+                }
+                field = this._field_by_name(field_name);
+                if (!field) {
+                    if (typeof value === 'object' &&  value !== null) {
+                        result.push(this.get_where_list(value));
+                        continue;
                     }
-                    filter_type = consts.filter_value.indexOf(filter_str);
-                    if (filter_type !== -1) {
-                        filter_type += 1
-                    } else {
-                        throw new Error(this.item_name + ': set_where method argument error - ' + field_arg);
-                    }
-                    field = this._field_by_name(field_name);
-                    if (!field) {
+                    else {
                         console.trace();
                         throw new Error(this.item_name + ': set_where method argument error - ' + field_arg);
                     }
-                    if (value !== null) {
-                        if (value instanceof Date) {
-                            if (field.data_type === consts.DATE) {
-                                value = task.format_date_to_string(value, '%Y-%m-%d')
-                            }
-                            else if (field.data_type === consts.DATETIME) {
-                                value = task.format_date_to_string(value, '%Y-%m-%d %H:%M:%S')
-                            }
+                }
+                if (value !== null) {
+                    if (value instanceof Date) {
+                        if (field.data_type === consts.DATE) {
+                            value = task.format_date_to_string(value, '%Y-%m-%d')
                         }
-                        result.push([field_name, filter_type, value, -1])
+                        else if (field.data_type === consts.DATETIME) {
+                            value = task.format_date_to_string(value, '%Y-%m-%d %H:%M:%S')
+                        }
                     }
+                    result.push([field_name, filter_type, value, -1])
                 }
             }
         }
