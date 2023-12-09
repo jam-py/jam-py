@@ -3604,7 +3604,7 @@ class Item extends AbsrtactItem {
         var self = this,
             details = this.view_options.view_details,
             tab_changed = function(tab_index) {
-                let index = +tab_index.replace('tab', '');
+                let index = +tab_index.replace('detail_tab', '');
                 if (self._visible_detail) {
                     self._visible_detail.close();
                 }
@@ -3624,7 +3624,7 @@ class Item extends AbsrtactItem {
                     height_delta = 0;
                 if (details.length > 1) {
                     detail_container = task.add_tab(container, detail.item_caption,
-                        {tab_id: detail.item_name + '_detail_tab' + i, on_click: tab_changed});
+                        {tab_id: 'detail_tab' + i, on_click: tab_changed});
                     height_delta = 38;
                 }
                 detail.create_table(detail_container,
@@ -3649,7 +3649,7 @@ class Item extends AbsrtactItem {
                     );
                 }
             }
-            tab_changed('tab0');
+            tab_changed('detail_tab0');
         }
     }
 
@@ -3680,7 +3680,7 @@ class Item extends AbsrtactItem {
                 detail_container = container;
                 if (details.length > 1) {
                     detail_container = task.add_tab(container, detail.item_caption,
-                        {tab_id: detail.item_name + '_detail_view_tab' + i});
+                        {tab_id: 'detail_view_tab' + i});
                 }
                 detail.view_options.form_header = false;
                 detail.view_options.form_border = false;
