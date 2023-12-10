@@ -314,10 +314,10 @@ class AbstractDB(object):
             if delta.soft_delete:
                 sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s' % \
                     (detail.table_name, detail._deleted_flag_db_field_name, \
-                    detail._master_rec_id_db_field_name, id_literal)
+                    detail._master_field_db_field_name, id_literal)
             else:
                 sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
-                    (detail.table_name, detail._master_rec_id_db_field_name, id_literal)
+                    (detail.table_name, detail._master_field_db_field_name, id_literal)
         if len(detail.details) or detail.keep_history:
             self.update_deleted_detail(delta, detail, cursor)
             if delta.task.history_item and detail.keep_history:

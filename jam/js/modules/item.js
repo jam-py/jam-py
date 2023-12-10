@@ -3243,14 +3243,9 @@ class Item extends AbsrtactItem {
                                     self.alert_error(e);
                                 }
                             }
-                            if (self.paginate) {
-                                self.refresh(function() {
-                                    self._do_after_delete_record(master_changing, callback);
-                                });
-                            }
-                            else {
+                            self.refresh(function() {
                                 self._do_after_delete_record(master_changing, callback);
-                            }
+                            });
                         });
                     },
                     function() {
@@ -3328,7 +3323,6 @@ class Item extends AbsrtactItem {
             }
             this.disable_edit_form();
             try {
-                //~ this.post();
                 this.apply(options.apply_params, function(error) {
                     if (error && error.indexOf('aborted:') !== 0) {
                         self.alert_error(error, {duration: 10});
