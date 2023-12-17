@@ -301,7 +301,15 @@ class AbstractDB(object):
             id_literal = "'%s'" % delta._primary_key_field.value
         else:
             id_literal = "%s" % delta._primary_key_field.value
-        if detail._master_id:
+        if detail._master_field:
+            if delta.soft_delete:
+                sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s' % \
+                    (detail.table_name, detail._deleted_flag_db_field_name, \
+                    detail._master_field_db_field_name, id_literal)
+            else:
+                sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
+                    (detail.table_name, detail._master_field_db_field_name, id_literal)
+        elif detail._master_id:
             if delta.soft_delete:
                 sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s AND "%s" = %s' % \
                     (detail.table_name, detail._deleted_flag_db_field_name, detail._master_id_db_field_name, \
@@ -310,14 +318,14 @@ class AbstractDB(object):
                 sql = 'DELETE FROM "%s" WHERE "%s" = %s AND "%s" = %s' % \
                     (detail.table_name, detail._master_id_db_field_name, delta.ID, \
                     detail._master_rec_id_db_field_name, id_literal)
-        else:
+        elif detail._master_rec_id:
             if delta.soft_delete:
                 sql = 'UPDATE "%s" SET "%s" = 1 WHERE "%s" = %s' % \
                     (detail.table_name, detail._deleted_flag_db_field_name, \
-                    detail._master_field_db_field_name, id_literal)
+                    detail._master_rec_id_db_field_name, id_literal)
             else:
                 sql = 'DELETE FROM "%s" WHERE "%s" = %s' % \
-                    (detail.table_name, detail._master_field_db_field_name, id_literal)
+                    (detail.table_name, detail._master_rec_id_db_field_name, id_literal)
         if len(detail.details) or detail.keep_history:
             self.update_deleted_detail(delta, detail, cursor)
             if delta.task.history_item and detail.keep_history:
@@ -339,6 +347,8 @@ class AbstractDB(object):
                 delta._master_field_field.data = delta.master._primary_key_field.value
             elif delta._master_id:
                 delta._master_id_field.data = delta.master.ID
+                delta._master_rec_id_field.data = delta.master._primary_key_field.value
+            elif delta._master_rec_id:
                 delta._master_rec_id_field.data = delta.master._primary_key_field.value
         if delta.change_log.record_status == consts.RECORD_INSERTED:
             if safe and not delta.can_create():
@@ -660,15 +670,17 @@ class AbstractDB(object):
             conditions.add('%s."%s" = %s' % \
                 (self.table_alias(item), item._master_field_db_field_name,
                 conditions.next_literal), query.master_field)
-        else:
-            if query.master_id:
-                conditions.add('%s."%s" = %s' % \
-                    (self.table_alias(item), item._master_id_db_field_name,
-                    conditions.next_literal), query.master_id)
-            if query.master_rec_id:
-                conditions.add('%s."%s" = %s' % \
-                    (self.table_alias(item), item._master_rec_id_db_field_name,
-                    conditions.next_literal), query.master_rec_id)
+        elif query.master_id:
+            conditions.add('%s."%s" = %s' % \
+                (self.table_alias(item), item._master_id_db_field_name,
+                conditions.next_literal), query.master_id)
+            conditions.add('%s."%s" = %s' % \
+                (self.table_alias(item), item._master_rec_id_db_field_name,
+                conditions.next_literal), query.master_rec_id)
+        elif query.master_rec_id:
+            conditions.add('%s."%s" = %s' % \
+                (self.table_alias(item), item._master_rec_id_db_field_name,
+                conditions.next_literal), query.master_rec_id)
 
     def where_clause(self, item, query, or_clause=False):
         conditions = WhereCondition(self)

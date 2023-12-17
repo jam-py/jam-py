@@ -223,6 +223,7 @@ def version7_upgrade(task):
     code = sys_items.f_web_client_module.value
     code = code.replace('if (item.master) {', 'if (item.master || item.master_field) {')
     code = code.replace('if (!item.master &&', 'if (!(item.master || item.master_field) &&')
+    code = code.replace("hasClass('modal')", "hasClass('modal-form')")
     sys_items.edit()
     sys_items.f_web_client_module.value = code
     sys_items.post()

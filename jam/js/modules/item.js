@@ -1205,12 +1205,14 @@ class Item extends AbsrtactItem {
     }
 
     is_modified() {
-        if (this.on_get_modified) {
-            return this.on_get_modified.call(this, this);
+        return this._modified || !this._applied;
+    }
+
+    get _applied() {
+        if (this.change_log && this.change_log.get_changes({})) {
+            return false;
         }
-        else {
-            return this._modified;
-        }
+        return true;
     }
 
     _store_modified(result) {
@@ -1331,7 +1333,7 @@ class Item extends AbsrtactItem {
                     value = whereDef[field_name],
                     arr = field_name.split('__');
                 field_name = arr[0]
-                if (arr.length === 2) {
+                if (arr.length >= 2) {
                     filter_str = arr[1]
                 } else {
                     filter_str = 'eq';
@@ -1344,8 +1346,15 @@ class Item extends AbsrtactItem {
                 }
                 field = this._field_by_name(field_name);
                 if (!field) {
-                    if (typeof value === 'object' &&  value !== null) {
-                        result.push(this.get_where_list(value));
+                    if (value instanceof Array &&  value[0] instanceof Array) {
+                        let self = this,
+                            array = [];
+                        value.forEach(function(v) {
+                            let d = {};
+                            d[v[0]] = v[1];
+                            array.push(self.get_where_list(d));
+                        });
+                        result.push(array);
                         continue;
                     }
                     else {
@@ -1584,16 +1593,21 @@ class Item extends AbsrtactItem {
             sel_filter;
         for (i = 0; i < params.__filters.length; i++) {
             filter = params.__filters[i];
-            switch (filter[3]) {
-                case -1:
-                    filters.push(filter)
-                    break;
-                case -2:
-                    search_filter = filter;
-                    break;
-                case -3:
-                    sel_filter = filter;
-                    break;
+            if (filter instanceof Array &&  filter[0] instanceof Array) {
+                filters.push(filter);
+            }
+            else {
+                switch (filter[3]) {
+                    case -1:
+                        filters.push(filter)
+                        break;
+                    case -2:
+                        search_filter = filter;
+                        break;
+                    case -3:
+                        sel_filter = filter;
+                        break;
+                }
             }
         }
         this.each_filter(function(filter, i) {
@@ -1668,20 +1682,23 @@ class Item extends AbsrtactItem {
         } else {
             this.expanded = options.expanded;
         }
-        if (this.master_field) {
-            if (this.owner.rec_count && !this.owner.is_new()) {
-                options.params.__master_field = this.owner._primary_key_field.value;
-            }
-            else {
-                options.open_empty = true;
-            }
-        }
         if (this.master) {
             if (this.master.rec_count > 0) {
                 let dataset;
                 options.params.__master_id = null
-                if (this._master_id) {
+                if (this.master_field) {
+                    if (this.owner.rec_count && !this.owner.is_new()) {
+                        options.params.__master_field = this.owner._primary_key_field.value;
+                    }
+                    else {
+                        options.open_empty = true;
+                    }
+                }
+                else if (this._master_id) {
                     options.params.__master_id = this.master.ID;
+                    options.params.__master_rec_id = this.master.field_by_name(this.master._primary_key).value;
+                }
+                else if (this._master_rec_id) {
                     options.params.__master_rec_id = this.master.field_by_name(this.master._primary_key).value;
                 }
                 if (this.master.is_new()) {
@@ -1746,7 +1763,7 @@ class Item extends AbsrtactItem {
             let filter = params.__filters[i];
             if (filter[0] instanceof Array) {
                 filter.forEach(function(or_filter) {
-                    or_filter.length = 3;
+                    or_filter[0].length = 3;
                 });
             }
             else {
@@ -2327,7 +2344,7 @@ class Item extends AbsrtactItem {
                 this.details[i].post();
             }
         }
-        if (this.is_modified() || this.is_new()) {
+        if (this._modified || this.is_new()) {
             if (this.change_log) {
                 this.change_log.log_change();
             }
@@ -3207,6 +3224,9 @@ class Item extends AbsrtactItem {
             this.cancel();
         }
         this.close_edit_form();
+        if (this.view_form && !this._applied) {
+            this.refresh();
+        }
     }
 
     _do_after_delete_record(master_changing, callback) {

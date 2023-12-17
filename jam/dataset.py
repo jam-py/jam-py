@@ -1390,7 +1390,7 @@ class AbstractDataSet(object):
             value = field_dict[field_name]
             arr = field_name.split('__');
             field_name = arr[0]
-            if len(arr) == 2:
+            if len(arr) >= 2:
                 filter_str = arr[1]
             else:
                 filter_str = 'eq';
@@ -1401,8 +1401,13 @@ class AbstractDataSet(object):
                 raise RuntimeError('%s: set_where method argument error %s' % (self.item_name, field_arg))
             field = self._field_by_name(field_name)
             if not field:
-                if type(value) == dict:
-                    result.append(self.get_where_list(value))
+                if type(value) == list and type(value[0]) == list:
+                    array = []
+                    for v in value:
+                        d = {}
+                        d[v[0]] = v[1]
+                        array.append(self.get_where_list(d))
+                    result.append(array)
                     continue
                 raise RuntimeError('%s: set_where method argument error %s: ' % (self.item_name, field_arg))
             value = field_dict[field_arg]
@@ -1568,7 +1573,7 @@ class AbstractDataSet(object):
 
     def __append(self, index=None):
         if self._is_delta:
-            raise 'You can not add records to delta'
+            raise DatasetException('You can not add records to delta')
         if not self.active:
             raise DatasetException(consts.language('append_not_active') % self.item_name)
         if self.master_field and not self.owner._primary_key_field.value:
@@ -1933,16 +1938,18 @@ class MasterDetailDataset(MasterDataSet):
         group_by
         if not params:
             params = {}
-        if self.master_field:
-            if self.owner.rec_count and not self.owner.is_new():
-                params['__master_field'] = self.owner.field_by_name(self.owner._primary_key).value
-            else:
-                open_empty = True
         if self.master:
             if not self.disabled and self.master.record_count() > 0:
                 params['__master_id'] = None
-                if self._master_id:
+                if self.master_field:
+                    if self.owner.rec_count and not self.owner.is_new():
+                        params['__master_field'] = self.owner.field_by_name(self.owner._primary_key).value
+                    else:
+                        open_empty = True
+                elif self._master_id:
                     params['__master_id'] = self.master.ID
+                    params['__master_rec_id'] = self.master.field_by_name(self.master._primary_key).value
+                elif self._master_rec_id:
                     params['__master_rec_id'] = self.master.field_by_name(self.master._primary_key).value
                 dataset = None
                 if self.master.is_new():
