@@ -442,24 +442,23 @@ task.events.events15 = new Events15();
 function Events16() { // demo.journals.invoices 
 
 	function on_view_form_created(item) {
-		item.invoice_table.master_applies = true;
+		item.invoice_table.master_applies = false;
+		set_paid_btn(item);
+	}
+	
+	function set_paid_btn(item) {
 		let btn = item.add_view_button('Set paid', {type: 'primary', btn_id: 'paid-btn'});
 		btn.click(function() {
 			item.question('Was the invoice paid?', function () {
-				item.edit();
 				item.paid.value = true;
-				item.post();
 				item.apply(true);
 			});
 		});
 	}
 	
-	
 	function on_edit_form_created(item) {
 		item.read_only = item.paid.value;
-		if (!item.invoice_table.master_applies) {
-			item.edit_form.find('.form-footer').hide();
-		}
+		item.edit_form.find('.form-footer').remove();
 	}
 	
 	function on_field_get_text(field) {
@@ -477,22 +476,11 @@ function Events16() { // demo.journals.invoices
 	}
 	
 	function on_field_changed(field, lookup_item) {
+		let item = field.owner;
 		if (field.field_name === 'taxrate') {
-			calc_invoice(item);
-			field.owner.apply(function(error) {
-				if (error) {
-					item.alert_error(error);   
-					field.owner.edit();
-				}
-				else {
-					field.owner.invoice_table.refresh();
-					field.owner.edit();
-				}
+			item.apply(function(res) {
+				item.refresh_record();
 			});
-		}
-		let today = new Date();
-		if (field.field_name === 'invoice_date' && field.value > today) {
-			field.value = today;
 		}
 	}
 	
@@ -508,30 +496,13 @@ function Events16() { // demo.journals.invoices
 			}, 50
 		);
 	}
-	
-	function calc_invoice(item) {
-		let clone = item.invoice_table.clone();
-		item.subtotal.value = 0;
-		item.tax.value = 0;
-		item.total.value = 0;
-		clone.each(function(c) {
-			item.subtotal.value += c.amount.value;
-			item.tax.value += c.tax.value;
-			item.total.value += c.total.value;
-		});
-	}
-	
-	function on_detail_changed(item, detail) {
-		calc_invoice(item);
-	}
 	this.on_view_form_created = on_view_form_created;
+	this.set_paid_btn = set_paid_btn;
 	this.on_edit_form_created = on_edit_form_created;
 	this.on_field_get_text = on_field_get_text;
 	this.on_field_get_html = on_field_get_html;
 	this.on_field_changed = on_field_changed;
 	this.on_after_scroll = on_after_scroll;
-	this.calc_invoice = calc_invoice;
-	this.on_detail_changed = on_detail_changed;
 }
 
 task.events.events16 = new Events16();
@@ -540,28 +511,31 @@ function Events17() { // demo.details.invoice_table
 
 	function on_view_form_created(item) {
 		if (item.master) {
-			let btn = item.add_view_button('Select tracks', {type: 'primary', btn_id: 'select-btn'});
-			btn.click(function() {
-				item.alert('Select the records to add to the invoice and close the from');
+			item.view_form.find('#new-btn').off('click.task').on('click', function() {
 				item.select_records('track');
 			});
-			item.view_form.find("#delete-btn, #select-btn, #new-btn")
-				.prop("disabled", item.owner.paid.value);		
-		
+			item.view_form.find("#delete-btn, #new-btn").prop("disabled", item.owner.paid.value);		
 		}
 	}		
+	
+	function calc_track(item) {
+		item.amount.value = item.quantity.value * item.unitprice.value;
+		item.tax.value = item.amount.value * item.master.taxrate.value / 100;
+		item.total.value = item.amount.value + item.tax.value;
+		item.paid.value = item.master.paid.value;
+	}
 	
 	function on_field_changed(field, lookup_item) {
 		let item = field.owner;
 		if (lookup_item) {
 			item.unitprice.value = lookup_item.unitprice.value;
 		}
-		item.amount.value = item.quantity.value * item.unitprice.value;
-		item.tax.value = item.amount.value * item.master.taxrate.value / 100;
-		item.total.value = item.amount.value + item.tax.value;
-		item.paid.value = item.master.paid.value;
+		if (item.master.item_name == 'invoices_client') {
+			calc_track(item);
+		}
 	}
 	this.on_view_form_created = on_view_form_created;
+	this.calc_track = calc_track;
 	this.on_field_changed = on_field_changed;
 }
 
@@ -748,5 +722,76 @@ function Events25() { // demo.catalogs.mail
 }
 
 task.events.events25 = new Events25();
+
+function Events57() { // demo.journals.invoices_client 
+
+	function on_field_get_text(field) {
+		task.invoices.on_field_get_text(field);
+	}
+	
+	function on_field_get_html(field) {
+		task.invoices.on_field_get_html(field);
+	}
+	
+	function on_after_scroll(item) {
+		task.invoices.on_after_scroll(item);
+	}
+	
+	function on_view_form_created(item) {
+		item.invoice_table.master_applies = true;
+		task.invoices.set_paid_btn(item);	
+	}
+	
+	function on_edit_form_created(item) {
+		item.read_only = item.paid.value;
+	}
+	
+	function on_field_changed(field, lookup_item) {
+		let item = field.owner;
+		if (field.field_name === 'taxrate') {
+			let rec = item.invoice_table.rec_no;
+			item.invoice_table.disable_controls();
+			try {
+				item.invoice_table.each(function(t) {
+					t.calc_track(t);
+				});
+			}
+			finally {
+				item.invoice_table.rec_no = rec;
+				item.invoice_table.enable_controls();
+			}
+		}		
+		calc_invoice(item);
+	}
+	
+	function calc_invoice(item) {
+		let clone = item.invoice_table.clone(),
+			subtotal = 0,
+			tax = 0,
+			total = 0;
+		clone.each(function(c) {
+			subtotal += c.amount.value;
+			tax += c.tax.value;
+			total += c.total.value;
+		});
+		item.subtotal.value = subtotal;
+		item.tax.value = tax;
+		item.total.value = total;
+	}
+	
+	function on_detail_changed(item, detail) {
+		calc_invoice(item);
+	}
+	this.on_field_get_text = on_field_get_text;
+	this.on_field_get_html = on_field_get_html;
+	this.on_after_scroll = on_after_scroll;
+	this.on_view_form_created = on_view_form_created;
+	this.on_edit_form_created = on_edit_form_created;
+	this.on_field_changed = on_field_changed;
+	this.calc_invoice = calc_invoice;
+	this.on_detail_changed = on_detail_changed;
+}
+
+task.events.events57 = new Events57();
 
 })(jQuery, task)

@@ -3832,24 +3832,6 @@ class Item extends AbsrtactItem {
     }
 
     select_records(field_name, all_records) {
-        let self = this;
-        if (this.master_field && !this.owner._primary_key_field.value && this.owner.is_new()) {
-            try {
-                this.owner.post();
-                this.owner.apply(function() {
-                    self.owner.edit();
-                    self._select_records(field_name, all_records)
-                });
-            }
-            catch (e) {
-            }
-        }
-        else {
-            this._select_records(field_name, all_records)
-        }
-    }
-
-    _select_records(field_name, all_records) {
         var self = this,
             field = this.field_by_name(field_name),
             source,
@@ -3918,10 +3900,11 @@ class Item extends AbsrtactItem {
                             }
                             self.enable_controls();
                         }
-                        self.apply(true);
-                        if (self.master) {
-                            self.master.edit();
-                        }
+                        self.apply(function() {
+                            if (!self.master.is_changing()) {
+                                self.master.edit();
+                            }
+                        });
                     })
                 }
             }

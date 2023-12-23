@@ -128,6 +128,12 @@ class ServerDataset(Dataset):
             if table.item_name == caption:
                 return table
 
+    def _execute_select(self, sql, params):
+        db = self.task.db
+        con = self.task.connect()
+        cursor = con.cursor()
+        return self.__execute_select(cursor, sql, params, db)
+
     def __execute_select(self, cursor, sql, params, db):
         try:
             if params:
@@ -138,6 +144,7 @@ class ServerDataset(Dataset):
             return db.process_query_result(cursor.fetchall())
         except Exception as x:
             self.log.exception('%s:\n%s' % (error_message(x), sql))
+            print(sql)
             print(params)
 
     def execute_open(self, params, connection=None, db=None, query_data=None, ):

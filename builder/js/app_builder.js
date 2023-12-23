@@ -217,7 +217,7 @@ function Events1() { // app_builder
 	
 	function resize_elements(task) {
 		var height = $(window).height() -
-			($('#task-tabs').offset().top + $('#task-tabs').outerHeight(true)) - 32;
+			($('#task-tabs').offset().top + $('#task-tabs').outerHeight(true)) - 30;
 		resize_panels(task, height);
 		resize_editor(task, height);
 		if ($('ul#task-tabs li button.active').attr('id') === 'admin') {
@@ -1726,7 +1726,7 @@ function Events3() { // sys_items
 							}
 						});
 						['f_primary_key', 'f_deleted_flag', 'f_master_id',  
-							'f_master_rec_id'].forEach(function(field_name) {
+							'f_master_rec_id', 'f_record_version'].forEach(function(field_name) {
 							if (clone.locate('f_field_name', copy_source[field_name].lookup_value)) {
 								item[field_name].value = clone.id.value;
 								item[field_name].lookup_value = clone.f_field_name.value;

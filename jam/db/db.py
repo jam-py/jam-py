@@ -265,7 +265,8 @@ class AbstractDB(object):
                 f_list = []
                 for f in delta.fields:
                     if self.db_field(f) and f.cur_data != f.data:
-                        f_list.append([f.ID, f.data])
+                        if not delta._record_version or f.field_name != delta._record_version:
+                            f_list.append([f.ID, f.data])
                 if f_list:
                     changes_str = json.dumps(f_list, separators=(',',':'), default=json_defaul_handler)
                     changes = ('%s%s' % ('0', changes_str), consts.LONGTEXT)
@@ -396,11 +397,11 @@ class AbstractDB(object):
             details = []
             if res != False and not d.virtual_table:
                 self.process_record(d, connection, cursor, safe)
-            for detail in d.details:
-                if d.change_log.record_status == consts.RECORD_DELETED:
-                    self.delete_detail_records(d, connection, cursor, detail)
-                elif detail.master:
-                    self.process_records(detail, connection, cursor, params, safe)
+                for detail in d.details:
+                    if d.change_log.record_status == consts.RECORD_DELETED:
+                        self.delete_detail_records(d, connection, cursor, detail)
+                    elif detail.master:
+                        self.process_records(detail, connection, cursor, params, safe)
             self.do_after_apply(delta, connection, params)
 
     def process_changes(self, delta, connection, params=None):
@@ -634,8 +635,7 @@ class AbstractDB(object):
         elif filter_type == consts.FILTER_ISNULL:
             sql_literal = ''
             value = None
-        else:
-            if filter_type in [consts.FILTER_CONTAINS, consts.FILTER_STARTWITH, consts.FILTER_ENDWITH]:
+        elif filter_type in [consts.FILTER_CONTAINS, consts.FILTER_STARTWITH, consts.FILTER_ENDWITH]:
                 value = self.convert_field_value(field, value)
                 value, esc_found = self.escape_search(value, esc_char)
                 if field.lookup_item:
@@ -655,8 +655,9 @@ class AbstractDB(object):
                 cond_field_name, value = self.convert_like(cond_field_name, value, field.data_type)
                 if esc_found:
                     value = '' + value + "' ESCAPE '" + esc_char
-                sql_literal = "'%s'" % value
-                value = None
+                value = '%s' % value
+        else:
+            value = self.convert_field_value(field, value)
         sql = '%s %s %s' % (cond_field_name, filter_sign, sql_literal)
         if field.data_type == consts.BOOLEAN and value == 0 and filter_sign == '=':
             value = '1'

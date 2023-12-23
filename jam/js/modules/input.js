@@ -19,12 +19,12 @@ class DBAbstractInput {
             field_type === consts.DATE || field_type === consts.DATETIME) {
             let icon_name = 'bi-chevron-down';
             if (field.lookup_item) {
-                icon_name = 'bi-table';
+                icon_name = 'bi-folder2-open';
             } else if (field_type === consts.DATE || field_type === consts.DATETIME) {
                 icon_name = 'bi-calendar';
             }
             input = '<div class="input-group">' +
-                '<button type="button" class="first-btn btn btn-outline-secondary" tabindex="-1"><i class="bi bi-x-square"></i></button>' +
+                '<button type="button" class="first-btn btn btn-outline-secondary" tabindex="-1"><i class="bi bi-x-circle"></i></button>' +
                 '<input type="text" class="form-control">' +
                 '<button type="button" class="last-btn btn btn-outline-secondary" tabindex="-1"><i class="bi ' + icon_name + '"></i></button>' +
             '</div>'
@@ -38,7 +38,7 @@ class DBAbstractInput {
                 field_file = this.field.lookup_item[this.field.lookup_field].field_file;
             }
             input = '<div class="input-group">' +
-              '<button type="button" class="first-btn btn btn-outline-secondary" tabindex="-1""><i class="bi bi-x-square"></i></button>' +
+              '<button type="button" class="first-btn btn btn-outline-secondary" tabindex="-1""><i class="bi bi-x-circle"></i></button>' +
               '<input type="text" class="form-control">' +
               '<button type="button" class="upload-btn btn btn-outline-secondary" tabindex="-1"><i class="bi bi-upload"></i></button>'
             if (field_file.download_btn) {
