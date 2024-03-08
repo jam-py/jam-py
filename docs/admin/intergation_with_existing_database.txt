@@ -1,5 +1,5 @@
 ==================================
-Intergation with existing database
+Integration with existing database
 ==================================
 
 You can use Jam.py with existing database, that is supported by the framework.
