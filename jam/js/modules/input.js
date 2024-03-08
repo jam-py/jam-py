@@ -660,6 +660,7 @@ class DBAbstractInput {
         if (!this.changed()) {
             if (this.field.field_kind !== consts.ITEM_FIELD || this.field.owner.rec_count) {
                 this.$input.val(this.field.display_text);
+                return;
             }
         }
         if (this.table && this.table.edit_mode) {

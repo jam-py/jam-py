@@ -1193,7 +1193,7 @@ def create_indexes(item, delta, manual_update):
     if not manual_update:
         for f in delta.sys_fields:
             if f.rec_inserted():
-                if f.f_object.value:
+                if f.f_object.value and not f.f_master_field.value:
                     create_index(delta.task, f.owner_rec_id.value, [f.id.value], '_IDX')
                 if f.f_calc_item.value:
                     create_index(delta.task, f.f_calc_item.value, [f.f_calc_lookup_field.value], '_IDX')

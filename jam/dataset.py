@@ -1073,7 +1073,8 @@ class AbstractDataSet(object):
 
     @property
     def lock_active(self):
-        return self.edit_lock and self._record_version
+        if self.active:
+            return self.edit_lock and self._record_version_field
 
     def _copy(self, filters=True, details=True, handlers=True):
         result = self.__class__(self.task, None, self.item_name, self.item_caption)
