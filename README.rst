@@ -58,6 +58,8 @@ More demos on PythonAnywhere:
 * `Assets/Parts Application (wip, currently Jam V7 Demo) <https://jampy.pythonanywhere.com>`_
 * `Machine Learning (wip) <https://mlearning.pythonanywhere.com>`_
 * `Auto Parts Sales for Brazilian Market (Portuguese) <https://carparts.pythonanywhere.com>`_
+* `Resourcing and Billing Application from MS Access DB (wip) <https://resourcingandbilling.pythonanywhere.com>`_
+* `Job Positions tracking App from MS Access DB (wip) <https://positionstracking.pythonanywhere.com>`_
 
 
 Jam.py alternative site:
