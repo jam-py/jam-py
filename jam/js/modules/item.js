@@ -4069,7 +4069,8 @@ class Item extends AbsrtactItem {
             tabs = this.edit_options.tabs;
         this.task.init_tabs(container, {consistent_height: true});
         for (i = 0; i < tabs.length; i++) {
-            this.create_bands(tabs[i], task.add_tab(container, tabs[i].name))
+            this.create_bands(tabs[i], task.add_tab(container,
+                tabs[i].name, {tab_id: this.item_name + '_edit_tab_' + i}));
         }
     }
 
