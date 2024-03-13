@@ -736,7 +736,8 @@ class DBTable {
                     if ($active_input.length && $active_input.val()) {
                         let $form = $active_input.parent(),
                             active_field_name = $form.parent().data('field_name');
-                        self.hide_search_input_form($form);
+                        $active_input.val('');
+                        self.hide_search_inputs();
                         self.item.search(active_field_name, '', 'contains_all', true, function() {
                             let $th = self.$outer_table.find('thead th.' + field_name)
                             $th.css('position', 'relative');
