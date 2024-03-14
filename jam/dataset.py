@@ -1189,15 +1189,6 @@ class AbstractDataSet(object):
                 if type(field.calculated['calc_item']) == int:
                     field._calc_item = self.task.item_by_ID(field.calculated['calc_item'])
                     field._calc_on_field = field._calc_item._field_by_ID(field.calculated['calc_lookup_field'])
-                    # ~ for f in field._calc_item._fields:
-                        # ~ if f.lookup_item:
-                            # ~ ID = self.ID
-                            # ~ if self._copy_of:
-                                # ~ ID = self._copy_of
-                            # ~ if (type(f.lookup_item) == int and f.lookup_item == ID or \
-                                # ~ type(f.lookup_item) != int and f.lookup_item.ID == ID):
-                                 # ~ field._calc_on_field = f
-                                 # ~ break
                     field._calc_field = field._calc_item._field_by_ID(field.calculated['calc_field'])
                     field._calc_op = field.calculated['calc_op']
 
@@ -1481,8 +1472,11 @@ class AbstractDataSet(object):
             sys_field = getattr(self, sys_field_name)
             if sys_field:
                 field = self.field_by_name(sys_field)
-                # ~ if field:
                 setattr(self, sys_field_name + '_field', field)
+        result = []
+        for field in self.fields:
+            result.append(field.field_name)
+        return result
 
     def _do_before_open(self, expanded, fields, where, order_by, open_empty,
         params, offset, limit, funcs, group_by):
@@ -1495,7 +1489,8 @@ class AbstractDataSet(object):
 
         if fields is None and self._select_field_list:
             fields = self._select_field_list
-        self._update_fields(fields)
+        else:
+            fields = self._update_fields(fields)
         if fields:
             params['__fields'] = fields
         if not open_empty:
@@ -1860,14 +1855,14 @@ class MasterDataSet(AbstractDataSet):
                     copy = self.copy(handlers=False, details=False, filters=False)
                 pk = copy._primary_key
                 copy.set_where({pk: self._primary_key_field.value})
-                copy.open(expanded=False, connection=self._apply_connection)
+                field_names = [f.field_name for f in self.fields]
+                copy.open(expanded=False, fields=field_names, connection=self._apply_connection)
                 if copy.rec_count:
                     cur_row = []
                     for f in copy.fields:
                         if not f.master_field and not f.calculated:
                             cur_row.append(f.data)
                     self.change_log.record_info.cur_record = cur_row
-
     def init_delta_details(self, client_changes):
         for detail in self.details:
             detail._is_delta = True

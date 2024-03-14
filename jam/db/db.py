@@ -459,9 +459,10 @@ class AbstractDB(object):
                 functions[key.upper()] = value
         sql = []
         for i, field in enumerate(fields):
-            prohibited, read_only = field.restrictions
-            if prohibited:
-                continue
+            if query.client_request:
+                prohibited, read_only = field.restrictions
+                if prohibited:
+                    continue
             if i == 0 and summary:
                 sql.append(self.identifier_case('count(*)'))
             elif field.master_field:

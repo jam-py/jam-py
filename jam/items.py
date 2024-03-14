@@ -205,6 +205,9 @@ class ServerDataset(Dataset):
         if client_request and not self.can_view():
             raise Exception(consts.language('cant_view') % self.item_caption)
 
+        query_data = QueryData(params)
+        query_data.client_request = client_request
+
         result = None # on_open is depricated
         if self.task.on_open:
             result = self.task.on_open(self, params)
@@ -216,8 +219,6 @@ class ServerDataset(Dataset):
         error = None
         result = None
         exec_query = True
-        query_data = QueryData(params)
-        query_data.client_request = client_request
         if self.task.on_before_open:
             exec_query = self.task.on_before_open(self, query_data, params, connection)
         if exec_query != False and self.on_before_open:
@@ -227,7 +228,7 @@ class ServerDataset(Dataset):
             if self.virtual_table:
                 result = []
             else:
-                result, error = self.execute_open(params, connection)
+                result, error = self.execute_open(params, connection, query_data=query_data)
 
         dataset = None
         if self.on_after_open:
