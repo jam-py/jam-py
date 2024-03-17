@@ -10,6 +10,7 @@ else
   echo "##########################################################"
 fi
 
+chown -R jampy:jampy /app
 cd /app
 
 if [ -f /app/server.py ]; then
@@ -19,4 +20,4 @@ else
     cp -R /opt/jam-py/demo/* .
 fi
 
-./server.py
+su -l jampy -c ./server.py
