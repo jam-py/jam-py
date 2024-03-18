@@ -23,7 +23,7 @@ Attributes
     
     abstr_item/at_*
 
-Mehods 
+Methods 
 ======
 
 .. toctree::

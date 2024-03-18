@@ -24,7 +24,7 @@ Attributes
     
     report/at_*
 
-Mehods 
+Methods 
 ======
 
 .. toctree::

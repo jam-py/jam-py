@@ -18,7 +18,7 @@ Attributes and properties
     
     field/at_*
 
-Mehods 
+Methods 
 ======
 
 .. toctree::
