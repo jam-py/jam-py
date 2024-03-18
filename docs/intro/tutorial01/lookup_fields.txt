@@ -29,7 +29,7 @@ the **Lookup item** input
 
 .. image:: /intro/_images/cutomers_lookup_tab.png
 	:align: center
-	:alt: Cutomer lookup tab
+	:alt: Customer lookup tab
 
 This brings up a list of items. Double click the "Customer" record to select it.
 

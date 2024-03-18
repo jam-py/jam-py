@@ -18,7 +18,7 @@ create a dashboard:
 
 On the server side you can import python libraries to your modules. 
 
-For exapmple the mail item server module import smtplib library to send emails:
+For example the mail item server module import smtplib library to send emails:
 
 .. code-block:: py
 

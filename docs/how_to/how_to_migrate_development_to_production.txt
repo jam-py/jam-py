@@ -13,7 +13,7 @@ The process of importing metadata depends on the type of project database.
 New project migration
 =====================
 
-* Create an empty database in the production envirnoment
+* Create an empty database in the production envirnment
 
 * Run *jam-project.py* script to create a new project
 

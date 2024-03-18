@@ -18,7 +18,7 @@ In the dialog that will appear click on the Create history item button
 	:align: center
 	:alt: New history item
 
-The following mesage will appear when the item will be created: 
+The following message will appear when the item will be created: 
 
 .. image:: _images/hist_item_created.png
 	:align: center

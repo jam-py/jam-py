@@ -2,7 +2,7 @@
 How to migrate to another database
 ==================================
 
-You can mirgate your data to another database.
+You can migrate your data to another database.
 
 For example, you developed your project with SQLite database amd want to move to 
 Postgress.
