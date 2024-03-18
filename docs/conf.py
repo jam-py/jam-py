@@ -283,3 +283,8 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
+latex_engine = "xelatex"
+latex_use_xindy = False
+latex_elements = {
+    "preamble": "\\usepackage[UTF8]{ctex}\n",
+}
