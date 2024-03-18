@@ -9,7 +9,7 @@ Field class
 **language**: javascript
 
 
-Attrubutes and properties
+Attributes and properties
 =========================
 
 .. toctree::

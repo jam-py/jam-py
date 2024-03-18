@@ -11,7 +11,7 @@ Detail class
 Detail class inherits attributes, methods and events of 
 :doc:`Item class <item_api>`
 
-Attrubutes
+Attributes
 ==========
 
 .. toctree::

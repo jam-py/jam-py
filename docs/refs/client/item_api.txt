@@ -17,7 +17,7 @@ Below the attributes, methods and events of the class are listed.
 It, as well, inherits attributes and methods of its ancestor class
 :doc:`AbstractItem class <abstractitem_api>`
 
-Attrubutes and properties
+Attributes and properties
 =========================
 
 .. toctree::
