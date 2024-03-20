@@ -19,7 +19,7 @@ class DBAbstractInput {
             field_type === consts.DATE || field_type === consts.DATETIME) {
             let icon_name = 'bi-chevron-down';
             if (field.lookup_item) {
-                icon_name = 'bi-folder2-open';
+                icon_name = 'bi-search';
             } else if (field_type === consts.DATE || field_type === consts.DATETIME) {
                 icon_name = 'bi-calendar';
             }
