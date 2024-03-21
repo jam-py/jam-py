@@ -462,6 +462,7 @@ class AbstractDB(object):
             if query.client_request:
                 prohibited, read_only = field.restrictions
                 if prohibited:
+                    print(field.field_name)
                     continue
             if i == 0 and summary:
                 sql.append(self.identifier_case('count(*)'))

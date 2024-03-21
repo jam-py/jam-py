@@ -1455,6 +1455,8 @@ class AbstractDataSet(object):
         for field in self.fields:
             if hasattr(self, field.field_name):
                 delattr(self, field.field_name)
+        if not fields and self._select_field_list:
+            fields = self._select_field_list
         if fields:
             self.fields = []
             for field_name in fields:
@@ -1487,10 +1489,8 @@ class AbstractDataSet(object):
         params['__filters'] = []
         filters = []
 
-        if fields is None and self._select_field_list:
-            fields = self._select_field_list
-        else:
-            fields = self._update_fields(fields)
+        fields = self._update_fields(fields)
+        self._select_field_list = []
         if fields:
             params['__fields'] = fields
         if not open_empty:
