@@ -8,7 +8,7 @@ You can use
 method to send a request to the server to execute a function defined in the 
 server module of an item.
 
-En the example below we create the ``btn`` button that is a JQuery object. 
+In the example below we create the ``btn`` button that is a JQuery object. 
 Then we use its click method to attach a function that calls the 
 :doc:`server </refs/client/abstr_item/m_server>`
 method of the item to run the ``calculate`` function defined in the server module

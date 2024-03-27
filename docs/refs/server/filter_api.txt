@@ -8,7 +8,7 @@ Filter class
 
 **language**: python
 
-Attrubutes and properties
+Attributes and properties
 =========================
 
 .. toctree::

@@ -14,7 +14,7 @@ AbstractItem class is the ancestor for all item objects of the
 Below the attributes and methods of the class are listed.
 
 
-Attrubutes
+Attributes
 ==========
 
 .. toctree::
@@ -23,7 +23,7 @@ Attrubutes
     
     abstr_item/at_*
 
-Mehods 
+Methods 
 ======
 
 .. toctree::

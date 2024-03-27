@@ -124,7 +124,7 @@ select_all          if  true, the menu will appear in the leftmost column of
 row_callback        the callback functions called each time fields of the record
                     are changed. Two parameters are passed to the function - 
                     item, whose record has changed and JQuery object of the 
-                    corresponding row of the table. Please be carefull - the 
+                    corresponding row of the table. Please be careful - the 
                     item passed to the function can be not item itself, but its 
                     clone that share the same dataset.
 =================== ============================================================  
