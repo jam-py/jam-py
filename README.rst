@@ -60,6 +60,8 @@ More demos on PythonAnywhere:
 * `Auto Parts Sales for Brazilian Market (Portuguese) <https://carparts.pythonanywhere.com>`_
 * `Resourcing and Billing Application from MS Access DB (wip) <https://resourcingandbilling.pythonanywhere.com>`_
 * `Job Positions tracking App from MS Access DB (wip) <https://positionstracking.pythonanywhere.com>`_
+* `Kanban/Tasks Application <https://kanban.pythonanywhere.com>`_
+* `Assets Inventory Application (wip) <https://assetinventory.pythonanywhere.com>`_
 
 
 Jam.py alternative site:
