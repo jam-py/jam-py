@@ -436,6 +436,7 @@ class SQL(object):
     def _get_condition(self, field, filter_type, value, db_module):
         esc_char = '/'
         cond_field_name = '%s."%s"' % (self.table_alias(), field.db_field_name)
+        cond_field_data_type = field.data_type
         if type(value) == str:
             value = to_unicode(value, 'utf-8')
         filter_sign = self._get_filter_sign(filter_type, value, db_module)
@@ -455,11 +456,13 @@ class SQL(object):
                 if field.lookup_item:
                     if field.lookup_item1:
                         cond_field_name = '%s."%s"' % (self.lookup_table_alias1(field), field.lookup_db_field1)
+                        cond_field_data_type = type(field.lookup_field1)
                     else:
                         if field.data_type == consts.KEYS:
                             cond_field_name = '%s."%s"' % (self.table_alias(), field.db_field_name)
                         else:
                             cond_field_name = '%s."%s"' % (self.lookup_table_alias(field), field.lookup_db_field)
+                            cond_field_data_type = type(field.lookup_field)
 
                 if filter_type == consts.FILTER_CONTAINS:
                     value = '%' + value + '%'
@@ -467,13 +470,13 @@ class SQL(object):
                     value = value + '%'
                 elif filter_type == consts.FILTER_ENDWITH:
                     value = '%' + value
-                cond_field_name, value = db_module.convert_like(cond_field_name, value, field.data_type)
+                cond_field_name, value = db_module.convert_like(cond_field_name, value, cond_field_data_type)
                 if esc_found:
                     value = "'" + value + "' ESCAPE '" + esc_char + "'"
                 else:
                     value = "'" + value + "'"
         sql = cond_string % (cond_field_name, filter_sign, value)
-        if field.data_type == consts.BOOLEAN and value == '0':
+        if cond_field_data_type == consts.BOOLEAN and value == '0':
             if filter_sign == '=':
                 sql = '(' + sql + ' OR %s IS NULL)' % cond_field_name
             elif filter_sign == '<>':
