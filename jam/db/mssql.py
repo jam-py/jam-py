@@ -38,9 +38,9 @@ FIELD_TYPES = {
 
 def connect(database, user, password, host, port, encoding, server):
     if encoding:
-        return pymssql.connect(server=server, database=database, user=user, password=password, host=host, port=port, charset=encoding)
+        return pymssql.connect(server=server, database=database, user=user, password=password, host=host, port=port, charset=encoding, autocommit=True)
     else:
-        return pymssql.connect(server=server, database=database, user=user, password=password, host=host, port=port)
+        return pymssql.connect(server=server, database=database, user=user, password=password, host=host, port=port, autocommit=True)
 
 def get_lastrowid(cursor):
     return cursor.lastrowid
