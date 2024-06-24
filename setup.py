@@ -3,9 +3,9 @@ from setuptools import setup
 import jam
 
 setup(
-    name='jam.py',
+    name='jam.py-v7',
     version=jam.version(),
-    url='http://jam-py.com/',
+    url='https://github.com/jam-py-v5/jam-py',
     author='Andrew Yushev',
     author_email='yushevaa@gmail.com',
     description=('Jam.py Application Builder is an event-driven framework \
