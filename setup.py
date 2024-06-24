@@ -40,7 +40,7 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Database',
         'Topic :: Database :: Front-Ends'
-    ]
+    ],
     long_description=open('README.rst').read(),
     long_description_content_type='text/markdown',       
 )
