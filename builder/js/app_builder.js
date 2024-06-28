@@ -1425,30 +1425,32 @@ function Events3() { // sys_items
 	}
 	
 	function create_common_fields(item) {
-		var parent = item.copy({handlers: false})
-		parent.set_where({id: item.parent.value});
-		parent.open();
-		if (parent.rec_count) {
-			parent.sys_fields.open();
-			parent.sys_fields.each(function(p_fields) {
-				item.sys_fields.append();
-				item.sys_fields.each_field(function(field) {
-					let p_field = p_fields.field_by_name(field.field_name);
-					field.data = p_field.data
-				})
-				item.sys_fields.id.data = task.server('get_fields_next_id');
-				item.sys_fields.post();
-				['f_primary_key', 'f_deleted_flag', 'f_master_id',  
-					'f_master_rec_id', 'f_record_version'].forEach(function(field_name) {
-						if (parent[field_name].value === p_fields.id.value) {
-							item[field_name].value = item.sys_fields.id.value;
-							item[field_name].lookup_value = item.sys_fields.f_field_name.value;
-						}			
+		if (!item._import_info) { 
+			var parent = item.copy({handlers: false})
+			parent.set_where({id: item.parent.value});
+			parent.open();
+			if (parent.rec_count) {
+				parent.sys_fields.open();
+				parent.sys_fields.each(function(p_fields) {
+					item.sys_fields.append();
+					item.sys_fields.each_field(function(field) {
+						let p_field = p_fields.field_by_name(field.field_name);
+						field.data = p_field.data
 					})
-			})
-		}
-		if (item.f_deleted_flag.value) {
-			item.f_soft_delete.value = true;
+					item.sys_fields.id.data = task.server('get_fields_next_id');
+					item.sys_fields.post();
+					['f_primary_key', 'f_deleted_flag', 'f_master_id',  
+						'f_master_rec_id', 'f_record_version'].forEach(function(field_name) {
+							if (parent[field_name].value === p_fields.id.value) {
+								item[field_name].value = item.sys_fields.id.value;
+								item[field_name].lookup_value = item.sys_fields.f_field_name.value;
+							}			
+						})
+				})
+			}
+			if (item.f_deleted_flag.value) {
+				item.f_soft_delete.value = true;
+			}
 		}
 	}
 		
@@ -1477,7 +1479,7 @@ function Events3() { // sys_items
 				item.f_edit_lock.read_only = !item.f_record_version.value;
 			}
 		}
-		item._import_info = undefined; //defined for imported items
+		// item._import_info = undefined; //defined for imported items
 		if (item.type_id.value === types.ITEM_TYPE || item.type_id.value === types.TABLE_TYPE) {
 			item.fields_editor = true;
 			if (item.task.db_params.generator) {
@@ -1596,6 +1598,7 @@ function Events3() { // sys_items
 				item.edit_form.find('#edit-detail-footer').hide();
 			}
 		}
+		item._import_info = undefined; //defined for imported items
 	}
 	
 	function update_field_selections(item, creating, added_id, deleted_id) {
@@ -2702,11 +2705,12 @@ function Events3() { // sys_items
 			fields = res['fields'];
 			types = res['field_types'];
 			imp.close_view_form();
+			item._import_info = res;
 			item.append_record()
 			handlers = item.sys_fields.store_handlers();
 			item.sys_fields.disable_controls();
 			try {
-				item._import_info = res;
+				// item._import_info = res;
 				item.sys_fields.clear_handlers();
 				item.f_name.value = table_name.charAt(0).toUpperCase() + table_name.slice(1).toLowerCase();
 				item.f_item_name.value = table_name.toLowerCase();
@@ -2732,9 +2736,6 @@ function Events3() { // sys_items
 						item.f_primary_key.value = item.sys_fields.id.value;
 						item.f_primary_key.lookup_value = item.sys_fields.f_field_name.value;
 					}
-	//			if (fields[i].default_value) {
-	//				item.sys_fields.f_default_value.value = fields[i].default_value;
-	//			}
 					item.sys_fields.post();
 				}
 				item.sys_fields.first();

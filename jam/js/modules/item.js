@@ -3263,9 +3263,11 @@ class Item extends AbsrtactItem {
                                     self.alert_error(e);
                                 }
                             }
-                            self.refresh(function() {
-                                self._do_after_delete_record(master_changing, callback);
-                            });
+                            if (!(self.master && self.master_applies)) {
+                                self.refresh(function() {
+                                    self._do_after_delete_record(master_changing, callback);
+                                });
+                            }
                         });
                     },
                     function() {
