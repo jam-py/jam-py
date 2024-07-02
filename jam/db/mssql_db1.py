@@ -10,11 +10,11 @@ class MSSqlDB1(MSSqlDB):
         if db_info.encoding:
             return pymssql.connect(server=db_info.server, database=db_info.database,
                 user=db_info.user, password=db_info.password, host=db_info.host,
-                port=db_info.port, charset=db_info.encoding)
+                port=db_info.port, charset=db_info.encoding, autocommit=True)
         else:
             return pymssql.connect(server=db_info.server, database=db_info.database,
                 user=db_info.user, password=db_info.password, host=db_info.host,
-                port=db_info.port)
+                port=db_info.port, autocommit=True)
 
     def get_lastrowid(self, cursor):
         return cursor.lastrowid
