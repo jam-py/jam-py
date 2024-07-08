@@ -199,7 +199,11 @@ def recreate_table(delta, old_fields, new_fields, comp=None, fk_delta=None):
         cursor.execute(sql)
         prepare_fields()
         old_field_list = ['"%s"' % field.field_name for field in old_fields]
+        print (old_field_list)
         new_field_list = ['"%s"' % field.field_name for field in new_fields]
+        print (new_field_list)
+        print ('INSERT INTO "%s" (%s) SELECT %s FROM Temp' % \
+            (table_name, ', '.join(new_field_list), ', '.join(old_field_list)))
         cursor.execute('INSERT INTO "%s" (%s) SELECT %s FROM Temp' % \
             (table_name, ', '.join(new_field_list), ', '.join(old_field_list)))
     except Exception as e:

@@ -3338,6 +3338,10 @@ class Item extends AbsrtactItem {
                 this.post();
             }
             catch (e) {
+                console.error(e);
+                if (!(e.name && e.name === 'AbortError')) {
+                    this.alert_error(e);
+                }
                 if (!this.is_changing()) {
                     this.edit();
                 }
