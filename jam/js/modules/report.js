@@ -121,7 +121,11 @@ class Report extends AbsrtactItem {
             len = this.params.length;
         for (i = 0; i < len; i++) {
             try {
-                this.params[i].check_valid();
+				let err = this.params[i].check_valid();
+				if (err) {
+					this.warning(err);
+					return false;
+				}
             } catch (e) {
                 this.warning(e);
                 return false;

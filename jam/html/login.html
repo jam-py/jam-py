@@ -7,6 +7,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" href="static/img/j.png" type="image/png">
         <link href="jam/css/bs5/bootstrap.css" rel="stylesheet">
+		<link href="jam/css/bs5/bootstrap-icons.css" rel="stylesheet">
         <link href="jam/css/jam.css" rel="stylesheet">
     </head>
     <body>
@@ -18,16 +19,22 @@
                     </div>
                     <form action="" method="post">
                         <div class="modal-body">
-                            <div class="my-1 mx-5 row">
+                            <div class="my-1 mx-4 row">
                                 <label for="login" class="col-sm-3 col-form-label">%(login_text)s</label>
                                 <div class="col-sm-9">
-                                    <input type="text" class="form-control" name="login" placeholder="%(login_text)s" value="%(login)s" required>
+                                    <input type="text" class="form-control" name="login" id="login" placeholder="%(login_text)s" value="%(login)s" required>
                                 </div>
                             </div>
-                            <div class="my-1 mx-5 row">
+							
+							<div class="my-1 mx-4 row">
                                 <label for="password" class="col-sm-3 col-form-label">%(password_text)s</label>
                                 <div class="col-sm-9">
-                                    <input type="password" class="form-control" name="password" placeholder="%(password_text)s" value="%(password)s" required>
+								<div class="input-group">
+                                    <input type="password" class="form-control" name="password" id="password" placeholder="%(password_text)s" value="%(password)s">
+									<button class="btn btn-outline" type="button" id="togglePassword">
+										<i class="bi bi-eye-fill"></i>
+									</button>
+								</div>
                                 </div>
                             </div>
                         </div>
@@ -39,6 +46,19 @@
             </div>
         </div>
     </body>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+	<script src="jam/js/jquery.js"></script>
+	<script>
+		$('#login').focus();
+		
+		$('#togglePassword').click(function() {
+			const passwordInput = $('#password');
+			const type = passwordInput.attr('type') === 'password' ? 'text' : 'password';
+				passwordInput.attr('type', type);
+				$(this).html(type === 'password' ? '<i class="bi bi-eye-fill"></i>' : '<i class="bi bi-eye-slash-fill"></i>');
+		});
+		
+	</script>
 </html>
 
 
