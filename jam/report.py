@@ -174,7 +174,7 @@ class Report(object):
                     stderr=STDOUT,stdout=PIPE)
                 out, err = convertion.communicate()
             except Exception as e:
-                print('Report "%s" convertion error:' % self.name, e)
+                print('Report "%s" conversion error:' % self.name, e)
                 return False
             return True
 

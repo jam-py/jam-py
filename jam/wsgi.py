@@ -349,7 +349,7 @@ class App(object):
             login_params = {
                 'title': 'Jam.py Application Builder',
                 'error': '',
-                'form_title': consts.lang['log_in'],
+                'form_title': consts.lang['log_in'] + ' - Application Builder',
                 'login_text': consts.lang['login'],
                 'password_text': consts.lang['password'],
                 'login': '',
