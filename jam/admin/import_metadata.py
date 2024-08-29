@@ -293,7 +293,7 @@ class MetaDataImport(object):
     def get_table_name(self, item_id):
         items = self.new_items['sys_items']
         if items.locate('id', item_id):
-            if not items.f_virtual_table.value:
+            if not items.f_virtual_table.value or not items.f_copy_of.value:
                 return items.f_table_name.value
 
     def get_foreign_key_dict(self, ind):
@@ -405,7 +405,7 @@ class MetaDataImport(object):
             module = get_database(self.task.app, self.db_type, self.task.task_db_info.lib)
             if d.rec_inserted() and module.NEED_GENERATOR and \
                 d.f_primary_key.value and not d.f_gen_name.value and \
-                not d.f_virtual_table.value:
+                not d.f_virtual_table.value and not d.f_copy_of.value:
                 case = module.identifier_case
                 d.edit()
                 d.f_gen_name.value = case('%s_SEQ' % d.f_table_name.value)
