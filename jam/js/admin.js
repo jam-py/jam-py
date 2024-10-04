@@ -1262,7 +1262,7 @@ function Events3() { // sys_items
 				it.f_index.value = i;
 				it.post();
 				i++;
-			})
+			});
 		}
 		finally {
 			item.rec_no = rec;
@@ -5238,6 +5238,10 @@ function Events21() { // app_builder.details.sys_report_params
 		item.edit_form.find('textarea.f_help').attr('rows', 3).height(40);
 		task.sys_items.sys_fields.update_read_only(item);
 	}
+	
+	function on_after_apply(item) {
+		item.task.refresh_task_dict(item.task);
+	}
 	this.on_view_form_created = on_view_form_created;
 	this.on_view_form_close_query = on_view_form_close_query;
 	this.on_before_post = on_before_post;
@@ -5245,6 +5249,7 @@ function Events21() { // app_builder.details.sys_report_params
 	this.on_field_changed = on_field_changed;
 	this.on_field_select_value = on_field_select_value;
 	this.on_edit_form_created = on_edit_form_created;
+	this.on_after_apply = on_after_apply;
 }
 
 task.events.events21 = new Events21();
