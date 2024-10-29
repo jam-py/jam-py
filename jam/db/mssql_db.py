@@ -103,7 +103,8 @@ class MSSqlDB(AbstractDB):
             if field.size != 0 and field.data_type == consts.TEXT:
                 line += '(%d)' % field.size
             if not default_text is None:
-                line += ' CONSTRAINT "%s" DEFAULT %s' % (field.field_name + '_DEFAULT_CONSTRAINT', default_text)
+##                line += ' CONSTRAINT "%s" DEFAULT %s' % (field.field_name + '_DEFAULT_CONSTRAINT', default_text)          ##fsu 2024.10.26
+                line += ' CONSTRAINT "%s" DEFAULT %s' % ('DF_' + table_name + '_' + field.field_name, default_text)         ##fsu 2024.10.26
             if field.primary_key:
                 line += ' IDENTITY(1, 1)'
                 primary_key = field.field_name
@@ -124,36 +125,49 @@ class MSSqlDB(AbstractDB):
         if field.size:
             line += '(%d)' % field.size
         if not default_text is None:
-            line += ' CONSTRAINT "%s" DEFAULT %s' % (field.field_name + '_DEFAULT_CONSTRAINT', default_value)
+##            line += ' CONSTRAINT "%s" DEFAULT %s' % (field.field_name + '_DEFAULT_CONSTRAINT', default_value)                                                 ##fsu 2024.10.26
+            line += ' CONSTRAINT "%s" DEFAULT %s FOR "%s"' % ('DF_' + table_name + '_' + field.field_name, default_text, field.field_name)                  ##fsu 2024.10.26
+        print(line)
         return line
 
     def del_field(self, table_name, field):
-        return 'ALTER TABLE "%s" DROP COLUMN "%s"' % (table_name, field.field_name)
+        result = 'IF NOT (SELECT COLUMN_DEFAULT FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = \'%s\' AND COLUMN_NAME = \'%s\') IS NULL BEGIN ALTER TABLE "%s" DROP CONSTRAINT "%s" END ALTER TABLE "%s" DROP COLUMN "%s"' % \
+            (table_name, field.field_name, table_name, 'DF_' + table_name + '_' + field.field_name, table_name, field.field_name)    ##fsu 2024.10.26
+##        return 'ALTER TABLE "%s" DROP COLUMN "%s"' % (table_name, field.field_name)                                                ##fsu 2024.10.26
+##        print(result)                                                                                                              ##fsu 2024.10.26
+        return result
 
     def change_field(self, table_name, old_field, new_field):
         if old_field.field_name != new_field.field_name:
             raise Exception("Changing field name is prohibited: field %s" % old_field.field_name)
-        result = []
-        default_value = self.default_value(new_field)
+        result = ''                                                                                                     ##fsu 2024.10.26
+ ##        default_value = self.default_value(new_field)                                                                ##fsu 2024.10.26
         default_text = self.default_text(new_field)
         old_default_text = self.default_text(old_field)
         field_info = self.get_field_info(old_field.field_name, table_name)
         if old_field.size != new_field.size:
-            line = 'ALTER TABLE "%s" ALTER COLUMN "%s" %s' % \
-                 (table_name, new_field.field_name, field_info['data_type'])
+##            line = 'ALTER TABLE "%s" ALTER COLUMN "%s" %s' % \                                                        ##fsu 2024.10.26
+            result += 'ALTER TABLE "%s" ALTER COLUMN "%s" %s' % \
+                 (table_name, new_field.field_name, field_info['data_type'])                                            ##fsu 2024.10.26
             size = field_info['size']
             if size and size > 0 and field_info['data_type'].upper() in ['CHAR', 'VARCHAR', 'NVARCHAR']:
                 if new_field.size > size:
                     size = new_field.size
-                line += '(%d)' % size
-            result.append(line)
+##                line += '(%d)' % size                                                                                 ##fsu 2024.10.26
+                result += '(%d)' % size
+##            result.append(line)                                                                                       ##fsu 2024.10.26
         if old_field.default_value != new_field.default_value:
             if not old_default_text is None:
-                line = 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % \
-                    (table_name, field.field_name + '_DEFAULT_CONSTRAINT')
+##                line = 'ALTER TABLE "%s" DROP CONSTRAINT "%s"' % \
+##                    (table_name, field.field_name + '_DEFAULT_CONSTRAINT')                                            ##fsu 2024.10.26
+                result += ' ALTER TABLE "%s" DROP CONSTRAINT "%s"' % \
+                    (table_name, 'DF_' + table_name + '_' + old_field.field_name)                                       ##fsu 2024.10.26
             if not default_text is None:
-                line = 'ALTER TABLE "%s" ADD CONSTRAINT "%s" DEFAULT %s' % \
-                    (table_name, field.field_name + '_DEFAULT_CONSTRAINT', default_text)
+##                line = 'ALTER TABLE "%s" ADD CONSTRAINT "%s" DEFAULT %s' % \
+##                    (table_name, field.field_name + '_DEFAULT_CONSTRAINT', default_text)                              ##fsu 2024.10.26
+                result += ' ALTER TABLE "%s" ADD CONSTRAINT "%s" DEFAULT %s FOR "%s"' % \
+                    (table_name, 'DF_' + table_name + '_' + new_field.field_name, default_text, new_field.field_name)   ##fsu 2024.10.26
+##        print(result)                                                                                                 ##fsu 2024.10.26
         return result
 
     def create_index(self, index_name, table_name, unique, fields, desc):
