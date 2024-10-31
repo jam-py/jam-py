@@ -1,5 +1,5 @@
 
-[![Package on PyPI](https://img.shields.io/pypi/v/jam.py-v7.svg)](https://pypi.org/project/jam.py-v7) [![Supported Python Versions](https://img.shields.io/pypi/pyversions/jam.py-v5.svg)](https://pypi.python.org/pypi/jam.py-v5) [![Documentation Status](https://readthedocs.org/projects/jampy-docs/badge/)](https://jampy-docs.readthedocs.io) [![Downloads](https://static.pepy.tech/badge/jam.py)](http://pepy.tech/project/jam.py)
+[![Package on PyPI](https://img.shields.io/pypi/v/jam.py-v7.svg)](https://pypi.org/project/jam.py-v7) [![Supported Python Versions](https://img.shields.io/pypi/pyversions/jam.py-v5.svg)](https://pypi.python.org/pypi/jam.py-v7) [![Documentation Status](https://readthedocs.org/projects/jampy-docs-v7/badge/)](https://jampy-docs-v7.readthedocs.io) [![Downloads](https://static.pepy.tech/badge/jam.py-v7)](http://pepy.tech/project/jam.py-v7)
 
 
 ## Jam.py Application Builder (web framework)
@@ -44,8 +44,9 @@ More demos on PythonAnywhere:
 - [Kanban/Tasks Application, V7](https://kanban.pythonanywhere.com)
 - [Assets Inventory Application, V7 (wip)](https://assetinventory.pythonanywhere.com)
 - [Google Authentication, V7](https://ipam2.pythonanywhere.com)
-- [IP Management (V7, wip)](https://ipmgmt.pythonanywhere.com)
-
+- [IP Management V7 (wip)](https://ipmgmt.pythonanywhere.com)
+- [Sistema Integrado de Gestão - IMS for Brazilian Market (Portuguese)](https://imsmax.pythonanywhere.com)
+- 
 Jam.py alternative site:
 
 https://jampyapplicationbuilder.com/
@@ -56,7 +57,7 @@ https://jampyapplicationbuilder.com/
 Jam.py is an object oriented, event driven framework with hierarchical structure, modular design
 and very tight DB/GUI coupling. The server side of Jam.py is written in [Python](https://www.python.org),
 the client utilizes [JavaScript](https://developer.mozilla.org/en/docs/Web/JavaScript),
-[jQuery](https://jquery.com) and [Bootstrap](http://getbootstrap.com/2.3.2).
+[jQuery](https://jquery.com) and [Bootstrap](https://getbootstrap.com/docs/5.0/).
 
 * Simple, clear and efficient IDE. The development takes place in the
   Application builder, an application written completely in Jam.py.
@@ -96,11 +97,11 @@ the client utilizes [JavaScript](https://developer.mozilla.org/en/docs/Web/JavaS
 ## Documentation
 
 
-All documentation is in the "docs" directory at the moment, and online at
-https://jampy-docs.readthedocs.io/ or https://jam-py-v5.github.io/jampy-docs/.
+All updated documentation for v7 is online at
+https://jampy-docs-v7.readthedocs.io/ 
 
-Please visit https://jampy-docs.readthedocs.io/en/latest/intro/install.html for Python and
-framework installation or https://jampy-docs.readthedocs.io/en/latest/intro/new_project.html how to create a
+Please visit https://jampy-docs-v7.readthedocs.io/en/latest/intro/install.html for Python and
+framework installation or https://jampy-docs-v7.readthedocs.io/en/latest/intro/new_project.html how to create a
 new project.
 
 For general discussion, ideas or similar, please visit mailgroup https://groups.google.com/g/jam-py or
