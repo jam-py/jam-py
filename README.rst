@@ -21,6 +21,9 @@
 Jam.py Application Builder (web framework)
 ================
 
+No longer actively developed, please use https://github.com/jam-py-v5/jam-py
+=================================================================================
+
 
 From an idea of a web database application to a live website in no time, for free
 =================================================================================
