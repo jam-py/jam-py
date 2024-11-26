@@ -1,5 +1,5 @@
 
-[![Package on PyPI](https://img.shields.io/pypi/v/jam.py-v7.svg)](https://pypi.org/project/jam.py-v7) [![Supported Python Versions](https://img.shields.io/pypi/pyversions/jam.py-v5.svg)](https://pypi.python.org/pypi/jam.py-v7) [![Documentation Status](https://readthedocs.org/projects/jampy-docs-v7/badge/)](https://jampy-docs-v7.readthedocs.io) [![Downloads](https://static.pepy.tech/badge/jam.py-v7)](http://pepy.tech/project/jam.py-v7)
+[![Package on PyPI](https://img.shields.io/pypi/v/jam.py-v7.svg)](https://pypi.org/project/jam.py-v7) ![Supported Python versions](https://img.shields.io/pypi/pyversions/python3-saml.svg) [![Documentation Status](https://readthedocs.org/projects/jampy-docs-v7/badge/)](https://jampy-docs-v7.readthedocs.io) [![Downloads](https://static.pepy.tech/badge/jam.py-v7)](http://pepy.tech/project/jam.py-v7)
 
 
 ## Jam.py Application Builder (web framework)
