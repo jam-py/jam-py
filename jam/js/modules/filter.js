@@ -122,7 +122,7 @@ class Filter {
     }
 
     set lookup_value(value) {
-        this.field.lookup_value = value
+        this.field.lookup_value = value;
     }
 
     update(field) {
@@ -138,6 +138,20 @@ class Filter {
                 }
             }
         }
+		
+		else if (this.filter_type === consts.FILTER_ISNULL) {
+			if (field.value === null) {
+				field.lookup_value = null;
+			}
+			
+			if (field.value === 0) {
+				field.lookup_value = task.language.no;
+			}
+			
+			if (field.value == 1) {
+				field.lookup_value = task.language.yes;
+			}
+		}
     }
 
     check_valid() {

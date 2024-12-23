@@ -119,29 +119,30 @@ function Events0() { // app_builder
 	
 			task.buttons_info = {
 				divider: {},
-				project_params: {handler: set_project_params, short_cut: 'F2', key_code: 113, editor: true},
-				db:			 {handler: edit_database, short_cut: 'F4', key_code: 115, editor: true},
-				'export':	   {handler: export_task, short_cut: 'Ctrl-E', key_code: 69, key_ctrl: true},
-				'import':	   {handler: import_task, short_cut: 'Ctrl-I', key_code: 73, key_ctrl: true},
-				find:		   {handler: find_in_task, short_cut: 'Alt-F', key_code: 70, key_alt: true},
-				print:		  {handler: print_code},
-				client_module:  {handler: task.sys_items.edit_client, item: task.sys_items, short_cut: 'F7', key_code: 118, editor: true},
-				server_module:  {handler: task.sys_items.edit_server, item: task.sys_items, short_cut: 'F8', key_code: 119, editor: true},
-				templates:	  {handler: task.sys_items.edit_templates, item: task.sys_items, short_cut: 'F9', key_code: 120, editor: true},
-				'index.html':   {handler: task.sys_items.edit_index_html, item: task.sys_items, short_cut: 'F10', key_code: 121, editor: true},
-				'project.css':  {handler: task.sys_items.edit_project_css, item: task.sys_items, short_cut: 'F11', key_code: 122, editor: true},
-				'Lookup lists': {handler: show_lookup_lists, editor: true},
-				viewing:		{handler: task.sys_items.view_setup, item: task.sys_items, editor: true},
-				editing:		{handler: task.sys_items.edit_setup, item: task.sys_items, editor: true},
-				filters:		{handler: task.sys_items.filters_setup, item: task.sys_items, editor: true},
-				details:		{handler: task.sys_items.details_setup, item: task.sys_items, editor: true},
-				order:		  {handler: task.sys_items.order_setup, item: task.sys_items, editor: true},
-				indices:		{handler: task.sys_items.indices_setup, item: task.sys_items, editor: true},
-				foreign_keys:   {handler: task.sys_items.foreign_keys_setup, item: task.sys_items, editor: true},
-				reports:		{handler: task.sys_items.reports_setup, item: task.sys_items, editor: true},
-				report_params:  {handler: task.sys_items.report_params_setup, item: task.sys_items, editor: true, short_cut: 'F7', key_code: 118, editor: true},
-				privileges:	 {handler: task.sys_items.privileges_setup, item: task.sys_items, editor: true},
-				'Prepare files': {handler: task.prepare_files}
+				project_params: {handler: set_project_params, short_cut: 'F2', key_code: 113, icon: 'bi bi-gear', editor: true},
+				db:			 {handler: edit_database, short_cut: 'F4', key_code: 115, icon: 'bi bi-database-gear', editor: true},
+				'export':	   {handler: export_task, short_cut: 'Ctrl-E', key_code: 69, key_ctrl: true, icon: 'bi bi-file-earmark-zip'},
+				'import':	   {handler: import_task, short_cut: 'Ctrl-I', key_code: 73, key_ctrl: true, icon: 'bi bi-upload'},
+				find:		   {handler: find_in_task, short_cut: 'Alt-F', key_code: 70, key_alt: true, icon: 'bi bi-search'},
+				print:		  {handler: print_code, icon: 'bi bi-printer'},
+				client_module:  {handler: task.sys_items.edit_client, item: task.sys_items, short_cut: 'F7', key_code: 118, icon: 'bi bi-filetype-js', editor: true},
+				server_module:  {handler: task.sys_items.edit_server, item: task.sys_items, short_cut: 'F8', key_code: 119, icon: 'bi bi-filetype-py', editor: true},
+				templates:	  {handler: task.sys_items.edit_templates, item: task.sys_items, short_cut: 'F9', key_code: 120, icon: 'bi bi-filetype-txt', editor: true},
+				'index.html':   {handler: task.sys_items.edit_index_html, item: task.sys_items, short_cut: 'F10', key_code: 121, icon: 'bi bi-filetype-html', editor: true},
+				'project.css':  {handler: task.sys_items.edit_project_css, item: task.sys_items, short_cut: 'F11', key_code: 122, icon: 'bi bi-filetype-css', editor: true},
+				'Lookup lists': {handler: show_lookup_lists, icon: 'bi bi-card-list', editor: true},
+				viewing:		{handler: task.sys_items.view_setup, item: task.sys_items, icon: 'bi bi-window', editor: true},
+				editing:		{handler: task.sys_items.edit_setup, item: task.sys_items, icon: 'bi bi-file-ruled', editor: true},
+				filters:		{handler: task.sys_items.filters_setup, item: task.sys_items, icon: 'bi bi-funnel', editor: true},
+				details:		{handler: task.sys_items.details_setup, item: task.sys_items, icon: 'bi bi-window-sidebar', editor: true},
+				order:		  {handler: task.sys_items.order_setup, item: task.sys_items, icon: 'bi bi-sort-alpha-up', editor: true},
+				indices:		{handler: task.sys_items.indices_setup, item: task.sys_items, icon: 'bi bi-table', editor: true},
+				foreign_keys:   {handler: task.sys_items.foreign_keys_setup, item: task.sys_items, icon: 'bi bi-arrow-left-right', editor: true},
+				reports:		{handler: task.sys_items.reports_setup, item: task.sys_items, icon: 'bi bi-file-earmark-pdf', editor: true},
+				report_params:  {handler: task.sys_items.report_params_setup, item: task.sys_items, editor: true, short_cut: 'F7', key_code: 118, icon: 'bi bi-card-checklist', editor: true},
+				privileges:	 {handler: task.sys_items.privileges_setup, item: task.sys_items, icon: 'bi bi-person-lock', editor: true},
+				report_templates: {handler: task.sys_items.read_report_folder, item: task.sys_items, icon: 'bi bi-file-earmark-excel', editor: true},
+				'Prepare files': {handler: task.prepare_files, icon: 'bi bi-folder-check'}
 			};
 	
 			$("#content").show();
@@ -1209,6 +1210,7 @@ function Events3() { // sys_items
 				'server_module',
 				'divider',
 				'report_params',
+				'report_templates',
 				'divider',			
 				'privileges'
 			]);
@@ -2866,6 +2868,12 @@ function Events3() { // sys_items
 	function on_edit_form_closed(item) {
 		item._import_info = undefined;
 	}
+	
+	function read_report_folder(item) {
+		task.report_templates.view_options.template_class = 'import-tables-view';
+		task.report_templates.view_options.title = 'Upload, rename and download report templates';
+		task.report_templates.view();
+	}
 	this.init_fields = init_fields;
 	this.init_buttons = init_buttons;
 	this.tree_changed = tree_changed;
@@ -2929,6 +2937,7 @@ function Events3() { // sys_items
 	this.on_before_post = on_before_post;
 	this.move_to_group = move_to_group;
 	this.on_edit_form_closed = on_edit_form_closed;
+	this.read_report_folder = read_report_folder;
 }
 
 task.events.events3 = new Events3();
@@ -6622,5 +6631,113 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 }
 
 task.events.events26 = new Events26();
+
+function Events32() { // app_builder.catalogs.report_templates 
+
+	let old_file_name;
+	
+	function on_view_form_created(item) {
+		item.add_view_button('Download', {type: 'primary', image: 'bi bi-download', btn_id: 'download-btn'});
+		item.add_view_button('Rename', {type: 'primary', image: 'bi bi-pencil-square', btn_id: 'edit-btn'});
+		item.add_view_button('Delete', {type: 'danger', image: 'bi bi-trash', btn_id: 'delete-btn', btn_class: 'float-left'});
+		
+		item.view_form.find('#download-btn').click(function() {
+			export_report_template_file(item, item.f_file_name.value);
+		});
+		
+		item.view_form.find('#edit-btn').click(function() {
+			item.edit_record();
+		});
+		
+		item.view_form.find('#delete-btn').click(function() {
+			delete_report_template_file(item, item.f_file_name.value);
+		});
+		
+		
+		item.view_form.find('#import-btn').html('<i class="bi bi-upload"></i> Upload').click(function() {
+			task.upload('static/files', {accept: '.ods', callback: function(file_name) {
+				task.server('upload_report_template_file', [file_name], function(res, error) {
+					if (error) {
+						item.refresh_page();
+						item.warning(error);
+					} else  {
+						item.refresh_page();
+						item.warning('Report template has successfully uploaded!');
+						}
+				});
+			}});
+		});
+	}
+	
+	function on_after_open(item) {
+		task.server('read_report_folder', function(table_names) {
+			for (var i = 0; i < table_names.length; i++) {
+				item.append();
+				item.f_file_name.value = table_names[i];
+				item.post();
+			}
+			item.first();
+		});
+	}
+	
+	function on_edit_form_created(item) {
+		old_file_name = item.f_file_name.value;
+		
+		item.edit_options.title = 'Rename report template';
+		
+		item.edit_form.find('#ok-btn').click(function(e) {
+			e.preventDefault();
+			
+			if (item.f_file_name.value !== old_file_name) {
+				task.server('rename_report_template_file', [old_file_name, item.f_file_name.value], function(res, error) {
+					if (error) {
+						item.warning(error);
+						item.close_edit_form();
+					}   else {
+						item.close_edit_form();
+						item.refresh_page();
+					}
+				});
+			}
+		});
+	}
+	
+	function export_report_template_file(item, f_file_name) {
+		task.question('Do you want to download report template file: ' + f_file_name + '?',
+			function() {
+				let file_name = task.server('export_report_template_file', [f_file_name]),
+					url = [location.protocol, '//', location.host, location.pathname].join('');
+					url += file_name;
+					window.open(encodeURI(url));
+				/*var link,
+					host = location.protocol + '/' +  '/' + location.hostname + (location.port ? ':' + location.port: ''),
+					url = task.server('export_report_template_file', [f_file_name, host]);
+				window.open(encodeURI(url));*/
+			}
+		);
+	}
+	
+	function delete_report_template_file(item, f_file_name) {
+		task.question('Do you want to delete report template file: ' + f_file_name + '?',
+			function() {
+				task.server('delete_report_template_file', [f_file_name], function(res, error) {
+					if (error) {
+						item.warning(error);
+					}   else {
+						item.alert_success('Successfully deleted report template!');
+						item.refresh_page();
+					}
+				});
+			}
+		);
+	}
+	this.on_view_form_created = on_view_form_created;
+	this.on_after_open = on_after_open;
+	this.on_edit_form_created = on_edit_form_created;
+	this.export_report_template_file = export_report_template_file;
+	this.delete_report_template_file = delete_report_template_file;
+}
+
+task.events.events32 = new Events32();
 
 })(jQuery, task)

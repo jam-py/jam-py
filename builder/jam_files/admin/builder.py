@@ -4,6 +4,7 @@ import datetime
 from threading import Lock
 from operator import itemgetter
 from esprima import parseScript, nodes
+import shutil
 
 from jam.admin.admin import connect_task_db
 from jam.admin.admin import delete_item_query, update_item_query, insert_item_query
@@ -1981,6 +1982,37 @@ def prepare_files(task):
         change_language(task)
     return True
 
+def read_report_folder(task):
+    path = os.path.join(task.work_dir, 'reports')
+    dir_list = os.listdir(path)
+    
+    return dir_list
+    
+def upload_report_template_file(task, file_name):
+    path = os.path.join(task.work_dir, 'static', 'builder', file_name)
+    destination_path = os.path.join(task.work_dir, 'reports', file_name)
+    shutil.move(path, destination_path)
+    
+def rename_report_template_file(task, old_file_name, f_file_name):
+    old_path = os.path.join(task.work_dir, 'reports', old_file_name)
+    new_path = os.path.join(task.work_dir, 'reports', f_file_name)
+    
+    os.rename(old_path, new_path)
+    
+def delete_report_template_file(task, f_file_name):
+    file_path = 'reports/' + f_file_name
+    os.remove(file_path)
+    
+    return True
+    
+def export_report_template_file(task, f_file_name):
+    source_filename = f_file_name
+    cleaned_filename = source_filename.removesuffix(".ods")
+    file_path = 'reports/' + cleaned_filename + '.ods'
+    #file_path = '%s/reports/%s' % (url, f_file_name)
+    
+    return file_path
+
 def register_events(task):
     task.register(server_check_connection)
     task.register(server_set_task_name)
@@ -2017,6 +2049,13 @@ def register_events(task):
     task.register(create_calc_field_index)
     task.register(server_change_field_privilege)
     task.register(server_move_to_group)
+    #report templates start
+    task.register(read_report_folder)
+    task.register(upload_report_template_file)
+    task.register(rename_report_template_file)
+    task.register(delete_report_template_file)
+    task.register(export_report_template_file)
+    #report templates end
     task.on_upload = upload_file
     task.sys_params.on_apply = do_on_apply_param_changes
     task.sys_tasks.on_apply = do_on_apply_param_changes
