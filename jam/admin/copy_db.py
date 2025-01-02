@@ -152,7 +152,7 @@ def copy_database(task, dbtype, connection, limit = 1000):
                         item = it.copy(handlers=False, filters=False, details=False)
                         if item.table_name and not item.virtual_table:
                             rec_count = count_records(item, task.db, con)
-                            record_count = count_records(item, task.db, con)
+                            record_count = count_records(item, db, connection)
                             loaded = 0
                             task.log.info('copying table %s records: %s' % (item.item_name, record_count))
                             if record_count and rec_count != record_count:
