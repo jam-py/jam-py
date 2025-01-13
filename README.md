@@ -12,7 +12,7 @@ Jam.py is raising funds to keep the software free for everyone, and we need the 
 ## From an idea of a web database application to a live website in no time, for free
 
 
-[![alt text](https://github.com/jam-py-v5/jam-py/blob/master/assets/images/JAMPY_Readme.gif)](https://northwind.pythonanywhere.com)
+[![alt text](Https://Github.Com/Jam-Py-V5/Jam-Py/Blob/Master/Assets/Images/Jampy_Readme.Gif)](https://northwind.pythonanywhere.com)
 
 
 As a Web development enthusiast, use Jam.py to store, share and analyze data quickly with no code.
@@ -34,7 +34,8 @@ More demos on PythonAnywhere:
 
 - [SAP Theme Demo](https://jampyapp.pythonanywhere.com)
 - [Personal Account Ledger from MS Access template](https://msaccess.pythonanywhere.com)
-- [NorthWind Traders from MS Access template (wip)](https://northwind.pythonanywhere.com)
+- [NorthWind Traders from MS Access template V7 (wip)](https://northwind2.pythonanywhere.com)
+- [NorthWind Traders from MS Access template V5 (wip)](https://northwind.pythonanywhere.com)
 - [The ERP POC Demo with Italian and English translations](https://sem.pythonanywhere.com)
 - [Assets/Parts Application (wip, currently Jam V7 Demo)](https://jampy.pythonanywhere.com)
 - [Machine Learning (wip)](https://mlearning.pythonanywhere.com)
@@ -46,7 +47,8 @@ More demos on PythonAnywhere:
 - [Google Authentication, V7](https://ipam2.pythonanywhere.com)
 - [IP Management V7 (wip)](https://ipmgmt.pythonanywhere.com)
 - [Sistema Integrado de Gestão - IMS for Brazilian Market (Portuguese)](https://imsmax.pythonanywhere.com)
-- 
+
+
 Jam.py alternative site:
 
 https://jampyapplicationbuilder.com/
