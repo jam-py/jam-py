@@ -93,7 +93,7 @@ function Events0() { // app_builder
 	
 		open_sys_params(task);
 		if (!task.sys_params.f_language.value) {
-			task.sys_params.edit_options.title = 'Project language';
+			task.sys_params.edit_options.title = ('Project language' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/language_support.html'));	
 			task.sys_params.edit_options.fields = ['f_language'];
 			task.sys_params.edit_record();
 			return;
@@ -105,8 +105,7 @@ function Events0() { // app_builder
 				'f_alias', 'f_login', 'f_password', 'f_host', 'f_port', 'f_encoding', 'f_dsn'];
 			task.sys_tasks.set_edit_fields(fields);
 			task.server('server_set_project_langage', [task.sys_params.f_language.value]);
-			task.sys_tasks.edit_options.help_link = 'http://jam-py.com/docs/intro/new_project.html'; 
-			task.sys_tasks.edit_options.title = task.language.project_params;
+			task.sys_tasks.edit_options.title = task.language.project_params + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/database.html');
 			task.sys_tasks.edit_record();
 			return;
 		}
@@ -620,10 +619,9 @@ function Events0() { // app_builder
 	
 	function set_project_params(task, caption) {
 		open_sys_params(task);
-		task.sys_params.edit_options.help_link = 'http://jam-py.com/docs/admin/project/parameters.html'; 
 		task.sys_params.params = true;
 		task.sys_params.edit_options.fields = ['id'];
-		task.sys_params.edit_options.title = caption;
+		task.sys_params.edit_options.title = caption + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/project/parameters.html');
 		task.sys_params.edit_record();
 	}
 	
@@ -631,11 +629,10 @@ function Events0() { // app_builder
 		var fields = ['f_manual_update', 'f_db_type', 'f_python_library', 'f_server', 
 			'f_alias', 'f_login', 'f_password', 'f_host', 'f_port', 'f_encoding', 'f_dsn']
 		task.sys_tasks.open()
-		task.sys_tasks.edit_options.help_link = 'http://jam-py.com/docs/admin/project/database.html';
 		task.sys_tasks.edit_options.fields = fields;
 		task.sys_tasks.f_name.required = false;
 		task.sys_tasks.f_item_name.required = false;
-		task.sys_tasks.edit_options.title = caption;
+		task.sys_tasks.edit_options.title = caption + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/project/database.html');
 		task.sys_tasks.edit_record();
 	}
 	
@@ -856,6 +853,7 @@ function Events2() { // sys_roles
 		let w = '70px',
 			table_height = task.center_panel.height() - item.task.view_panel.height();
 		item.edit_options.fields = ['f_name'];
+        item.edit_options.title = 'Roles' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/roles.html');
 		if (item.view_form.hasClass('modal')) {
 			table_height = 460;
 			item.view_options.width = 560;
@@ -1806,23 +1804,23 @@ function Events3() { // sys_items
 	
 		if (item.type_id.value === item.task.item_types.REPORT_TYPE) {
 			caption = 'Report Editor';
-			help_link = '';
+			help_link = 'https://jampy-docs-v7.readthedocs.io/en/latest/programming/reports/templates.html';
 		}
 		else if (item.type_id.value === item.task.item_types.ITEMS_TYPE) {
 			caption = 'Item Group Editor';
-			help_link = 'http://jam-py.com/docs/admin/groups/item_group_editor.html';
+			help_link = 'https://jampy-docs-v7.readthedocs.io/en/latest/admin/groups/item_group_editor.html';
 		}
 		else if (item.type_id.value === item.task.item_types.TABLES_TYPE) {
 			caption = 'Table Group Editor';
-			help_link = 'http://jam-py.com/docs/admin/groups/table_group_editor.html';
+			help_link = 'https://jampy-docs-v7.readthedocs.io/en/latest/admin/groups/table_group_editor.html';
 		}
 		else if (item.type_id.value === item.task.item_types.REPORTS_TYPE) {
 			caption = 'Report Group Editor';
-			help_link = 'http://jam-py.com/docs/admin/groups/report_group_editor.html';
+			help_link = 'https://jampy-docs-v7.readthedocs.io/en/latest/admin/groups/report_group_editor.html';
 		}
 		else if (item.type_id.value !== item.task.item_types.TASK_TYPE) {
 			caption = 'Item Editor';
-			help_link = 'http://jam-py.com/docs/admin/items/item_editor_dialog.html';
+			help_link = 'https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/item_editor_dialog.html';
 		}
 		if (help_link) {
 			link = task.help_badge(help_link);
@@ -2111,7 +2109,7 @@ function Events3() { // sys_items
 			dest_list,
 			list,
 			view_object,
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/view_form_dialog.html'),
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/view_form_dialog.html'),
 			title;
 	
 		function save_view(item, dest_list) {
@@ -2181,7 +2179,7 @@ function Events3() { // sys_items
 			dest_list,
 			list,
 			edit_object,
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/edit_form_dialog.html'),
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/edit_form_dialog.html'),
 			title;
 	
 		function save_edit(item, dest_list) {
@@ -2328,7 +2326,7 @@ function Events3() { // sys_items
 			dest_def = [],
 			source_list = get_detail_source_list(item),
 			dest_list = get_detail_dest_list(item),
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/details_dialog.html'),
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/details_dialog.html'),
 			title;
 	
 		function save_edit(item, result) {
@@ -2359,7 +2357,7 @@ function Events3() { // sys_items
 			source_def = [],
 			dest_def = [],
 			dest_list,
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/order_dialog.html'),
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/order_dialog.html'),
 			title;
 	
 		function save_view(item, dest_list) {
@@ -2401,7 +2399,7 @@ function Events3() { // sys_items
 			source_def = [],
 			dest_def = [],
 			dest_list,
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/reports_dialog.html'),
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/reports_dialog.html'),
 			title;
 	
 		function save_edit(item, dest_list) {
@@ -2423,7 +2421,7 @@ function Events3() { // sys_items
 	}
 	
 	function filters_setup(item) {
-		var help_link = task.help_badge('http://jam-py.com/docs/admin/items/filters_dialog.html');
+		var help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/filters_dialog.html');
 		item.task.sys_filters.set_where({owner_rec_id: item.id.value});
 		item.task.sys_filters.set_order_by(['f_index']);
 		item.task.sys_filters.view_options.fields = ['f_name', 'f_filter_name', 'f_type', 'f_field', 'f_visible'];
@@ -2436,7 +2434,7 @@ function Events3() { // sys_items
 	
 	function indices_setup(item) {
 		var indices = item.task.sys_indices.copy(),
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/indices_dialog.html');
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/indices_dialog.html');
 		indices.foreign_index = false;
 		indices.set_where({owner_rec_id: item.id.value, f_foreign_index: false});
 		indices.view_options.title = 'Indices <span class="text-muted">' + 
@@ -2446,7 +2444,7 @@ function Events3() { // sys_items
 	
 	function foreign_keys_setup(item) {
 		var indices = item.task.sys_indices.copy(),
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/foreign_keys_dialog.html');	
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/foreign_keys_dialog.html');	
 		indices.foreign_index = true;
 		indices.set_where({owner_rec_id: item.id.value, f_foreign_index: true});
 		indices.view_options.title = 'Foreign keys <span class="text-muted">' + 
@@ -2465,9 +2463,11 @@ function Events3() { // sys_items
 			'f_multi_select_all', 'f_lookup_values', 'f_required', 'f_alignment', 'f_placeholder', 'f_help', 'f_visible'];
 		item.task.sys_report_params.edit_options.fields = fields;
 		item.task.sys_report_params.view_options.title = 'Params <span class="text-muted">' + 
-			item.f_item_name.value + '</span>';
+			item.f_item_name.value + '</span>' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/programming/reports/report_parameters.html');
 		item.task.sys_report_params.view();
 	}
+
+
 	
 	function privileges_setup(item) {
 		var priv = item.task.sys_privileges;
@@ -2871,7 +2871,7 @@ function Events3() { // sys_items
 	
 	function read_report_folder(item) {
 		task.report_templates.view_options.template_class = 'import-tables-view';
-		task.report_templates.view_options.title = 'Upload, rename and download report templates';
+		task.report_templates.view_options.title = 'Upload, rename and download report templates' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/programming/reports/templates.html');
 		task.report_templates.view();
 	}
 	this.init_fields = init_fields;
@@ -5904,7 +5904,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	
 	function on_edit_form_shown(item) {
 		let caption = 'Field Editor',
-			link = task.help_badge('http://jam-py.com/docs/admin/items/field_editor_dialog.html');
+			link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/field_editor_dialog.html');
 		if (item.f_field_name.value) {
 			item.edit_form.find('h4.modal-title')
 				.html(caption + ' <span class="editor-title">' + item.f_field_name.value + '</span>' + link);
