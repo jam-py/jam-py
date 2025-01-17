@@ -853,7 +853,7 @@ function Events2() { // sys_roles
 		let w = '70px',
 			table_height = task.center_panel.height() - item.task.view_panel.height();
 		item.edit_options.fields = ['f_name'];
-        item.edit_options.title = 'Roles' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/roles.html');
+		item.edit_options.title = 'Roles' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/roles.html');
 		if (item.view_form.hasClass('modal')) {
 			table_height = 460;
 			item.view_options.width = 560;
@@ -2466,8 +2466,6 @@ function Events3() { // sys_items
 			item.f_item_name.value + '</span>' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/programming/reports/report_parameters.html');
 		item.task.sys_report_params.view();
 	}
-
-
 	
 	function privileges_setup(item) {
 		var priv = item.task.sys_privileges;
@@ -2871,7 +2869,7 @@ function Events3() { // sys_items
 	
 	function read_report_folder(item) {
 		task.report_templates.view_options.template_class = 'import-tables-view';
-		task.report_templates.view_options.title = 'Upload, rename and download report templates' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/programming/reports/templates.html');
+		task.report_templates.view_options.title = 'Upload, rename and download report templates' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/programming/reports/report_parameters.html');
 		task.report_templates.view();
 	}
 	this.init_fields = init_fields;
