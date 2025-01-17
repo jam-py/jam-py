@@ -1,7 +1,0 @@
-==============
-Version 5.4.61
-==============
-
-Application Builder:
-
-* Lookup list bug fixed

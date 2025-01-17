@@ -1,6 +1,0 @@
-=========
-Version 2
-=========
-
-In version 2, support for developing database applications with a web interface 
-was added.
