@@ -500,5 +500,49 @@
                                 '</table>'+
                             '</div>'+
                         '</div>';
+						
+	//plugin update for auto positioning-start
+	//original show method
+	var old_show = $.fn.datepicker.Constructor.prototype.show;
 
+	$.fn.datepicker.Constructor.prototype.show = function () {
+		old_show.call(this);
+
+		var picker = this.picker;
+		var element = this.element;
+		var offset = element.offset();
+		var inputHeight = element.outerHeight();
+		var windowHeight = $(window).height();
+		var scrollTop = $(window).scrollTop();
+		var datepickerHeight = picker.outerHeight();
+
+		const existingStyles = picker.attr('style') || '';
+
+		//calculate space above and below the input
+		var spaceBelow = windowHeight - (offset.top - scrollTop + inputHeight);
+		var spaceAbove = offset.top - scrollTop;
+
+		//reset styles related to positioning but keep other styles intact
+		picker.attr('style', existingStyles.replace(/top:.*?px;?|bottom:.*?px;?|left:.*?px;?|max-height:.*?px;?/g, '').trim());
+
+		if (spaceBelow < datepickerHeight && spaceAbove > datepickerHeight) {
+			picker.css({
+				top: (offset.top + scrollTop) - datepickerHeight - 2 + 'px',
+				bottom: '',
+				left: offset.left + 'px',
+				'max-height': Math.min(datepickerHeight, spaceAbove) + 'px',
+				'overflow-y': 'auto'
+			});
+		} else {
+			picker.css({
+				top: offset.top - scrollTop + inputHeight + 2 + 'px',
+				bottom: '',
+				left: offset.left + 'px',
+				'max-height': Math.min(datepickerHeight, spaceBelow) + 'px',
+				'overflow-y': 'auto'
+			});
+		}
+	};
+	//plugin update for auto positioning-end
+	
 }( window.jQuery );
