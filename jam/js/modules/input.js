@@ -16,9 +16,9 @@ class DBAbstractInput {
         let input = '<input type="text" class="form-control"">',
             label = '<label class="form-label input-centered-label"></label>';
         if (field.lookup_item && !field.master_field || field.lookup_values ||
-            field_type === consts.DATE || field_type === consts.DATETIME) {
+            field_type === consts.DATE || field_type === consts.DATETIME || field.bool_filter) {
             let icon_name = 'bi-chevron-down';
-            if (field.lookup_item) {
+            if (field.lookup_item && !field.bool_filter) {
                 icon_name = 'bi-search';
             } else if (field_type === consts.DATE || field_type === consts.DATETIME) {
                 icon_name = 'bi-calendar';
@@ -193,7 +193,7 @@ class DBAbstractInput {
         if (this.field.lookup_values) {
             this.dropdown = new DropdownList(this.field, this.$input);
             if (this.field.filter && this.field.bool_filter) {
-                this.$input.width(36);
+                this.$input.parent().width(150);
             }
         }
         else if (this.field.lookup_item && field_type !== consts.FILE){

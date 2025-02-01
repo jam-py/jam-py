@@ -1,8 +1,0 @@
-===========================
-How to create a custom menu
-===========================
-
-To create a custom menu you must specify a custom_menu option for the task's
-:doc:`create_menu </refs/client/task/m_create_menu>`
-method in the task's client module.
-

@@ -1,6 +1,0 @@
-=========
-Version 1
-=========
-
-Version 1 was designed to develop database desktop applications based on the 
-GTK Toolkit. 
