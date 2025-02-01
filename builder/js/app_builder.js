@@ -135,10 +135,10 @@ function Events1() { // app_builder
 				filters:		{handler: task.sys_items.filters_setup, item: task.sys_items, icon: 'bi bi-funnel', editor: true},
 				details:		{handler: task.sys_items.details_setup, item: task.sys_items, icon: 'bi bi-window-sidebar', editor: true},
 				order:		  {handler: task.sys_items.order_setup, item: task.sys_items, icon: 'bi bi-sort-alpha-up', editor: true},
-				indices:		{handler: task.sys_items.indices_setup, item: task.sys_items, icon: 'bi bi-table', editor: true},
+				indices:		{handler: task.sys_items.indices_setup, item: task.sys_items, icon: 'bi bi-bezier2', editor: true},
 				foreign_keys:   {handler: task.sys_items.foreign_keys_setup, item: task.sys_items, icon: 'bi bi-arrow-left-right', editor: true},
 				reports:		{handler: task.sys_items.reports_setup, item: task.sys_items, icon: 'bi bi-file-earmark-pdf', editor: true},
-				report_params:  {handler: task.sys_items.report_params_setup, item: task.sys_items, editor: true, short_cut: 'F7', key_code: 118, icon: 'bi bi-card-checklist', editor: true},
+				report_params:  {handler: task.sys_items.report_params_setup, item: task.sys_items, short_cut: 'F7', key_code: 118, icon: 'bi bi-card-checklist', editor: true},
 				privileges:	 {handler: task.sys_items.privileges_setup, item: task.sys_items, icon: 'bi bi-person-lock', editor: true},
 				report_templates: {handler: task.sys_items.read_report_folder, item: task.sys_items, icon: 'bi bi-file-earmark-excel', editor: true},
 				'Prepare files': {handler: task.prepare_files, icon: 'bi bi-folder-check'}
@@ -4774,8 +4774,8 @@ function Events15() { // app_builder.catalogs.sys_fields_editor
 			}
 		}
 		
-		item.dest.view_options.enable_search = false;
-		item.source.view_options.enable_search = false;
+		item.dest.view_options.enable_search = true;
+		item.source.view_options.enable_search = true;
 		
 		item.left_grid = item.dest.create_table(item.view_form.find("#left-grid"), {
 			height: '32rem',
@@ -6640,7 +6640,7 @@ function Events32() { // app_builder.catalogs.report_templates
 		item.add_view_button('Delete', {type: 'danger', image: 'bi bi-trash', btn_id: 'delete-btn', btn_class: 'float-left'});
 		
 		item.view_form.find('#download-btn').click(function() {
-			export_report_template_file(item, item.f_file_name.value);
+			download_report_template_file(item, item.f_file_name.value);
 		});
 		
 		item.view_form.find('#edit-btn').click(function() {
@@ -6700,10 +6700,10 @@ function Events32() { // app_builder.catalogs.report_templates
 		});
 	}
 	
-	function export_report_template_file(item, f_file_name) {
+	function download_report_template_file(item, f_file_name) {
 		task.question('Do you want to download report template file: ' + f_file_name + '?',
 			function() {
-				let file_name = task.server('export_report_template_file', [f_file_name]),
+				let file_name = task.server('download_report_template_file', [f_file_name]),
 					url = [location.protocol, '//', location.host, location.pathname].join('');
 					url += file_name;
 					window.open(encodeURI(url));
@@ -6732,7 +6732,7 @@ function Events32() { // app_builder.catalogs.report_templates
 	this.on_view_form_created = on_view_form_created;
 	this.on_after_open = on_after_open;
 	this.on_edit_form_created = on_edit_form_created;
-	this.export_report_template_file = export_report_template_file;
+	this.download_report_template_file = download_report_template_file;
 	this.delete_report_template_file = delete_report_template_file;
 }
 

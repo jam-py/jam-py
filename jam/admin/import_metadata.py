@@ -408,7 +408,8 @@ class MetaDataImport(object):
                 not d.f_virtual_table.value and not d.f_copy_of.value:
                 case = module.identifier_case
                 d.edit()
-                d.f_gen_name.value = case('%s_SEQ' % d.f_table_name.value)
+                #d.f_gen_name.value = case('%s_SEQ' % d.f_table_name.value)
+                d.f_gen_name.value = case('%s_%s_SEQ' % (d.f_primary_key.value, d.f_table_name.value))
                 d.post()
 
     def refresh_old_item(self, item_name):
