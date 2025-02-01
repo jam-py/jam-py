@@ -734,15 +734,21 @@ class AbstractDB(object):
         if group_fields:
             for field_name in group_fields:
                 field = item._field_by_name(field_name)
-                if query.expanded and field.lookup_item and field.data_type != consts.KEYS:
+                use_lookup_field = (query.expanded and field.lookup_item and field.data_type != consts.KEYS)
+                lookup_sql = self.lookup_field_sql(item, field)
+                table_alias = self.table_alias(item)
+                if use_lookup_field:
                     func = functions.get(field.field_name.upper())
                     if func:
-                        result += '%s."%s", ' % (self.table_alias(item), field.db_field_name)
+                            result += '%s."%s", ' % (self.table_alias(item), field.db_field_name)
+                    elif field.master_field:
+                            result += '%s, ' % lookup_sql
+                    elif field.lookup_field:
+                        result += '%s, %s."%s", ' % (lookup_sql, table_alias, field.db_field_name)
                     else:
-                        result += '%s, %s."%s", ' % (self.lookup_field_sql(item, field),
-                            self.table_alias(item), field.db_field_name)
+                            result += '%s, ' % lookup_sql
                 else:
-                    result += '%s."%s", ' % (self.table_alias(item), field.db_field_name)
+                    result += '%s."%s", ' % (table_alias, field.db_field_name)
             if result:
                 result = result[:-2]
                 result = ' GROUP BY ' + result

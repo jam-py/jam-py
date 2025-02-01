@@ -93,7 +93,7 @@ function Events1() { // app_builder
 	
 		open_sys_params(task);
 		if (!task.sys_params.f_language.value) {
-			task.sys_params.edit_options.title = 'Project language';
+			task.sys_params.edit_options.title = ('Project language' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/language_support.html'));	
 			task.sys_params.edit_options.fields = ['f_language'];
 			task.sys_params.edit_record();
 			return;
@@ -105,8 +105,7 @@ function Events1() { // app_builder
 				'f_alias', 'f_login', 'f_password', 'f_host', 'f_port', 'f_encoding', 'f_dsn'];
 			task.sys_tasks.set_edit_fields(fields);
 			task.server('server_set_project_langage', [task.sys_params.f_language.value]);
-			task.sys_tasks.edit_options.help_link = 'http://jam-py.com/docs/intro/new_project.html'; 
-			task.sys_tasks.edit_options.title = task.language.project_params;
+			task.sys_tasks.edit_options.title = task.language.project_params + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/database.html');
 			task.sys_tasks.edit_record();
 			return;
 		}
@@ -119,29 +118,30 @@ function Events1() { // app_builder
 	
 			task.buttons_info = {
 				divider: {},
-				project_params: {handler: set_project_params, short_cut: 'F2', key_code: 113, editor: true},
-				db:			 {handler: edit_database, short_cut: 'F4', key_code: 115, editor: true},
-				'export':	   {handler: export_task, short_cut: 'Ctrl-E', key_code: 69, key_ctrl: true},
-				'import':	   {handler: import_task, short_cut: 'Ctrl-I', key_code: 73, key_ctrl: true},
-				find:		   {handler: find_in_task, short_cut: 'Alt-F', key_code: 70, key_alt: true},
-				print:		  {handler: print_code},
-				client_module:  {handler: task.sys_items.edit_client, item: task.sys_items, short_cut: 'F7', key_code: 118, editor: true},
-				server_module:  {handler: task.sys_items.edit_server, item: task.sys_items, short_cut: 'F8', key_code: 119, editor: true},
-				templates:	  {handler: task.sys_items.edit_templates, item: task.sys_items, short_cut: 'F9', key_code: 120, editor: true},
-				'index.html':   {handler: task.sys_items.edit_index_html, item: task.sys_items, short_cut: 'F10', key_code: 121, editor: true},
-				'project.css':  {handler: task.sys_items.edit_project_css, item: task.sys_items, short_cut: 'F11', key_code: 122, editor: true},
-				'Lookup lists': {handler: show_lookup_lists, editor: true},
-				viewing:		{handler: task.sys_items.view_setup, item: task.sys_items, editor: true},
-				editing:		{handler: task.sys_items.edit_setup, item: task.sys_items, editor: true},
-				filters:		{handler: task.sys_items.filters_setup, item: task.sys_items, editor: true},
-				details:		{handler: task.sys_items.details_setup, item: task.sys_items, editor: true},
-				order:		  {handler: task.sys_items.order_setup, item: task.sys_items, editor: true},
-				indices:		{handler: task.sys_items.indices_setup, item: task.sys_items, editor: true},
-				foreign_keys:   {handler: task.sys_items.foreign_keys_setup, item: task.sys_items, editor: true},
-				reports:		{handler: task.sys_items.reports_setup, item: task.sys_items, editor: true},
-				report_params:  {handler: task.sys_items.report_params_setup, item: task.sys_items, editor: true, short_cut: 'F7', key_code: 118, editor: true},
-				privileges:	 {handler: task.sys_items.privileges_setup, item: task.sys_items, editor: true},
-				'Prepare files': {handler: task.prepare_files}
+				project_params: {handler: set_project_params, short_cut: 'F2', key_code: 113, icon: 'bi bi-gear', editor: true},
+				db:			 {handler: edit_database, short_cut: 'F4', key_code: 115, icon: 'bi bi-database-gear', editor: true},
+				'export':	   {handler: export_task, short_cut: 'Ctrl-E', key_code: 69, key_ctrl: true, icon: 'bi bi-file-earmark-zip'},
+				'import':	   {handler: import_task, short_cut: 'Ctrl-I', key_code: 73, key_ctrl: true, icon: 'bi bi-upload'},
+				find:		   {handler: find_in_task, short_cut: 'Alt-F', key_code: 70, key_alt: true, icon: 'bi bi-search'},
+				print:		  {handler: print_code, icon: 'bi bi-printer'},
+				client_module:  {handler: task.sys_items.edit_client, item: task.sys_items, short_cut: 'F7', key_code: 118, icon: 'bi bi-filetype-js', editor: true},
+				server_module:  {handler: task.sys_items.edit_server, item: task.sys_items, short_cut: 'F8', key_code: 119, icon: 'bi bi-filetype-py', editor: true},
+				templates:	  {handler: task.sys_items.edit_templates, item: task.sys_items, short_cut: 'F9', key_code: 120, icon: 'bi bi-filetype-txt', editor: true},
+				'index.html':   {handler: task.sys_items.edit_index_html, item: task.sys_items, short_cut: 'F10', key_code: 121, icon: 'bi bi-filetype-html', editor: true},
+				'project.css':  {handler: task.sys_items.edit_project_css, item: task.sys_items, short_cut: 'F11', key_code: 122, icon: 'bi bi-filetype-css', editor: true},
+				'Lookup lists': {handler: show_lookup_lists, icon: 'bi bi-card-list', editor: true},
+				viewing:		{handler: task.sys_items.view_setup, item: task.sys_items, icon: 'bi bi-window', editor: true},
+				editing:		{handler: task.sys_items.edit_setup, item: task.sys_items, icon: 'bi bi-file-ruled', editor: true},
+				filters:		{handler: task.sys_items.filters_setup, item: task.sys_items, icon: 'bi bi-funnel', editor: true},
+				details:		{handler: task.sys_items.details_setup, item: task.sys_items, icon: 'bi bi-window-sidebar', editor: true},
+				order:		  {handler: task.sys_items.order_setup, item: task.sys_items, icon: 'bi bi-sort-alpha-up', editor: true},
+				indices:		{handler: task.sys_items.indices_setup, item: task.sys_items, icon: 'bi bi-bezier2', editor: true},
+				foreign_keys:   {handler: task.sys_items.foreign_keys_setup, item: task.sys_items, icon: 'bi bi-arrow-left-right', editor: true},
+				reports:		{handler: task.sys_items.reports_setup, item: task.sys_items, icon: 'bi bi-file-earmark-pdf', editor: true},
+				report_params:  {handler: task.sys_items.report_params_setup, item: task.sys_items, short_cut: 'F7', key_code: 118, icon: 'bi bi-card-checklist', editor: true},
+				privileges:	 {handler: task.sys_items.privileges_setup, item: task.sys_items, icon: 'bi bi-person-lock', editor: true},
+				report_templates: {handler: task.sys_items.read_report_folder, item: task.sys_items, icon: 'bi bi-file-earmark-excel', editor: true},
+				'Prepare files': {handler: task.prepare_files, icon: 'bi bi-folder-check'}
 			};
 	
 			$("#content").show();
@@ -619,10 +619,9 @@ function Events1() { // app_builder
 	
 	function set_project_params(task, caption) {
 		open_sys_params(task);
-		task.sys_params.edit_options.help_link = 'http://jam-py.com/docs/admin/project/parameters.html'; 
 		task.sys_params.params = true;
 		task.sys_params.edit_options.fields = ['id'];
-		task.sys_params.edit_options.title = caption;
+		task.sys_params.edit_options.title = caption + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/project/parameters.html');
 		task.sys_params.edit_record();
 	}
 	
@@ -630,11 +629,10 @@ function Events1() { // app_builder
 		var fields = ['f_manual_update', 'f_db_type', 'f_python_library', 'f_server', 
 			'f_alias', 'f_login', 'f_password', 'f_host', 'f_port', 'f_encoding', 'f_dsn']
 		task.sys_tasks.open()
-		task.sys_tasks.edit_options.help_link = 'http://jam-py.com/docs/admin/project/database.html';
 		task.sys_tasks.edit_options.fields = fields;
 		task.sys_tasks.f_name.required = false;
 		task.sys_tasks.f_item_name.required = false;
-		task.sys_tasks.edit_options.title = caption;
+		task.sys_tasks.edit_options.title = caption + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/project/database.html');
 		task.sys_tasks.edit_record();
 	}
 	
@@ -855,6 +853,7 @@ function Events2() { // sys_roles
 		let w = '70px',
 			table_height = task.center_panel.height() - item.task.view_panel.height();
 		item.edit_options.fields = ['f_name'];
+		item.edit_options.title = 'Roles' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/roles.html');
 		if (item.view_form.hasClass('modal')) {
 			table_height = 460;
 			item.view_options.width = 560;
@@ -1209,6 +1208,7 @@ function Events3() { // sys_items
 				'server_module',
 				'divider',
 				'report_params',
+				'report_templates',
 				'divider',			
 				'privileges'
 			]);
@@ -1262,7 +1262,7 @@ function Events3() { // sys_items
 				it.f_index.value = i;
 				it.post();
 				i++;
-			})
+			});
 		}
 		finally {
 			item.rec_no = rec;
@@ -1804,23 +1804,23 @@ function Events3() { // sys_items
 	
 		if (item.type_id.value === item.task.item_types.REPORT_TYPE) {
 			caption = 'Report Editor';
-			help_link = '';
+			help_link = 'https://jampy-docs-v7.readthedocs.io/en/latest/programming/reports/templates.html';
 		}
 		else if (item.type_id.value === item.task.item_types.ITEMS_TYPE) {
 			caption = 'Item Group Editor';
-			help_link = 'http://jam-py.com/docs/admin/groups/item_group_editor.html';
+			help_link = 'https://jampy-docs-v7.readthedocs.io/en/latest/admin/groups/item_group_editor.html';
 		}
 		else if (item.type_id.value === item.task.item_types.TABLES_TYPE) {
 			caption = 'Table Group Editor';
-			help_link = 'http://jam-py.com/docs/admin/groups/table_group_editor.html';
+			help_link = 'https://jampy-docs-v7.readthedocs.io/en/latest/admin/groups/table_group_editor.html';
 		}
 		else if (item.type_id.value === item.task.item_types.REPORTS_TYPE) {
 			caption = 'Report Group Editor';
-			help_link = 'http://jam-py.com/docs/admin/groups/report_group_editor.html';
+			help_link = 'https://jampy-docs-v7.readthedocs.io/en/latest/admin/groups/report_group_editor.html';
 		}
 		else if (item.type_id.value !== item.task.item_types.TASK_TYPE) {
 			caption = 'Item Editor';
-			help_link = 'http://jam-py.com/docs/admin/items/item_editor_dialog.html';
+			help_link = 'https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/item_editor_dialog.html';
 		}
 		if (help_link) {
 			link = task.help_badge(help_link);
@@ -2109,7 +2109,7 @@ function Events3() { // sys_items
 			dest_list,
 			list,
 			view_object,
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/view_form_dialog.html'),
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/view_form_dialog.html'),
 			title;
 	
 		function save_view(item, dest_list) {
@@ -2179,7 +2179,7 @@ function Events3() { // sys_items
 			dest_list,
 			list,
 			edit_object,
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/edit_form_dialog.html'),
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/edit_form_dialog.html'),
 			title;
 	
 		function save_edit(item, dest_list) {
@@ -2326,7 +2326,7 @@ function Events3() { // sys_items
 			dest_def = [],
 			source_list = get_detail_source_list(item),
 			dest_list = get_detail_dest_list(item),
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/details_dialog.html'),
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/details_dialog.html'),
 			title;
 	
 		function save_edit(item, result) {
@@ -2357,7 +2357,7 @@ function Events3() { // sys_items
 			source_def = [],
 			dest_def = [],
 			dest_list,
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/order_dialog.html'),
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/order_dialog.html'),
 			title;
 	
 		function save_view(item, dest_list) {
@@ -2399,7 +2399,7 @@ function Events3() { // sys_items
 			source_def = [],
 			dest_def = [],
 			dest_list,
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/reports_dialog.html'),
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/reports_dialog.html'),
 			title;
 	
 		function save_edit(item, dest_list) {
@@ -2421,7 +2421,7 @@ function Events3() { // sys_items
 	}
 	
 	function filters_setup(item) {
-		var help_link = task.help_badge('http://jam-py.com/docs/admin/items/filters_dialog.html');
+		var help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/filters_dialog.html');
 		item.task.sys_filters.set_where({owner_rec_id: item.id.value});
 		item.task.sys_filters.set_order_by(['f_index']);
 		item.task.sys_filters.view_options.fields = ['f_name', 'f_filter_name', 'f_type', 'f_field', 'f_visible'];
@@ -2434,7 +2434,7 @@ function Events3() { // sys_items
 	
 	function indices_setup(item) {
 		var indices = item.task.sys_indices.copy(),
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/indices_dialog.html');
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/indices_dialog.html');
 		indices.foreign_index = false;
 		indices.set_where({owner_rec_id: item.id.value, f_foreign_index: false});
 		indices.view_options.title = 'Indices <span class="text-muted">' + 
@@ -2444,7 +2444,7 @@ function Events3() { // sys_items
 	
 	function foreign_keys_setup(item) {
 		var indices = item.task.sys_indices.copy(),
-			help_link = task.help_badge('http://jam-py.com/docs/admin/items/foreign_keys_dialog.html');	
+			help_link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/foreign_keys_dialog.html');	
 		indices.foreign_index = true;
 		indices.set_where({owner_rec_id: item.id.value, f_foreign_index: true});
 		indices.view_options.title = 'Foreign keys <span class="text-muted">' + 
@@ -2463,7 +2463,7 @@ function Events3() { // sys_items
 			'f_multi_select_all', 'f_lookup_values', 'f_required', 'f_alignment', 'f_placeholder', 'f_help', 'f_visible'];
 		item.task.sys_report_params.edit_options.fields = fields;
 		item.task.sys_report_params.view_options.title = 'Params <span class="text-muted">' + 
-			item.f_item_name.value + '</span>';
+			item.f_item_name.value + '</span>' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/programming/reports/report_parameters.html');
 		item.task.sys_report_params.view();
 	}
 	
@@ -2866,6 +2866,12 @@ function Events3() { // sys_items
 	function on_edit_form_closed(item) {
 		item._import_info = undefined;
 	}
+	
+	function read_report_folder(item) {
+		task.report_templates.view_options.template_class = 'import-tables-view';
+		task.report_templates.view_options.title = 'Upload, rename and download report templates' + task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/programming/reports/report_parameters.html');
+		task.report_templates.view();
+	}
 	this.init_fields = init_fields;
 	this.init_buttons = init_buttons;
 	this.tree_changed = tree_changed;
@@ -2929,6 +2935,7 @@ function Events3() { // sys_items
 	this.on_before_post = on_before_post;
 	this.move_to_group = move_to_group;
 	this.on_edit_form_closed = on_edit_form_closed;
+	this.read_report_folder = read_report_folder;
 }
 
 task.events.events3 = new Events3();
@@ -4767,8 +4774,8 @@ function Events15() { // app_builder.catalogs.sys_fields_editor
 			}
 		}
 		
-		item.dest.view_options.enable_search = false;
-		item.source.view_options.enable_search = false;
+		item.dest.view_options.enable_search = true;
+		item.source.view_options.enable_search = true;
 		
 		item.left_grid = item.dest.create_table(item.view_form.find("#left-grid"), {
 			height: '32rem',
@@ -5238,6 +5245,10 @@ function Events21() { // app_builder.details.sys_report_params
 		item.edit_form.find('textarea.f_help').attr('rows', 3).height(40);
 		task.sys_items.sys_fields.update_read_only(item);
 	}
+	
+	function on_after_apply(item) {
+		item.task.refresh_task_dict(item.task);
+	}
 	this.on_view_form_created = on_view_form_created;
 	this.on_view_form_close_query = on_view_form_close_query;
 	this.on_before_post = on_before_post;
@@ -5245,6 +5256,7 @@ function Events21() { // app_builder.details.sys_report_params
 	this.on_field_changed = on_field_changed;
 	this.on_field_select_value = on_field_select_value;
 	this.on_edit_form_created = on_edit_form_created;
+	this.on_after_apply = on_after_apply;
 }
 
 task.events.events21 = new Events21();
@@ -5890,7 +5902,7 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 	
 	function on_edit_form_shown(item) {
 		let caption = 'Field Editor',
-			link = task.help_badge('http://jam-py.com/docs/admin/items/field_editor_dialog.html');
+			link = task.help_badge('https://jampy-docs-v7.readthedocs.io/en/latest/admin/items/field_editor_dialog.html');
 		if (item.f_field_name.value) {
 			item.edit_form.find('h4.modal-title')
 				.html(caption + ' <span class="editor-title">' + item.f_field_name.value + '</span>' + link);
@@ -6617,5 +6629,113 @@ function Events26() { // app_builder.catalogs.sys_items.sys_fields
 }
 
 task.events.events26 = new Events26();
+
+function Events32() { // app_builder.catalogs.report_templates 
+
+	let old_file_name;
+	
+	function on_view_form_created(item) {
+		item.add_view_button('Download', {type: 'primary', image: 'bi bi-download', btn_id: 'download-btn'});
+		item.add_view_button('Rename', {type: 'primary', image: 'bi bi-pencil-square', btn_id: 'edit-btn'});
+		item.add_view_button('Delete', {type: 'danger', image: 'bi bi-trash', btn_id: 'delete-btn', btn_class: 'float-left'});
+		
+		item.view_form.find('#download-btn').click(function() {
+			download_report_template_file(item, item.f_file_name.value);
+		});
+		
+		item.view_form.find('#edit-btn').click(function() {
+			item.edit_record();
+		});
+		
+		item.view_form.find('#delete-btn').click(function() {
+			delete_report_template_file(item, item.f_file_name.value);
+		});
+		
+		
+		item.view_form.find('#import-btn').html('<i class="bi bi-upload"></i> Upload').click(function() {
+			task.upload('static/files', {accept: '.ods', callback: function(file_name) {
+				task.server('upload_report_template_file', [file_name], function(res, error) {
+					if (error) {
+						item.refresh_page();
+						item.warning(error);
+					} else  {
+						item.refresh_page();
+						item.warning('Report template has successfully uploaded!');
+						}
+				});
+			}});
+		});
+	}
+	
+	function on_after_open(item) {
+		task.server('read_report_folder', function(table_names) {
+			for (var i = 0; i < table_names.length; i++) {
+				item.append();
+				item.f_file_name.value = table_names[i];
+				item.post();
+			}
+			item.first();
+		});
+	}
+	
+	function on_edit_form_created(item) {
+		old_file_name = item.f_file_name.value;
+		
+		item.edit_options.title = 'Rename report template';
+		
+		item.edit_form.find('#ok-btn').click(function(e) {
+			e.preventDefault();
+			
+			if (item.f_file_name.value !== old_file_name) {
+				task.server('rename_report_template_file', [old_file_name, item.f_file_name.value], function(res, error) {
+					if (error) {
+						item.warning(error);
+						item.close_edit_form();
+					}   else {
+						item.close_edit_form();
+						item.refresh_page();
+					}
+				});
+			}
+		});
+	}
+	
+	function download_report_template_file(item, f_file_name) {
+		task.question('Do you want to download report template file: ' + f_file_name + '?',
+			function() {
+				let file_name = task.server('download_report_template_file', [f_file_name]),
+					url = [location.protocol, '//', location.host, location.pathname].join('');
+					url += file_name;
+					window.open(encodeURI(url));
+				/*var link,
+					host = location.protocol + '/' +  '/' + location.hostname + (location.port ? ':' + location.port: ''),
+					url = task.server('export_report_template_file', [f_file_name, host]);
+				window.open(encodeURI(url));*/
+			}
+		);
+	}
+	
+	function delete_report_template_file(item, f_file_name) {
+		task.question('Do you want to delete report template file: ' + f_file_name + '?',
+			function() {
+				task.server('delete_report_template_file', [f_file_name], function(res, error) {
+					if (error) {
+						item.warning(error);
+					}   else {
+						item.alert_success('Successfully deleted report template!');
+						item.refresh_page();
+					}
+				});
+			}
+		);
+	}
+	this.on_view_form_created = on_view_form_created;
+	this.on_after_open = on_after_open;
+	this.on_edit_form_created = on_edit_form_created;
+	this.download_report_template_file = download_report_template_file;
+	this.delete_report_template_file = delete_report_template_file;
+}
+
+task.events.events32 = new Events32();
 
 })(jQuery, task)

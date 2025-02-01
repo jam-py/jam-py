@@ -4,6 +4,7 @@
 __pycache__
 MANIFEST
 dist/
+docs/
 build/
 docs/_build/
 docs1/_build/

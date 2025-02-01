@@ -1,0 +1,269 @@
+
+html {
+   font-size: 13px;
+}
+
+#builder-status {
+    height: 21px;    
+}
+
+#task-tabs.nav-tabs, 
+#editor-tabs .nav-tabs {
+    margin-bottom: 0;
+}
+
+#task-tabs a {
+    color: #555555;
+}
+
+#task-tabs a.active {
+    color: #0088cc;
+}
+
+#tab-content,
+#info-grids{
+    padding: 0.5rem;
+    border: 1px solid var(--bs-border-color);
+    border-width: 0 1px 1px 1px;
+    border-top-width: 0 !important;
+}
+
+#tree-panel .dbtree > ul {
+    padding: 0.5rem 0.5rem 0.5rem 2rem;    
+}
+
+#info-grids .dbtree > ul {
+    padding: 0.5rem 0.5rem 0.5rem 0.5rem;    
+}
+
+.table-fixed {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+#center-panel {
+    width: auto;
+    vertical-align: top;
+    overflow: hidden;
+    padding: 0 0.5rem;
+}
+
+#left-panel {
+    width: 20rem;
+}
+
+#right-panel{
+    width: 18rem;
+    padding: 0.5rem 2.5rem;
+}
+    
+.vert-btn {
+    margin-bottom: 0.5rem;
+    width: 100%;
+    text-align: center
+}
+
+.btns-divider {
+    margin-top: 1rem;
+}
+
+.fields-grid .inner-table td,
+.langs-table .inner-table td {
+    border: 0;
+}
+
+#left-box {
+    width: 20rem;
+}
+
+.card.jam-form.sys_fields_editor .tab-pane form {
+    border-width: 0;    
+    padding: 0.5rem 0rem 0.5rem 0.75rem;
+}
+
+#section-tabs {
+    margin-bottom: 0.5rem;
+}
+
+#tab-btns,
+#media-pills {
+    position: absolute;    
+    right: 0;
+    margin-right: 1rem;
+}
+
+.sys_fields_editor .media-item:not(:first-child) {
+    margin-left: 0.25rem;
+}
+
+#media-tabs a.nav-link {
+    width: 7rem;
+    /*border: 1px solid var(--bs-nav-pills-link-active-bg);*/
+    border: 1px solid var(--bs-border-color);
+    padding: 0.375rem;
+    margin-right: 0.25rem;
+    cursor: pointer;
+}
+
+/*#media-tabs a.nav-link:not(:first-child) {*/
+/*    margin-left: 0.25rem;*/
+/*}*/
+
+.media-form-check {
+    padding-left: 1.75em;
+    margin-bottom: 0;
+}
+
+#form_options-box {
+    width: 46rem;
+    vertical-align: middle;
+}
+
+#bands-box {
+    width: 7rem;
+    vertical-align: top;
+}
+
+#add-tab-btn,
+#edit-tab-btn {
+    margin-right: 0.25rem;
+}
+
+#options-box {
+    vertical-align: top;
+}
+
+.tabs-left {
+    margin-top: 0.5rem;
+}
+
+#field-tabs-container {
+    margin-bottom: 0.5rem;    
+}
+
+#field-bands li {
+    border: 1px solid transparent;
+}
+
+#field-bands li.active {
+    border: 1px solid var(--bs-border-color);
+}
+
+#field-bands li a.active {
+    color: var(--bs-nav-tabs-link-active-color);
+}
+
+#fields-left-box,
+#fields-right-box {
+    width: 22rem;
+    padding: 0.5rem;
+    vertical-align: top;
+}
+
+#fields-center-box {
+    width: 3.25rem;
+    padding-left: 0.125rem;
+}
+
+#vert-btns-box {
+    margin-top: 0.25rem;
+}
+
+#left-btn,
+#right-btn {
+    margin-top: 0.25rem;
+}
+
+.sys_langs-edit #table-div {
+    margin-top: 1rem;
+}
+
+.sys_langs-edit .edit-body form label {
+    text-align: right;    
+}
+
+.sys_langs-view #right-box {
+    width: 15rem;
+    vertical-align: top;
+    padding: 0 2rem 0 2rem;
+}
+
+#editor-box {
+    border: solid 1px #eee;
+    margin-left: 10px;
+    position: relative;
+}
+
+#editor {
+    font-size: 14px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+
+#center-heading {
+    padding-bottom: 0.5rem;    
+}
+
+.view-form-no-border,
+.view-form-no-border .form-body {
+    padding: 0;
+    border: 0;
+}
+
+.close-editor-btn:hover  {
+    color: #000;
+}
+
+.code_error {
+    font-size: 14px;
+    margin-left: 10px;
+    color: red;
+}
+
+.editor-title {
+    font-weight: bold;
+}
+
+.help-btn {
+    margin-left: 0.25rem;
+}
+
+.header-search {
+    margin-bottom: 4px;
+}
+
+p.search {
+    margin: 0;
+    font-family: 'Courier New', Courier, monospace;
+    white-space: nowrap;
+}
+
+@media print {
+    p.search {
+        margin: 0;
+        padding: 0;
+        line-height: 50%;
+    }
+}
+
+#options-box {
+    vertical-align: top;
+}
+
+.editor-footer {
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1rem 0.5rem 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--bs-border-color);    
+}
+
+
+

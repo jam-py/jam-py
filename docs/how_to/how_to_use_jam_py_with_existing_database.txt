@@ -1,6 +1,0 @@
-=======================================
-Can I use Jam.py with existing database
-=======================================
-
-Please read this:
-:doc:`Intergation with existing database </admin/intergation_with_existing_database>`
