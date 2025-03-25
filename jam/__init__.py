@@ -1,4 +1,4 @@
-__version__ = (7, 0, 48)
+__version__ = (7, 0, 49)
 
 def version():
     return '%s.%s.%s' % __version__

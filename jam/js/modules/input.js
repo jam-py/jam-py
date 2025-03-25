@@ -118,6 +118,13 @@ class DBAbstractInput {
             this.$label.attr("for", id);
             this.$input.attr("id", id);
         }
+		
+		//zebra_date_picker
+		if (field_type === consts.DATE || field_type === consts.DATETIME) {
+			this.$container.find('button.last-btn').hide();
+			this.$input.attr("data-zdp_readonly_element", "false");
+			this.show_date_picker();
+		}
 
     }
 
@@ -134,10 +141,10 @@ class DBAbstractInput {
             else if (self.field.lookup_item){
                 self.select_value();
             }
-            else if (self.field.data_type === consts.DATE ||
+            /*else if (self.field.data_type === consts.DATE ||
                 self.field.data_type === consts.DATETIME) {
                 self.show_date_picker();
-            }
+            }*/
         });
         this.$upload_btn.click(function() {
             if (self.field.owner.is_changing() && !self.field.owner.read_only) {
@@ -454,11 +461,13 @@ class DBAbstractInput {
             e.stopPropagation();
             e.preventDefault();
             this.select_value();
-        } else if ((this.field.data_type === consts.DATE) || (this.field.data_type === consts.DATETIME)) {
+        } 
+		
+		/*else if ((this.field.data_type === consts.DATE) || (this.field.data_type === consts.DATETIME)) {
             e.stopPropagation();
             e.preventDefault();
             this.show_date_picker();
-        }
+        }*/
     }
 
     changed() {
@@ -541,12 +550,34 @@ class DBAbstractInput {
         var self = this,
             format;
         if (this.field.data_type === consts.DATE) {
-            format = task.locale.D_FMT;
+            format = task.locale.D_FMT.replace(/%/g, "");
         } else if (this.field.data_type === consts.DATETIME) {
-            format = task.locale.D_T_FMT;
+            format = task.locale.D_T_FMT.replace(/%/g, "").replace(/M/g, "i");
         }
-
-        this.$input.datepicker(
+		
+		//new zebra_date_picker
+		this.$input.Zebra_DatePicker(
+            {
+				first_day_of_week: parseInt(task.language.week_start, 10),
+                format: format,
+				days: task.language.days_min.slice(1, -1).split(','),
+                months: task.language.months.slice(1, -1).split(','),
+				months_abbr: task.language.months_short.slice(1, -1).split(','),
+				show_icon: true,
+				inside: true,
+				lang_clear_date: task.language.delete,
+				show_clear_date: false,
+				show_select_today: task.language.today,
+				enabled_minutes: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55],
+				
+				onSelect: function(dateString, dateObj, instance) {
+					self.field.value = instance;
+				}
+			}
+		);
+		
+		//old date picker
+        /*this.$input.datepicker(
             {
                 weekStart: parseInt(task.language.week_start, 10),
                 format: format,
@@ -571,7 +602,7 @@ class DBAbstractInput {
                 self.$input.datepicker('hide');
             });
         this.$input.datepicker('show');
-        this.datepicker_shown = true;
+        this.datepicker_shown = true;*/
     }
 
     select_value() {

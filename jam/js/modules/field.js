@@ -750,10 +750,12 @@ class Field {
                         break;
                     case consts.BOOLEAN:
                         if (this.default_value === 'true') {
-                            this.data = true;
+                            //this.data = true;
+							this.data = 1;
                         }
                         else if (this.default_value === 'false') {
-                            this.data = false;
+                            //this.data = false;
+							this.data = 0;
                         }
                         break;
                     case consts.TEXT:

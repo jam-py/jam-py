@@ -520,3 +520,14 @@ form.input-form {
 .error-modal-border {
     border: 1px solid red;
 }
+
+/* fix for new zebra datepicker plugin */
+.first-btn {
+    height: calc(1.5em + 0.75rem + 2px) !important;
+    flex-shrink: 0;
+}
+
+/* new zebra datepicker modal form fix */
+.modal-body .Zebra_DatePicker_Icon {
+    top: 8px    !important;
+}

@@ -776,10 +776,16 @@ class Task extends AbsrtactItem {
         }
         $menu.find('.item-menu').on('click', (function(e) {
             e.preventDefault();
-            let navbar_content = $menu.parent();
+            let navbar_content = $menu.parent(),
+				off_canvas = $(".offcanvas");
             if (navbar_content.hasClass('show')) {
                 navbar_content.removeClass('show');
             }
+			//off_canvas menu
+			if (off_canvas) {
+				$("[data-bs-dismiss='offcanvas']").trigger("click");
+			}
+			
             let action = $(this).data('action');
             if (action) {
                 action.call(self);

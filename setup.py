@@ -22,8 +22,12 @@ setup(
     packages=[
         'jam', 'jam.db', 'jam.admin', 'jam.secure_cookie'
     ],
+    #package_data={'jam': ['langs.sqlite', 'html/*.html', 'js/*.js', 'js/bs5/*.*',
+    #    'js/modules/*.js', 'js/ace/*.js', 'css/*.*', 'css/bs5/*.*', 'css/bs5/fonts/*.*',
+    #    'img/*.*', 'project/*.*', 'project/css/*.*', 'admin/builder_structure.info']},
+        
     package_data={'jam': ['langs.sqlite', 'html/*.html', 'js/*.js', 'js/bs5/*.*',
-        'js/modules/*.js', 'js/ace/*.js', 'css/*.*', 'css/bs5/*.*', 'css/bs5/fonts/*.*',
+        'js/modules/*.js', 'js/ace/*.js', 'css/**/*.*',
         'img/*.*', 'project/*.*', 'project/css/*.*', 'admin/builder_structure.info']},
     scripts=['jam/bin/jam-project.py'],
     classifiers=[

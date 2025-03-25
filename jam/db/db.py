@@ -236,7 +236,7 @@ class AbstractDB(object):
                     copy = item.copy(filters=False, details=False, handlers=False)
                     field_name = field.field_name
                     #copy.set_where({field_name: delta.id.value})
-                    copy.set_where({field_name: delta._primary_key_db_field_name})
+                    copy.set_where({field_name: delta._primary_key_field.value})
                     copy.set_fields([field.field_name])
                     copy.open(expanded=False, limit=1, connection=connection)
                     if copy.rec_count:
