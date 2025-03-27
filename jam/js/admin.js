@@ -2650,7 +2650,8 @@ function Events3() { // sys_items
 				[task.consts.TEXT, ['CHAR', 'TEXT']],
 				[task.consts.DATETIME, ['DATETIME']],
 				[task.consts.DATE, ['DATE']],
-				[task.consts.FLOAT, ['NUMBER']]
+				[task.consts.FLOAT, ['NUMBER', 'DECIMAL', 'REAL']],
+				[task.consts.BOOLEAN, ['BOOL']],
 			];
 		for (var type in types) {
 			if (types[type] === data_type) {

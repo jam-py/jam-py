@@ -1,4 +1,5 @@
 import datetime
+import sqlite3
 
 from ..common import to_bytes, to_str
 from ..common import consts, error_message, QueryData
@@ -47,6 +48,8 @@ def copy_database(task, dbtype, connection, limit = 1000):
             con.close()
 
     def get_rows(item, db, connection, loaded, limit):
+        if db != item.task.db:
+            connection = sqlite3.connect(connection)
         cursor = connection.cursor()
         order_by = []
         if item._primary_key_db_field_name:
@@ -130,6 +133,7 @@ def copy_database(task, dbtype, connection, limit = 1000):
         sql, params = db.get_record_count_query(item, QueryData(params))
         if db != item.task.db:
             sql = convert_sql(item, sql, db)
+            con = sqlite3.connect(con)
         cursor = con.cursor()
         cursor.execute(sql, params)
         result = cursor.fetchall()
@@ -141,7 +145,7 @@ def copy_database(task, dbtype, connection, limit = 1000):
         source_con = None
         con = task.connect()
         db = get_database(task.app, dbtype, None)
-        task.log.info('copying droping indexes')
+        task.log.info('droping indexes')
         drop_indexes()
         if hasattr(task.db, 'set_foreign_keys'):
             task.execute(task.db.set_foreign_keys(False))
@@ -154,7 +158,6 @@ def copy_database(task, dbtype, connection, limit = 1000):
                             rec_count = count_records(item, task.db, con)
                             record_count = count_records(item, db, connection)
                             loaded = 0
-                            task.log.info('copying table %s records: %s' % (item.item_name, record_count))
                             if record_count and rec_count != record_count:
                                 task.execute('DELETE FROM "%s"' % item.table_name)
                                 sql = copy_sql(item)
@@ -185,7 +188,7 @@ def copy_database(task, dbtype, connection, limit = 1000):
         except Exception as e:
             task.log.exception(error_message(e))
         finally:
-            task.log.info('copying restoring indexes')
+            task.log.info('restoring indexes')
             restore_indexes()
             if hasattr(task.db, 'set_foreign_keys'):
                 task.execute(task.db.set_foreign_keys(True))

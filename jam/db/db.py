@@ -236,7 +236,7 @@ class AbstractDB(object):
                     copy = item.copy(filters=False, details=False, handlers=False)
                     field_name = field.field_name
                     #copy.set_where({field_name: delta.id.value})
-                    copy.set_where({field_name: delta._primary_key_db_field_name})
+                    copy.set_where({field_name: delta._primary_key_field.value})
                     copy.set_fields([field.field_name])
                     copy.open(expanded=False, limit=1, connection=connection)
                     if copy.rec_count:
@@ -460,11 +460,11 @@ class AbstractDB(object):
                 functions[key.upper()] = value
         sql = []
         for i, field in enumerate(fields):
-            if query.client_request:
-                prohibited, read_only = field.restrictions
-                if prohibited:
-                    print(field.field_name)
-                    continue
+#            if query.client_request:
+#                prohibited, read_only = field.restrictions
+#                if prohibited:
+#                    print(field.field_name)
+#                    continue
             if i == 0 and summary:
                 sql.append(self.identifier_case('count(*)'))
             elif field.master_field:
