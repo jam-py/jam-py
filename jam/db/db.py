@@ -157,7 +157,7 @@ class AbstractDB(object):
         values = []
         index = 0
         for field in delta.fields:
-            if self.db_field(field) and not (field == pk and not pk.data):
+            if self.db_field(field) and not (field == pk and not pk.data) and not field.read_only:
                 index += 1
                 fields.append('"%s"' % field.db_field_name)
                 values.append('%s' % self.value_literal(index))
@@ -193,7 +193,7 @@ class AbstractDB(object):
         command = 'UPDATE "%s" SET ' % delta.table_name
         for field in delta.fields:
             prohibited, read_only = field.restrictions
-            if self.db_field(field) and field != pk and not read_only:
+            if self.db_field(field) and field != pk and not field.read_only:
                 index += 1
                 fields.append('"%s"=%s' % (field.db_field_name, self.value_literal(index)))
                 if field.field_name == delta._record_version:

@@ -300,7 +300,7 @@ def valid_indices_record(delta):
     items.set_where(id=delta.owner_rec_id.value)
     items.open()
     if items.rec_count:
-        return not items.f_virtual_table.value
+        return not items.f_virtual_table.value and not items.f_copy_of.value
     else:
         return True
 

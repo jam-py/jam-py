@@ -182,6 +182,8 @@ class Task extends AbsrtactItem {
             self = this,
             message;
         if (options.blob) {
+            formData.append("myfile", options.blob);
+        } else {
             formData.append("file", options.blob);
         }
         formData.append("file_name", options.file_name);
@@ -275,12 +277,22 @@ class Task extends AbsrtactItem {
         }
         options.path = path;
         $('body').find('#upload-file-form').remove();
-        form = $(
-            '<form id="upload-file-form" enctype="multipart/form-data" method="post" style="position: absolute; top: -1000px; z-index: 10000;">' +
-                '<input id="inp-btn" type="file" name="file" ' + accept + ' required />' +
-                '<input id="submit-btn" type="submit" value="Submit" />' +
-            '</form>'
-        );
+        if (options.blob) {
+            form = $(
+                '<form id="upload-file-form" enctype="multipart/form-data" method="post" style="position: absolute; top: -1000px; z-index: 10000;">' +
+                    '<input id="inp-btn" name="myfile" ' + accept + ' required />' +
+                    '<input id="submit-btn" type="submit" value="Submit" />' +
+                '</form>'
+            );
+        }
+        else {
+            form = $(
+                '<form id="upload-file-form" enctype="multipart/form-data" method="post" style="position: absolute; top: -1000px; z-index: 10000;">' +
+                    '<input id="inp-btn" type="file" name="file" ' + accept + ' required />' +
+                    '<input id="submit-btn" type="submit" value="Submit" />' +
+                '</form>'
+            );
+        }
         button = form.find('#inp-btn');
         submit_button = form.find('#submit-btn');
         $('body').append(form);

@@ -4,39 +4,44 @@
 
 ## Jam.py Application Builder (web framework)
 
-This is forked jam.py to continue the support and development, since Andrew is retiring from jam.py project. The GH organisation name is jam.py-v5, since we are hoping to release official v7 this year (2025). 
-=======
-
-Jam.py is raising funds to keep the software free for everyone, and we need the support of the entire community to do it. [Donate to Jam.py on Github](https://github.com/sponsors/platipusica) to show your support.
+## This is forked jam.py to continue the support and development, since Andrew is retiring from jam.py project. The GH organisation name is jam.py-v5, since we are hoping to release official v7 this year (2025). 
 
 
-## From an idea of a web database application to a live website in no time, for free
+Jam.py is powerful Web Application Builder for managing data effortlessly. All batteries included. Plus, it is event driven! What is EDA:
+
+"An event-driven framework, also known as event-driven architecture (EDA), is a design pattern where software components communicate and react to changes in state or events." Everyhing in Jam.py can be an event. Like a mouse click, or pressing CRTL+Ins, CTRL+Del or whatever is defined by you.
+
+Another major difference from other products is that the entire application is contained within a **single SQLite3 file**. And it can be **encrypted**! 
+
+Another key distinction is the ability to run **any Python procedure directly within the Application Builder** - including popular libraries like Matplotlib, Pandas, and NumPy - with the results displayed in the browser. Python procedure can run **synchronously** or **asynchronously** on the server. There's no need to access the console to review logs anymore, the **server sends results** to the browser!
+
+More over, using **Import tables** feature from any supported database is providig instant data access! There's no need to code anything and **authentication is one click away**! 
+
+Hope this sparked some interest! Thank you.
+
+[![alt text](https://github.com/jam-py-v5/jam-py/blob/develop/assets/images/JAMPY_Readme.gif?raw=true)](https://northwind.pythonanywhere.com)
 
 
-[![alt text](Https://Github.Com/Jam-Py-V5/Jam-Py/Blob/Master/Assets/Images/Jampy_Readme.Gif)](https://northwind.pythonanywhere.com)
-
-
-As a Web development enthusiast, use Jam.py to store, share and analyze data quickly with no code.
-
-Please watch these videos to see how easy it is to create and setup Jam.py
-applications:
+Some short videos about how to setup Jam.py and create applications:
 
 * [Creating CRM web database applications from start to finish in 7 minutes with Jam.py framework](https://youtu.be/vY6FTdpABa4)
 * [Setting up interface of Jam.py application using Forms Dialogs](https://youtu.be/hvNZ0-a_HHw)
 
-As a professional Web developer, use Jam.py to create various tools, dashboards,
-as well as large-scale business applications with complex internal logic.
 
-Please watch the:
-[Jam.py framework applications](https://youtu.be/qkJvGlgoabU)  video
-to see some applications developed in Jam.py.
+Longer
+[video](https://youtu.be/qkJvGlgoabU)  with dashboards and complex internal logic.
 
-More demos on PythonAnywhere:
+Live demos on PythonAnywhere:
 
 - [SAP Theme Demo](https://jampyapp.pythonanywhere.com)
 - [Personal Account Ledger from MS Access template](https://msaccess.pythonanywhere.com)
-- [NorthWind Traders from MS Access template V7 (wip)](https://northwind2.pythonanywhere.com)
-- [NorthWind Traders from MS Access template V5 (wip)](https://northwind.pythonanywhere.com)
+
+  Below two apps demonstrate Matplotlib, Pandas, NumPy and RFM analysis, which stands for R ecency, F requency, and M onetary value, directly migrated from MS Access template:
+  
+- [NorthWind Traders from MS Access template V7 DEV (wip)](https://northwind2.pythonanywhere.com)
+- [NorthWind Traders from MS Access template V7 (wip)](https://northwind.pythonanywhere.com)
+
+  
 - [The ERP POC Demo with Italian and English translations](https://sem.pythonanywhere.com)
 - [Assets/Parts Application (wip, currently Jam V7 Demo)](https://jampy.pythonanywhere.com)
 - [Machine Learning (wip)](https://mlearning.pythonanywhere.com)
@@ -48,6 +53,7 @@ More demos on PythonAnywhere:
 - [Google Authentication, V7](https://ipam2.pythonanywhere.com)
 - [IP Management V7 (wip)](https://ipmgmt.pythonanywhere.com)
 - [Sistema Integrado de Gestão - IMS for Brazilian Market (Portuguese)](https://imsmax.pythonanywhere.com)
+- [ Bills of Materials, sourced from  https://github.com/mpkasp/django-bom as no-code,  V7 (wip)](https://billsofmaterials.pythonanywhere.com)
 
 
 Jam.py alternative site:
@@ -101,14 +107,23 @@ the client utilizes [JavaScript](https://developer.mozilla.org/en/docs/Web/JavaS
 
 
 All updated documentation for v7 is online at
-https://jampy-docs-v7.readthedocs.io/ 
+https://jampy-docs-v7.readthedocs.io/
+
+Brazilian Portuguese translation started at
+https://jampy-docs-v7-br-pt.readthedocs.io/
 
 Please visit https://jampy-docs-v7.readthedocs.io/en/latest/intro/install.html for Python and
 framework installation or https://jampy-docs-v7.readthedocs.io/en/latest/intro/new_project.html how to create a
 new project.
 
+Jam.py application design tips are at https://jampy-application-design-tips.readthedocs.io/
+
 For general discussion, ideas or similar, please visit mailgroup https://groups.google.com/g/jam-py or
 FB page https://www.facebook.com/groups/jam.py/ (paused atm)
+
+## Sponsor
+
+Jam.py is raising funds to keep the software free for everyone, and we need the support of the entire community to do it. [Donate to Jam.py on Github](https://github.com/sponsors/platipusica) to show your support.
 
 
 ## License
